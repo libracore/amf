@@ -1,0 +1,19 @@
+{
+ "content": null,
+ "creation": "2022-04-26 14:45:02.271537",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2022-04-26 14:45:02.271537",
+ "modified_by": "Administrator",
+ "module": "bNovate",
+ "name": "file_uploader",
+ "owner": "Administrator",
+ "page_name": "file_uploader",
+ "roles": [],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "File Uploader"
+}

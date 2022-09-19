@@ -1,0 +1,38 @@
+{
+ "add_total_row": 0,
+ "creation": "2019-04-26 18:07:13.192790",
+ "disable_prepared_report": 0,
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "idx": 0,
+ "is_standard": "Yes",
+ "json": "{\n \"add_totals_row\": 0,\n \"chart_args\": {\n  \"chart_type\": \"bar\",\n  \"x_axis\": \"Sales Order Item:delivery_date\",\n  \"y_axes\": [\n   \"Sales Order Item:qty\"\n  ]\n },\n \"column_widths\": {\n  \"Sales Order Item:delivered_qty\": 79,\n  \"Sales Order Item:delivery_date\": 80,\n  \"Sales Order Item:item_code\": 154,\n  \"Sales Order Item:item_name\": 238,\n  \"Sales Order Item:qty\": 55,\n  \"customer\": 82,\n  \"name\": 96\n },\n \"fields\": [\n  [\n   \"name\",\n   \"Sales Order\"\n  ],\n  [\n   \"docstatus\",\n   \"Sales Order\"\n  ],\n  [\n   \"customer\",\n   \"Sales Order\"\n  ],\n  [\n   \"qty\",\n   \"Sales Order Item\"\n  ],\n  [\n   \"item_name\",\n   \"Sales Order Item\"\n  ],\n  [\n   \"delivery_date\",\n   \"Sales Order Item\"\n  ],\n  [\n   \"delivered_qty\",\n   \"Sales Order Item\"\n  ],\n  [\n   \"item_code\",\n   \"Sales Order Item\"\n  ]\n ],\n \"filters\": [\n  [\n   \"Sales Order\",\n   \"status\",\n   \"not in\",\n   [\n    \"Cancelled\",\n    \"Draft\",\n    \"Closed\"\n   ],\n   false\n  ],\n  [\n   \"Sales Order\",\n   \"per_delivered\",\n   \"<\",\n   100,\n   false\n  ],\n  [\n   \"Sales Order Item\",\n   \"item_code\",\n   \"in\",\n   [\n    \"200004\",\n    \"200005\",\n    \"200046\",\n    \"200047\",\n    \"200019\",\n    \"200020\",\n    \"200039\",\n    \"200040\",\n    \"200054\",\n    \"FIL-TCC-010202\",\n    \"FIL-TCC-000202\",\n    \"FIL-ICC-020206\",\n    \"FIL-LDC-010203\",\n    \"FIL-LDC-000203\"\n   ],\n   false\n  ],\n  [\n   \"Sales Order\",\n   \"company\",\n   \"=\",\n   \"bNovate Technologies SA\"\n  ]\n ],\n \"group_by\": null,\n \"order_by\": \"`tabSales Order`.`title` desc\",\n \"page_length\": 500\n}",
+ "letter_head": "Standard",
+ "modified": "2021-12-14 18:37:12.454002",
+ "modified_by": "Administrator",
+ "module": "bNovate",
+ "name": "Orders to Fulfill",
+ "owner": "douglas.watson@bnovate.com",
+ "prepared_report": 0,
+ "ref_doctype": "Sales Order",
+ "report_name": "Orders to Fulfill",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "Sales User"
+  },
+  {
+   "role": "Sales Manager"
+  },
+  {
+   "role": "Maintenance User"
+  },
+  {
+   "role": "Accounts User"
+  },
+  {
+   "role": "Stock User"
+  }
+ ]
+}
