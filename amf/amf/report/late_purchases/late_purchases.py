@@ -20,14 +20,14 @@ def get_columns():
         {'fieldname': 'item_code', 'fieldtype': 'Link', 'label': _('Sold item'), 'options': 'Item', 'width': 200},
         {'fieldname': 'qty', 'fieldtype': 'Int', 'label': _('Qty total'), 'width': 100}, 
         {'fieldname': 'remaining_qty', 'fieldtype': 'Int', 'label': _('Qty to Receive'), 'width': 100},
-        {'fieldname': 'bnovate_person', 'fieldtype': 'Data', 'label': _('bNovate Contact'), 'width': 200},
+        {'fieldname': 'owner', 'fieldtype': 'Data', 'label': _('Contact'), 'width': 200},
     ]
       
     
 def get_data(filters):
     extra_filters = ""
-    if filters.bnovate_contact:
-        extra_filters += "AND po.bnovate_person = '{}'\n".format(filters.bnovate_contact)
+    if filters.contact:
+        extra_filters += "AND po.owner = '{}'\n".format(filters.contact)
     if filters.only_stock_items:
         extra_filters += "AND it.is_stock_item = {}\n".format(filters.only_stock_items)
 
@@ -41,7 +41,7 @@ SELECT
     poi.qty, 
     (poi.qty - poi.received_qty) as remaining_qty,
     IFNULL(poi.expected_delivery_date, poi.schedule_date) as expected_delivery_date,
-    po.bnovate_person
+    po.owner
 FROM `tabPurchase Order` as po
     JOIN `tabPurchase Order Item` as poi ON po.name = poi.parent
     JOIN `tabItem` as it ON poi.item_code = it.name

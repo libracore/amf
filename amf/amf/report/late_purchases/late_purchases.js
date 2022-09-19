@@ -11,8 +11,8 @@ frappe.query_reports["Late Purchases"] = {
 			"default": 0,
 		},
 		{
-			"fieldname": "bnovate_contact",
-			"label": __("bNovate Contact"),
+			"fieldname": "contact",
+			"label": __("Contact"),
 			"fieldtype": "Link",
 			"options": "User",
 		}
