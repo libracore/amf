@@ -4,3 +4,4 @@
 *.swp
 tags
 amf/docs/current
+__pycache__
