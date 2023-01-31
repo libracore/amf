@@ -8,7 +8,7 @@
  "idx": 0,
  "is_standard": "Yes",
  "letter_head": "Standard",
- "modified": "2023-01-25 10:52:11.878078",
+ "modified": "2023-01-31 16:38:55.396349",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Production Master Planner",
@@ -19,7 +19,13 @@
  "report_type": "Script Report",
  "roles": [
   {
-   "role": "All"
+   "role": "System Manager"
+  },
+  {
+   "role": "Sales User"
+  },
+  {
+   "role": "Projects User"
   }
  ]
 }

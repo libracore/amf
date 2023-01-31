@@ -29,6 +29,13 @@ def get_data():
             "items": [
                    {
                         "type": "report",
+                        "name": "Production Master Planner",
+                        "label": _("Production Master Planner"),
+                        "doctype": "Sales Order",
+                        "is_query_report": True               
+                   },
+                   {
+                        "type": "report",
                         "name": "Projected Stock",
                         "label": _("Projected Stock"),
                         "doctype": "Item",
