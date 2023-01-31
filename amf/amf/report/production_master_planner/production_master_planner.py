@@ -59,9 +59,10 @@ WHERE `tabSales Order Item`.`item_code` NOT RLIKE "GX."
 	AND `tabSales Order`.`status` NOT LIKE "Completed"
 	AND `tabSales Order`.`status` NOT LIKE "Closed"
 	AND `tabSales Order`.`status` NOT LIKE "Cancelled"
+	AND (`tabWork Order`.`status` NOT LIKE "Cancelled" OR `tabWork Order`.`sales_order` IS NULL)
 	{extra_filters}
 
-ORDER BY `tabSales Order Item`.`delivery_date` ASC
+ORDER BY `tabSales Order Item`.`delivery_date`, `tabSales Order`.`customer` ASC
 	;
 	""".format(from_date=filters.from_date, to_date=filters.to_date, extra_filters=extra_filters)
 
