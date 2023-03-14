@@ -1,3 +1,12 @@
+// Set navbar to an obvious colour if running on dev machine:
+if (window.location.host.indexOf("localhost") >= 0) {
+    let link = document.createElement('link');
+    link.type = 'text/css';
+    link.rel = 'stylesheet';
+    link.href = '/assets/amf/amf-dev.css';
+    document.querySelector('head').appendChild(link);
+}
+
 /*  ***********************
  * This file contains common global functions 
  * 
