@@ -50,9 +50,9 @@ def get_data():
                    },
                    {
                         "type": "report",
-                        "name": "Production Master Planner",
-                        "label": _("Production Master Planner"),
-                        "doctype": "Sales Order Item",
+                        "name": "Production Master Planner Updated",
+                        "label": _("Production Master Planner V2.0"),
+                        "doctype": "Sales Order",
                         "is_query_report": True
                    }
             ]
