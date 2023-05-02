@@ -12,14 +12,21 @@ def get_data():
                         "name": "Orders to Fulfill",
                         "label": _("Orders to Fulfill"),
                         "doctype": "Sales Order",
-                        "is_query_report": True               
+                        "is_query_report": True
+                   },
+                   {
+                        "type": "report",
+                        "name": "Procurement_Report",
+                        "label": _("Procurement Report"),
+                        "doctype": "Item",
+                        "is_query_report": True
                    },
                    {
                         "type": "report",
                         "name": "On Time Delivery KPIs",
                         "label": _("On Time Delivery KPIs"),
                         "doctype": "Sales Order",
-                        "is_query_report": True    
+                        "is_query_report": True
                    }            
             ]
         }, 
@@ -29,25 +36,25 @@ def get_data():
             "items": [
                    {
                         "type": "report",
-                        "name": "Production Master Planner",
-                        "label": _("Production Master Planner"),
-                        "doctype": "Sales Order",
-                        "is_query_report": True               
-                   },
-                   {
-                        "type": "report",
                         "name": "Projected Stock",
                         "label": _("Projected Stock"),
                         "doctype": "Item",
-                        "is_query_report": True               
+                        "is_query_report": True
                    },        
                    {
                         "type": "report",
                         "name": "Late Purchases",
                         "label": _("Late Purchases"),
                         "doctype": "Purchase Order",
-                        "is_query_report": True               
-                   }         
+                        "is_query_report": True
+                   },
+                   {
+                        "type": "report",
+                        "name": "Production Master Planner Updated",
+                        "label": _("Production Master Planner V2.0"),
+                        "doctype": "Sales Order",
+                        "is_query_report": True
+                   }
             ]
         },
         {
