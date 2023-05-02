@@ -36,13 +36,6 @@ def get_data():
             "items": [
                    {
                         "type": "report",
-                        "name": "Production Master Planner",
-                        "label": _("Production Master Planner"),
-                        "doctype": "Sales Order",
-                        "is_query_report": True               
-                   },
-                   {
-                        "type": "report",
                         "name": "Projected Stock",
                         "label": _("Projected Stock"),
                         "doctype": "Item",
@@ -57,11 +50,11 @@ def get_data():
                    },
                    {
                         "type": "report",
-                        "name": "Production Master Planner",
-                        "label": _("Production Master Planner"),
-                        "doctype": "Sales Order Item",
+                        "name": "Production Master Planner Updated",
+                        "label": _("Production Master Planner V2.0"),
+                        "doctype": "Sales Order",
                         "is_query_report": True
-                   }
+                   },
             ]
         },
         {
