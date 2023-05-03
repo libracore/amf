@@ -54,7 +54,7 @@ def get_data():
                         "label": _("Production Master Planner V2.0"),
                         "doctype": "Sales Order",
                         "is_query_report": True
-                   },
+                   }
             ]
         },
         {
