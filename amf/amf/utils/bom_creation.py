@@ -14,7 +14,7 @@ def get_wo_items(sales_order, for_raw_material_request=0):
         for i in table:
             bom = get_default_bom_item(i.item_code)
             request_type = get_request_type(i.item_code)
-            print(f"Request type: {request_type}")
+            print("Request type: {request_type}".format(request_type=request_type))
             stock_qty = i.qty if i.doctype == 'Packed Item' else i.stock_qty
             if not for_raw_material_request:
                 total_work_order_qty = flt(frappe.db.sql('''select sum(qty) from `tabWork Order`
