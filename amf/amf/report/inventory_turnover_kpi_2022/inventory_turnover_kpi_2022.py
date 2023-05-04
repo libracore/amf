@@ -28,8 +28,8 @@ def get_data(filters):
 
         data.append([item.name, item.item_name, cogs, avg_inventory, inventory_turnover])
 
-    frappe.msgprint(f"COGS for {item.name}: {cogs}")
-    frappe.msgprint(f"Average Inventory for {item.name}: {avg_inventory}")
+    frappe.msgprint("COGS for {item_name}: {cogs}".format(item_code=item.name, cogs=cogs))
+    frappe.msgprint("Average Inventory for {item_name}: {avg_inventory}".format(item_code=item.name, avg_inventory=avg_inventory))
 
 
     return data
