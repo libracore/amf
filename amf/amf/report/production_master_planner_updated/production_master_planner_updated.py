@@ -10,7 +10,7 @@ def execute(filters=None):
         filters = {}
 
     # Set default values for date filters
-    filters.setdefault("from_date", add_months(today(), -4))
+    filters.setdefault("from_date", add_years(today(), -2))
     filters.setdefault("to_date", add_years(today(), 2))
 
     # define the columns for the report
@@ -29,7 +29,7 @@ def get_columns():
         _("QTY")+":Int:50",
         _("%") + ":Percent:50",
         _("CUSTOMER")+":Link/Customer:250",
-        _("SHIPPING DATE")+":Date:100",
+        _("SHIP. DATE")+":Date:100",
         _("START DATE") + ":Date:100",
         _("W#")+":Int:25",
         _("WO")+":Link/Work Order:100",
@@ -63,6 +63,7 @@ def get_data(filters):
             `tabItem` item ON so_item.item_code = item.name
         WHERE
             so.docstatus = 1
+            AND so.status != 'Closed'
             AND so_item.delivery_date BETWEEN '{0}' AND '{1}'
             AND so_item.item_code NOT LIKE 'GX%%'
             {2}  -- Add the hide_completed_filter here
