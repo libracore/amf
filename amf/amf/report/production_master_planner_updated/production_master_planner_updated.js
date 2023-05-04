@@ -8,15 +8,13 @@ frappe.query_reports["Production Master Planner Updated"] = {
 			"fieldname": "from_date",
 			"label": __("From Date"),
 			"fieldtype": "Date",
-			"default": new Date((new Date()).getFullYear(), (new Date()).getMonth()-2, 1),
-			"reqd": 1,
+			"reqd": 0,
 		},
 		{
 			"fieldname": "to_date",
 			"label": __("To Date"),
 			"fieldtype": "Date",
-			"default": new Date((new Date()).getFullYear(), (new Date()).getMonth()+12, 1),
-			"reqd": 1,
+			"reqd": 0,
 		},
 		{
             "fieldname": "hide_completed",
