@@ -20,7 +20,7 @@ frappe.query_reports["Production Master Planner Updated"] = {
             "fieldname": "hide_completed",
             "label": __("HIDE COMPLETED"),
             "fieldtype": "Check",
-            "default": 0,
+            "default": 1,
         },
 	]
 };
