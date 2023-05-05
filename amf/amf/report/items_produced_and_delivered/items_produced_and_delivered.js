@@ -4,13 +4,12 @@
 
 frappe.query_reports["Items Produced and Delivered"] = {
 	"filters": [
-		// {
-        //     "fieldname": "quarter",
-        //     "label": _("Quarter"),
-        //     "fieldtype": "Data",
-        //     "options": "",
-        //     "default": "",
-        //     "width": "80",
-        // },
-	]
-};
+        {
+            "fieldname": "display_type",
+            "label": _("Display Type"),
+            "fieldtype": "Check",
+            "options": "Produced\nDelivered",
+            "default": ["Produced", "Delivered"],
+        },
+    ]
+}
