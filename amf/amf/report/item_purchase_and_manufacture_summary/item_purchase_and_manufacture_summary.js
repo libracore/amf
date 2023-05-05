@@ -16,7 +16,7 @@ frappe.query_reports["Item Purchase and Manufacture Summary"] = {
             "fieldname": "year",
             "label": "Year",
             "fieldtype": "Select",
-            "default": "2022",
+            "default": "",
             "reqd": 0,
             "options": "\n2019\n2020\n2021\n2022\n2023",
         },

@@ -23,7 +23,7 @@ def get_filters():
             "fieldname": "year",
             "label": "Year",
             "fieldtype": "Select",
-            "default": "2022",
+            "default": "",
             "options": "\n2019\n2020\n2021\n2022\n2023",
             "reqd": 0,
         },
@@ -31,7 +31,7 @@ def get_filters():
             "fieldname": "quarter",
             "label": "Quarter",
             "fieldtype": "Select",
-            "options": " \nQ1\nQ2\nQ3\nQ4",
+            "options": "\nQ1\nQ2\nQ3\nQ4",
             "default": "",
             "reqd": 0,
         }
@@ -50,16 +50,17 @@ def get_columns():
 def get_data(filters):
     data = []
     print("filters:", filters);
-    year_range = range(int(2019), 2024)
-    quarter_range = range(int(filters.get("quarter", "Q1")[1:]), 5)
-    if filters.year:
-        year_range = int(filters.get("year"))
-        year_range = range(year_range, year_range+1)
-        print("year_range in if:", year_range);
-    if filters.quarter:
-        quarter_range = int(filters.get("quarter")[1:])
-        quarter_range = range(quarter_range, quarter_range+1)
-        print("quarter_range in if:", quarter_range);
+    year_range = range(2019, 2024)
+    if filters.get("year"):
+        selected_year = int(filters["year"])
+        year_range = range(selected_year, selected_year + 1)
+
+    quarter_range = range(1, 4)
+    if filters.get("quarter"):
+        selected_quarter = int(filters["quarter"][1:])
+        quarter_range = range(selected_quarter, selected_quarter + 1)
+
+    print("years:", year_range, "quarter:", quarter_range)
     item_code = filters.get("item_code", None)
     for year in year_range:
         for quarter in quarter_range:
@@ -83,12 +84,12 @@ def get_quarter_dates(year, quarter):
 
 def get_purchased_qty(item_code, start_date, end_date):
     purchase_qty = frappe.db.sql("""
-        SELECT SUM(po_item.qty)
-        FROM `tabPurchase Order Item` AS po_item
-        JOIN `tabPurchase Order` AS po ON po_item.parent = po.name
-        WHERE po_item.item_code = %s
-        AND po.transaction_date BETWEEN %s AND %s
-        AND po.docstatus = 1
+        SELECT SUM(pri.qty)
+        FROM `tabPurchase Receipt` AS pr
+        JOIN `tabPurchase Receipt Item` AS pri ON pr.name = pri.parent
+        WHERE pri.item_code = %s
+        AND pr.posting_date BETWEEN %s AND %s
+        AND pr.docstatus = 1
     """, (item_code, start_date, end_date))[0][0] or 0
 
     return purchase_qty
@@ -110,13 +111,12 @@ def get_produced_qty(item_code, start_date, end_date):
 def get_cnc_machining_job_card_count(item_code, start_date, end_date):
     #frappe.msgprint(end_date);
     cnc_machining_job_card_count = frappe.db.sql("""
-        SELECT sum(jc.for_quantity)
-        FROM `tabJob Card` AS jc
-        JOIN `tabWork Order` AS wo ON jc.work_order = wo.name
+        SELECT sum(se.fg_completed_qty)
+        FROM `tabStock Entry` AS se
+        JOIN `tabWork Order` AS wo ON se.work_order = wo.name
         WHERE wo.production_item = %s
-        AND jc.posting_date BETWEEN %s AND %s
-        AND jc.operation = 'CNC Machining'
-        AND jc.docstatus = 1
+        AND se.modified BETWEEN %s AND %s
+        AND se.docstatus = 1
     """, (item_code, start_date, end_date))[0][0] or 0
 
     return cnc_machining_job_card_count
