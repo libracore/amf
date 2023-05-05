@@ -55,7 +55,7 @@ def get_data(filters):
         selected_year = int(filters["year"])
         year_range = range(selected_year, selected_year + 1)
 
-    quarter_range = range(1, 4)
+    quarter_range = range(1, 5)
     if filters.get("quarter"):
         selected_quarter = int(filters["quarter"][1:])
         quarter_range = range(selected_quarter, selected_quarter + 1)

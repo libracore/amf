@@ -24,7 +24,7 @@ frappe.query_reports["Item Purchase and Manufacture Summary"] = {
             "fieldname": "quarter",
             "label": "Quarter",
             "fieldtype": "Select",
-            "options": " \nQ1\nQ2\nQ3\nQ4",
+            "options": "\nQ1\nQ2\nQ3\nQ4",
             "default": "",
             "reqd": 0,
         }
