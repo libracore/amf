@@ -20,12 +20,12 @@ def get_columns(filters):
     if "Produced" in filters.get("display_type", []):
         for year in range(2019, 2024):
             for quarter in range(1, 5):
-                columns.append(f"Y{year} Q{quarter} Produced:Int:150")
+                columns.append("Y{year} Q{quarter} Produced:Int:150".format(year=year, quarter=quarter))
 
     if "Delivered" in filters.get("display_type", []):
         for year in range(2019, 2024):
             for quarter in range(1, 5):
-                columns.append(f"Y{year} Q{quarter} Delivered:Int:150")
+                columns.append("Y{year} Q{quarter} Delivered:Int:150".format(year=year, quarter=quarter))
 
     return columns
 
@@ -37,13 +37,13 @@ def get_data(filters):
     for year in range(2019, 2024):
         for quarter in range(1, 5):
             if "Produced" in display:
-                year_quarter_columns.append(f"SUM(CASE WHEN YEAR(posting_date) = {year} AND QUARTER(posting_date) = {quarter} THEN qty ELSE 0 END) as 'Y{year} Q{quarter}_Produced'")
+                year_quarter_columns.append("SUM(CASE WHEN YEAR(posting_date) = {year} AND QUARTER(posting_date) = {quarter} THEN qty ELSE 0 END) as 'Y{year} Q{quarter}_Produced'".format(year=year, quarter=quarter))
             if "Delivered" in display:
-                year_quarter_columns.append(f"SUM(CASE WHEN YEAR(delivery_date) = {year} AND QUARTER(delivery_date) = {quarter} THEN qty ELSE 0 END) as 'Y{year} Q{quarter}_Delivered'")
+                year_quarter_columns.append("SUM(CASE WHEN YEAR(delivery_date) = {year} AND QUARTER(delivery_date) = {quarter} THEN qty ELSE 0 END) as 'Y{year} Q{quarter}_Delivered'".format(year=year, quarter=quarter))
 
     year_quarter_columns_str = ', '.join(year_quarter_columns)
 
-    query = f"""
+    query = """
         SELECT
             item_group,
             {year_quarter_columns_str}
@@ -74,7 +74,7 @@ def get_data(filters):
             ) combined_data
         GROUP BY item_group
         ORDER BY item_group;
-    """
+    """.format(year=year, quarter=quarter, year_quarter_columns_str=year_quarter_columns_str)
 
     # execute the query and fetch the result
     data = frappe.db.sql(query, as_list=True)
