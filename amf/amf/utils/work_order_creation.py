@@ -32,6 +32,7 @@ def make_work_orders(items, sales_order, company, project=None):
 			project=project,
 			fg_warehouse=i['warehouse'],
 			description=i['description'],
+			destination=i['destination'],
 			p_e_d=delivery_date
 		)).insert()
 		work_order.set_work_order_operations()
