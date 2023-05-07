@@ -69,14 +69,14 @@ def get_data(filters):
             for item in items:
                 purchased_qty = get_purchased_qty(item.item_code, start_date, end_date)
                 cnc_machining_job_card_count = get_cnc_machining_job_card_count(item.item_code, start_date, end_date)
-                data.append([item.item_code, item.item_name, year, f"Q{quarter}", purchased_qty, cnc_machining_job_card_count])
+                data.append([item.item_code, item.item_name, year, "Q{quarter}".format(quarter=quarter), purchased_qty, cnc_machining_job_card_count])
     return data
 
 
 def get_quarter_dates(year, quarter):
     print("year in get:", year);
     start_month = (quarter - 1) * 3 + 1
-    start_date = f"{year}-{start_month:02d}-01"
+    start_date = "{year}-{start_month:02d}-01".format(year=year, start_month=start_month)
     print("start_date in get:", start_date);
     end_date = get_last_day(add_months(start_date, 2))
     print("end_date in get:", end_date);
