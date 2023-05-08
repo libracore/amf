@@ -24,3 +24,4 @@ function get_label(doctype, docname, print_format, label_reference) {
         "_blank"
     );
 }
+  
