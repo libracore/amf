@@ -12,10 +12,10 @@ def execute(filters=None):
 def get_filters():
     return [
         {
-            "fieldname": "item_code",
-            "label": "Item Code",
+            "fieldname": "item_group",
+            "label": "Item Group",
             "fieldtype": "Link",
-            "options": "Item",
+            "options": "Item Group",
             "default": "",
             "reqd": 0,
         },
@@ -61,11 +61,11 @@ def get_data(filters):
         quarter_range = range(selected_quarter, selected_quarter + 1)
 
     print("years:", year_range, "quarter:", quarter_range)
-    item_code = filters.get("item_code", None)
+    item_group = filters.get("item_group", None)
     for year in year_range:
         for quarter in quarter_range:
             start_date, end_date = get_quarter_dates(year, quarter)
-            items = frappe.get_all("Item", filters={"item_code": item_code} if item_code else {}, fields=["item_code", "item_name"])
+            items = frappe.get_all("Item", filters={"item_group": item_group} if item_group else {}, fields=["item_code", "item_name"])
             for item in items:
                 purchased_qty = get_purchased_qty(item.item_code, start_date, end_date)
                 cnc_machining_job_card_count = get_cnc_machining_job_card_count(item.item_code, start_date, end_date)
