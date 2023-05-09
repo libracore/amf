@@ -14,7 +14,7 @@ def download_label(label_reference, content):
     frappe.local.response.filename = "{name}.pdf".format(name=label_reference.replace(" ", "-").replace("/", "-"))
     frappe.local.response.filecontent = create_pdf(label, content)
     frappe.local.response.type = "download"
-    frappe.local.response.display_content_as = "inline" # Doesn't have any effect on our frappe version.
+    #frappe.local.response.display_content_as = "inline" # Doesn't have any effect on our frappe version.
 
 @frappe.whitelist()
 def download_label_for_doc(doctype, docname, print_format, label_reference):

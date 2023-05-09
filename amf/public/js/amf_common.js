@@ -24,4 +24,15 @@ function get_label(doctype, docname, print_format, label_reference) {
         "_blank"
     );
 }
-  
+
+function generateZPL(qrCodes) {
+    const zplHeader = '^XA^POI^PW800^MNN^LL0000^XZ';
+    const zplFooter = '^XZ';
+    let zplContent = '';
+
+    qrCodes.forEach((qrCode, index) => {
+        zplContent += `^XA^FO50,${50 + (index * 300)}^BQN,2,10^FDLA,${qrCode.serial_number}^FS^XZ`;
+    });
+
+    return zplHeader + zplContent + zplFooter;
+}
