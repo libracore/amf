@@ -9,4 +9,4 @@ def save_zpl_string_to_file(zpl_string, file_name):
     with open(zpl_file_path, 'w') as zpl_file:
         zpl_file.write(zpl_string)
 
-    return f"ZPL string saved to file: {zpl_file_path}"
+    return "ZPL string saved to file: {zpl_file_path}".formatzpl_file_path=zpl_file_path)
