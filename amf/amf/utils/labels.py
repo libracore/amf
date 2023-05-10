@@ -4,10 +4,9 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils.file_manager import save_file
+from frappe.utils.file_manager import save_file, save_file_on_filesystem
 import os
 import tempfile
-from frappe.utils.file_manager import save_file_on_filesystem
 
 from erpnextswiss.erpnextswiss.doctype.label_printer.label_printer import create_pdf
 
