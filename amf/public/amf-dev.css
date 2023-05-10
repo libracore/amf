@@ -2,3 +2,10 @@
     background-color: #ff0000;
     border-color: #ff0000;
 }
+
+@media print {
+    .pagebreak {
+        clear: both;
+        page-break-after: always;
+    }
+}

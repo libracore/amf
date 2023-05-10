@@ -19,7 +19,7 @@ app_license = "AGPL"
 app_include_js = "/assets/amf/js/amf_common.js"
 
 # include js, css files in header of web template
-# web_include_css = "/assets/amf/css/amf.css"
+web_include_css = "/assets/amf/amf-dev.css"
 # web_include_js = "/assets/amf/js/amf.js"
 
 # include js in page

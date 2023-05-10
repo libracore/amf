@@ -5,10 +5,10 @@
 frappe.query_reports["Item Purchase and Manufacture Summary"] = {
 	"filters": [
         {
-            "fieldname": "item_code",
-            "label": "Item Code",
+            "fieldname": "item_group",
+            "label": "Item Group",
             "fieldtype": "Link",
-            "options": "Item",
+            "options": "Item Group",
             "default": "",
             "reqd": 0,
         },

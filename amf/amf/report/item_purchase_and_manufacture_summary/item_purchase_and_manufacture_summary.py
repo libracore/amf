@@ -7,15 +7,54 @@ def execute(filters=None):
 
     columns = get_columns()
     data = get_data(filters)
-    return columns, data, None, None, get_filters()
+
+    chart = get_chart(data)
+    return columns, data, None, chart, get_filters()
+
+def get_chart(data):
+    labels = []
+    purchased_data = []
+    produced_data = []
+
+    for row in data[:-1]:
+        purchased_qty = row[4]
+        produced_qty = row[5]
+
+        # Check if both purchased and produced quantities are not 0
+        if purchased_qty != 0 or produced_qty != 0:
+            labels.append('{year} {quarter} ({item_code})'.format(year=row[2], quarter=row[3], item_code=row[0]))  # Year, Quarter, and Item Code
+            purchased_data.append(purchased_qty)  # Purchased Quantity
+            produced_data.append(produced_qty)  # CNC Machining Job Cards
+
+    chart = {
+        "data": {
+            'labels': labels,
+            'datasets': [
+                {
+                    'name': 'Purchased',
+                    'values': purchased_data,
+                    'chartType': 'bar'
+                },
+                {
+                    'name': 'Produced',
+                    'values': produced_data,
+                    'chartType': 'bar'
+                }
+            ]
+        },
+        "type": 'bar',
+        "height": 300,
+    }
+
+    return chart
 
 def get_filters():
     return [
         {
-            "fieldname": "item_code",
-            "label": "Item Code",
+            "fieldname": "item_group",
+            "label": "Item Group",
             "fieldtype": "Link",
-            "options": "Item",
+            "options": "Item Group",
             "default": "",
             "reqd": 0,
         },
@@ -60,16 +99,26 @@ def get_data(filters):
         selected_quarter = int(filters["quarter"][1:])
         quarter_range = range(selected_quarter, selected_quarter + 1)
 
+    total_purchased_qty = 0
+    total_cnc_machining_job_card_count = 0
+
     print("years:", year_range, "quarter:", quarter_range)
-    item_code = filters.get("item_code", None)
+    item_group = filters.get("item_group", None)
     for year in year_range:
         for quarter in quarter_range:
             start_date, end_date = get_quarter_dates(year, quarter)
-            items = frappe.get_all("Item", filters={"item_code": item_code} if item_code else {}, fields=["item_code", "item_name"])
+            items = frappe.get_all("Item", filters={"item_group": item_group} if item_group else {}, fields=["item_code", "item_name"])
             for item in items:
                 purchased_qty = get_purchased_qty(item.item_code, start_date, end_date)
                 cnc_machining_job_card_count = get_cnc_machining_job_card_count(item.item_code, start_date, end_date)
+                total_purchased_qty += purchased_qty
+                total_cnc_machining_job_card_count += cnc_machining_job_card_count
                 data.append([item.item_code, item.item_name, year, "Q{quarter}".format(quarter=quarter), purchased_qty, cnc_machining_job_card_count])
+    
+    if total_purchased_qty > 0 or total_cnc_machining_job_card_count > 0:
+        purchased_vs_produced_percentage = (total_cnc_machining_job_card_count / (total_purchased_qty + total_cnc_machining_job_card_count)) * 100
+        data.append(["Total Produced", "{:.2f}%".format(purchased_vs_produced_percentage), "", "", total_purchased_qty, total_cnc_machining_job_card_count])
+    
     return data
 
 
