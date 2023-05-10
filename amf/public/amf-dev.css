@@ -6,6 +6,8 @@
 @media print {
     .pagebreak {
         clear: both;
+        align-items: center;
+        vertical-align: middle;
         page-break-after: always;
     }
 }
