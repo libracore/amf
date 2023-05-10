@@ -4,10 +4,9 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils.file_manager import save_file
+from frappe.utils.file_manager import save_file, save_file_on_filesystem
 import os
 import tempfile
-from frappe.utils.file_manager import save_file_on_filesystem
 
 from erpnextswiss.erpnextswiss.doctype.label_printer.label_printer import create_pdf
 
@@ -36,7 +35,7 @@ def attach_label(delivery_note, label_reference, content):
     file_content = create_pdf(label, content)
 
     # Create a filename for the attached PDF
-    file_name = f"{delivery_note}_labels.pdf"
+    file_name = "{delivery_note}_labels.pdf".formatdelivery_note=delivery_note)
 
     # Save the PDF content to a temporary file
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -50,7 +49,7 @@ def attach_label(delivery_note, label_reference, content):
     os.unlink(temp_path)
 
     # Return the name of the attached file
-    return f"File '{file_name}' attached to Delivery Note: {delivery_note}"
+    return "File '{file_name}' attached to Delivery Note: {delivery_note}".formatfile_name=file_name, delivery_note=delivery_note)
 
 
 # Example of how to use this from Javascript:
