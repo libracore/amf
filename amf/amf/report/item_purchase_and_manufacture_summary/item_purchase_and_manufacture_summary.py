@@ -22,7 +22,7 @@ def get_chart(data):
 
         # Check if both purchased and produced quantities are not 0
         if purchased_qty != 0 or produced_qty != 0:
-            labels.append(f'{row[2]} {row[3]} ({row[0]})')  # Year, Quarter, and Item Code
+            labels.append('{year} {quarter} ({item_code})'.format(year=row[2], quarter=row[3], item_code=row[0]))  # Year, Quarter, and Item Code
             purchased_data.append(purchased_qty)  # Purchased Quantity
             produced_data.append(produced_qty)  # CNC Machining Job Cards
 
