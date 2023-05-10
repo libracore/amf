@@ -35,7 +35,7 @@ def attach_label(delivery_note, label_reference, content):
     file_content = create_pdf(label, content)
 
     # Create a filename for the attached PDF
-    file_name = "{delivery_note}_labels.pdf".formatdelivery_note=delivery_note)
+    file_name = "{delivery_note}_labels.pdf".format(delivery_note=delivery_note)
 
     # Save the PDF content to a temporary file
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -49,7 +49,7 @@ def attach_label(delivery_note, label_reference, content):
     os.unlink(temp_path)
 
     # Return the name of the attached file
-    return "File '{file_name}' attached to Delivery Note: {delivery_note}".formatfile_name=file_name, delivery_note=delivery_note)
+    return "File '{file_name}' attached to Delivery Note: {delivery_note}".format(file_name=file_name, delivery_note=delivery_note)
 
 
 # Example of how to use this from Javascript:
