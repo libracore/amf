@@ -3,7 +3,43 @@ from frappe import _
 
 def execute(filters=None):
     columns, data = get_columns(), get_data(filters)
-    return columns, data
+    chart_data = get_chart_data(data, filters.get("item_code"))  # Pass the selected item code to get_chart_data
+
+    chart = {
+        "data": {
+            "labels": [d["label"] for d in chart_data],
+            "datasets": [
+                {
+                    "name": "Delivered Quantity",
+                    "values": [d["value"] for d in chart_data],
+                    "chartType": "bar",
+                }
+            ]
+        },
+        "type": "bar",
+        "title": _("Total Delivered Quantity by Item"),
+    }
+
+    return columns, data, None, chart, None  # Add the chart data as the fifth return value
+
+
+def get_chart_data(data, item_code=None):
+    chart_data = []
+
+    for row in data:
+        item_code_row, item_group, year, quarter, delivered_qty, invoiced_amount = row
+        label = f"{item_code_row} ({item_group})"
+        chart_data.append({"label": label, "value": delivered_qty, "year": year, "quarter": quarter})
+
+    # Sort the data based on the total number of items delivered (descending) or quarter (ascending)
+    if item_code:
+        chart_data = sorted(chart_data, key=lambda x: x["quarter"])
+    else:
+        chart_data = sorted(chart_data, key=lambda x: x["value"], reverse=True)
+
+    return chart_data
+
+
 
 def get_columns():
     return [
@@ -19,6 +55,7 @@ def get_data(filters):
     item_group = filters.get("item_group")
     year = filters.get("year")
     sum_quarters = filters.get("sum_quarters")
+    item_code = filters.get("item_code")  # New filter for item_code
 
     if sum_quarters:
         group_by_clause = "GROUP BY item.item_group, sii.item_code, YEAR(si.posting_date)"
@@ -46,6 +83,9 @@ def get_data(filters):
 
     if year:
         query += f" AND YEAR(si.posting_date) = {year}"
+
+    if item_code:  # Add the item_code filter condition to the query
+        query += f" AND sii.item_code = '{item_code}'"
 
     query += f"""
         {group_by_clause}

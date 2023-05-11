@@ -5,6 +5,14 @@
 frappe.query_reports["Delivered Items"] = {
     "filters": [
         {
+            "fieldname": "item_code",
+            "label": __("Item Code"),
+            "fieldtype": "Link",
+            "options": "Item",
+            "reqd": 0,
+            "default": ""
+        },
+        {
             "fieldname": "item_group",
             "label": __("Item Group"),
             "fieldtype": "Link",
