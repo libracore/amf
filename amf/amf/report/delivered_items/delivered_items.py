@@ -28,7 +28,7 @@ def get_chart_data(data, item_code=None):
 
     for row in data:
         item_code_row, item_group, year, quarter, delivered_qty, invoiced_amount = row
-        label = f"{item_code_row} ({item_group})"
+        label = "{item_code_row} ({item_group})".format(item_code_row=item_code_row, item_group=item_group)
         chart_data.append({"label": label, "value": delivered_qty, "year": year, "quarter": quarter})
 
     # Sort the data based on the total number of items delivered (descending) or quarter (ascending)
@@ -64,7 +64,7 @@ def get_data(filters):
         group_by_clause = "GROUP BY item.item_group, sii.item_code, YEAR(si.posting_date), QUARTER(si.posting_date)"
         quarter_column = "QUARTER(si.posting_date) AS quarter,"
 
-    query = f"""
+    query = """
         SELECT
             sii.item_code,
             item.item_group,
@@ -76,21 +76,21 @@ def get_data(filters):
         JOIN `tabSales Invoice Item` AS sii ON sii.parent = si.name
         JOIN `tabItem` AS item ON item.item_code = sii.item_code
         WHERE si.docstatus = 1
-        """
+        """.format(quarter_column=quarter_column)
 
     if item_group:
-        query += f" AND item.item_group = '{item_group}'"
+        query += " AND item.item_group = '{item_group}'".format(item_group=item_group)
 
     if year:
-        query += f" AND YEAR(si.posting_date) = {year}"
+        query += " AND YEAR(si.posting_date) = {year}".format(year=year)
 
     if item_code:  # Add the item_code filter condition to the query
-        query += f" AND sii.item_code = '{item_code}'"
+        query += " AND sii.item_code = '{item_code}'".format(item_code=item_code)
 
-    query += f"""
+    query += """
         {group_by_clause}
         ORDER BY YEAR(si.posting_date) DESC, item.item_group, sii.item_code
-        """
+        """.format(group_by_clause=group_by_clause)
 
     data = frappe.db.sql(query, as_list=True)
     return data
