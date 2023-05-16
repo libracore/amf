@@ -1,1 +1,6 @@
 frappe
+qrcode
+base64
+os
+io
+tempfile

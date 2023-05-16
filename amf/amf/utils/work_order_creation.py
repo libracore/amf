@@ -15,6 +15,8 @@ def make_work_orders(items, sales_order, company, project=None):
 			frappe.throw(_("Please select BOM against item {0}").format(i.get("item_code")))
 		if not i.get("pending_qty"):
 			frappe.throw(_("Please select Qty against item {0}").format(i.get("item_code")))
+		if not i.get("simple_description"):
+			i["simple_description"] = ''
 
 		sales_order_item = frappe.get_doc('Sales Order Item', i['sales_order_item'])
 		if not sales_order_item.delivery_date:
@@ -33,6 +35,7 @@ def make_work_orders(items, sales_order, company, project=None):
 			fg_warehouse=i['warehouse'],
 			description=i['description'],
 			destination=i['destination'],
+			simple_description=i['simple_description'],
 			p_e_d=delivery_date
 		)).insert()
 		work_order.set_work_order_operations()
