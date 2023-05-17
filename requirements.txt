@@ -4,3 +4,4 @@ base64
 os
 io
 tempfile
+BytesIO
