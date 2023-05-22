@@ -71,7 +71,6 @@ def get_data(filters):
         WHERE
             so.docstatus = 1
             AND so.status != 'Closed'
-            AND dn.status != 'Cancelled'
             AND so_item.delivery_date BETWEEN '{0}' AND '{1}'
             {2}  -- Add the hide_completed_filter here
             {3}  -- Add the hide_rnd here
