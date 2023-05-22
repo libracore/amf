@@ -12,7 +12,7 @@ if (window.location.host.indexOf("localhost") >= 0) {
  * 
  *  *********************** */
 
-function get_label(doctype, docname, print_format, label_reference) {
+window.get_label = function(doctype, docname, print_format, label_reference) {
     window.open(
         frappe.urllib.get_full_url(
             "/api/method/amf.amf.utils.labels.download_label_for_doc"
