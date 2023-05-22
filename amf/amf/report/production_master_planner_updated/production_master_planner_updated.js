@@ -22,5 +22,11 @@ frappe.query_reports["Production Master Planner Updated"] = {
             "fieldtype": "Check",
             "default": 1,
         },
+		{
+            "fieldname": "no_rnd",
+            "label": __("NO R&D"),
+            "fieldtype": "Check",
+            "default": 0,
+        },
 	]
 };

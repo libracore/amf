@@ -26,6 +26,7 @@ def get_columns():
     return [
         _("ITEM CODE")+":Link/Item:250",
         _("SO")+":Link/Sales Order:100",
+        _("TYPE")+":Link/Sales Order:100",
         _("QTY")+":Int:50",
         _("%") + ":Percent:50",
         _("CUSTOMER")+":Link/Customer:250",
@@ -34,16 +35,19 @@ def get_columns():
         _("W#")+":Int:25",
         _("WO")+":Link/Work Order:100",
         _("END DATE")+":Date:100",
+        _("DN")+":Link/Delivery Note:100",
     ]
 
 def get_data(filters):
     hide_completed_filter = "AND ((so_item.delivered_qty / so_item.qty) * 100) < 100" if filters.get("hide_completed") else ""
+    hide_rnd = "AND so.sales_order_type != 'R&D'" if filters.get("no_rnd") else ""
     
     # SQL query to fetch the required data
     sql_query = """
         SELECT
             so_item.item_code,
             so.name as sales_order,
+            so.sales_order_type as type,
             so_item.qty,
             ROUND((so_item.delivered_qty / so_item.qty) * 100) as progress,
             so.customer,
@@ -52,6 +56,7 @@ def get_data(filters):
             WEEK(so_item.delivery_date) as week_number,
             wo.name as work_order,
             wo.p_e_d as work_order_planned_end_date,
+            dn.status,
             item.timetoproduce
         FROM
             `tabSales Order` so
@@ -61,17 +66,19 @@ def get_data(filters):
             `tabWork Order` wo ON wo.sales_order = so.name AND wo.production_item = so_item.item_code
         JOIN
             `tabItem` item ON so_item.item_code = item.name
+        LEFT JOIN
+            `tabDelivery Note` dn ON dn.from_sales_order = so.name
         WHERE
             so.docstatus = 1
             AND so.status != 'Closed'
             AND so_item.delivery_date BETWEEN '{0}' AND '{1}'
-            AND so_item.item_code NOT LIKE 'GX%%'
             {2}  -- Add the hide_completed_filter here
+            {3}  -- Add the hide_rnd here
         GROUP BY
             so_item.name
         ORDER BY
             so_item.delivery_date ASC, so.customer ASC
-    """.format(filters.get("from_date"), filters.get("to_date"), hide_completed_filter)
+    """.format(filters.get("from_date"), filters.get("to_date"), hide_completed_filter, hide_rnd)
 
     # execute the query and fetch the result
     data = frappe.db.sql(sql_query, as_list=True)
