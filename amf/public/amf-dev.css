@@ -2,12 +2,3 @@
     background-color: #ff0000;
     border-color: #ff0000;
 }
-
-@media print {
-    .pagebreak {
-        clear: both;
-        align-items: center;
-        vertical-align: middle;
-        page-break-after: always;
-    }
-}

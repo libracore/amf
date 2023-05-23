@@ -15,4 +15,5 @@ def generate_serial_number_qr_codes(stock_entry):
                     # Create a new child table entry for each QR code
                     doc.append('stock_entry_qr', {"serial_number": serial_number, "qr_code": qr_code_base64})
     doc.save()  # Save the document to persist the new child table entries
+    doc.reload()
     return stock_entry_qr
