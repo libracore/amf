@@ -36,11 +36,12 @@ def get_columns():
         _("WO")+":Link/Work Order:100",
         _("END DATE")+":Date:100",
         _("DN")+":Link/Delivery Note:100",
+        _("DN STATUS")+":Link/Delivery Note:100",
     ]
 
 def get_data(filters):
     hide_completed_filter = "AND ((so_item.delivered_qty / so_item.qty) * 100) < 100" if filters.get("hide_completed") else ""
-    hide_rnd = "AND so.sales_order_type != 'R&D'" if filters.get("no_rnd") else ""
+    hide_rnd = "AND LOWER(TRIM(so.sales_order_type)) != 'r&d'" if filters.get("no_rnd") else ""
     
     # SQL query to fetch the required data
     sql_query = """
@@ -56,6 +57,7 @@ def get_data(filters):
             WEEK(so_item.delivery_date) as week_number,
             wo.name as work_order,
             wo.p_e_d as work_order_planned_end_date,
+            dni.parent,
             dn.status,
             item.timetoproduce
         FROM
@@ -67,7 +69,9 @@ def get_data(filters):
         JOIN
             `tabItem` item ON so_item.item_code = item.name
         LEFT JOIN
-            `tabDelivery Note` dn ON dn.from_sales_order = so.name
+            `tabDelivery Note Item` dni ON so_item.name = dni.so_detail
+        LEFT JOIN
+            `tabDelivery Note` dn ON dni.parent = dn.name AND dn.status != 'Cancelled'
         WHERE
             so.docstatus = 1
             AND so.status != 'Closed'
