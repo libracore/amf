@@ -24,7 +24,7 @@ function get_label(doctype, docname, print_format, label_reference) {
         "_blank"
     );
 }
-amf.utils.get_label = get_label;
+//amf.utils.get_label = get_label;
 
 function generateZPL(qrCodes) {
     const zplHeader = '^XA^POI^PW800^MNN^LL0000^XZ';
