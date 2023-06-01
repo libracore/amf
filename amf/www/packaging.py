@@ -3,6 +3,7 @@ import base64
 import os
 from frappe import _
 from frappe.utils.file_manager import save_file
+from frappe.core.doctype.communication.email import make
 
 def get_context(context):
     context.no_cache = 1
@@ -37,6 +38,17 @@ def update_weight(delivery_note, weight, length, height, width, operator, image_
         })
         delivery.save()
     
+    # Assign the Delivery Note to Madeleine Fryer
+    user_email = "alexandre.ringwald@amf.ch"
+    frappe.share.add("Delivery Note", delivery_note, user=user_email, write=1)
+
+    # Send an email notification to Madeleine Fryer
+    make(content="A Delivery Note has been assigned to you!", 
+         subject="New Delivery Note Assignment", 
+         recipients=[user_email], 
+         doctype="Delivery Note", 
+         name=delivery_note)
+
     delivery.reload()
 
 @frappe.whitelist()
