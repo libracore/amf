@@ -4,6 +4,7 @@ import os
 from frappe import _
 from frappe.utils.file_manager import save_file
 from frappe.core.doctype.communication.email import make
+from frappe.desk.form import assign_to
 
 def get_context(context):
     context.no_cache = 1
@@ -39,8 +40,12 @@ def update_weight(delivery_note, weight, length, height, width, operator, image_
         delivery.save()
     
     # Assign the Delivery Note to Madeleine Fryer
-    user_email = "alexandre.ringwald@amf.ch"
-    frappe.share.add("Delivery Note", delivery_note, user=user_email, write=1)
+    user_email = "madeleine.fryer@amf.ch"
+    assign_to.add({
+        'assign_to': user_email, 
+        'doctype': 'Delivery Note', 
+        'name': delivery_note, 
+        'description': 'Please review this delivery note and proceed with the shipment.'})
 
     # Send an email notification to Madeleine Fryer
     make(content="A Delivery Note has been assigned to you!", 
