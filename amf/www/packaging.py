@@ -42,6 +42,6 @@ def update_weight(delivery_note, weight, length, height, width, operator, image_
 @frappe.whitelist()
 def upload_image(filename):
     # This is just a placeholder. You'll need to handle the file upload here.
-    print(f"Received file with filename: {filename}")
+    print("Received file with filename: {filename}".format(filename=filename))
     # You might need to use frappe's upload API to handle file uploads
     return "File upload successful"
