@@ -2,7 +2,7 @@ import frappe
 import base64
 import os
 from frappe import _
-from frappe.utils.file_manager import save_file
+from frappe.utils.file_manager import save_file, save_url
 from frappe.core.doctype.communication.email import make
 from frappe.desk.form import assign_to
 
@@ -11,7 +11,7 @@ def get_context(context):
     context.title = _('Packaging')
 
 @frappe.whitelist()
-def update_weight(delivery_note, weight, length, height, width, operator, image_data):
+def update_weight(delivery_note, weight, length, height, width, operator, image_data=None):
     # print(f"Weight in Python: {weight}")  # Print the weight
     delivery = frappe.get_doc("Delivery Note", delivery_note)
     delivery.update({
@@ -58,7 +58,17 @@ def update_weight(delivery_note, weight, length, height, width, operator, image_
 
 @frappe.whitelist()
 def upload_image(filename):
-    # This is just a placeholder. You'll need to handle the file upload here.
-    print("Received file with filename: {filename}".format(filename=filename))
-    # You might need to use frappe's upload API to handle file uploads
-    return "File upload successful"
+    if frappe.request.method != "POST":
+        # only allow POST
+        frappe.throw(_("Invalid Method"), frappe.PermissionError)
+
+    if filename:
+        # check if a file was provided
+        file = frappe.request.files.get('file')
+    else:
+        frappe.throw(_("No file was provided for uploading"), frappe.PermissionError)
+
+    if file:
+        # save the file and get its url
+        filedata = save_file(file.filename, file.stream.read(), "Delivery Note")
+        return filedata.file_url
