@@ -79,13 +79,11 @@ web_include_css = "/assets/amf/amf-dev.css"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-#	}
-# }
+doc_events = {
+  "Work Order": {
+    "on_submit": "amf.amf.utils.on_work_order_submit.generate_qr"
+  }
+}
 
 # Scheduled Tasks
 # ---------------
@@ -126,4 +124,3 @@ web_include_css = "/assets/amf/amf-dev.css"
 # override_doctype_dashboards = {
 # 	"Task": "amf.task.get_dashboard_data"
 # }
-
