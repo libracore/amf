@@ -12,7 +12,7 @@ def get_context(context):
 
 @frappe.whitelist()
 def update_weight(delivery_note, weight, length, height, width, operator, image_data=None):
-    # print(f"Weight in Python: {weight}")  # Print the weight
+    # print("Weight in Python: {weight}".format(weight=weight))  # Print the weight
     delivery = frappe.get_doc("Delivery Note", delivery_note)
     delivery.update({
         "weight": weight,
