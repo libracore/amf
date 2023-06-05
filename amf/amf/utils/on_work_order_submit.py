@@ -17,7 +17,10 @@ def generate_qr(doc, method=None):
     qr_code_bytes = base64.b64decode(qr_code_str)
 
     # save the QR code to a file and attach it to the Work Order
-    file_data = save_file("qr_code.png", qr_code_bytes, "Work Order", doc.name, is_private=1)
+    if doc.doctype == "Work Order":
+        file_data = save_file("qr_code.png", qr_code_bytes, "Work Order", doc.name, is_private=1)
+    elif doc.doctype == "Job Card":
+        file_data = save_file("qr_code.png", qr_code_bytes, "Job Card", doc.name, is_private=1)
     
     # Set the field to the file's URL
     doc.qr_code = file_data.file_url

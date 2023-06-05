@@ -82,6 +82,9 @@ web_include_css = "/assets/amf/amf-dev.css"
 doc_events = {
   "Work Order": {
     "on_submit": "amf.amf.utils.on_work_order_submit.generate_qr"
+  },
+  "Job Card": {
+    "on_submit": "amf.amf.utils.on_work_order_submit.generate_qr"
   }
 }
 
