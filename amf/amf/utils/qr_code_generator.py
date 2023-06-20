@@ -32,7 +32,7 @@ def generate_pdf_with_qr_codes():
     print("Running...")
     #items = frappe.get_all('Item', fields=['item_code', 'item_name', 'item_group'], filters={"item_code": ["not like", "%/%"]})
     items = frappe.get_all('Item', fields=['item_code', 'item_name', 'item_group'],
-                                   filters={"item_code": ["not like", "%/%"]},
+                                   filters={"item_code": ["not like", "%/%"], "disabled": 0},
                                    order_by="item_group asc, item_name asc")
 
     # Define color mapping here (replace with your actual item groups and desired colors)
@@ -56,7 +56,7 @@ def generate_pdf_with_qr_codes():
     filename = "/tmp/qrcodes.pdf"
     c = canvas.Canvas(filename, pagesize=letter)
     width, height = letter
-    height -= 150
+    height -= 170
     column_width = (width / 3) - 28
     x = column_width / 2 # Start in the middle of the first column
     y = height  # Start at the top of the page
@@ -71,8 +71,8 @@ def generate_pdf_with_qr_codes():
         if item['item_group'] != current_item_group:
             c.showPage()
             # Draw the title of the new item group at the top of the page
-            c.setFont("Courier", 30)
-            c.drawString(column_width/2, height + 100, item['item_group'])
+            c.setFont("Courier", 32)
+            c.drawString(column_width/2, height + 110, item['item_group'])
             y = height
             current_item_group = item['item_group']
             column = 0
@@ -113,7 +113,7 @@ def generate_pdf_with_qr_codes():
         c.setFillColorRGB(*color)
 
         c.drawImage(qr_file_path, x, y, width=80, height=80)
-        y = y - 125  # Move down the page
+        y = y - 130  # Move down the page
 
         # Remove the temporary QR code image file
         os.remove(qr_file_path)
