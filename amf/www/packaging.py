@@ -40,10 +40,10 @@ def update_weight(delivery_note, weight, length, height, width, operator, image_
         delivery.save()
     
     # Clear existing assignees
-    existing_assignees = frappe.get_all("ToDo", filters={"reference_type": "Delivery Note", "reference_name": delivery_note}, fields=["name", "owner"])
-    for assignee in existing_assignees:
-        assignee_doc = frappe.get_doc("ToDo", assignee.name)
-        assignee_doc.delete()
+    # existing_assignees = frappe.get_all("ToDo", filters={"reference_type": "Delivery Note", "reference_name": delivery_note}, fields=["name", "owner"])
+    # for assignee in existing_assignees:
+    #     assignee_doc = frappe.get_doc("ToDo", assignee.name)
+    #     assignee_doc.delete()
 
     # Assign the Delivery Note to Madeleine Fryer
     user_email = "madeleine.fryer@amf.ch"
