@@ -10,6 +10,25 @@ def get_context(context):
     context.no_cache = 1
     context.title = _('Packaging')
 
+def on_update(doc, method):
+    previous_doc = doc.get_doc_before_save()
+    # Check if the document is a 'Delivery Note' and its status is 'To Bill'
+    if doc.doctype == "Delivery Note" and doc.status == "To Bill":
+        # Check if the operator is updated
+        if previous_doc and doc.operator != previous_doc.operator:
+            user_email = "alexandre.ringwald@amf.ch"
+            subject = _("{doc_name} Ready To Ship").format(doc_name=doc.name)
+            message = _(
+                "Dear Madeleine,"
+                "<br> {doc_name} has been updated by {operator} and is ready to ship in the shipping room."
+                "<br> Regards,"
+                "<br> Your Supply Chain Team"
+            ).format(doc_name=doc.name, operator=doc.operator)
+            
+            # Send the email
+            print("Sending email.")
+            #frappe.sendmail(recipients=user_email, subject=subject, message=message)
+
 @frappe.whitelist()
 def update_weight(delivery_note, weight, length, height, width, operator, image_data=None):
     # print("Weight in Python: {weight}".format(weight=weight))  # Print the weight
@@ -47,18 +66,19 @@ def update_weight(delivery_note, weight, length, height, width, operator, image_
 
     # Assign the Delivery Note to Madeleine Fryer
     user_email = "madeleine.fryer@amf.ch"
-    assign_to.add({
-        'assign_to': user_email, 
-        'doctype': 'Delivery Note', 
-        'name': delivery_note, 
-        'description': 'Please review this delivery note and proceed with the shipment.'})
+    if not frappe.db.exists('ToDo', {'reference_type': 'Delivery Note', 'reference_name': delivery.name, 'owner': user_email}):
+        assign_to.add({
+            'assign_to': user_email, 
+            'doctype': 'Delivery Note', 
+            'name': delivery_note, 
+            'description': 'Please review this delivery note and proceed with the shipment.'})
 
     # Send an email notification to Madeleine Fryer
-    make(content="A Delivery Note has been assigned to you!", 
-         subject="New Delivery Note Assignment", 
-         recipients=[user_email], 
-         doctype="Delivery Note", 
-         name=delivery_note)
+    # make(content="A Delivery Note has been assigned to you!", 
+    #      subject="New Delivery Note Assignment", 
+    #      recipients=[user_email], 
+    #      doctype="Delivery Note", 
+    #      name=delivery_note)
 
     delivery.reload()
 
