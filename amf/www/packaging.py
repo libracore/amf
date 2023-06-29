@@ -10,6 +10,23 @@ def get_context(context):
     context.no_cache = 1
     context.title = _('Packaging')
 
+def on_update(doc, method):
+    # Check if the document is a 'Delivery Note' and its status is 'To Bill'
+    if doc.doctype == "Delivery Note" and doc.status == "To Bill":
+        # Check if the operator is updated
+        if doc.is_field_modified('operator'):
+            user_email = "madeleine.fryer@amf.ch"
+            subject = "{doc_name} Ready To Ship".format(doc_name=doc.name)
+            message = _(
+                "Dear Madeleine,"
+                "<br> {doc_name} has been updated by {operator} and is ready to ship in the shipping room."
+                "<br> Regards,"
+                "<br> Your Supply Chain Team"
+            ).format(doc_name=doc.name, operator=doc.operator)
+            
+            # Send the email
+            frappe.sendmail(recipients=user_email, subject=subject, message=message)
+
 @frappe.whitelist()
 def update_weight(delivery_note, weight, length, height, width, operator, image_data=None):
     # print("Weight in Python: {weight}".format(weight=weight))  # Print the weight
