@@ -54,11 +54,11 @@ def update_weight(delivery_note, weight, length, height, width, operator, image_
         'description': 'Please review this delivery note and proceed with the shipment.'})
 
     # Send an email notification to Madeleine Fryer
-    make(content="A Delivery Note has been assigned to you!", 
-         subject="New Delivery Note Assignment", 
-         recipients=[user_email], 
-         doctype="Delivery Note", 
-         name=delivery_note)
+    # make(content="A Delivery Note has been assigned to you!", 
+    #      subject="New Delivery Note Assignment", 
+    #      recipients=[user_email], 
+    #      doctype="Delivery Note", 
+    #      name=delivery_note)
 
     delivery.reload()
 
