@@ -27,5 +27,5 @@ def generate_qr(doc, method=None):
     doc.qr_code = file_data.file_url
 
     # Save the document (don't trigger events)
-    doc.save(ignore_permissions=True, ignore_version=True)
+    doc.save()
     doc.reload()
