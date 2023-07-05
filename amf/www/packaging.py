@@ -2,7 +2,7 @@ import frappe
 import base64
 import os
 from frappe import _
-from frappe.utils.file_manager import save_file, save_url
+from frappe.utils.file_manager import save_file
 from frappe.core.doctype.communication.email import make
 from frappe.desk.form import assign_to
 

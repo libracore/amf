@@ -20,8 +20,8 @@ def send_email(purchase_order):
     # Creating email context
     email_context = {
         'recipients': purchase_order['owner'],
-        'message': "Dear {purchase_order['owner']},\n\nThe Purchase Order '{purchase_order['name']}' is due for billing soon. Please proceed with the payment or send the invoice to the office manager.\n\nThanks,".format(),
-        'subject': "Automatic Notification for Purchase Order: {purchase_order['name']}".format(),
+        'message': "Dear {owner},\n\nThe Purchase Order '{name}' is due for billing soon. Please proceed with the payment or send the invoice to the office manager.\n\nThanks,".format(owner=purchase_order['owner'], name=purchase_order['name']),
+        'subject': "Automatic Notification for Purchase Order: {name}".format(name=purchase_order['name']),
         'communication_medium': 'Email',
         'send_email': True,
         'cc': ['madeleine.fryer@amf.ch']
