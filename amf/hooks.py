@@ -94,23 +94,23 @@ doc_events = {
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
+scheduler_events = {
 # 	"all": [
 # 		"amf.tasks.all"
 # 	],
 # 	"daily": [
 # 		"amf.tasks.daily"
 # 	],
-# 	"hourly": [
-# 		"amf.tasks.hourly"
-# 	],
+  "hourly": [
+ 	  "amf.amf.utils.document_notification.check_purchase_orders"
+ 	],
 # 	"weekly": [
 # 		"amf.tasks.weekly"
 # 	]
 # 	"monthly": [
 # 		"amf.tasks.monthly"
 # 	]
-# }
+}
 
 # Testing
 # -------
