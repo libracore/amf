@@ -33,6 +33,7 @@ def on_update(doc, method):
                  recipients=['alexandre.ringwald@amf.ch'],
                  communication_medium='Email',
                  send_email=True,)
+    print("on_update(DN)")
 
 @frappe.whitelist()
 def update_weight(delivery_note, weight, length, height, width, operator, image_data=None):
@@ -84,7 +85,7 @@ def update_weight(delivery_note, weight, length, height, width, operator, image_
     #      recipients=[user_email], 
     #      doctype="Delivery Note", 
     #      name=delivery_note)
-
+    #on_update(delivery, None)
     delivery.reload()
 
 @frappe.whitelist()
