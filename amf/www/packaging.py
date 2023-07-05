@@ -16,7 +16,7 @@ def on_update(doc, method):
     if doc.doctype == "Delivery Note" and doc.status == "To Bill":
         # Check if the operator is updated
         if previous_doc and doc.operator != previous_doc.operator:
-            user_email = "alexandre.ringwald@amf.ch"
+            user_email = 'alexandre.ringwald@amf.ch'
             subject = _("{doc_name} Ready To Ship").format(doc_name=doc.name)
             message = _(
                 "Dear Madeleine,"
@@ -27,6 +27,12 @@ def on_update(doc, method):
             
             # Send the email
             print("Sending email.")
+            make(subject= subject,
+                 content= message,
+                 recipients=['madeleine.fryer@amf.ch'],
+                 cc=['alexandre.ringwald@amf.ch'],
+                 communication_medium='Email',
+                 send_email=True,)
             #frappe.sendmail(recipients=user_email, subject=subject, message=message)
 
 @frappe.whitelist()
