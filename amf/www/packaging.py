@@ -29,11 +29,10 @@ def on_update(doc, method):
             print("Sending email.")
             make(subject= subject,
                  content= message,
-                 recipients=['madeleine.fryer@amf.ch'],
-                 cc=['alexandre.ringwald@amf.ch'],
+                 #cc=['madeleine.fryer@amf.ch'],
+                 recipients=['alexandre.ringwald@amf.ch'],
                  communication_medium='Email',
                  send_email=True,)
-            #frappe.sendmail(recipients=user_email, subject=subject, message=message)
 
 @frappe.whitelist()
 def update_weight(delivery_note, weight, length, height, width, operator, image_data=None):
