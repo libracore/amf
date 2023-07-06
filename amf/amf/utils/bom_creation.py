@@ -48,3 +48,13 @@ def get_request_type(item_code):
     request_type = item.default_material_request_type if item.default_material_request_type else None
 
     return request_type
+
+@frappe.whitelist()
+def get_stock_balance_for_all_warehouses(item_code):
+    stock_balance = frappe.db.sql("""
+        SELECT warehouse, actual_qty
+        FROM `tabBin`
+        WHERE item_code = %s AND warehouse not rlike 'OLD'
+    """, (item_code), as_dict=1)
+
+    return {row.warehouse: row.actual_qty for row in stock_balance}

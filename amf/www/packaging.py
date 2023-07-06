@@ -2,7 +2,7 @@ import frappe
 import base64
 import os
 from frappe import _
-from frappe.utils.file_manager import save_file, save_url
+from frappe.utils.file_manager import save_file
 from frappe.core.doctype.communication.email import make
 from frappe.desk.form import assign_to
 
@@ -16,7 +16,7 @@ def on_update(doc, method):
     if doc.doctype == "Delivery Note" and doc.status == "To Bill":
         # Check if the operator is updated
         if previous_doc and doc.operator != previous_doc.operator:
-            user_email = "alexandre.ringwald@amf.ch"
+            user_email = 'alexandre.ringwald@amf.ch'
             subject = _("{doc_name} Ready To Ship").format(doc_name=doc.name)
             message = _(
                 "Dear Madeleine,"
@@ -27,7 +27,13 @@ def on_update(doc, method):
             
             # Send the email
             print("Sending email.")
-            #frappe.sendmail(recipients=user_email, subject=subject, message=message)
+            make(subject= subject,
+                 content= message,
+                 #cc=['madeleine.fryer@amf.ch'],
+                 recipients=['alexandre.ringwald@amf.ch'],
+                 communication_medium='Email',
+                 send_email=True,)
+    print("on_update(DN)")
 
 @frappe.whitelist()
 def update_weight(delivery_note, weight, length, height, width, operator, image_data=None):
@@ -79,7 +85,7 @@ def update_weight(delivery_note, weight, length, height, width, operator, image_
     #      recipients=[user_email], 
     #      doctype="Delivery Note", 
     #      name=delivery_note)
-
+    #on_update(delivery, None)
     delivery.reload()
 
 @frappe.whitelist()

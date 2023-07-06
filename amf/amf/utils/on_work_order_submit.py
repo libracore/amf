@@ -7,7 +7,7 @@ def generate_qr(doc, method=None):
     from frappe.utils.file_manager import save_file
     from amf.amf.utils.qr_code_generator import generate_qr_code  # assuming generate_qr_code is in utils/qr_code_generator
 
-     # get some data from the Work Order to put in the QR code
+    # get some data from the Work Order to put in the QR code
     #data = doc.name  # for example
     data = frappe.utils.get_url_to_form(doc.doctype, doc.name)
 

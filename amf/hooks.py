@@ -86,31 +86,31 @@ doc_events = {
   "Job Card": {
     "on_submit": "amf.amf.utils.on_work_order_submit.generate_qr"
   },
-  "Delivery Note": {
-      "on_update_after_submit": "amf.www.packaging.on_update"
-  }
+  # "Delivery Note": {
+  #     "on_update": "amf.www.packaging.on_update"
+  # }
 }
 
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
+scheduler_events = {
 # 	"all": [
 # 		"amf.tasks.all"
 # 	],
-# 	"daily": [
-# 		"amf.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"amf.tasks.hourly"
-# 	],
+# "daily": [
+# 	"amf.amf.utils.document_notification.check_purchase_orders"
+# ],
+  "hourly": [
+    "amf.amf.utils.document_notification.update_purchase_orders"
+ 	],
 # 	"weekly": [
 # 		"amf.tasks.weekly"
 # 	]
 # 	"monthly": [
 # 		"amf.tasks.monthly"
 # 	]
-# }
+}
 
 # Testing
 # -------
