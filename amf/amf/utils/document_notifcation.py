@@ -1,19 +1,42 @@
 import frappe
-from frappe.utils import nowdate
+from frappe.utils import nowdate, add_days
 from frappe.core.doctype.communication.email import make
 
+def update_purchase_orders():
+    # get all purchase orders
+    pos = frappe.get_all('Purchase Order', filters={'docstatus': ['<', 2]}, fields=['name'])
+
+    for po in pos:
+        po_doc = frappe.get_doc('Purchase Order', po.name)
+        
+        # check if payment_schedule exists and is not empty
+        if po_doc.payment_schedule:
+            # sort the payment_schedule by due_date
+            po_doc.payment_schedule.sort(key=lambda x: x.due_date)
+
+            # subtract 3 days from the earliest due_date and set as schedule_payment_date
+            po_doc.schedule_payment_date = add_days(po_doc.payment_schedule[0].due_date, -3)
+            
+            # Check if schedule_payment_date has a value and the status is 'To Bill'
+            if po_doc.schedule_payment_date and po_doc.status == 'To Bill':
+                # Set check_payment_reminder to 1
+                po_doc.payment_reminder = 1
+            
+            # save the changes
+            po_doc.save()
+
 def check_purchase_orders():
-    # Fetch all the Purchase Orders which are 'To Bill' and today's date
+    # Fetch all the Purchase Orders which are 1 in payment_reminder
     purchase_orders = frappe.get_all('Purchase Order', 
         filters = {
-            'status': 'To Bill'
+            'payment_reminder': '1'
         }, 
-        fields = ['name', 'owner', 'schedule_payment_date']  # Assuming 'email_id' field in Purchase Order doctype
+        fields = ['name', 'owner']
     )
 
     # Loop through the purchase orders and send an email to the owner
     for po in purchase_orders:
-        if po['schedule_payment_date'] == nowdate():
+        if po['payment_reminder']:
             send_email(po)
 
 def send_email(purchase_order):
@@ -31,4 +54,4 @@ def send_email(purchase_order):
     make(**email_context)
 
 # This function will be triggered daily
-frappe.enqueue('amf.amf.utils.document_notification.check_purchase_orders', queue='long', timeout=600, is_async=True)
+# frappe.enqueue('amf.amf.utils.document_notification.check_purchase_orders', queue='long', timeout=600, is_async=True)
