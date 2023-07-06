@@ -86,9 +86,9 @@ doc_events = {
   "Job Card": {
     "on_submit": "amf.amf.utils.on_work_order_submit.generate_qr"
   },
-  "Delivery Note": {
-      "on_update": "amf.www.packaging.on_update"
-  }
+  # "Delivery Note": {
+  #     "on_update": "amf.www.packaging.on_update"
+  # }
 }
 
 # Scheduled Tasks
