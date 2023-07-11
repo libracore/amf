@@ -77,7 +77,7 @@ def send_email(purchase_order):
 def generate_payment_schedule(po_name):
     # get the purchase order
     po_doc = frappe.get_doc('Purchase Order', po_name)
-
+    print("po_doc")
     # get the linked payment terms template
     if po_doc.payment_terms_template:
         payment_terms_template = frappe.get_doc('Payment Terms Template', po_doc.payment_terms_template)
