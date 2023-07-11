@@ -82,6 +82,7 @@ def generate_payment_schedule(po_name):
     if po_doc.payment_terms_template:
         payment_terms_template = frappe.get_doc('Payment Terms Template', po_doc.payment_terms_template)
     else:
+        print("return")
         return
     print(payment_terms_template)
     # clear the existing payment schedule

@@ -10,8 +10,10 @@ def get_context(context):
     context.no_cache = 1
     context.title = _('Packaging')
 
+@frappe.whitelist()
 def on_update(doc, method):
-    previous_doc = doc.get_doc_before_save()
+    print(doc)
+    previous_doc = frappe.get_doc("Delivery Note", doc)
     # Check if the document is a 'Delivery Note' and its status is 'To Bill'
     if doc.doctype == "Delivery Note" and doc.status == "To Bill":
         # Check if the operator is updated
