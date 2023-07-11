@@ -77,28 +77,21 @@ def send_email(purchase_order):
 def generate_payment_schedule(po_name):
     # get the purchase order
     po_doc = frappe.get_doc('Purchase Order', po_name)
-    print("po_doc")
     # get the linked payment terms template
     if po_doc.payment_terms_template:
         payment_terms_template = frappe.get_doc('Payment Terms Template', po_doc.payment_terms_template)
     else:
-        print("return")
         return
-    print(payment_terms_template)
     # clear the existing payment schedule
     po_doc.set('payment_schedule', [])
-
     # dictionary to store total amount and total percentage for each schedule_date
     schedule_totals = {}
-
     # calculate total amount for each schedule_date
     for item in po_doc.items:
         schedule_date = item.schedule_date
         if schedule_date not in schedule_totals:
             schedule_totals[schedule_date] = {'total_amount': 0}
-        
         schedule_totals[schedule_date]['total_amount'] += item.amount
-
     # create a new payment schedule entry for each schedule_date
     for schedule_date, totals in schedule_totals.items():
         for term in payment_terms_template.terms:
@@ -115,9 +108,17 @@ def generate_payment_schedule(po_name):
                 'payment_amount': totals['total_amount'],
                 'invoice_portion': invoice_portion,
             })
+    # for schedule in po_doc.payment_schedule:
+    #     print(schedule.due_date)
+    #     print(schedule.invoice_portion)
+    #     print(schedule.payment_amount)
+
     
     # save the changes
-    # try:
-    #     frappe.db.commit()  # ensure changes are committed to the database
-    # except Exception as e:
-    #     frappe.log_error(message=f"Error updating Purchase Order {po_name}: {e}", title="Generate Payment Schedule")
+    try:
+        po_doc.save()
+        frappe.db.commit()  # ensure changes are committed to the database
+        return 'Payment schedule generated successfully for Purchase Order: ' + po_name
+    except Exception as e:
+        frappe.log_error(message=f"Error updating Purchase Order {po_name}: {e}", title="Generate Payment Schedule")
+        return 'Error while generating payment schedule: ' + str(e)
