@@ -1,7 +1,6 @@
 import frappe
 from frappe.utils import nowdate, add_days
 from frappe.core.doctype.communication.email import make
-
 from frappe.utils import add_days
 
 def update_purchase_orders():
@@ -34,12 +33,14 @@ def update_purchase_orders():
                 # Set payment_reminder_date for the corresponding row to 1 (checked)
                 payment_schedule[0].payment_reminder_date = 1
             
-            # save the changes
-            # try:
-            #     po_doc.save()
-            #     frappe.db.commit()  # ensure changes are committed to the database
-            # except Exception as e:
-            #     frappe.log_error(message=f"Error updating Purchase Order {po.name}: {e}", title="Update Purchase Orders Script")
+        # save the changes
+        try:
+            po_doc.save()
+            frappe.db.commit()  # ensure changes are committed to the database
+            return 'Payment schedule updated successfully for Purchase Order: ' + po.name
+        except Exception as e:
+            frappe.log_error(message=f"Error updating Purchase Order {po.name}: {e}", title="Update Payment Schedule")
+            return 'Error while generating payment schedule: ' + str(e)
 
 
 def check_purchase_orders():
