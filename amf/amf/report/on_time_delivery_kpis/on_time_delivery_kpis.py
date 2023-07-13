@@ -121,12 +121,16 @@ ORDER BY `Month` ASC
     data = frappe.db.sql(sql_query, as_dict=True)
     
     months = [row['month'] for row in data]
-    percent_0d = [row['0d'] for row in data]
-    percent_2d = [row['2d'] for row in data]
-    percent_1w = [row['1w'] for row in data]
-    percent_1wp = [row['>1w'] for row in data]
-
     
+    # calculate the total delays for each month
+    total_delays = [row['0d'] + row['2d'] + row['1w'] + row['>1w'] for row in data]
+    
+    # normalize the data to percentages
+    percent_0d = [row['0d']/total*100 if total else 0 for row, total in zip(data, total_delays)]
+    percent_2d = [row['2d']/total*100 if total else 0 for row, total in zip(data, total_delays)]
+    percent_1w = [row['1w']/total*100 if total else 0 for row, total in zip(data, total_delays)]
+    percent_1wp = [row['>1w']/total*100 if total else 0 for row, total in zip(data, total_delays)]
+
     chart = {
         "data": {
             "labels": months,
