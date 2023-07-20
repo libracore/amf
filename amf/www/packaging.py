@@ -11,6 +11,36 @@ def get_context(context):
     context.title = _('Packaging')
 
 @frappe.whitelist()
+def get_delivery_notes_by_prefix(prefix):
+    # First, check the base Delivery Note
+    base_note = frappe.get_value('Delivery Note', prefix, 'status')
+
+    # If the base delivery note exists and is not cancelled, return it
+    if base_note and base_note != 'Cancelled':
+        return prefix
+
+    # If the base delivery note is cancelled, look for amends
+    if base_note == 'Cancelled':
+        counter = 1
+        while True:
+            amend_name = prefix + '-' + str(counter)
+            amend_status = frappe.get_value('Delivery Note', amend_name, 'status')
+
+            if not amend_status:
+                # This amend does not exist, break out of loop
+                break
+
+            if amend_status != 'Cancelled':
+                # This amend is valid (not cancelled)
+                return amend_name
+
+            counter += 1
+
+    # If no valid amends found or the base note does not exist
+    return None
+
+
+@frappe.whitelist()
 def on_update(doc, method):
     print(doc)
     previous_doc = frappe.get_doc("Delivery Note", doc)

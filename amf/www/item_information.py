@@ -66,7 +66,10 @@ def create_stock_reconciliation(item_code, item_name, warehouses):
                 "item_code": item_code,
                 "item_name": item_name,
                 "warehouse": warehouse["name"],
-                "qty": warehouse["update_value"]  # Assuming the fieldname for quantity in Stock Reconciliation Item is 'qty'
+                "qty": warehouse["update_value"],  # Assuming the fieldname for quantity in Stock Reconciliation Item is 'qty'
+                "batch_no": warehouse["batches"],
+                "serial_no": warehouse["serial_nos"]
+
             })
 
     stock_reconciliation.save()
