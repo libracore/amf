@@ -56,21 +56,38 @@ def create_stock_reconciliation(item_code, item_name, warehouses):
     # Ensure warehouses is a list of dictionaries
     if isinstance(warehouses, str):
         warehouses = json.loads(warehouses)
-    
+    print(warehouses)
     stock_reconciliation = frappe.new_doc("Stock Reconciliation")
     
     for warehouse in warehouses:
         # Only add warehouses where the update value is not null or empty
         if warehouse["update_value"]:
-            stock_reconciliation.append("items", {
+            item_entry = {
                 "item_code": item_code,
                 "item_name": item_name,
                 "warehouse": warehouse["name"],
-                "qty": warehouse["update_value"],  # Assuming the fieldname for quantity in Stock Reconciliation Item is 'qty'
-                "batch_no": warehouse["batches"],
-                "serial_no": warehouse["serial_nos"]
-
-            })
+                "qty": warehouse["update_value"]  # Assuming the fieldname for quantity in Stock Reconciliation Item is 'qty'
+            }
+            
+            # Check if batches exist and are not empty
+            batch_no = warehouse.get("batches")
+            if batch_no:
+                # Check if the batch exists in the ERP database
+                existing_batch = frappe.get_value("Batch", {"name": batch_no})
+                if not existing_batch:
+                    # If the batch doesn't exist, create a new batch
+                    batch = frappe.new_doc("Batch")
+                    batch.item = item_code
+                    batch.batch_id = batch_no
+                    # Add any other necessary fields for the batch here
+                    batch.save()
+                item_entry["batch_no"] = batch_no
+            
+            # Check if serial_nos exist and are not empty
+            if warehouse.get("serial_nos"):
+                item_entry["serial_no"] = warehouse["serial_nos"]
+            print(item_entry)
+            stock_reconciliation.append("items", item_entry)
 
     stock_reconciliation.save()
     return "success"
