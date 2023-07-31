@@ -3,10 +3,18 @@ import frappe
 
 @frappe.whitelist()
 def get_item_information(item_code):
-    item = frappe.get_doc('Item', item_code)
+    try:
+        item = frappe.get_doc('Item', item_code)
+        # ... process the item as required
 
-    if not item:
-        frappe.throw("Item not found.")
+    except frappe.DoesNotExistError:
+        print("Item not found.")
+        return {"status": "not_found"}
+
+    except Exception as e:  # Catch any other unexpected exceptions
+        print("An error occurred:", e)
+        frappe.log_error(frappe.get_traceback(), "Error in get_item_information")
+        return {"status": "error", "message": str(e)}
 
     warehouse_info = []
     
