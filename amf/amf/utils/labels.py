@@ -2,6 +2,9 @@
 # Copyright (c) bNovate (Douglas Watson)
 # For license information, please see license.txt
 
+import base64
+from io import BytesIO
+from apps.amf.amf.amf.utils.qr_code_generator import generate_qr_code
 import frappe
 from frappe.model.document import Document
 from frappe.utils.file_manager import save_file, save_file_on_filesystem
@@ -27,6 +30,28 @@ def download_label_for_doc(doctype, docname, print_format, label_reference):
 
     template = """<style>{css}</style>{html}""".format(css=pf.css, html=pf.html)
     content = frappe.render_template(template, {"doc": doc})
+    return download_label(label_reference, content)
+
+@frappe.whitelist()
+def download_label_for_web(item_code, print_format, label_reference):
+    """ Return PDF label based on an existing print format and label_printer size """
+    print("set1")
+    # Generate QR Code and convert it to base64
+    img = generate_qr_code(item_code)
+
+    pf = frappe.get_doc("Print Format", print_format)
+
+    template = """<style>{css}</style>{html}""".format(css=pf.css, html=pf.html)
+    content = frappe.render_template(template, {"qr_code": {"qr_code": img}})
+    return download_label(label_reference, content)
+
+@frappe.whitelist()
+def download_label_for_web(print_format, label_reference):
+    """ Return PDF label based on an existing print format and label_printer size """
+    pf = frappe.get_doc("Print Format", print_format)
+
+    template = """<style>{css}</style>{html}""".format(css=pf.css, html=pf.html)
+    content = frappe.render_template(template, {"doc": ''})
     return download_label(label_reference, content)
 
 @frappe.whitelist()
