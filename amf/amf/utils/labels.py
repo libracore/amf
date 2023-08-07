@@ -35,7 +35,7 @@ def download_label_for_doc(doctype, docname, print_format, label_reference):
 @frappe.whitelist()
 def download_label_for_web(item_code, print_format, label_reference):
     """ Return PDF label based on an existing print format and label_printer size """
-    print("set1")
+    print("*** download_label_for_web in utils ***")
     # Generate QR Code and convert it to base64
     img = generate_qr_code(item_code)
 
@@ -43,15 +43,6 @@ def download_label_for_web(item_code, print_format, label_reference):
 
     template = """<style>{css}</style>{html}""".format(css=pf.css, html=pf.html)
     content = frappe.render_template(template, {"qr_code": {"qr_code": img}})
-    return download_label(label_reference, content)
-
-@frappe.whitelist()
-def download_label_for_web(print_format, label_reference):
-    """ Return PDF label based on an existing print format and label_printer size """
-    pf = frappe.get_doc("Print Format", print_format)
-
-    template = """<style>{css}</style>{html}""".format(css=pf.css, html=pf.html)
-    content = frappe.render_template(template, {"doc": ''})
     return download_label(label_reference, content)
 
 @frappe.whitelist()
