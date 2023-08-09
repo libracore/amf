@@ -8,7 +8,7 @@ def get_latest_serial_no(so_detail, sales_order, item_code):
             (SELECT sed.serial_no 
             FROM `tabStock Entry` AS se 
             JOIN `tabStock Entry Detail` AS sed ON se.name = sed.parent
-            WHERE sed.item_code = soi.item_code
+            WHERE sed.item_code = soi.item_code AND se.docstatus = 1
             AND se.work_order = (
                 SELECT wo.name 
                 FROM `tabWork Order` AS wo 
