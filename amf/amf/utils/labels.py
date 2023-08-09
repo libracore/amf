@@ -32,6 +32,7 @@ def download_label_for_doc(doctype, docname, print_format, label_reference):
     content = frappe.render_template(template, {"doc": doc})
     return download_label(label_reference, content)
 
+# location: amf.amf.utils.labels.py
 @frappe.whitelist()
 def download_label_for_web(item_code, print_format, label_reference):
     """ Return PDF label based on an existing print format and label_printer size """
