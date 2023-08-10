@@ -4,7 +4,7 @@
 
 import base64
 from io import BytesIO
-from apps.amf.amf.amf.utils.qr_code_generator import generate_qr_code
+from amf.amf.utils.qr_code_generator import generate_qr_code
 import frappe
 from frappe.model.document import Document
 from frappe.utils.file_manager import save_file, save_file_on_filesystem

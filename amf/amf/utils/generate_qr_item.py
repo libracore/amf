@@ -8,15 +8,15 @@ import os
 
 def generate_and_attach_qrcode():
     # Fetch all items
-    items = frappe.get_all('Item', filters={"name": ["NOT LIKE", "%/%"]}, fields=['name'])
+    items = frappe.get_all('Item', fields=['name'])
     
-    total_items = len(items)
-    processed = 0
+    # total_items = len(items)
+    # processed = 0
     
     for item in items:
         remove_all("Item", item.name, False)
 
-        item_name = item.name
+        item_name = item.name.replace("/","-")
         qr = qrcode.QRCode(
             version=1,
             error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -31,11 +31,11 @@ def generate_and_attach_qrcode():
         # Convert the image to bytes
         buffered = BytesIO()
         img.save(buffered, format="PNG")
-        img_content = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        img_content = buffered.getvalue()
 
-        processed += 1
-        progress = (processed / total_items) * 100
-        frappe.publish_realtime("progress", {"progress": progress}, user=frappe.session.user)
+        # processed += 1
+        # progress = (processed / total_items) * 100
+        # frappe.publish_realtime("progress", {"progress": progress}, user=frappe.session.user)
 
         # Attach QR code PNG to the Item's qr_code field
         attach_to_item(item_name, img_content)
@@ -43,7 +43,7 @@ def generate_and_attach_qrcode():
 def attach_to_item(item_name, img_content):
     try:
         # Create a new File attachment
-        file_data = save_file("{}.png".format(item_name), img_content, "Item", item_name, is_private=1)
+        file_data = save_file("{}.png".format(item_name), img_content, "Item", item_name, is_private=0)
         if file_data:
             # Update the Item's qr_code field with the attached file's URL
             frappe.db.set_value("Item", item_name, "qr_code", file_data.file_url)
