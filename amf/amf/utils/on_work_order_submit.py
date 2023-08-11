@@ -57,7 +57,6 @@ def on_submit_wo(doc, method):
         job_card_doc.product_item = doc.production_item
         job_card_doc.employee = "HR-EMP-00003"
         current_time = now_datetime()
-        print(job_card_doc)
         # Step 2: Add a Row to the "time_logs" Child Table
         new_time_log = job_card_doc.append('time_logs', {
             'from_time': current_time,
