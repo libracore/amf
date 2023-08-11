@@ -1,9 +1,9 @@
 from io import BytesIO
-from tkinter import Image
-from apps.amf.amf.amf.utils.qr_code_generator import generate_qr_code
+from amf.amf.utils.qr_code_generator import generate_qr_code
 import frappe
 from frappe import _
 import base64
+from frappe.utils.data import now_datetime
 
 from frappe.utils.file_manager import save_file
 
@@ -46,3 +46,25 @@ def generate_qr_item():
         qr_code_img = base64.b64decode(qr_code_data)
         file_data = save_file("qr_code.png", qr_code_img, "Item", item.name, is_private=1)
         item['qr_code'] = file_data.file_url
+
+def on_submit_wo(doc, method):
+    # Step 1: Locate the associated Job Card
+    job_card = frappe.get_all('Job Card', filters={'work_order': doc.name, 'docstatus': 0}, fields=['name'])
+
+    if job_card:
+        job_card_doc = frappe.get_doc('Job Card', job_card[0].name)
+        # Set the production item in the Job Card to match the Work Order item
+        job_card_doc.product_item = doc.production_item
+        job_card_doc.employee = "HR-EMP-00003"
+        current_time = now_datetime()
+        print(job_card_doc)
+        # Step 2: Add a Row to the "time_logs" Child Table
+        new_time_log = job_card_doc.append('time_logs', {
+            'from_time': current_time,
+            'to_time': current_time,
+            'time_in_mins': 0,
+            'completed_qty': job_card_doc.for_quantity
+        })
+        
+        job_card_doc.save()
+        job_card_doc.submit()
