@@ -6,16 +6,23 @@ import qrcode
 from io import BytesIO
 import os
 
-def generate_and_attach_qrcode():
-    # Fetch all items
-    items = frappe.get_all('Item', fields=['name'])
+def generate_and_attach_qrcode(item_code):
+    print(item_code)
+    if item_code:
+        # items = [{'name': item_code}]  # If item_code is provided, work with just that item
+        items = frappe.get_all('Item', filters={'item_code': item_code}, fields=['name'])
+        print("single:", items)
+    else:
+        # Fetch all items if item_code isn't provided
+        items = frappe.get_all('Item', fields=['name'])
+        print("all:", items)
     
     # total_items = len(items)
     # processed = 0
     
     for item in items:
         remove_all("Item", item.name, False)
-
+        print("after removing")
         item_name = item.name.replace("/","-")
         qr = qrcode.QRCode(
             version=1,
