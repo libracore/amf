@@ -81,12 +81,20 @@ web_include_css = "/assets/amf/amf-dev.css"
 
 doc_events = {
   "Work Order": {
-    "on_submit": "amf.amf.utils.on_work_order_submit.generate_qr",
-    "on_submit": "amf.amf.utils.on_work_order_submit.on_submit_wo"
+    "on_submit": [
+      "amf.amf.utils.on_work_order_submit.generate_qr",
+      "amf.amf.utils.on_work_order_submit.on_submit_wo"
+    ]
   },
   "Job Card": {
     "on_submit": "amf.amf.utils.on_work_order_submit.generate_qr"
   },
+  "Lead": {
+    "before_save": [
+        "amf.amf.utils.lead_customization.create_address_from_lead",
+        "amf.amf.utils.lead_customization.create_contact_from_lead"
+    ]
+  }
   # "Delivery Note": {
   #     "on_update": "amf.www.packaging.on_update"
   # }
