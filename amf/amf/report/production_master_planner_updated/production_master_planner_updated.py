@@ -30,6 +30,7 @@ def get_columns():
         _("QTY")+":Int:50",
         _("%") + ":Percent:50",
         _("CUSTOMER")+":Link/Customer:250",
+        _("TOTAL")+":Currency/Sales Order:125",
         _("SHIP. DATE")+":Date:100",
         _("START DATE") + ":Date:100",
         _("W#")+":Int:25",
@@ -37,6 +38,7 @@ def get_columns():
         _("END DATE")+":Date:100",
         _("DN")+":Link/Delivery Note:100",
         _("DN STATUS")+":Link/Delivery Note:100",
+        
     ]
 
 def get_data(filters):
@@ -52,6 +54,7 @@ def get_data(filters):
             so_item.qty,
             ROUND((so_item.delivered_qty / so_item.qty) * 100) as progress,
             so.customer,
+            so.grand_total,
             so_item.delivery_date as estimated_shipping_date,
             DATE_SUB(so_item.delivery_date, INTERVAL (item.timetoproduce * so_item.qty) DAY) as start_date,
             WEEK(so_item.delivery_date) as week_number,

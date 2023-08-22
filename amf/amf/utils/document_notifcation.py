@@ -37,10 +37,10 @@ def update_purchase_orders():
         try:
             po_doc.save()
             frappe.db.commit()  # ensure changes are committed to the database
-            return 'Payment schedule updated successfully for Purchase Order: ' + po.name
+            return 'Payment reminder updated successfully for Purchase Order: ' + po.name
         except Exception as e:
-            frappe.log_error(message=f"Error updating Purchase Order {po.name}: {e}", title="Update Payment Schedule")
-            return 'Error while generating payment schedule: ' + str(e)
+            frappe.log_error(message=f"Error updating Purchase Order {po.name}: {e}", title="Update Payment Reminder")
+            return 'Error while updating payment reminder: ' + str(e)
 
 
 def check_purchase_orders():
