@@ -5,7 +5,7 @@ def form(firstname, lastname, email, company, city, from_conf, comments):
     print("Method form()")
     print(firstname)
     contact = frappe.new_doc("Contact")
-    if firstname is "":
+    if firstname == "":
        firstname = "/"
     contact.first_name = firstname
     contact.last_name = lastname
