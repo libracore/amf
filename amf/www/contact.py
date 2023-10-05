@@ -1,6 +1,6 @@
 import frappe
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def form(firstname, lastname, email, company, city, from_conf, comments):
     print("Method form()")
     print(firstname)
