@@ -18,7 +18,6 @@ def get_columns():
     return [
         {'fieldname': 'DN', 'fieldtype': 'Link', 'label': _('DN'), 'options': 'Delivery Note', 'width': 100},
         {'fieldname': 'SO', 'fieldtype': 'Link', 'label': _('SO'), 'options': 'Sales Order', 'width': 100},
-        {'fieldname': 'sales_order_type', 'fieldtype': 'Data', 'label': _('Sales Order Type'), 'width': 120},
         {'fieldname': 'customer', 'fieldtype': 'Link', 'label': _('Customer'), 'options': 'Customer', 'width': 80},
         {'fieldname': 'customer_name', 'fieldtype': 'Data', 'label': _('Customer Name'), 'width': 150},
         {'fieldname': 'item_code', 'fieldtype': 'Link', 'label': _('Item code'), 'options': 'Item', 'width': 200},
@@ -37,15 +36,11 @@ def get_data(filters):
     
     extra_filters = ""
     if filters.item_group:
-        extra_filters += """ AND i.item_group = "{}" """.format(filters.item_group)
-    if not filters.include_rd:
-        extra_filters += """ AND (so.sales_order_type IS NULL OR so.sales_order_type != 'R&D') """
-    extra_filters += """ AND dn.is_return != 1 """  # Exclude delivery note returns
+        extra_filters = """ AND i.item_group = "{}" """.format(filters.item_group)
     sql_query = """
 SELECT
 	dn.name as "DN",
     dni.against_sales_order as "SO",
-    so.sales_order_type as "sales_order_type",
     dn.customer as "customer",
     dn.customer_name as "customer_name",
     dni.item_code as "item_code",
@@ -61,7 +56,6 @@ SELECT
     LEFT(CONVERT(soi.delivery_date, CHAR), 7) as "month"
 FROM `tabDelivery Note Item` AS dni
 JOIN `tabDelivery Note` AS dn ON dni.parent = dn.name
-JOIN `tabSales Order` AS so ON dni.against_sales_order = so.name
 JOIN `tabItem` AS i ON dni.item_code = i.name
 JOIN `tabSales Order Item` AS soi ON dni.so_detail = soi.name
 
@@ -81,10 +75,8 @@ def get_chart(filters):
    
     extra_filters = ""
     if filters.item_group:
-        extra_filters += """ AND i.item_group = "{}" """.format(filters.item_group)
-    if not filters.include_rd:
-        extra_filters += """ AND (so.sales_order_type IS NULL OR so.sales_order_type != 'R&D') """
-    extra_filters += """ AND dn.is_return != 1 """  # Exclude delivery note returns
+        extra_filters = """ AND i.item_group = "{}" """.format(filters.item_group)
+        
     sql_query = """
 SELECT
 	`month`,
@@ -97,7 +89,6 @@ FROM (
   SELECT
 	dn.name as "DN",
     dni.against_sales_order as "SO",
-    so.sales_order_type as "sales_order_type",
     dn.customer as "Customer",
     dn.customer_name as "Customer Name",
     dni.item_code as "Item Code",
@@ -113,7 +104,6 @@ FROM (
     LEFT(CONVERT(soi.delivery_date, CHAR), 7) as "month"
   FROM `tabDelivery Note Item` AS dni
   JOIN `tabDelivery Note` AS dn ON dni.parent = dn.name
-  JOIN `tabSales Order` AS so ON dni.against_sales_order = so.name
   JOIN `tabItem` AS i ON dni.item_code = i.name
   JOIN `tabSales Order Item` AS soi ON dni.so_detail = soi.name
 
