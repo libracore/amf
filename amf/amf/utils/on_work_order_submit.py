@@ -4,6 +4,7 @@ import frappe
 from frappe import _
 import base64
 from frappe.utils.data import now_datetime
+from datetime import datetime
 
 from frappe.utils.file_manager import save_file
 
@@ -67,3 +68,26 @@ def on_submit_wo(doc, method):
         
         job_card_doc.save()
         job_card_doc.submit()
+
+@frappe.whitelist()
+def calculate_duration(doc, method=None):
+    print("start calculate_duration()")
+    start_date_time = doc.start_date_time
+    end_date_time = doc.end_date_time
+
+    if start_date_time and end_date_time:
+        # Convert to datetime objects
+        start_date = datetime.strptime(start_date_time, '%Y-%m-%d %H:%M:%S')
+        end_date = datetime.strptime(end_date_time, '%Y-%m-%d %H:%M:%S')
+
+        # Calculate the time difference in seconds
+        time_difference = (end_date - start_date).total_seconds()
+
+        # Set the calculated duration
+        doc.duration = time_difference
+
+        # Save the document
+        doc.save()
+        frappe.db.commit()
+
+    return "Duration calculated"
