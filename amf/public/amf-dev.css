@@ -1,4 +1,33 @@
+@font-face {
+    font-family: 'Supreme';
+    src: url('/files/Supreme-Variable.ttf') format('truetype');
+    font-weight: 100 800;
+    font-display: swap;
+    font-style: normal;
+}
+
 .navbar-default {
     background-color: #ff0000;
     border-color: #ff0000;
+}
+
+/* .navbar-default .app-logo {
+    visibility: hidden;
+    position: relative;
+}
+
+.navbar-default .app-logo::before {
+    content: "";
+    visibility: visible;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: url('/files/Logo AMF Tagline WHITE.svg') no-repeat center center;
+    background-size: contain;
+} */
+
+body {
+    font-family: 'Supreme' !important;
 }

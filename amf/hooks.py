@@ -7,7 +7,7 @@ app_title = "AMF"
 app_publisher = "libracore AG"
 app_description = "ERP applications and tools for AMF"
 app_icon = "octicon octicon-file-directory"
-app_color = "grey"
+app_color = "#2b47d9"
 app_email = "info@libracore.com"
 app_license = "AGPL"
 
@@ -19,7 +19,10 @@ app_license = "AGPL"
 app_include_js = "/assets/amf/js/amf_common.js"
 
 # include js, css files in header of web template
-web_include_css = "/assets/amf/amf-dev.css"
+web_include_css = [ 
+    "/assets/amf/amf-dev.css",
+    "/assets/amf/css/amf.css"
+]
 # web_include_js = "/assets/amf/js/amf.js"
 
 # include js in page

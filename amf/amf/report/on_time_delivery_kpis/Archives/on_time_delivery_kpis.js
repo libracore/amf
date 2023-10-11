@@ -23,12 +23,6 @@ frappe.query_reports["On Time Delivery KPIs"] = {
             "label": __("Item Group"),
             "fieldtype": "Link",
             "options": "Item Group"
-        },
-        {
-            "fieldname":"include_rd",
-            "label": __("Include R&D"),
-            "fieldtype": "Check",
-            "default": 0
         }
     ]
 };
