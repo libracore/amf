@@ -6,7 +6,7 @@ def get_data():
 	return [
 		{
 			"module_name": "AMF",
-			"color": "grey",
+			"color": "#2b47d9",
 			"icon": "octicon octicon-file-directory",
 			"type": "module",
 			"label": _("AMF")
