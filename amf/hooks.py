@@ -15,7 +15,7 @@ app_license = "AGPL"
 # ------------------
 
 # include js, css files in header of desk.html
-# app_include_css = "/assets/amf/css/amf.css"
+app_include_css = "/assets/amf/css/amf.css"
 app_include_js = "/assets/amf/js/amf_common.js"
 
 # include js, css files in header of web template
