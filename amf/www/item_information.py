@@ -76,7 +76,7 @@ def create_stock_reconciliation(item_code, item_name, warehouses):
         warehouses = json.loads(warehouses)
     print(warehouses)
     stock_reconciliation = frappe.new_doc("Stock Reconciliation")
-    stock_reconciliation.ignore_remove_items_with_no_change = 1
+    stock_reconciliation.ignore_remove_items_with_no_change = 0
     for warehouse in warehouses:
         # Only add warehouses where the update value is not null or empty
         if warehouse["update_value"]:
@@ -110,22 +110,20 @@ def create_stock_reconciliation(item_code, item_name, warehouses):
     stock_reconciliation.save()
     return "success"
 
-from frappe.model.mapper import get_mapped_doc
-
 @frappe.whitelist()
 def zero_out_stock_for_items(name):
     source_stock_reconciliation = frappe.get_doc("Stock Reconciliation", name)
-    print(source_stock_reconciliation)
+    #print(source_stock_reconciliation)
     # Create a new Stock Reconciliation document
     new_stock_reconciliation = frappe.new_doc("Stock Reconciliation")
-    new_stock_reconciliation.ignore_remove_items_with_no_change = 1
+    new_stock_reconciliation.ignore_remove_items_with_no_change = 0
     item_code = ""
     for item in source_stock_reconciliation.items:
         if (item_code != item.item_code):
             item_code = item.item_code
             print("item_code:",item_code)
             # Get all warehouses and batches where this item exists
-            warehouses = frappe.db.sql("""SELECT * FROM `tabWarehouse` WHERE name NOT RLIKE 'OLD' AND disabled = 0""", as_dict=True)
+            warehouses = frappe.db.sql("""SELECT name FROM `tabWarehouse` WHERE name NOT RLIKE 'OLD' AND disabled = 0""", as_dict=True)
             batches = frappe.db.sql("""SELECT name FROM `tabBatch` WHERE item = %s""", item_code, as_dict=True)
 
             for warehouse in warehouses:
@@ -138,8 +136,9 @@ def zero_out_stock_for_items(name):
                         "batch_no": batch.name
                     }
                     new_stock_reconciliation.append("items", new_item_entry)
-
+    
     new_stock_reconciliation.save()
+    new_stock_reconciliation.submit()
     
     return "success"
 
