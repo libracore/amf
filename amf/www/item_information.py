@@ -42,7 +42,7 @@ def get_item_information(item_code):
     if 'Scrap - AMF21' not in warehouse_balances:
         warehouse_balances['Scrap - AMF21'] = 0
 
-    print(warehouse_balances)
+    #print(warehouse_balances)
 
     # Convert the warehouse_balances dictionary to the warehouse_info list
     for warehouse, balance in warehouse_balances.items():
