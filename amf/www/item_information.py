@@ -123,7 +123,7 @@ def zero_out_stock_for_items(name):
             item_code = item.item_code
             print("item_code:",item_code)
             # Get all warehouses and batches where this item exists
-            warehouses = frappe.db.sql("""SELECT name FROM `tabWarehouse` WHERE name NOT RLIKE 'OLD' AND disabled = 0""", as_dict=True)
+            warehouses = frappe.db.sql("""SELECT name FROM `tabWarehouse` WHERE name NOT RLIKE 'OLD' AND name NOT RLIKE 'Scrap' AND disabled = 0""", as_dict=True)
             batches = frappe.db.sql("""SELECT name FROM `tabBatch` WHERE item = %s""", item_code, as_dict=True)
 
             for warehouse in warehouses:
