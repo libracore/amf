@@ -1,4 +1,5 @@
 import frappe
+from collections import defaultdict
 
 @frappe.whitelist()
 def get_latest_serial_no(so_detail, sales_order, item_code):
@@ -37,17 +38,38 @@ def get_latest_serial_no_new(so_detail, sales_order, item_code):
             JOIN `tabStock Entry` AS se ON se.work_order = wo.name
             JOIN `tabStock Entry Detail` AS sed ON se.name = sed.parent
             WHERE 
-                so.name = %s AND soi.item_code = %s AND wo.status = 'Completed' AND se.docstatus = 1
+                so.name = %s AND soi.item_code = %s AND wo.status = 'Completed' AND se.docstatus = 1 AND sed.serial_no IS NOT NULL
         """, (sales_order, item_code), as_dict=1)
-        
+
         if serial_nos:
-            # Collecting all serial numbers
-            all_serial_nos = [entry['serial_no'] for entry in serial_nos]
+            # Initialize a dictionary to group serial numbers by sales_order_item
+            grouped_serial_nos = defaultdict(list)
             
-            # You can return them as a list or join them into a string
-            return ", ".join(all_serial_nos)
+            # Populate the dictionary
+            for entry in serial_nos:
+                grouped_serial_nos[entry['sales_order_item']].append(entry['serial_no'])
+                print(grouped_serial_nos)
+            # Convert the lists of serial numbers to strings joined by '\n'
+            for sales_order_item, serial_list in grouped_serial_nos.items():
+                grouped_serial_nos[sales_order_item] = "\n".join(serial_list)
+            print(grouped_serial_nos)
+            # Return the dictionary, or further process as needed
+            return grouped_serial_nos
         
         return None
     except Exception as e:
         frappe.log_error(message=f"An error occurred: {e}", title="Get Latest Serial Number Error")
         return None
+
+    #     if serial_nos:
+    #         print(serial_nos)
+    #         # Collecting all serial numbers
+    #         all_serial_nos = [entry['serial_no'] for entry in serial_nos]
+    #         print("\n".join(all_serial_nos))
+    #         # You can return them as a list or join them into a string
+    #         return "\n".join(all_serial_nos)
+        
+    #     return None
+    # except Exception as e:
+    #     frappe.log_error(message=f"An error occurred: {e}", title="Get Latest Serial Number Error")
+    #     return None
