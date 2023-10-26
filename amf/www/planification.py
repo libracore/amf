@@ -34,20 +34,21 @@ def get_planning_list():
 7-Who
 8-Creation Date
 9-Planned For
-10-End Date
-11-Delivered Qty
-12-Material
-13-Drawing
-14-Drawing URL
-15-Program
-16-Programmation M.
-17-Réglage M.
-18-Comments
-19-Filter
+10-Start Date
+11-End Date
+12-Delivered Qty
+13-Material
+14-Drawing
+15-Drawing URL
+16-Program
+17-Programmation M.
+18-Réglage M.
+19-Comments
+20-Filter
 """
 @frappe.whitelist()
 def update_planning_(name, status=None, workorder=None, qty=None, item=None, company=None, resp=None, creation=None, plan_for=None, 
-                     end=None, end_qty=None, mat=None, drw=None, drw_url=None, prog=None, prog_m=None, met=None, comments=None):
+                     start=None, end=None, end_qty=None, mat=None, drw=None, drw_url=None, prog=None, prog_m=None, met=None, comments=None):
     print("Loading Planning DocType Name:",name)
     doc = frappe.get_doc("Planning", name)
     if(status):
@@ -74,6 +75,9 @@ def update_planning_(name, status=None, workorder=None, qty=None, item=None, com
     if(plan_for):
         print("Change in 'Planned For' detected.")
         doc.set('planned_for', plan_for)
+    if(start):
+        print("Change in 'Start Date' detected.")
+        doc.set('start_date', start)
     if(end):
         print("Change in 'End Date' detected.")
         doc.set('end_date', end)
@@ -181,10 +185,12 @@ def _create_new_work_order(planning):
     # time_log.from_time = datetime.datetime.now()
     workorder.insert()
     workorder.submit()
-    make_stock_entry_(workorder.name, 'Material Transfer for Manufacture', workorder.qty)
+    try:
+        make_stock_entry_(workorder.name, 'Material Transfer for Manufacture', workorder.qty)
+    except Exception as e:  # Replace Exception with the specific exception type you're expecting, if applicable.
+        print(f"An error occurred while making the stock entry: {e}")
+    workorder.save()
     return workorder
-# item marche pas (détection auto à coder)
-# assign jobcard.name to planning.jobcard
 
 def make_stock_entry_(work_order_id, purpose, qty=None):
 	work_order = frappe.get_doc("Work Order", work_order_id)

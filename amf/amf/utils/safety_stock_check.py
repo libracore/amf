@@ -47,14 +47,19 @@ def update_safety_stock_and_check_levels():
 def check_stock_levels():
     # Constants
     Z = 1.645  # Z-score for 95% service level
-    avg_lead_time = 14  # Example average lead time in days
-    std_dev_lead_time = 2  # Example standard deviation of lead time in days
+    avg_lead_time = 120  # Example average lead time in days
+    std_dev_lead_time = 30  # Example standard deviation of lead time in days
     
     # Get the current year and calculate last year's dates
     current_year = datetime.datetime.now().year
     
     items = frappe.get_all("Item", fields=["name", "safety_stock", "reorder"])
+
+    # Test Line
+    # items = frappe.get_all("Item", fields=["name", "safety_stock", "reorder"], filters={"name": "SPL.1401"})
+
     for item in items:
+        print(item)
         # Fetch outflow for this item for each month of the last year
         monthly_outflows = []
         for month in range(1, 13):
@@ -95,3 +100,6 @@ def check_stock_levels():
             # Set the "Reorder" checkbox to True (checked)
             frappe.db.set_value("Item", item['name'], "reorder", 1)
             print(f"Setting 'reorder' to 1 / Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']}")
+        
+        # Test Line
+        print(f"Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']}")
