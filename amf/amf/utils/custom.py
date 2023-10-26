@@ -37,9 +37,11 @@ def get_latest_serial_no_new(so_detail, sales_order, item_code):
             JOIN `tabWork Order` AS wo ON wo.sales_order_item = soi.name
             JOIN `tabStock Entry` AS se ON se.work_order = wo.name
             JOIN `tabStock Entry Detail` AS sed ON se.name = sed.parent
+            JOIN `tabSerial No` AS srl ON se.name = srl.purchase_document_no
             WHERE 
-                so.name = %s AND soi.item_code = %s AND wo.status = 'Completed' AND se.docstatus = 1 AND sed.serial_no IS NOT NULL
-        """, (sales_order, item_code), as_dict=1)
+                so.name = %s AND soi.item_code = %s AND soi.name = %s AND wo.status = 'Completed' AND se.docstatus = 1 AND sed.serial_no IS NOT NULL AND srl.warehouse IS NOT NULL
+            GROUP BY sed.serial_no
+        """, (sales_order, item_code, so_detail), as_dict=1)
 
         if serial_nos:
             # Initialize a dictionary to group serial numbers by sales_order_item
@@ -48,7 +50,6 @@ def get_latest_serial_no_new(so_detail, sales_order, item_code):
             # Populate the dictionary
             for entry in serial_nos:
                 grouped_serial_nos[entry['sales_order_item']].append(entry['serial_no'])
-                print(grouped_serial_nos)
             # Convert the lists of serial numbers to strings joined by '\n'
             for sales_order_item, serial_list in grouped_serial_nos.items():
                 grouped_serial_nos[sales_order_item] = "\n".join(serial_list)

@@ -114,7 +114,6 @@ def generate_payment_schedule(po_name):
     #     print(schedule.invoice_portion)
     #     print(schedule.payment_amount)
 
-    
     # save the changes
     try:
         po_doc.save()
