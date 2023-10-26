@@ -97,9 +97,9 @@ doc_events = {
         "amf.amf.utils.lead_customization.create_address_from_lead",
         "amf.amf.utils.lead_customization.create_contact_from_lead"
     ]
-  }
+  },
   # "Delivery Note": {
-  #     "on_update": "amf.www.packaging.on_update"
+  #     "on_submit": "amf.amf.utils.delivery_note_api.update_sales_order"
   # }
 }
 

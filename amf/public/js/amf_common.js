@@ -7,6 +7,14 @@ if (window.location.host.indexOf("localhost") >= 0) {
     document.querySelector('head').appendChild(link);
 }
 
+if (window.location.host.indexOf("amf") >= 0) {
+    let link = document.createElement('link');
+    link.type = 'text/css';
+    link.rel = 'stylesheet';
+    link.href = '/assets/amf/amf.css';
+    document.querySelector('head').appendChild(link);
+}
+
 /*  ***********************
  * This file contains common global functions 
  * 
