@@ -15,6 +15,26 @@ if (window.location.host.indexOf("amf") >= 0) {
     document.querySelector('head').appendChild(link);
 }
 
+window.onload = async function () {
+    console.log("Welcome to AMF ERP");
+    setTimeout(function() {
+        var navbars = document.getElementsByClassName("navbar");
+        if (navbars.length > 0) {
+            if (window.location.hostname.includes("amf")) {
+                navbars[0].style.backgroundColor = "#2b47d9";
+                navbars[0].style.borderColor = "#2b47d9";
+            }
+        }
+        var navlogo = document.getElementsByClassName("app-logo");
+        if (navlogo.length > 0) {
+            if (window.location.hostname.includes("amf")) {
+                navlogo[0].src = "https://amf.libracore.ch/files/AMF-new.png";
+                navlogo[0].style.width = "45px";  // Change width to 45px
+            }
+        }
+    }, 500);
+}
+
 /*  ***********************
  * This file contains common global functions 
  * 
