@@ -59,7 +59,7 @@ def check_stock_levels():
     items = frappe.get_all("Item", fields=["name", "safety_stock", "reorder", "item_group"], filters={"name": "SPL.1210-P"})
 
     for item in items:
-        print(item)
+        # print(item)
         # Fetch outflow for this item for each month of the last year
         monthly_outflows = []
         for month in range(1, 13):
@@ -106,4 +106,8 @@ def check_stock_levels():
             print(f"Setting 'reorder' to 1 / Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']}")
         
         # Test Line
+<<<<<<< HEAD
         # print(f"Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']}")
+=======
+        # print(f"Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']}")
+>>>>>>> f6b3cb61b18d904bd039f3774ba75ffe962600a0
