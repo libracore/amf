@@ -32,6 +32,9 @@ window.onload = async function () {
                 navlogo[0].style.width = "45px";  // Change width to 45px
             }
         }
+        var navsearch = document.getElementById("navbar-search");
+        navsearch.style.backgroundColor = "#0022ce";
+        navsearch.style.borderColor = "#0022ce";
     }, 500);
 }
 
