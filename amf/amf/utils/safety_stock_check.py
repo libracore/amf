@@ -46,9 +46,9 @@ def update_safety_stock_and_check_levels():
 
 def check_stock_levels():
     # Constants
-    Z = 1.645  # Z-score for 95% service level
-    avg_lead_time = 120  # Example average lead time in days
-    std_dev_lead_time = 30  # Example standard deviation of lead time in days
+    Z = 1.64  # Z-score for 95% service level
+    avg_lead_time = 90  # Average lead time in days
+    std_dev_lead_time = 15  # Standard deviation of lead time in days
     
     # Get the current year and calculate last year's dates
     current_year = datetime.datetime.now().year
@@ -56,7 +56,7 @@ def check_stock_levels():
     items = frappe.get_all("Item", fields=["name", "safety_stock", "reorder"])
 
     # Test Line
-    # items = frappe.get_all("Item", fields=["name", "safety_stock", "reorder"], filters={"name": "SPL.1401"})
+    items = frappe.get_all("Item", fields=["name", "safety_stock", "reorder", "item_group"], filters={"name": "SPL.1210-P"})
 
     for item in items:
         print(item)
@@ -69,19 +69,23 @@ def check_stock_levels():
                 WHERE item_code = %s
                 AND MONTH(posting_date) = %s
                 AND YEAR(posting_date) = %s
-                AND actual_qty < 0
+                AND actual_qty < 0 AND voucher_type NOT RLIKE 'Stock Reconciliation'
             """, (item['name'], month, current_year - 1))
             
             monthly_outflow = monthly_outflow[0][0] if monthly_outflow and monthly_outflow[0][0] else 0
             monthly_outflows.append(-monthly_outflow)  # Converting outflow to positive numbers for demand
         # Calculate standard deviation and average of monthly outflows (demands)
         std_dev_demand = statistics.stdev(monthly_outflows) / 30
+        print(monthly_outflows)
         avg_demand = statistics.mean(monthly_outflows) / 30  # Assuming 30 days in a month to get daily demand
         # Calculate safety stock using the composite distribution formula
         safety_stock = Z * math.sqrt((avg_demand * std_dev_lead_time)**2 + (avg_lead_time * std_dev_demand)**2)
+        
+        # safety_stock = (Z * std_dev_demand * math.sqrt(avg_lead_time)) + (Z * avg_demand * std_dev_lead_time)
+        
         if(safety_stock < 1):
             safety_stock = 0
-        #print("Safety Stock: " + str(safety_stock) + " for Item: " + item['name'])
+        print("Safety Stock: " + str(safety_stock) + " for Item: " + item['name'])
         # Update safety stock value in Item doctype
         frappe.db.set_value("Item", item['name'], "safety_stock", safety_stock)
 
@@ -102,4 +106,4 @@ def check_stock_levels():
             print(f"Setting 'reorder' to 1 / Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']}")
         
         # Test Line
-        print(f"Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']}")
+        # print(f"Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']}")
