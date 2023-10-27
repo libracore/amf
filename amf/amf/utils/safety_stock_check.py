@@ -53,10 +53,10 @@ def check_stock_levels():
     # Get the current year and calculate last year's dates
     current_year = datetime.datetime.now().year
     
-    items = frappe.get_all("Item", fields=["name", "safety_stock", "reorder"])
+    items = frappe.get_all("Item", fields=["name", "safety_stock", "reorder", "item_group"])
 
     # Test Line
-    items = frappe.get_all("Item", fields=["name", "safety_stock", "reorder", "item_group"], filters={"name": "SPL.1210-P"})
+    # items = frappe.get_all("Item", fields=["name", "safety_stock", "reorder", "item_group"], filters={"name": "SPL.1210-P"})
 
     for item in items:
         # print(item)
@@ -106,8 +106,4 @@ def check_stock_levels():
             print(f"Setting 'reorder' to 1 / Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']}")
         
         # Test Line
-<<<<<<< HEAD
         # print(f"Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']}")
-=======
-        # print(f"Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']}")
->>>>>>> f6b3cb61b18d904bd039f3774ba75ffe962600a0
