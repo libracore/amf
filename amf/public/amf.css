@@ -10,7 +10,7 @@
     font-family: 'Supreme' !important;
 } */
 
-.navbar-default {
+body .navbar-default {
     background-color: #2b47d9;
     border-color: #2b47d9;
 }

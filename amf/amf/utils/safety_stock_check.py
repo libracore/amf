@@ -46,17 +46,17 @@ def update_safety_stock_and_check_levels():
 
 def check_stock_levels():
     # Constants
-    Z = 1.645  # Z-score for 95% service level
-    avg_lead_time = 120  # Example average lead time in days
-    std_dev_lead_time = 30  # Example standard deviation of lead time in days
+    Z = 1.64  # Z-score for 95% service level
+    avg_lead_time = 90  # Average lead time in days
+    std_dev_lead_time = 15  # Standard deviation of lead time in days
     
     # Get the current year and calculate last year's dates
     current_year = datetime.datetime.now().year
     
-    items = frappe.get_all("Item", fields=["name", "safety_stock", "reorder"])
+    items = frappe.get_all("Item", fields=["name", "safety_stock", "reorder", "item_group"])
 
     # Test Line
-    # items = frappe.get_all("Item", fields=["name", "safety_stock", "reorder"], filters={"name": "SPL.1401"})
+    # items = frappe.get_all("Item", fields=["name", "safety_stock", "reorder", "item_group"], filters={"name": "SPL.1210-P"})
 
     for item in items:
         # print(item)
@@ -64,27 +64,31 @@ def check_stock_levels():
         monthly_outflows = []
         for month in range(1, 13):
             monthly_outflow = frappe.db.sql("""
-                SELECT SUM(actual_qty)
-                FROM `tabStock Ledger Entry`
-                WHERE item_code = %s
-                AND MONTH(posting_date) = %s
-                AND YEAR(posting_date) = %s
-                AND actual_qty < 0
+                SELECT SUM(sle.actual_qty)
+                FROM `tabStock Ledger Entry` AS sle
+                JOIN `tabItem` AS item ON sle.item_code = item.item_code
+                WHERE sle.item_code = %s
+                AND MONTH(sle.posting_date) = %s
+                AND YEAR(sle.posting_date) = %s
+                AND sle.actual_qty < 0 AND sle.voucher_type NOT RLIKE 'Stock Reconciliation' AND item.disabled = 0
             """, (item['name'], month, current_year - 1))
             
             monthly_outflow = monthly_outflow[0][0] if monthly_outflow and monthly_outflow[0][0] else 0
             monthly_outflows.append(-monthly_outflow)  # Converting outflow to positive numbers for demand
         # Calculate standard deviation and average of monthly outflows (demands)
         std_dev_demand = statistics.stdev(monthly_outflows) / 30
+        # print(monthly_outflows)
         avg_demand = statistics.mean(monthly_outflows) / 30  # Assuming 30 days in a month to get daily demand
         # Calculate safety stock using the composite distribution formula
         safety_stock = Z * math.sqrt((avg_demand * std_dev_lead_time)**2 + (avg_lead_time * std_dev_demand)**2)
+        
+        # safety_stock = (Z * std_dev_demand * math.sqrt(avg_lead_time)) + (Z * avg_demand * std_dev_lead_time)
+        
         if(safety_stock < 1):
             safety_stock = 0
-        #print("Safety Stock: " + str(safety_stock) + " for Item: " + item['name'])
         # Update safety stock value in Item doctype
         frappe.db.set_value("Item", item['name'], "safety_stock", safety_stock)
-
+        print("Safety Stock: " + str(safety_stock) + " for Item: " + item['name'])
         # Now let's check the stock levels against this new safety stock
         highest_stock = 0  # Initialize variable to store the highest stock value
         all_warehouses = frappe.get_all("Warehouse")

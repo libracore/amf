@@ -142,3 +142,22 @@ def zero_out_stock_for_items(name):
     
     return "success"
 
+@frappe.whitelist()
+def disable_batches_with_null_stock():
+    query = """
+    SELECT b.name
+    FROM `tabBatch` AS b
+    JOIN `tabBin` AS bin ON b.item = bin.item_code
+    WHERE (bin.actual_qty IS NULL OR bin.actual_qty = 0)
+    AND bin.warehouse NOT RLIKE 'OLD'
+    GROUP BY b.name
+    """
+
+    # Fetch batches to disable
+    batches_to_disable = frappe.db.sql(query, as_dict=True)
+
+    # Loop through and disable each batch
+    for batch in batches_to_disable:
+        frappe.db.set_value("Batch", batch.name, "disabled", 1)
+
+    return "success"
