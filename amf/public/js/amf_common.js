@@ -28,8 +28,10 @@ window.onload = async function () {
         var navlogo = document.getElementsByClassName("app-logo");
         if (navlogo.length > 0) {
             if (window.location.hostname.includes("amf")) {
-                navlogo[0].src = "https://amf.libracore.ch/files/AMF-new.png";
-                navlogo[0].style.width = "45px";  // Change width to 45px
+                navlogo[0].src = "https://amf.libracore.ch/files/AMF2023.png";
+                //navlogo[0].style.width = "45px";  // Change width to 45px
+                navlogo[0].style.marginTop = "0";
+                navlogo[0].setAttribute('style', 'width: 50px !important');
             }
         }
         var navsearch = document.getElementById("navbar-search");
