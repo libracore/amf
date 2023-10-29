@@ -32,8 +32,7 @@ window.onload = async function () {
                 //navlogo[0].style.marginTop = "1";
                 //navlogo[0].setAttribute('style', 'width: 50px !important');
                 navlogo[0].src = "https://amf.libracore.ch/files/AMF2023-Full.png";
-                navlogo[0].style.marginTop = "-1";
-                navlogo[0].setAttribute('style', 'width: 150px !important');
+                navlogo[0].setAttribute('style', 'width: 150px !important; margin-top: -1px !important');
             }
         }
         var navsearch = document.getElementById("navbar-search");
