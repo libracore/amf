@@ -16,7 +16,9 @@ app_license = "AGPL"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/amf/css/amf.css"
-app_include_js = "/assets/amf/js/amf_common.js"
+app_include_js = [
+    "/assets/amf/js/amf_common.js",
+]
 
 # include js, css files in header of web template
 web_include_css = [ 
@@ -98,9 +100,12 @@ doc_events = {
         "amf.amf.utils.lead_customization.create_contact_from_lead"
     ]
   },
-  # "Delivery Note": {
-  #     "on_submit": "amf.amf.utils.delivery_note_api.update_sales_order"
-  # }
+  "Planning": {
+      "on_update": "amf.www.planification.get_filter_value"
+  },
+  "Stock Entry": {
+      "before_submit": "amf.amf.utils.stock_entry.batch_to_stock_entry"  
+  },
 }
 
 # Scheduled Tasks
