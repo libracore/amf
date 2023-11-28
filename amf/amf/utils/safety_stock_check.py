@@ -10,7 +10,7 @@ def update_safety_stock_and_check_levels():
     last_year_start = datetime.date(current_year - 1, 1, 1)
     last_year_end = datetime.date(current_year - 1, 12, 31)
 
-    items = frappe.get_all("Item", fields=["name", "safety_stock", "reorder"])
+    items = frappe.get_all("Item", filters={'is_stock_item': 1, 'disabled': 0}, fields=["name", "safety_stock", "reorder"])
     for item in items:
         # Fetch total outflow for this item for the last year
         total_outflow = frappe.db.sql(
@@ -82,7 +82,7 @@ def check_stock_levels():
     # Get the current year and calculate last year's dates
     current_year = datetime.datetime.now().year
 
-    items = frappe.get_all("Item", fields=["name", "safety_stock", "reorder_level", "reorder", "item_group"])
+    items = frappe.get_all("Item", filters={'is_stock_item': 1, 'disabled': 0}, fields=["name", "safety_stock", "reorder_level", "reorder", "item_group"])
 
     # Test Line
     #items = frappe.get_all("Item", fields=["name", "safety_stock", "reorder_level", "reorder", "item_group"], filters={"name": "SPL.3013"})
