@@ -116,7 +116,8 @@ scheduler_events = {
 # 		"amf.tasks.all"
 # 	],
   "daily": [
- 	  "amf.amf.utils.safety_stock_check.check_stock_levels"
+ 	  "amf.amf.utils.safety_stock_check.check_stock_levels",
+    "amf.amf.utils.item_image.update_item_images",
   ],
   "hourly": [
     "amf.amf.utils.document_notification.update_purchase_orders",
