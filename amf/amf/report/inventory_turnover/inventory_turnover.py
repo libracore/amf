@@ -31,6 +31,7 @@ def execute(filters=None):
         cogs = extract_cogs(from_date, to_date, company)
         opening_inventory, closing_inventory = extract_inventory_data(from_date, to_date, company)
         inventory_turnover_ratio = calculate_inventory_turnover_ratio(cogs, opening_inventory, closing_inventory)
+        days_sales_of_inventory = calculate_days_to_sale(inventory_turnover_ratio)
 
         # Append the results for each period to the data list
         data.append({
@@ -39,7 +40,8 @@ def execute(filters=None):
             'cogs': cogs,
             'opening_inventory': opening_inventory,
             'closing_inventory': closing_inventory,
-            'inventory_turnover_ratio': inventory_turnover_ratio
+            'inventory_turnover_ratio': inventory_turnover_ratio,
+            'days_sales_of_inventory': days_sales_of_inventory
         })
 
     return columns, data
@@ -52,7 +54,8 @@ def get_columns():
         {"label": "COGS", "fieldname": "cogs", "fieldtype": "Currency", "width": 120},
         {"label": "Opening Inventory", "fieldname": "opening_inventory", "fieldtype": "Currency", "width": 150},
         {"label": "Closing Inventory", "fieldname": "closing_inventory", "fieldtype": "Currency", "width": 150},
-        {"label": "Inventory Turnover Ratio", "fieldname": "inventory_turnover_ratio", "fieldtype": "Float", "width": 180},
+        {"label": "Inventory Turnover Ratio", "fieldname": "inventory_turnover_ratio", "fieldtype": "Float", "width": 100},
+        {"label": "Days Sales of Inventory", "fieldname": "days_sales_of_inventory", "fieldtype": "Float", "width": 100},
     ]
     return columns
 
@@ -147,3 +150,6 @@ def get_inventory_value(date, company, inventory_accounts, is_opening):
 def calculate_inventory_turnover_ratio(cogs, opening_inventory, closing_inventory):
     average_inventory = (opening_inventory + closing_inventory) / 2
     return cogs / average_inventory if average_inventory != 0 else 0
+
+def calculate_days_to_sale(inv_turnover):
+    return 1 / inv_turnover * (365/2) if inv_turnover != 0 else 0
