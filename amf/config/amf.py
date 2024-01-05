@@ -51,8 +51,22 @@ def get_data():
                    {
                         "type": "report",
                         "name": "Production Master Planner Updated",
-                        "label": _("Production Master Planner V2.0"),
+                        "label": _("Production Master Planner"),
                         "doctype": "Sales Order",
+                        "is_query_report": True
+                   },
+                   {
+                        "type": "report",
+                        "name": "Inventory Turnover",
+                        "label": _("Inventory Turnover Ratio"),
+                        "doctype": "Stock Ledger Entry",
+                        "is_query_report": True
+                   },
+                   {
+                        "type": "report",
+                        "name": "Purchased vs Manufactured Items",
+                        "label": _("Purchased vs. Manufactured Items"),
+                        "doctype": "Item",
                         "is_query_report": True
                    }
             ]
