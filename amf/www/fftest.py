@@ -85,6 +85,9 @@ def make_stock_entry(work_order_id, serial_no_id=None):
     
             last_item.serial_no = serial_no_id
         
+        stock_entry.get_stock_and_rate()
+        print(f"Stock Entry: {stock_entry.name}, Rate and Stock Updated")
+
         # Commit changes
         stock_entry.save()
         stock_entry.submit()
