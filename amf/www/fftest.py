@@ -84,9 +84,8 @@ def make_stock_entry(work_order_id, serial_no_id=None):
                 raise ValidationError(_("Serial number already exists for this item in the database."))
     
             last_item.serial_no = serial_no_id
-        
-        stock_entry.get_stock_and_rate()
-        print(f"Stock Entry: {stock_entry.name}, Rate and Stock Updated")
+
+	update_ste_rate(stock_entry)
 
         # Commit changes
         stock_entry.save()
@@ -100,3 +99,7 @@ def make_stock_entry(work_order_id, serial_no_id=None):
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         return {"error": str(e)}
+
+def update_ste_rate(stock_entry):
+	stock_entry.get_stock_and_rate()
+        print(f"Stock Entry: {stock_entry.name}, Rate and Stock Updated")
