@@ -85,8 +85,6 @@ def make_stock_entry(work_order_id, serial_no_id=None):
     
             last_item.serial_no = serial_no_id
 
-	update_ste_rate(stock_entry)
-
         # Commit changes
         stock_entry.save()
         stock_entry.submit()
