@@ -98,6 +98,5 @@ def make_stock_entry(work_order_id, serial_no_id=None):
         print(f"An unexpected error occurred: {e}")
         return {"error": str(e)}
 
-def update_ste_rate(stock_entry):
-	stock_entry.get_stock_and_rate()
-        print(f"Stock Entry: {stock_entry.name}, Rate and Stock Updated")
+def update_ste_rate(this):
+	this.get_stock_and_rate()
