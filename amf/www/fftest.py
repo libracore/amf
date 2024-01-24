@@ -3,6 +3,10 @@ import frappe
 from frappe.utils.data import flt
 from frappe import _, ValidationError
 
+# Import the StockEntry class from ERPNext
+from erpnext.stock.doctype.stock_entry.stock_entry import StockEntry
+
+
 @frappe.whitelist()
 def make_stock_entry(work_order_id, serial_no_id=None):
     print("make_stock_entry")
@@ -98,5 +102,9 @@ def make_stock_entry(work_order_id, serial_no_id=None):
         print(f"An unexpected error occurred: {e}")
         return {"error": str(e)}
 
-def update_ste_rate(this):
-	this.get_stock_and_rate()
+def update_rate_and_availability_ste(doc, method):
+    # Create an instance of StockEntry
+    stock_entry = StockEntry(doc)
+    
+    # Call the get_stock_and_rate method
+    stock_entry.get_stock_and_rate()
