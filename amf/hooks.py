@@ -106,6 +106,9 @@ doc_events = {
   "Stock Entry": {
       "before_submit": "amf.amf.utils.stock_entry.batch_to_stock_entry"  
   },
+  "Stock Entry": {
+        "before_save": "amf.www.fftest.update_rate_and_availability_ste"
+    }
 }
 
 # Scheduled Tasks
