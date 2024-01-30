@@ -160,6 +160,7 @@ def check_stock_levels():
             # Set the "Reorder" checkbox to True (checked)
             frappe.db.set_value("Item", item["name"], "reorder", 1)
             print(f"Setting 'reorder' to 1 / Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']} / Reorder Level = {item['reorder_level']}")
+            sendmail(item['name'])
         else:
             # Set the "Reorder" checkbox to True (checked)
             frappe.db.set_value("Item", item["name"], "reorder", 0)
