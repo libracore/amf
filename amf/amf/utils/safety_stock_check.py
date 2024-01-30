@@ -1,3 +1,4 @@
+from frappe.core.doctype.communication.email import make
 import frappe
 import math
 import datetime
@@ -159,6 +160,41 @@ def check_stock_levels():
             # Set the "Reorder" checkbox to True (checked)
             frappe.db.set_value("Item", item["name"], "reorder", 1)
             print(f"Setting 'reorder' to 1 / Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']} / Reorder Level = {item['reorder_level']}")
-
+        else:
+            # Set the "Reorder" checkbox to True (checked)
+            frappe.db.set_value("Item", item["name"], "reorder", 0)
+            print(f"Setting 'reorder' to 0 / Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']} / Reorder Level = {item['reorder_level']}")
+        
         # Test Line
         #print(f"Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']} / Reorder Level = {item['reorder_level']}")
+
+@frappe.whitelist()
+def sendmail(name, attachments=None):
+    print("sendmail")
+    # Creating email context
+    email_context = {
+        'recipients': 'alexandre.ringwald@amf.ch',
+        'content': f"<p>Item {name} has reached Reorder Level. Please take necessary actions.</p>",
+        'subject': f"Running Low on {name}",
+        'doctype': 'Item',
+        'name': name,
+        'communication_medium': 'Email',
+        'send_email': True,
+        'attachments': attachments or [],
+    }
+    
+    # Creating communication and sending email
+    comm = make(**email_context)
+    
+    return comm
+
+    # email_args = {
+    #     'recipients': 'alexandre.ringwald@amf.ch',
+    #     'message': f"<p>Item {name} has reached Reorder Level. Please take necessary actions.</p>",
+    #     'subject': f"Running Low on {name}",
+    #     'reference_doctype': 'Item',
+    #     'reference_name': name,
+    # }
+    # if attachments:email_args['attachments']=attachments
+    # #send mail
+    # frappe.enqueue(method=frappe.sendmail, queue='short', timeout=300, **email_args)
