@@ -217,7 +217,6 @@ def sendmail(items):
         """
     
     email_content += "</table>"
-    print(email_content)
     # Creating email context
     email_context = {
         'recipients': 'alexandre.ringwald@amf.ch',
