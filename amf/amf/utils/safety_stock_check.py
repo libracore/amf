@@ -26,13 +26,13 @@ def check_stock_levels():
     # Get the current year and calculate last year's dates
     current_year = datetime.datetime.now().year
 
-    items = frappe.get_all("Item", filters={'is_stock_item': 1, 'disabled': 0}, fields=["name", "item_name", "safety_stock", "reorder_level", "reorder", "item_group"])
+    items = frappe.get_all("Item", filters={'is_stock_item': 1, 'disabled': 0}, fields=["name", "item_name", "safety_stock", "reorder_level", "reorder", "item_group", "average_monthly_outflow"])
 
     # Test Line
-    #items = frappe.get_all("Item", fields=["name", "safety_stock", "reorder_level", "reorder", "item_group"], filters={"name": "SPL.3013"})
+    # items = frappe.get_all("Item", fields=["name", "item_name", "safety_stock", "reorder_level", "reorder", "item_group", "average_monthly_outflow"], filters={"name": "MIX.3013"})
     items_to_email = []  # Create an empty list to hold items that need reordering
     for item in items:
-        print(item)
+        #print(item)
         # Fetch outflow for this item for each month of the last year
         monthly_outflows = []
         for month in range(1, 13):
@@ -64,8 +64,9 @@ def check_stock_levels():
 
         # Calculate standard deviation and average of monthly outflows (demands)
         std_dev_demand = statistics.stdev(monthly_outflows) / 30
-        # print(monthly_outflows)
+        #print(monthly_outflows)
         avg_demand = (statistics.mean(monthly_outflows) / 30)  # Assuming 30 days in a month to get daily demand
+        frappe.db.set_value("Item", item["name"], "average_monthly_outflow", statistics.mean(monthly_outflows))
         # Calculate safety stock using the composite distribution formula
         safety_stock = Z * math.sqrt(
             avg_demand * (std_dev_lead_time) ** 2
@@ -124,7 +125,6 @@ def check_stock_levels():
         # Test Line
         #print(f"Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']} / Reorder Level = {item['reorder_level']}")
 
-@frappe.whitelist()
 def sendmail(items):
     print("Sending email...")
     if not items:
@@ -143,6 +143,7 @@ def sendmail(items):
                 <th style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>Item Name</th>
                 <th style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>Item Group</th>
                 <th style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>Current Stock</th>
+                <th style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>Monthly Outflow</th>
                 <th style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>Reorder Level</th>
                 <th style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>Safety Stock</th>
             </tr>
@@ -155,6 +156,7 @@ def sendmail(items):
     for index, item in enumerate(items):
         reorder_level_int = int(round(item.get('reorder_level', 0)))  # Convert to int and round
         safety_stock_int = int(round(item.get('safety_stock', 0)))  # Convert to int and round
+        monthly_outflow_int = int(round(item.get('average_monthly_outflow', 0)))  # Convert to int and round
         item_url = f"{base_url}{item.get('name')}"
         # Alternating row color
         row_color = row_color_1 if index % 2 == 0 else row_color_2
@@ -164,12 +166,14 @@ def sendmail(items):
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{item["item_name"]}</td>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{item["item_group"]}</td>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{item["highest_stock"]}</td>
+                <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{monthly_outflow_int}</td>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{reorder_level_int}</td>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{safety_stock_int}</td>
             </tr>
         """
     
     email_content += "</table>"
+    # print(email_content)
     # Creating email context
     email_context = {
         'recipients': 'alexandre.ringwald@amf.ch',
@@ -177,7 +181,6 @@ def sendmail(items):
         'subject': "Safety Stock Report on Items",
         'communication_medium': 'Email',
         'doctype': 'Item',
-        'name': item["name"],
         'send_email': True,
         'attachments': [],  # Add any attachments if necessary
     }
