@@ -161,13 +161,13 @@ def check_stock_levels():
         if highest_stock < item["reorder_level"]:
             # Set the "Reorder" checkbox to True (checked)
             frappe.db.set_value("Item", item["name"], "reorder", 1)
-            print(f"Setting 'reorder' to 1 / Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']} / Reorder Level = {item['reorder_level']}")
+            #print(f"Setting 'reorder' to 1 / Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']} / Reorder Level = {item['reorder_level']}")
             # Add the item to the items_to_email list
             items_to_email.append(item)
         else:
             # Set the "Reorder" checkbox to True (checked)
             frappe.db.set_value("Item", item["name"], "reorder", 0)
-            print(f"Setting 'reorder' to 0 / Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']} / Reorder Level = {item['reorder_level']}")
+            #print(f"Setting 'reorder' to 0 / Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']} / Reorder Level = {item['reorder_level']}")
         
     # Send the email for items that need reordering
     if items_to_email:
@@ -187,6 +187,9 @@ def sendmail(items):
     if not items:
         return "No items to reorder."
     
+    # Sort items by item_group
+    items = sorted(items, key=lambda x: x.get('item_group', ''))
+    print(items)
     # Base URL for item links
     base_url = "https://amf.libracore.ch/desk#Form/Item/"
     # Constructing the email content with an HTML table
@@ -204,6 +207,8 @@ def sendmail(items):
     """
 
     for item in items:
+        reorder_level_int = int(round(item.get('reorder_level', 0)))  # Convert to int and round
+        safety_stock_int = int(round(item.get('safety_stock', 0)))  # Convert to int and round
         item_url = f"{base_url}{item.get('name')}"
         email_content += f"""
             <tr>
@@ -211,8 +216,8 @@ def sendmail(items):
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{item["item_name"]}</td>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{item["item_group"]}</td>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{item["highest_stock"]}</td>
-                <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{item["reorder_level"]}</td>
-                <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{item["safety_stock"]}</td>
+                <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{reorder_level_int}</td>
+                <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{safety_stock_int}</td>
             </tr>
         """
     
