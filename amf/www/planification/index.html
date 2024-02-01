@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Microfluidics SA Operations</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+    <!-- Shared CSS -->
+    <link rel="stylesheet" type="text/css" href="/assets/amf/css/common.css">
+    <!-- Page Specific CSS -->
+    <link rel="stylesheet" type="text/css" href="/assets/amf/css/planification.css">
+</head>
+
+<body>
+    <div class="button-container">
+        <div class="left-buttons">
+            <button id="btnRequest"><i class="fas fa-plus"></i></button> <!-- Example icon for Create a Request -->
+            <button onclick="startRow()"><i class="fas fa-play"></i></button> <!-- Example icon for Start -->
+            <button id="terminateBtn"><i class="fas fa-stop"></i></button> <!-- Example icon for Terminate -->
+        </div>
+        <div class="right-buttons">
+            <button onclick="refreshPage()"><i class="fas fa-sync-alt"></i></button>
+            <!-- Example icon for Refresh Page -->
+            <button type="btnPlanning" id="planningList"><i class="fas fa-list"></i></button>
+            <!-- Example icon for Open Planning List -->
+            <button type="btnDrw" id="drw" onclick="openLink()"><i class="fas fa-pencil-alt"></i></button>
+            <!-- Example icon for Drawings -->
+        </div>
+    </div>
+    <!-- The Request Modal -->
+    <div id="modalRequest" class="modal">
+        <!-- Modal content -->
+        <div class="modal-content">
+            <p class="machining-request">NEW MACHINING REQUEST</p>
+            <form id="requestForm">
+                <!-- First Column: Drawing, Item, Qty, Material, Program -->
+                <div class="column">
+                    <label for="statusInput">Status</label>
+                    <select id="statusInput">
+                        <option value="" disabled selected>Priority</option>
+                        <option value="QC">QC</option>
+                        <option value="Free">Free</option>
+                        <option value="Reserved">Reserved</option>
+                        <option value="On Hold">On Hold</option>
+                        <option value="Cancelled">Cancelled</option>
+                        <option value="Fab">Fab</option>
+                        <option value="Done">Done</option>
+                        <option value="Rework">Rework</option>
+                        <option value="Planned #1">Planned #1</option>
+                        <option value="Planned #2">Planned #2</option>
+                        <option value="Planned #3">Planned #3</option>
+                        <option value="Planned #4">Planned #4</option>
+                        <option value="Planned #5">Planned #5</option>
+                    </select>
+                    <label for="drawingInput">Drawing</label>
+                    <input type="file" id="drawingInput" name="drawingInput" accept=".pdf" required>
+                    <label for="itemInput">Item</label>
+                    <input type="text" id="itemInput" readonly placeholder="Item">
+                    <label for="qtyInput">Quantity</label>
+                    <input type="number" id="qtyInput" min="1" step="1" required placeholder="Quantity">
+                    <label for="materialInput">Raw Material</label>
+                    <select id="materialInput">
+                        <option value="" disabled selected>Material</option>
+                        <option value="PTFE FL100">PTFE FL100</option>
+                        <option value="PTFE G400">PTFE G400</option>
+                        <option value="Tivar">Tivar</option>
+                        <option value="PCTFE ∅30mm">PCTFE ∅30mm</option>
+                        <option value="PCTFE ∅40mm">PCTFE ∅40mm</option>
+                        <option value="Custom">Custom</option>
+                    </select>
+                </div>
+                <!-- Second Column: Project, For, Comments -->
+                <div class="column">
+                    <label for="projectInput">Project</label>
+                    <select id="projectInput">
+                        <option value="" disabled selected>Project</option>
+                        <option value="Prod@AMF">Prod@AMF</option>
+                        <option value="R&D@AMF">R&D@AMF</option>
+                        <option value="Prod@bN">Prod@bN</option>
+                        <option value="R&D@bN">R&D@bN</option>
+                    </select>
+                    <label for="forInput">For</label>
+                    <input type="text" id="forInput" placeholder="For">
+                    <label for="programInput">CNC Program</label>
+                    <input type="text" id="programInput" placeholder="CNC Program">
+                    <label for="commentsInput">Comments</label>
+                    <input type="text" id="commentsInput">
+                </div>
+                <!-- Third Column: Created On, Planned For -->
+                <div class="column">
+                    <label for="createdOnInput">Created On</label>
+                    <input type="date" id="createdOnInput" readonly>
+                    <label for="plannedForInput">Planned For</label>
+                    <input type="date" id="plannedForInput">
+                </div>
+                <!-- Submit Button -->
+                <button id="submitBtnRequest">Submit</button>
+            </form>
+        </div>
+    </div>
+    <!-- The Terminate Modal -->
+    <div id="modalTerm" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Terminate Planning</h2>
+            <form id="terminateForm">
+                <label for="progTime">Temps de Programmation Machine [hrs]:</label>
+                <input type="number" id="progTime" step="0.01" required><br>
+                <label for="met">Temps de Réglage Machine [hrs]:</label>
+                <input type="number" id="met" step="0.01" required><br>
+                <label for="finalQty">Final Quantity Produced:</label>
+                <input type="number" id="finalQty" min="1" step="1" required>
+                <!-- Allows only integers and no less than 1 -->
+                <input type="submit" id="submitTerm" value="Submit">
+            </form>
+        </div>
+    </div>
+    <table id="myTable">
+        <tr>
+            <th class="nowrap"></th>
+            <th class="nowrap">Status</th>
+            <th class="nowrap">Work Order</th>
+            <th class="nowrap">Qty</th>
+            <th class="nowrap">Item</th>
+            <th class="nowrap">Company</th>
+            <th class="nowrap">For</th>
+            <th class="nowrap">Created On</th>
+            <th class="nowrap">Planned For</th>
+            <th class="nowrap">End Date</th>
+            <th class="nowrap">Delivered Qty</th>
+            <th class="nowrap">Material</th>
+            <th class="nowrap-cont">Drawing</th>
+            <th class="nowrap">Program</th>
+            <th class="nowrap">Comments</th>
+            <th class="nowrap" style="display:none;">Filter</th>
+        </tr>
+        <!-- Initial rows would go here -->
+    </table>
+    <!-- Shared JS -->
+    <script type="text/javascript" src="/assets/amf/js/common.js"></script>
+    <!-- Page Specific JS -->
+    <script type="text/javascript" src="/assets/amf/js/planification.js"></script>
+</body>
+
+<!-- Footer Section -->
+<div class="footer-section">
+    <div class="container-footer">
+        <p>© 2023 Advanced Microfluidics SA. All rights reserved.</p>
+        <p>Powered by AMF Operations Team.</p>
+        <p>Contact: <a href="mailto:alexandre.ringwald@amf.ch">operations@amf.com</a></p>
+    </div>
+</div>

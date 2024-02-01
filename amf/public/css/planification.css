@@ -1,0 +1,546 @@
+/* Dark Theme - Global Styles */
+body,
+html {
+    margin: 0;
+    padding: 0;
+    font-family: 'Arial', sans-serif;
+    background-color: #121212;
+    /* Dark background */
+    color: #ffffff;
+    /* White text */
+}
+
+.my-5 {
+    margin: 20px 0px -10px 0px !important;
+}
+
+.container {
+    max-width: 12000px;
+    margin: 0;
+    padding: 0;
+}
+
+.machining-request {
+    color: #333;
+    font-size: 24px;
+    font-weight: bold;
+    margin: 0;
+    padding: 20px;
+    background-color: #2b47d9;
+    color: white;
+    text-align: center;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+}
+
+/* Login Styles */
+.login-container {
+    position: absolute;
+    top: 15px;
+    right: 35px;
+}
+
+.login-button {
+    font-size: 1.0em;
+    padding: 5px 5px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 5px;
+}
+
+.login-button:hover {
+    background-color: #218838;
+}
+
+.full-name::after {
+    content: none;
+}
+
+/* Table Styles */
+table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+    background-color: #1f1f1f;
+    /* Darker background for table */
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+    table-layout: auto;
+    text-align: left;
+    position: relative;
+}
+
+
+
+th,
+td {
+
+    transition: background 0.3s, color 0.3s;
+}
+
+th {
+    background-color: #343a40;
+    color: #ffffff;
+    text-transform: uppercase;
+    font-weight: bold;
+    font-size: 0.95em;
+    position: sticky;
+    top: 46px;
+    padding: 15px 0px;
+    border: 0px;
+    /* Lighter border for dark theme */
+}
+
+td {
+    padding: 10px 0px;
+    font-size: 0.90em;
+    border-bottom: 1px solid #444;
+    /* Lighter border for dark theme */
+}
+
+td:hover {
+    color: #2b47d9;
+}
+
+.nowrap {
+    white-space: nowrap;
+}
+
+.nowrap-cont {
+    max-width: 50px;
+    /* this might need adjustment based on font size and desired appearance */
+    overflow: hidden;
+    white-space: nowrap;
+    /* prevents wrapping */
+    text-overflow: ellipsis;
+    /* shows '...' when overflow occurs */
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    padding-top: 100px;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.7);
+    /* Darker overlay */
+}
+
+.modal-content {
+    background-color: #1f1f1f;
+    /* Darker modal background */
+    margin: auto;
+    padding: 20px;
+    border: 1px solid #444;
+    /* Lighter border for dark theme */
+    width: 80%;
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1);
+}
+
+.close {
+    color: #aaaaaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    margin-left: 15px;
+}
+
+.close:hover,
+.close:focus {
+    color: #ffffff;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Packaging Styles */
+#packaging {
+    width: 500px;
+    margin: 0 auto;
+    padding: 0;
+    background-color: #1f1f1f;
+    /* Darker background */
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+#packaging div {
+    margin-bottom: 15px;
+}
+
+#packaging label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+#packaging input[type="text"],
+#packaging input[type="file"] {
+    width: 85%;
+    padding: 10px;
+    border-radius: 3px;
+    border: 1px solid #444;
+    /* Lighter border for dark theme */
+    background-color: #2a2a2a;
+    /* Darker input background */
+    color: #ffffff;
+    /* White text */
+}
+
+#packaging button,
+#packaging button-dn {
+    padding: 10px 20px;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+#packaging button {
+    background-color: #007bff;
+}
+
+#packaging button-dn {
+    background-color: #000000;
+}
+
+#packaging button:hover {
+    background-color: #0056b3;
+}
+
+#upload-button,
+#submit-button,
+#open-delivery-note {
+    display: block;
+    width: 70%;
+    margin: 10px auto;
+}
+
+.custom-file-upload {
+    display: inline-block;
+    padding: 10px 20px;
+    cursor: pointer;
+    background-color: #008CBA;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 70%;
+    margin: auto;
+}
+
+.custom-file-upload:hover {
+    background-color: #007B9A;
+}
+
+#image {
+    display: none;
+}
+
+#file-name {
+    margin-left: 10px;
+}
+
+#overlay {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    /* Darker overlay */
+    z-index: 2;
+    cursor: pointer;
+}
+
+/* Footer Styles */
+.container-footer {
+    max-width: auto;
+}
+
+.container-footer p {
+    max-width: auto;
+    line-height: 0.5;
+}
+
+.footer-section {
+    width: 100%;
+    padding: 20px;
+    background-color: #000000;
+    /* Darker background for footer */
+    font-size: 0.75em;
+    color: #ffffff;
+    /* White text color */
+    text-align: left;
+    position: relative;
+    bottom: 0;
+    left: 0;
+    margin-top: 600px;
+    border-top: solid 1px;
+    border-top-color: #ffffff;
+}
+
+.footer-section a {
+    color: #28a745;
+    /* Green color from your previous design */
+    text-decoration: none;
+}
+
+.footer-section a:hover {
+    text-decoration: underline;
+}
+
+.selected-row {
+    background-color: #303030;
+    /* You can choose any color */
+}
+
+.row-selector {
+    margin: 0px 0px 0px 5px;
+    padding: 0px !important;
+    border-style: solid !important;
+    border-width: 1px !important;
+}
+
+
+
+@font-face {
+    font-family: 'Supreme';
+    src: url('/files/Supreme-Variable.ttf') format('truetype');
+    font-weight: 100 800;
+    font-display: swap;
+    font-style: normal;
+}
+
+body {
+    font-family: 'Supreme' !important;
+    line-height: 1.0;
+}
+
+.navbar-default {
+    background-color: #2b47d9;
+    border-color: #2b47d9;
+}
+
+.navbar-form .awesomplete {
+    width: 200px;
+}
+
+@media (min-width: 1200px) {
+    .navbar-form .awesomplete {
+        width: 400px;
+    }
+}
+
+.navbar {
+    min-height: 10px;
+    height: 46px;
+}
+
+.navbar-light {
+    background-color: #2b47d9 !important;
+}
+
+.navbar-light .navbar-nav .nav-link {
+    color: #ffffff;
+}
+
+.nav-link {
+    font-size: 28px;
+    padding: 0px;
+    margin-bottom: -5px;
+}
+
+.full-name {
+    font-size: 14px;
+}
+
+/* General button styling for a flat design */
+button {
+    background-color: #f0f0f0;
+    /* Default light grey background */
+    color: #333;
+    /* Dark text color for contrast */
+    border: none;
+    /* No borders for a flat design */
+    padding: 10px 20px;
+    /* Adequate padding for comfortable clicking */
+    text-align: center;
+    /* Center the text inside the button */
+    text-decoration: none;
+    /* No underlines */
+    display: inline-block;
+    /* Align buttons in line */
+    font-size: 16px;
+    /* Standard readable font size */
+    /*margin: 0px 4px; /* Spacing between buttons */
+    cursor: pointer;
+    /* Cursor changes to pointer to indicate it's clickable */
+    transition: background-color 0.3s ease;
+    /* Smooth transition for hover effect */
+}
+
+/* Specific colors for each button */
+#btnRequest {
+    background-color: #e57373;
+    /* Example color */
+}
+
+#planningList {
+    background-color: #81c784;
+    /* Example color */
+}
+
+[onclick="refreshPage()"] {
+    background-color: #64b5f6;
+    /* Example color */
+}
+
+[onclick="startRow()"] {
+    background-color: #ffb74d;
+    /* Example color */
+}
+
+#terminateBtn {
+    background-color: #ba68c8;
+    /* Example color */
+}
+
+/* Hover effect for all buttons */
+button:hover,
+#terminateBtn:hover,
+#planningList:hover,
+#btnRequest:hover {
+    background-color: #2b47d9;
+    /* Specified hover color */
+    color: white;
+    /* Change text color to maintain contrast */
+}
+
+/* Container for all buttons */
+.button-container {
+    display: flex;
+    justify-content: space-between;
+    /* Positions children at each end */
+    align-items: center;
+    /* Aligns items vertically in the center */
+}
+
+/* Containers for left and right buttons */
+.left-buttons,
+.right-buttons {
+    display: flex;
+}
+
+.left-buttons {
+    margin-right: 10px;
+}
+
+/* Style for the right-aligned buttons */
+.right-buttons {
+    justify-content: flex-end;
+    /* Aligns children to the end (right side) */
+    margin-left: 10px;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    padding-top: 100px;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.7);
+    /* Darker overlay */
+}
+
+.modal-content {
+    background-color: #1f1f1f;
+    /* Darker modal background */
+    margin: auto;
+    padding: 20px;
+    border: 1px solid #444;
+    /* Lighter border for dark theme */
+    width: 80%;
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1);
+}
+
+.close {
+    color: #aaaaaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: #ffffff;
+    cursor: pointer;
+}
+
+/* Request Form Styles */
+#requestForm {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    /* Three equal columns */
+    grid-gap: 10px;
+    padding: 10px;
+    background-color: #262626;
+    /* Slightly lighter than body for contrast */
+    border-radius: 5px;
+}
+
+#requestForm .column {
+    display: flex;
+    flex-direction: column;
+}
+
+#requestForm label {
+    margin-bottom: 5px;
+}
+
+#requestForm label {
+    display: block;
+    margin: 0 0 5px;
+}
+
+#requestForm input[type="text"],
+#requestForm input[type="file"],
+#requestForm input[type="number"],
+#requestForm input[type="date"],
+#requestForm select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 3px;
+    border: 1px solid #444;
+    background-color: #2a2a2a;
+    color: #ffffff;
+    height: 45px;
+}
+
+#submitBtnRequest {
+    grid-column: 3;
+    /* Stretch across all columns */
+    padding: 15px 10px;
+    background-color: #50C878;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#submitBtnRequest:hover {
+    background-color: #40a060;
+}
+
+#commentsInput {
+    height: 121px !important;
+}

@@ -4,63 +4,6 @@ import math
 import datetime
 import statistics
 
-
-def update_safety_stock_and_check_levels():
-    # Get the current year and calculate last year's dates
-    current_year = datetime.datetime.now().year
-    last_year_start = datetime.date(current_year - 1, 1, 1)
-    last_year_end = datetime.date(current_year - 1, 12, 31)
-
-    items = frappe.get_all("Item", filters={'is_stock_item': 1, 'disabled': 0}, fields=["name", "safety_stock", "reorder"])
-    for item in items:
-        # Fetch total outflow for this item for the last year
-        total_outflow = frappe.db.sql(
-            """
-            SELECT SUM(actual_qty)
-            FROM `tabStock Ledger Entry`
-            WHERE item_code = %s
-            AND posting_date BETWEEN %s AND %s
-            AND actual_qty < 0
-        """,
-            (item["name"], last_year_start, last_year_end),
-        )
-        # The SQL query returns a list of tuples, so we need to extract the actual value
-        total_outflow = (
-            total_outflow[0][0] if total_outflow and total_outflow[0][0] else 0
-        )
-
-        # Calculate safety stock as 25% more than the average monthly outflow
-        average_monthly_outflow = abs(total_outflow / 12)
-        safety_stock = math.ceil(average_monthly_outflow * 1.25)  # Add 25% buffer
-        # Update safety stock value in Item doctype
-        frappe.db.set_value("Item", item["name"], "safety_stock", safety_stock)
-
-        # Now let's check the stock levels against this new safety stock
-        highest_stock = 0  # Initialize variable to store the highest stock value
-        all_warehouses = frappe.get_all("Warehouse")
-        filtered_warehouses = [wh for wh in all_warehouses if "AMF_OLD" not in wh.name]
-
-        for warehouse in filtered_warehouses:
-            current_stock = (
-                frappe.db.get_value(
-                    "Bin",
-                    {"item_code": item["name"], "warehouse": warehouse.name},
-                    "actual_qty",
-                )
-                or 0
-            )
-            # Update the highest stock value if the current stock is higher
-            if current_stock > highest_stock:
-                highest_stock = current_stock
-
-        if highest_stock < item["safety_stock"]:
-            # Set the "Reorder" checkbox to True (checked)
-            frappe.db.set_value("Item", item["name"], "reorder", 1)
-            print(
-                f"Setting 'reorder' to 1 / Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']}"
-            )
-
-
 def check_stock_levels():
     # Constants
     Z = 1.64  # Z-score for 95% service level
@@ -161,13 +104,13 @@ def check_stock_levels():
         if highest_stock < item["reorder_level"]:
             # Set the "Reorder" checkbox to True (checked)
             frappe.db.set_value("Item", item["name"], "reorder", 1)
-            print(f"Setting 'reorder' to 1 / Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']} / Reorder Level = {item['reorder_level']}")
+            #print(f"Setting 'reorder' to 1 / Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']} / Reorder Level = {item['reorder_level']}")
             # Add the item to the items_to_email list
             items_to_email.append(item)
         else:
             # Set the "Reorder" checkbox to True (checked)
             frappe.db.set_value("Item", item["name"], "reorder", 0)
-            print(f"Setting 'reorder' to 0 / Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']} / Reorder Level = {item['reorder_level']}")
+            #print(f"Setting 'reorder' to 0 / Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']} / Reorder Level = {item['reorder_level']}")
         
     # Send the email for items that need reordering
     if items_to_email:
@@ -187,13 +130,15 @@ def sendmail(items):
     if not items:
         return "No items to reorder."
     
+    # Sort items by item_group
+    items = sorted(items, key=lambda x: x.get('item_group', ''))
     # Base URL for item links
     base_url = "https://amf.libracore.ch/desk#Form/Item/"
     # Constructing the email content with an HTML table
     email_content = """
         <p>The following items have reached their reorder level:</p>
         <table style='border-collapse: collapse; width: 100%;'>
-            <tr>
+            <tr style='background-color: #2b47d9; color: white;'>
                 <th style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>Item Code</th>
                 <th style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>Item Name</th>
                 <th style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>Item Group</th>
@@ -203,21 +148,28 @@ def sendmail(items):
             </tr>
     """
 
-    for item in items:
+    # Define row colors for zebra striping
+    row_color_1 = '#f2f2f2'  # Light grey
+    row_color_2 = '#ffffff'  # White
+
+    for index, item in enumerate(items):
+        reorder_level_int = int(round(item.get('reorder_level', 0)))  # Convert to int and round
+        safety_stock_int = int(round(item.get('safety_stock', 0)))  # Convert to int and round
         item_url = f"{base_url}{item.get('name')}"
+        # Alternating row color
+        row_color = row_color_1 if index % 2 == 0 else row_color_2
         email_content += f"""
-            <tr>
+            <tr style='background-color: {row_color};'>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'><a href='{item_url}'>{item["name"]}</a></td>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{item["item_name"]}</td>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{item["item_group"]}</td>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{item["highest_stock"]}</td>
-                <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{item["reorder_level"]}</td>
-                <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{item["safety_stock"]}</td>
+                <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{reorder_level_int}</td>
+                <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{safety_stock_int}</td>
             </tr>
         """
     
     email_content += "</table>"
-    print(email_content)
     # Creating email context
     email_context = {
         'recipients': 'alexandre.ringwald@amf.ch',
@@ -233,33 +185,3 @@ def sendmail(items):
     # Creating communication and sending email
     comm = make(**email_context)
     return comm
-    
-    """ Archives...
-    print("sendmail")
-    # Creating email context
-    email_context = {
-        'recipients': 'alexandre.ringwald@amf.ch',
-        'content': f"<p>Item {name} has reached Reorder Level. Please take necessary actions.</p>",
-        'subject': f"Running Low on {name}",
-        'doctype': 'Item',
-        'name': name,
-        'communication_medium': 'Email',
-        'send_email': True,
-        'attachments': attachments or [],
-    }
-    
-    # Creating communication and sending email
-    comm = make(**email_context)
-    
-    return comm
-
-    # email_args = {
-    #     'recipients': 'alexandre.ringwald@amf.ch',
-    #     'message': f"<p>Item {name} has reached Reorder Level. Please take necessary actions.</p>",
-    #     'subject': f"Running Low on {name}",
-    #     'reference_doctype': 'Item',
-    #     'reference_name': name,
-    # }
-    # if attachments:email_args['attachments']=attachments
-    # #send mail
-    # frappe.enqueue(method=frappe.sendmail, queue='short', timeout=300, **email_args) """

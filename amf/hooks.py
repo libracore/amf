@@ -15,24 +15,52 @@ app_license = "AGPL"
 # ------------------
 
 # include js, css files in header of desk.html
-# app_include_css = "/assets/amf/css/amf.css"
+app_include_css = "/assets/amf/css/common.css"
 app_include_js = [
     "/assets/amf/js/amf_common.js",
+    "/assets/amf/js/common.js",
 ]
 
 # include js, css files in header of web template
-web_include_css = [ 
-    "/assets/amf/amf-dev.css",
-    "/assets/amf/amf.css"
-]
+web_include_css = ["/assets/amf/amf-dev.css", "/assets/amf/amf.css"]
 # web_include_js = "/assets/amf/js/amf.js"
 
 # include js in page
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
-# doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
+""" doctype_js = {
+    "Asset": ["public/js/doctype/asset.js"],
+    "Contact": ["public/js/doctype/contact.js"],
+    "Delivery Note": ["public/js/doctype/delivery_note.js"],
+    "Expense Claim": ["public/js/doctype/expense_claim.js"],
+    "Issue Type": ["public/js/doctype/issue_type.js"],
+    "Issue": ["public/js/doctype/issue.js"],
+    "Item": ["public/js/doctype/item.js"],
+    "Job Card Time Log": ["public/js/doctype/job_card_time_log.js"],
+    "Job Card": ["public/js/doctype/job_card.js"],
+    "Journal Entry": ["public/js/doctype/journal_entry.js"],
+    "Payment Entry": ["public/js/doctype/payment_entry.js"],
+    "Purchase Invoice": ["public/js/doctype/purchase_invoice.js"],
+    "Purchase Order": ["public/js/doctype/purchase_order.js"],
+    "Purchase Receipt": ["public/js/doctype/purchase_receipt.js"],
+    "Quotation": ["public/js/doctype/quotation.js"],
+    "Sales Invoice": ["public/js/doctype/sales_invoice.js"],
+    "Sales Order Item": ["public/js/doctype/sales_order_item.js"],
+    "Sales Order": ["public/js/doctype/sales_order.js"],
+    "Spreadsheet Expense Claim": ["public/js/doctype/spreadsheet_expense_claim.js"],
+    "Stock Entry": ["public/js/doctype/stock_entry.js"],
+    "Stock Reconciliation": ["public/js/doctype/stock_reconciliation.js"],
+    "Supplier Quotation": ["public/js/doctype/supplier_quotation.js"],
+    "Supplier": ["public/js/doctype/supplier.js"],
+    "Timesheet": ["public/js/doctype/timesheet.js"],
+    "Work Order": ["public/js/doctype/work_order.js"]
+} """
+
+# include js in doctype list views
+doctype_list_js = {
+    "Item": ["public/js/list/item_list.js"],
+}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
@@ -44,7 +72,7 @@ web_include_css = [
 
 # website user home page (by Role)
 # role_home_page = {
-#	"Role": "home_page"
+# 	"Role": "home_page"
 # }
 
 # Website user home page (by function)
@@ -85,52 +113,44 @@ web_include_css = [
 # Hook on document methods and events
 
 doc_events = {
-  "Work Order": {
-    "on_submit": [
-      "amf.amf.utils.on_work_order_submit.generate_qr",
-      "amf.amf.utils.on_work_order_submit.on_submit_wo"
-    ]
-  },
-  "Job Card": {
-    "on_submit": "amf.amf.utils.on_work_order_submit.generate_qr"
-  },
-  "Lead": {
-    "before_save": [
-        "amf.amf.utils.lead_customization.create_address_from_lead",
-        "amf.amf.utils.lead_customization.create_contact_from_lead"
-    ]
-  },
-  "Planning": {
-      "on_update": "amf.www.planification.get_filter_value"
-  },
-  "Stock Entry": {
-      "before_submit": "amf.amf.utils.stock_entry.batch_to_stock_entry"  
-  },
-  "Stock Entry": {
-        "before_save": "amf.www.fftest.update_rate_and_availability_ste"
-    }
+    "Work Order": {
+        "on_submit": [
+            "amf.amf.utils.on_work_order_submit.generate_qr",
+            "amf.amf.utils.on_work_order_submit.on_submit_wo",
+        ]
+    },
+    "Job Card": {"on_submit": "amf.amf.utils.on_work_order_submit.generate_qr"},
+    "Lead": {
+        "before_save": [
+            "amf.amf.utils.lead_customization.create_address_from_lead",
+            "amf.amf.utils.lead_customization.create_contact_from_lead",
+        ]
+    },
+    "Planning": {"on_update": "amf.www.planification.get_filter_value"},
+    "Stock Entry": {"before_submit": "amf.amf.utils.stock_entry.batch_to_stock_entry"},
+    "Stock Entry": {"before_save": "amf.www.fftest.update_rate_and_availability_ste"},
 }
 
 # Scheduled Tasks
 # ---------------
 
 scheduler_events = {
-# 	"all": [
-# 		"amf.tasks.all"
-# 	],
-  "daily": [
- 	  "amf.amf.utils.safety_stock_check.check_stock_levels",
-    "amf.amf.utils.item_image.update_item_images",
-  ],
-  "hourly": [
-    "amf.amf.utils.document_notification.update_purchase_orders",
- 	],
-# 	"weekly": [
-# 		"amf.tasks.weekly"
-# 	]
-# 	"monthly": [
-# 		"amf.tasks.monthly"
-# 	]
+    # 	"all": [
+    # 		"amf.tasks.all"
+    # 	],
+    "daily": [
+        "amf.amf.utils.safety_stock_check.check_stock_levels",
+        "amf.amf.utils.item_image.update_item_images",
+    ],
+    "hourly": [
+        "amf.amf.utils.document_notification.update_purchase_orders",
+    ],
+    # 	"weekly": [
+    # 		"amf.tasks.weekly"
+    # 	]
+    # 	"monthly": [
+    # 		"amf.tasks.monthly"
+    # 	]
 }
 
 # Testing
