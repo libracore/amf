@@ -189,14 +189,13 @@ def sendmail(items):
     
     # Sort items by item_group
     items = sorted(items, key=lambda x: x.get('item_group', ''))
-    print(items)
     # Base URL for item links
     base_url = "https://amf.libracore.ch/desk#Form/Item/"
     # Constructing the email content with an HTML table
     email_content = """
         <p>The following items have reached their reorder level:</p>
         <table style='border-collapse: collapse; width: 100%;'>
-            <tr>
+            <tr style='background-color: #2b47d9; color: white;'>
                 <th style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>Item Code</th>
                 <th style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>Item Name</th>
                 <th style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>Item Group</th>
@@ -206,12 +205,18 @@ def sendmail(items):
             </tr>
     """
 
-    for item in items:
+    # Define row colors for zebra striping
+    row_color_1 = '#f2f2f2'  # Light grey
+    row_color_2 = '#ffffff'  # White
+
+    for index, item in enumerate(items):
         reorder_level_int = int(round(item.get('reorder_level', 0)))  # Convert to int and round
         safety_stock_int = int(round(item.get('safety_stock', 0)))  # Convert to int and round
         item_url = f"{base_url}{item.get('name')}"
+        # Alternating row color
+        row_color = row_color_1 if index % 2 == 0 else row_color_2
         email_content += f"""
-            <tr>
+            <tr style='background-color: {row_color};'>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'><a href='{item_url}'>{item["name"]}</a></td>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{item["item_name"]}</td>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{item["item_group"]}</td>
