@@ -29,7 +29,7 @@ def check_stock_levels():
     items = frappe.get_all("Item", filters={'is_stock_item': 1, 'disabled': 0}, fields=["name", "item_name", "safety_stock", "reorder_level", "reorder", "item_group", "average_monthly_outflow"])
 
     # Test Line
-    # items = frappe.get_all("Item", fields=["name", "item_name", "safety_stock", "reorder_level", "reorder", "item_group", "average_monthly_outflow"], filters={"name": "MIX.3013"})
+    items = frappe.get_all("Item", fields=["name", "item_name", "safety_stock", "reorder_level", "reorder", "item_group", "average_monthly_outflow"], filters={"name": "SPL.1212-C"})
     items_to_email = []  # Create an empty list to hold items that need reordering
     for item in items:
         #print(item)
@@ -85,7 +85,7 @@ def check_stock_levels():
         # Now let's check the stock levels against this new safety stock
         highest_stock = 0  # Initialize variable to store the highest stock value
         all_warehouses = frappe.get_all("Warehouse")
-        filtered_warehouses = [wh for wh in all_warehouses if "AMF_OLD" not in wh.name]
+        filtered_warehouses = [wh for wh in all_warehouses if "AMF_OLD" not in wh.name and "Scrap - AMF21" not in wh.name]
 
         for warehouse in filtered_warehouses:
             current_stock = (
@@ -132,6 +132,7 @@ def sendmail(items):
     
     # Sort items by item_group
     items = sorted(items, key=lambda x: x.get('item_group', ''))
+    #print(items)
     # Base URL for item links
     base_url = "https://amf.libracore.ch/desk#Form/Item/"
     # Constructing the email content with an HTML table
@@ -154,6 +155,7 @@ def sendmail(items):
     row_color_2 = '#ffffff'  # White
 
     for index, item in enumerate(items):
+        stock_int = int(round(item.get('highest_stock', 0)))
         reorder_level_int = int(round(item.get('reorder_level', 0)))  # Convert to int and round
         safety_stock_int = int(round(item.get('safety_stock', 0)))  # Convert to int and round
         monthly_outflow_int = int(round(item.get('average_monthly_outflow', 0)))  # Convert to int and round
@@ -165,7 +167,7 @@ def sendmail(items):
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'><a href='{item_url}'>{item["name"]}</a></td>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{item["item_name"]}</td>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{item["item_group"]}</td>
-                <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{item["highest_stock"]}</td>
+                <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{stock_int}</td>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{monthly_outflow_int}</td>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{reorder_level_int}</td>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'>{safety_stock_int}</td>
@@ -173,7 +175,7 @@ def sendmail(items):
         """
     
     email_content += "</table>"
-    # print(email_content)
+    print(email_content)
     # Creating email context
     email_context = {
         'recipients': 'alexandre.ringwald@amf.ch',
