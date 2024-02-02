@@ -161,7 +161,10 @@ def sendmail(items):
         monthly_outflow_int = int(round(item.get('average_monthly_outflow', 0)))  # Convert to int and round
         item_url = f"{base_url}{item.get('name')}"
         # Alternating row color
-        row_color = row_color_1 if index % 2 == 0 else row_color_2
+        if stock_int == 0:
+            row_color = '#FFCCCC'
+        else:
+            row_color = row_color_1 if index % 2 == 0 else row_color_2
         email_content += f"""
             <tr style='background-color: {row_color};'>
                 <td style='border: 1px solid #dddddd; text-align: left; padding: 8px;'><a href='{item_url}'>{item["name"]}</a></td>
