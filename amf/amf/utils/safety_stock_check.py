@@ -178,7 +178,7 @@ def sendmail(items):
     # print(email_content)
     # Creating email context
     email_context = {
-        'recipients': 'alexandre.ringwald@amf.ch',
+        'recipients': ['alexandre.ringwald@amf.ch', 'alexandre.trachsel@amf.ch'],
         'content': email_content,
         'subject': "Safety Stock Report on Items",
         'communication_medium': 'Email',
