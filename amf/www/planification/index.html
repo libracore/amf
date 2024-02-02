@@ -1,16 +1,21 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "templates/web.html" %}
+
+{% block page_content %}
 
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Microfluidics SA Operations</title>
+    <title>Advanced Microfluidics SA • Machining Operations</title>
+    <!-- Icon CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
     <!-- Shared CSS -->
     <link rel="stylesheet" type="text/css" href="/assets/amf/css/common.css">
     <!-- Page Specific CSS -->
     <link rel="stylesheet" type="text/css" href="/assets/amf/css/planification.css">
 </head>
+
+<!-- Main Button Container -->
 
 <body>
     <div class="button-container">
@@ -137,17 +142,25 @@
         </tr>
         <!-- Initial rows would go here -->
     </table>
-    <!-- Shared JS -->
-    <script type="text/javascript" src="/assets/amf/js/common.js"></script>
-    <!-- Page Specific JS -->
-    <script type="text/javascript" src="/assets/amf/js/planification.js"></script>
 </body>
 
 <!-- Footer Section -->
 <div class="footer-section">
     <div class="container-footer">
-        <p>© 2023 Advanced Microfluidics SA. All rights reserved.</p>
+        <p>© 2024 Advanced Microfluidics SA. All rights reserved.</p>
         <p>Powered by AMF Operations Team.</p>
         <p>Contact: <a href="mailto:alexandre.ringwald@amf.ch">operations@amf.com</a></p>
     </div>
 </div>
+
+{% endblock %}
+
+{% block script %}
+
+<script>
+    frappe.require("/assets/frappe/js/lib/jquery/jquery.min.js")
+    frappe.require("/assets/amf/js/common.js")
+    frappe.require("/assets/amf/js/planification.js")
+</script>
+
+{% endblock %}
