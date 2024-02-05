@@ -1,5 +1,6 @@
 import frappe
 
+@frappe.whitelist()
 def update_item_images():
     # Fetch all items
     items = frappe.get_all("Item", filters={"disabled": 0}, fields=["name", "item_code", "image"])
