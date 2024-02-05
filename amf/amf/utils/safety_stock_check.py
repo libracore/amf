@@ -61,7 +61,7 @@ def check_stock_levels():
         std_dev_lead_time = group_data["std_dev_lead_time"]
         #print("avg_lead_time:",avg_lead_time)
         #print("std_dev_lead_time:",std_dev_lead_time)
-        avg_monthly_outflow = float(statistics.mean(monthly_outflows))
+        avg_monthly_outflow = statistics.mean(monthly_outflows)
         # Calculate standard deviation and average of monthly outflows (demands)
         std_dev_demand = statistics.stdev(monthly_outflows) / 30
         avg_demand = (statistics.mean(monthly_outflows) / 30)  # Assuming 30 days in a month to get daily demand
@@ -83,6 +83,9 @@ def check_stock_levels():
         item["average_monthly_outflow"] = avg_monthly_outflow
         item["safety_stock"] = safety_stock
         item["reorder_level"] = order_point
+        frappe.db.set_value("Item", item["name"], "average_monthly_outflow", avg_monthly_outflow)
+        frappe.db.set_value("Item", item["name"], "safety_stock", safety_stock)
+        frappe.db.set_value("Item", item["name"], "reorder_level", order_point)
         #print("Reorder Level: " + str(order_point) + " for Item: " + item["name"])
         #print("Safety Stock: " + str(safety_stock) + " for Item: " + item["name"])
         # Now let's check the stock levels against this new safety stock
@@ -130,7 +133,7 @@ def check_stock_levels():
 
 def sendmail(items):
     print("Sending email...")
-    #print(items)
+    print(items)
     if not items:
         return "No items to reorder."
     
