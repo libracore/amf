@@ -29,7 +29,7 @@ def check_stock_levels():
     items = frappe.get_all("Item", filters={'is_stock_item': 1, 'disabled': 0}, fields=["name", "item_name", "safety_stock", "reorder_level", "reorder", "item_group", "average_monthly_outflow"])
 
     # Test Line
-    items = frappe.get_all("Item", fields=["name", "item_name", "safety_stock", "reorder_level", "reorder", "item_group", "average_monthly_outflow"], filters={"name": "SPL.1212-C"})
+    #items = frappe.get_all("Item", fields=["name", "item_name", "safety_stock", "reorder_level", "reorder", "item_group", "average_monthly_outflow"], filters={"name": "SPL.1212-C"})
     items_to_email = []  # Create an empty list to hold items that need reordering
     for item in items:
         #print(item)
@@ -61,12 +61,14 @@ def check_stock_levels():
         std_dev_lead_time = group_data["std_dev_lead_time"]
         #print("avg_lead_time:",avg_lead_time)
         #print("std_dev_lead_time:",std_dev_lead_time)
-
+        avg_monthly_outflow = float(statistics.mean(monthly_outflows))
         # Calculate standard deviation and average of monthly outflows (demands)
         std_dev_demand = statistics.stdev(monthly_outflows) / 30
-        #print(monthly_outflows)
         avg_demand = (statistics.mean(monthly_outflows) / 30)  # Assuming 30 days in a month to get daily demand
-        frappe.db.set_value("Item", item["name"], "average_monthly_outflow", statistics.mean(monthly_outflows))
+        
+        #print(item["average_monthly_outflow"])
+        #print(type(avg_monthly_outflow))
+        #print(avg_monthly_outflow)
         # Calculate safety stock using the composite distribution formula
         safety_stock = Z * math.sqrt(
             avg_demand * (std_dev_lead_time) ** 2
@@ -78,8 +80,9 @@ def check_stock_levels():
         if safety_stock < 1:
             safety_stock = 0
         # Update safety stock value in Item doctype
-        frappe.db.set_value("Item", item["name"], "safety_stock", safety_stock)
-        frappe.db.set_value("Item", item["name"], "reorder_level", order_point)
+        item["average_monthly_outflow"] = avg_monthly_outflow
+        item["safety_stock"] = safety_stock
+        item["reorder_level"] = order_point
         #print("Reorder Level: " + str(order_point) + " for Item: " + item["name"])
         #print("Safety Stock: " + str(safety_stock) + " for Item: " + item["name"])
         # Now let's check the stock levels against this new safety stock
@@ -127,6 +130,7 @@ def check_stock_levels():
 
 def sendmail(items):
     print("Sending email...")
+    #print(items)
     if not items:
         return "No items to reorder."
     
