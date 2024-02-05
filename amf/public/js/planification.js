@@ -1,3 +1,15 @@
+/* Global Variables */
+const tableId = "myTable";
+const planningListURL = 'https://amf.libracore.ch/desk#List/Planning/List';
+const amfLogoURL = "https://amf.libracore.ch/files/Logo AMF Tagline WHITE.png";
+const drawingBaseURL = 'https://amf.libracore.ch/desk#Form/Work%20Order/';
+const driveURL = 'https://drive.google.com/drive/folders/1H6Eorf1nxAfNCES30Gzg5i0KG1r1CxO6?usp=sharing';
+const statusColors = {
+    'QC': '#b3ecec',
+    // ... other statuses ...
+    'Planned #5': '#F7DDDB',
+};
+
 /* Onload Function for General Display */
 window.onload = function () {
     // document.querySelector("nav").style.display = 'none';
@@ -101,7 +113,7 @@ function sortTable(columnIndex) {
 }
 
 /* Ready Function for General Display w/ Fetch&Display Planning List */
-(document).ready(function () {
+$(document).ready(function () {
     console.log("Getting the doc ready...");
 
     document.getElementById('planningList').addEventListener('click', function () {
@@ -421,7 +433,7 @@ document.getElementById("submitTerm").onclick = async function () {
         console.log(`Row name value: ${nameValue}`);
 
         frappe.call({
-            method: "amf.www.planification.planification.terminate_planning",
+            method: "amf.www.planification.terminate_planning",
             args: {
                 name: nameValue,
                 progTime: progTime,
@@ -441,7 +453,7 @@ document.getElementById("submitTerm").onclick = async function () {
     });
 
     const response = await frappe.call({
-        method: "amf.www.planification.planification.terminate_planning",
+        method: "amf.www.planification.terminate_planning",
         args: { doc },
     });
     console.log(response.message);
