@@ -178,18 +178,27 @@ def sendmail(items):
         """
     
     email_content += "</table>"
-    # print(email_content)
+    
     # Creating email context
     email_context = {
-        'recipients': ['alexandre.ringwald@amf.ch', 'alexandre.trachsel@amf.ch'],
+        'recipients': 'alexandre.ringwald@amf.ch',
         'content': email_content,
         'subject': "Safety Stock Report on Items",
         'communication_medium': 'Email',
         'doctype': 'Item',
         'send_email': True,
+        'cc': 'alexandre.trachsel@amf.ch',
         'attachments': [],  # Add any attachments if necessary
     }
-    
+
     # Creating communication and sending email
-    comm = make(**email_context)
-    return comm
+    try:
+        comm = make(**email_context)
+        print("'make' email return successfully.")
+        return comm
+    except AttributeError as e:
+        print(f"AttributeError occurred: {str(e)}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {str(e)}")
+
+    return None
