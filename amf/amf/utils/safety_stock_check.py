@@ -192,7 +192,6 @@ def sendmail(items):
         'content': email_content,
         'subject': "Safety Stock Report on Items",
         'communication_medium': 'Email',
-        'doctype': 'Item',
         'send_email': True,
         'attachments': [],  # Add any attachments if necessary
     }
