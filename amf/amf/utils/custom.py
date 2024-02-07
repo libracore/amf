@@ -1,5 +1,8 @@
 import frappe
 from collections import defaultdict
+from frappe.utils.file_manager import save_file
+from base64 import b64decode
+from amf.amf.utils.qr_code_generator import generate_qr_code
 
 @frappe.whitelist()
 def get_latest_serial_no(so_detail, sales_order, item_code):
@@ -74,3 +77,23 @@ def get_latest_serial_no_new(so_detail, sales_order, item_code):
     # except Exception as e:
     #     frappe.log_error(message=f"An error occurred: {e}", title="Get Latest Serial Number Error")
     #     return None
+
+
+def attach_qr_code_to_document(doc, method):
+    # Example data to encode in the QR code - customize as needed
+    data = frappe.utils.get_url_to_form(doc.doctype, doc.name)
+    print("data: ", data)
+    # Generate the QR code image as a base64 string
+    img_base64 = generate_qr_code(data)
+
+    # Decode the base64 string to binary data
+    img_data = b64decode(img_base64)
+
+    # Filename for the QR code image
+    file_name = f"{doc.name}_qr.png"
+    
+    # Create and attach the file to the document
+    file_url = save_file(file_name, img_data, doc.doctype, doc.name, is_private=1).file_url
+    
+    # Optionally update a field in the document with the URL of the attached image
+    doc.db_set('qrcode', file_url)
