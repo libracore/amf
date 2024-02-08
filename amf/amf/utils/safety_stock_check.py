@@ -4,6 +4,7 @@ import math
 import datetime
 import statistics
 
+@frappe.whitelist()
 def check_stock_levels():
     # Constants
     Z = 1.64  # Z-score for 95% service level
@@ -59,16 +60,10 @@ def check_stock_levels():
         group_data = item_group_data.get(item['item_group'], {"lead_time": 30, "std_dev_lead_time": 6}) # Default values if needed.
         avg_lead_time = group_data["lead_time"]
         std_dev_lead_time = group_data["std_dev_lead_time"]
-        #print("avg_lead_time:",avg_lead_time)
-        #print("std_dev_lead_time:",std_dev_lead_time)
         avg_monthly_outflow = statistics.mean(monthly_outflows)
         # Calculate standard deviation and average of monthly outflows (demands)
         std_dev_demand = statistics.stdev(monthly_outflows) / 30
         avg_demand = (statistics.mean(monthly_outflows) / 30)  # Assuming 30 days in a month to get daily demand
-        
-        #print(item["average_monthly_outflow"])
-        #print(type(avg_monthly_outflow))
-        #print(avg_monthly_outflow)
         # Calculate safety stock using the composite distribution formula
         safety_stock = Z * math.sqrt(
             avg_demand * (std_dev_lead_time) ** 2
@@ -86,8 +81,6 @@ def check_stock_levels():
         frappe.db.set_value("Item", item["name"], "average_monthly_outflow", avg_monthly_outflow)
         frappe.db.set_value("Item", item["name"], "safety_stock", safety_stock)
         frappe.db.set_value("Item", item["name"], "reorder_level", order_point)
-        #print("Reorder Level: " + str(order_point) + " for Item: " + item["name"])
-        #print("Safety Stock: " + str(safety_stock) + " for Item: " + item["name"])
         # Now let's check the stock levels against this new safety stock
         highest_stock = 0  # Initialize variable to store the highest stock value
         all_warehouses = frappe.get_all("Warehouse")
@@ -133,7 +126,7 @@ def check_stock_levels():
 
 def sendmail(items):
     print("Sending email...")
-    print(items)
+    #print(items)
     if not items:
         return "No items to reorder."
     
@@ -185,17 +178,26 @@ def sendmail(items):
         """
     
     email_content += "</table>"
-    # print(email_content)
+    
     # Creating email context
     email_context = {
-        'recipients': ['alexandre.ringwald@amf.ch', 'alexandre.trachsel@amf.ch'],
+        'recipients': 'alexandre.ringwald@amf.ch',
         'content': email_content,
         'subject': "Safety Stock Report on Items",
         'communication_medium': 'Email',
         'send_email': True,
+        'cc': 'alexandre.trachsel@amf.ch',
         'attachments': [],  # Add any attachments if necessary
     }
-    
+
     # Creating communication and sending email
-    comm = make(**email_context)
-    return comm
+    try:
+        comm = make(**email_context)
+        print("'make' email return successfully.")
+        return comm
+    except AttributeError as e:
+        print(f"AttributeError occurred: {str(e)}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {str(e)}")
+
+    return None
