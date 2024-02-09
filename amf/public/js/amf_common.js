@@ -28,16 +28,21 @@ window.onload = async function () {
         var navlogo = document.getElementsByClassName("app-logo");
         if (navlogo.length > 0) {
             if (window.location.hostname.includes("amf")) {
-                //navlogo[0].src = "https://amf.libracore.ch/files/AMF2023.png";
-                //navlogo[0].style.marginTop = "1";
-                //navlogo[0].setAttribute('style', 'width: 50px !important');
+                navlogo[0].src = "https://amf.libracore.ch/files/AMF2023-Full.png";
+                navlogo[0].setAttribute('style', 'width: 150px !important; margin-top: -1px !important');
+            } else {
                 navlogo[0].src = "https://amf.libracore.ch/files/AMF2023-Full.png";
                 navlogo[0].setAttribute('style', 'width: 150px !important; margin-top: -1px !important');
             }
         }
-        var navsearch = document.getElementById("navbar-search");
-        navsearch.style.backgroundColor = "#0022ce";
-        navsearch.style.borderColor = "#0022ce";
+        var navsearch = document.getElementById('navbar-search');
+            if (window.location.hostname.includes("amf")) {
+                navsearch.style.backgroundColor = "#2238AD";
+                navsearch.style.borderColor = "#2238AD";
+            } else {
+                navsearch.style.backgroundColor = "#02804E";
+                navsearch.style.borderColor = "#02804E";
+            }
     }, 500);
 }
 
