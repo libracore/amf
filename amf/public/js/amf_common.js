@@ -37,8 +37,8 @@ window.onload = async function () {
         }
         var navsearch = document.getElementById('navbar-search');
             if (window.location.hostname.includes("amf")) {
-                navsearch.style.backgroundColor = "#2238AD";
-                navsearch.style.borderColor = "#2238AD";
+                navsearch.style.backgroundColor = "#263fc3";
+                navsearch.style.borderColor = "#263fc3";
             } else {
                 navsearch.style.backgroundColor = "#02804E";
                 navsearch.style.borderColor = "#02804E";
