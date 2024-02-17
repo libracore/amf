@@ -21,8 +21,8 @@ def check_stock_levels():
         "Valve Head": {"lead_time": 15, "std_dev_lead_time": 5},
         "Raw Materials": {"lead_time": 120, "std_dev_lead_time": 30},
         "Electronic Boards": {"lead_time": 90, "std_dev_lead_time": 20},
-        "Plug": {"lead_time": 60, "std_dev_lead_time": 10},
-        "Valve Seat": {"lead_time": 90, "std_dev_lead_time": 20},
+        "Plug": {"lead_time": 30, "std_dev_lead_time": 10},
+        "Valve Seat": {"lead_time": 60, "std_dev_lead_time": 20},
         "Parts": {"lead_time": 15, "std_dev_lead_time": 5},
         "Products": {"lead_time": 30, "std_dev_lead_time": 6}
     }
@@ -82,8 +82,8 @@ def check_stock_levels():
             print("Item:", item["name"])
             print("avg_lead_time:", avg_lead_time)
             print("std_dev_lead_time:", std_dev_lead_time)
-            print("avg_monthly_outflow:", avg_monthly_outflow)
             print("monthly_outflows:", monthly_outflows)
+            print("avg_monthly_outflow:", avg_monthly_outflow)
             print("std_dev_demand:", std_dev_demand)
             print("avg_demand:", avg_demand)
             print("safety_stock:", safety_stock)
@@ -115,8 +115,6 @@ def check_stock_levels():
                 highest_stock = current_stock
 
         item['highest_stock'] = highest_stock  # Assign highest_stock to the item dictionary
-
-        
 
         if highest_stock < item["reorder_level"]:
             # Set the "Reorder" checkbox to True (checked)
