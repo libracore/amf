@@ -6,6 +6,8 @@ import statistics
 
 @frappe.whitelist()
 def check_stock_levels():
+    # Test Mode
+    test_mode = None
     # Constants
     Z = 1.64  # Z-score for 95% service level
     # avg_lead_time = 90  # Average lead time in days
@@ -28,9 +30,9 @@ def check_stock_levels():
     current_year = datetime.datetime.now().year
 
     items = frappe.get_all("Item", filters={'is_stock_item': 1, 'disabled': 0}, fields=["name", "item_name", "safety_stock", "reorder_level", "reorder", "item_group", "average_monthly_outflow"])
-
-    # Test Line
-    #items = frappe.get_all("Item", fields=["name", "item_name", "safety_stock", "reorder_level", "reorder", "item_group", "average_monthly_outflow"], filters={"name": "SPL.1212-C"})
+    if test_mode:
+        # Test Line
+        items = frappe.get_all("Item", fields=["name", "item_name", "safety_stock", "reorder_level", "reorder", "item_group", "average_monthly_outflow"], filters={"name": "SPL.1208-U"})
     items_to_email = []  # Create an empty list to hold items that need reordering
     for item in items:
         #print(item)
@@ -74,6 +76,19 @@ def check_stock_levels():
 
         if safety_stock < 1:
             safety_stock = 0
+            
+        # Test Print
+        if test_mode:
+            print("Item:", item["name"])
+            print("avg_lead_time:", avg_lead_time)
+            print("std_dev_lead_time:", std_dev_lead_time)
+            print("avg_monthly_outflow:", avg_monthly_outflow)
+            print("monthly_outflows:", monthly_outflows)
+            print("std_dev_demand:", std_dev_demand)
+            print("avg_demand:", avg_demand)
+            print("safety_stock:", safety_stock)
+            print("order_point:", order_point)
+
         # Update safety stock value in Item doctype
         item["average_monthly_outflow"] = avg_monthly_outflow
         item["safety_stock"] = safety_stock
@@ -101,6 +116,8 @@ def check_stock_levels():
 
         item['highest_stock'] = highest_stock  # Assign highest_stock to the item dictionary
 
+        
+
         if highest_stock < item["reorder_level"]:
             # Set the "Reorder" checkbox to True (checked)
             frappe.db.set_value("Item", item["name"], "reorder", 1)
@@ -111,7 +128,10 @@ def check_stock_levels():
             # Set the "Reorder" checkbox to True (checked)
             frappe.db.set_value("Item", item["name"], "reorder", 0)
             #print(f"Setting 'reorder' to 0 / Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']} / Reorder Level = {item['reorder_level']}")
-        
+
+    if test_mode:
+        items_to_email = None
+
     # Send the email for items that need reordering
     if items_to_email:
         sendmail(items_to_email)
