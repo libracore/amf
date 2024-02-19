@@ -98,6 +98,7 @@ def attach_qr_code_to_document(doc, method):
     # Optionally update a field in the document with the URL of the attached image
     doc.db_set('qrcode', file_url)
 
+@frappe.whitelist()
 def qr_code_to_document(doc, method):
     # Form the URL as specified
     data = frappe.utils.get_url_to_form(doc.doctype, doc.name)
