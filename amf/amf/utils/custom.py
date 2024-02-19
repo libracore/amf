@@ -1,3 +1,4 @@
+from pipes import quote
 import frappe
 from collections import defaultdict
 from frappe.utils.file_manager import save_file
@@ -97,3 +98,48 @@ def attach_qr_code_to_document(doc, method):
     
     # Optionally update a field in the document with the URL of the attached image
     doc.db_set('qrcode', file_url)
+
+@frappe.whitelist()
+def qr_code_to_document(doc, method=None):
+    # Form the URL as specified
+    data = frappe.utils.get_url_to_form(doc.doctype, doc.name)
+    print("data: ", data)
+    
+    # Generate the QR code image as a base64 string
+    img_base64 = generate_qr_code(data)
+    
+    # Decode the base64 string to binary data
+    img_data = b64decode(img_base64)
+
+    # Filename for the QR code image
+    file_name = f"{doc.name}_qr.png"
+    
+    # Create and attach the file to the document
+    file_url = save_file(file_name, img_data, doc.doctype, doc.name, is_private=1).file_url
+    print("file_url: ", file_url)
+    # Optionally update a field in the document with the URL of the attached image
+    doc.db_set('qrcode', file_url)
+
+@frappe.whitelist()
+def generate_qr_for_submitted(doctype=None):
+    if doctype:
+        doc_types = [doctype]
+    else:
+        doc_types = ['Work Order', 'Job Card', 'Stock Entry']
+    print("doctype:", doc_types)
+
+    for doc_type in doc_types:
+        # Fetch all submitted documents of the current DocType
+        documents = frappe.get_list(doc_type, filters={'docstatus': 1}, fields=['name'])
+        
+        for doc in documents:
+            # Fetch the document object
+            doc_obj = frappe.get_doc(doc_type, doc['name'])
+            
+            # Assuming qr_code_to_document is properly defined and imported
+            try:
+                qr_code_to_document(doc_obj)
+                frappe.db.commit()  # Commit changes after each document to ensure data is saved
+            except Exception as e:
+                # Log errors without stopping the entire operation
+                frappe.log_error(f"Failed to generate QR for {doc_type} {doc['name']}: {e}", "QR Code Generation Error")
