@@ -97,3 +97,23 @@ def attach_qr_code_to_document(doc, method):
     
     # Optionally update a field in the document with the URL of the attached image
     doc.db_set('qrcode', file_url)
+
+def qr_code_to_document(doc, method):
+    # Form the URL as specified
+    data = frappe.utils.get_url_to_form(doc.doctype, doc.name)
+    print("data: ", data)
+    
+    # Generate the QR code image as a base64 string
+    img_base64 = generate_qr_code(data)
+    
+    # Decode the base64 string to binary data
+    img_data = b64decode(img_base64)
+
+    # Filename for the QR code image
+    file_name = f"{doc.name}_qr.png"
+    
+    # Create and attach the file to the document
+    file_url = save_file(file_name, img_data, doc.doctype, doc.name, is_private=1).file_url
+    print("file_url: ", file_url)
+    # Optionally update a field in the document with the URL of the attached image
+    doc.db_set('qrcode', file_url)

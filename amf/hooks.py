@@ -120,11 +120,11 @@ doctype_list_js = {
 doc_events = {
     "Work Order": {
         "on_submit": [
-            "amf.amf.utils.on_work_order_submit.generate_qr",
+            "amf.amf.utils.custom.qr_code_to_document",
             "amf.amf.utils.on_work_order_submit.on_submit_wo",
         ]
     },
-    "Job Card": {"on_submit": "amf.amf.utils.on_work_order_submit.generate_qr"},
+    "Job Card": {"on_submit": "amf.amf.utils.custom.qr_code_to_document"},
     "Lead": {
         "before_save": [
             "amf.amf.utils.lead_customization.create_address_from_lead",
@@ -134,6 +134,7 @@ doc_events = {
     "Planning": {"on_update": "amf.www.planification.get_filter_value"},
     # "Stock Entry": {"before_submit": "amf.amf.utils.stock_entry.batch_to_stock_entry"},
     "Stock Entry": {"before_save": "amf.www.fftest.update_rate_and_availability_ste"},
+    "Stock Entry": {"on_submit": "amf.amf.utils.custom.qr_code_to_document"},
     "Production Order": {"before_submit": "amf.amf.utils.custom.attach_qr_code_to_document"},
 }
 
