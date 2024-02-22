@@ -42,7 +42,10 @@ def generate_html_report(issues):
         html_content += f"<h3>Issues for {owner}</h3>"
         html_content += "<table border='1'><tr><th>ID</th><th>Subject</th><th>Input</th><th>Issue Type</th><th>Raised By</th><th>Created On</th><th>Priority</th></tr>"
         for issue in issues:
-            html_content += f"<tr><td>{issue['name']}</td><td>{issue['subject']}</td><td>{issue['input_selection']}</td><td>{issue['issue_type']}</td><td>{issue['amf_contact']}</td><td>{issue['creation']}</td><td>{issue['priority_result']}</td></tr>"
+            # Construct the URL for each issue
+            issue_url = f"https://amf.libracore.ch/desk#Form/Issue/{issue['name']}"
+            # Embed the issue name within an anchor (<a>) tag to make it clickable
+            html_content += f"<tr><td><a href='{issue_url}' target='_blank'>{issue['name']}</a></td><td>{issue['subject']}</td><td>{issue['input_selection']}</td><td>{issue['issue_type']}</td><td>{issue['amf_contact']}</td><td>{issue['creation']}</td><td>{issue['priority_result']}</td></tr>"
         html_content += "</table><br>"
 
         if test_mode:
