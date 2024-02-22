@@ -152,9 +152,9 @@ scheduler_events = {
     "hourly": [
         "amf.amf.utils.document_notification.update_purchase_orders",
     ],
-    # 	"weekly": [
-    # 		"amf.tasks.weekly"
-    # 	]
+    "weekly": [
+    	"amf.amf.utils.check_issue.fetch_open_issues"
+    ],
     # 	"monthly": [
     # 		"amf.tasks.monthly"
     # 	]
