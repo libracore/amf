@@ -1,13 +1,14 @@
 from erpnext.stock.doctype.stock_entry.stock_entry import get_additional_costs
 import frappe
-from frappe.utils.data import flt
+from frappe.utils import random_string
+from frappe.utils.data import flt, today
 from frappe import _, ValidationError
 
 @frappe.whitelist()
 def make_stock_entry(work_order_id, serial_no_id=None):
-    print("make_stock_entry")
+    print("make_stock_entry()")
     try:
-        print("Creating New Stock Entry.")
+        print("Creating New Stock Entry...")
         
         # Validate work_order_id
         if not frappe.db.exists("Work Order", work_order_id):
@@ -85,10 +86,14 @@ def make_stock_entry(work_order_id, serial_no_id=None):
     
             last_item.serial_no = serial_no_id
 
+        last_item.batch_no = assign_or_create_batch_for_last_item(work_order_id, last_item)
+
+        update_rate_and_availability_ste(stock_entry, None)
+
         # Commit changes
         stock_entry.save()
         stock_entry.submit()
-        
+        print(stock_entry)
         return stock_entry
     
     except ValidationError as ve:
@@ -97,6 +102,47 @@ def make_stock_entry(work_order_id, serial_no_id=None):
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         return {"error": str(e)}
+
+def assign_or_create_batch_for_last_item(work_order_id, last_item):
+    """
+    Check all batches for a given work order ID. If a matching batch is found, use its batch name for the last_item.
+    If no matching batch exists, create a new batch and link it to the work order.
+    """
+    print("assign_or_create_batch_for_last_item()")
+    if frappe.db.get_value("Item", last_item.item_code, "has_batch_no") == 1:
+        # Search for an existing batch linked to the specified work order
+        existing_batch_name = frappe.db.get_value("Batch", filters={
+            "work_order": work_order_id,
+            "item": last_item.item_code
+        }, fieldname="name")
+
+        if existing_batch_name:
+            # If a matching batch exists, assign its name to the last_item
+            return existing_batch_name
+        else:
+            # If no matching batch exists, create a new one and link it to the work order
+            work_order_doc = frappe.get_doc("Work Order", work_order_id)
+            batch = frappe.new_doc("Batch")
+            batch.name = create_batch_name(last_item.item_code, work_order_doc.qty)
+            batch.batch_id = batch.name
+            batch.item = last_item.item_code
+            batch.work_order = work_order_id
+            batch.insert(ignore_permissions=True)
+            last_item.batch_no = batch.name
+            # Commit the changes to ensure the new batch is properly saved
+            frappe.db.commit()
+            return batch.name
+
+def create_batch_name(item_code, work_order_qty):
+    """
+    Construct a batch name based on the given item code, current date, a constant string "AMF", the work order quantity,
+    and a unique identifier.
+    """
+    date_str = today()
+    unique_id = random_string(5)
+    batch_name = f"{item_code} • {date_str} • AMF • {work_order_qty} • {unique_id}"
+    print(batch_name)
+    return batch_name
 
 def update_rate_and_availability_ste(doc, method):    
     # Call the get_stock_and_rate method

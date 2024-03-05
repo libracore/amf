@@ -143,3 +143,56 @@ def generate_qr_for_submitted(doctype=None):
             except Exception as e:
                 # Log errors without stopping the entire operation
                 frappe.log_error(f"Failed to generate QR for {doc_type} {doc['name']}: {e}", "QR Code Generation Error")
+
+@frappe.whitelist()
+def set_all_standard_fields(doctype, standard_field, new_custom_field):
+    test_mode = None
+    """
+    Update the 'standard_field' of all documents of a given 'doc_type' 
+    with the value provided in 'new_custom_field_value'.
+    
+    :param doc_type: The DocType to update.
+    :param standard_field: The name of the standard field to update.
+    :param new_custom_field_value: The value to set for the standard field.
+    """
+    # Ensure the DocType and field names are provided
+    if not doctype or not standard_field:
+        return 'DocType and standard field names are required.'
+    
+    try:
+        # Fetch all documents of the specified DocType
+        documents = frappe.get_all(doctype, fields=['name'])
+        if test_mode:
+            print(doctype)
+            print(new_custom_field)
+            print(standard_field)
+        
+        for doc in documents:
+            # Fetch the document
+            document = frappe.get_doc(doctype, doc['name'])
+            new_value = getattr(document, new_custom_field, None)
+            # Update the standard field with the new custom field value
+            if test_mode:
+                print(getattr(document, standard_field, 'Field not found'))
+            elif test_mode is None:
+                setattr(document, standard_field, new_value)
+                if doctype == 'Issue':
+                    if not document.impact:
+                        setattr(document, 'impact', '-')
+                    if not document.urgency:
+                        setattr(document, 'urgency', '-')
+                    if not document.input_selection:
+                        setattr(document, 'input_selection', '-')
+                    if not document.issue_type:
+                        setattr(document, 'issue_type', '-')
+                document.save()
+        if not test_mode:
+            # Commit the changes to the database
+            frappe.db.commit()
+
+        return f'Successfully updated {len(documents)} documents.'
+    except Exception as e:
+        # Log detailed error information
+        error_message = f'Error updating documents: {str(e)}'
+        frappe.log_error(error_message, 'set_all_standard_fields')
+        return error_message  # Provide more detailed feedback to the caller.
