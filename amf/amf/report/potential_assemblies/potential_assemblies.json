@@ -1,0 +1,43 @@
+{
+ "add_total_row": 0,
+ "creation": "2024-03-08 16:07:48.433682",
+ "disable_prepared_report": 0,
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "idx": 0,
+ "is_standard": "Yes",
+ "letter_head": "Standard",
+ "modified": "2024-03-08 16:07:49.471044",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "Potential Assemblies",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "ref_doctype": "Bin",
+ "report_name": "Potential Assemblies",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "Maintenance User"
+  },
+  {
+   "role": "Sales Manager"
+  },
+  {
+   "role": "Stock User"
+  },
+  {
+   "role": "Accounts User"
+  },
+  {
+   "role": "Sales User"
+  },
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "Stock Manager"
+  }
+ ]
+}
