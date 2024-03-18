@@ -10,10 +10,10 @@ def get_details_for_work_order(work_order_name):
     
     # Initialize your infoDocType structure with details from the Work Order
     infoDocType = {
-        "production_item": work_order.production_item,
-        "item_name": work_order.item_name,
-        "assembly_specialist_start": work_order.assembly_specialist_start,
-        "produced_qty": work_order.produced_qty,
+        "Item Code": work_order.production_item,
+        "Item Name": work_order.item_name,
+        "Responsable": work_order.assembly_specialist_start,
+        "Quantité Validée": work_order.produced_qty,
         "qrcode": work_order.qrcode,
     }
     
@@ -48,8 +48,8 @@ def get_details_for_work_order(work_order_name):
     # Update infoDocType with details from the last relevant Stock Entry item
     if last_item_with_batch_or_serial:
         infoDocType.update({
-            "batch_no": last_item_with_batch_or_serial.get("batch_no", ""),
-            "serial_no": last_item_with_batch_or_serial.get("serial_no", ""),
-            "rawMat": rawMatCode
+            "Batch n/o": last_item_with_batch_or_serial.get("batch_no", ""),
+            "Serial n/o": last_item_with_batch_or_serial.get("serial_no", ""),
+            "Raw Material": rawMatCode
         })
     return infoDocType
