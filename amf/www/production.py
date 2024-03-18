@@ -31,6 +31,19 @@ def create_work_order(form_data: str) -> dict:
             'assembly_specialist_end': data['machinist'],
             'start_date_time': data['start_date'],
             'end_date_time': data['end_date'],
+            'scrap_qty': data['scrap_quantity'],
+            'machine': data['machine'],
+            'raw_material': data['raw_material'],
+            'raw_material_batch': data['raw_material_batch'],
+            'raw_material_dim': data['raw_material_dimensions'],
+            'start_datetime': data['start_date'],
+            'end_datetime': data['end_date'],
+            'cycle_time': data['cycle_time'],
+            'program': data['program'],
+            'program_time': data['programmation'],
+            'setup_time': data['met'],
+            'production_comments': data['comment'],
+            'label': data['m_number'],
             # Additional fields can be added here if required
         })
         work_order.insert()
