@@ -99,7 +99,7 @@ def check_stock_levels():
         # Now let's check the stock levels against this new safety stock
         highest_stock = 0  # Initialize variable to store the highest stock value
         all_warehouses = frappe.get_all("Warehouse")
-        filtered_warehouses = [wh for wh in all_warehouses if "AMF_OLD" not in wh.name and "Scrap - AMF21" not in wh.name]
+        filtered_warehouses = [wh for wh in all_warehouses if "AMF_OLD" not in wh.name and "Scrap - AMF21" not in wh.name and "R&D - AMF21" not in wh.name]
 
         for warehouse in filtered_warehouses:
             current_stock = (
