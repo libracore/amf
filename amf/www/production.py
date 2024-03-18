@@ -25,7 +25,7 @@ def create_work_order(form_data: str) -> dict:
             'destination': 'N/A',
             'qty': int(data['quantity']) + int(data['scrap_quantity']),
             'wip_warehouse': 'Main Stock - AMF21',
-            'fg_warehouse': 'Main Stock - AMF21',
+            'fg_warehouse': 'Quality Control - AMF21',
             'company': frappe.db.get_single_value('Global Defaults', 'default_company'),
             'assembly_specialist_start': data['machinist'],
             'assembly_specialist_end': data['machinist'],
@@ -43,6 +43,7 @@ def create_work_order(form_data: str) -> dict:
             'program_time': data['programmation'],
             'setup_time': data['met'],
             'production_comments': data['comment'],
+            'simple_description': data['commentprd'],
             'label': data['m_number'],
             # Additional fields can be added here if required
         })
