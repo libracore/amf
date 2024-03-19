@@ -11,6 +11,7 @@ def get_details_for_work_order(work_order_name):
     item_name = frappe.db.get_value('Item', work_order.production_item, 'item_name')
     # Initialize your infoDocType structure with details from the Work Order
     infoDocType = {
+        "OF": work_order.name,
         "Item Code": work_order.production_item,
         "Item Name": item_name,
         "Responsable": work_order.assembly_specialist_start,
