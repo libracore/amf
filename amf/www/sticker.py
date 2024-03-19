@@ -8,12 +8,13 @@ def get_details_for_work_order(work_order_name):
     if not work_order:
         return {"error": _("No Work Order found for name {0}").format(work_order_name)}
     
+    item_name = frappe.db.get_value('Item', work_order.production_item, 'item_name')
     # Initialize your infoDocType structure with details from the Work Order
     infoDocType = {
         "Item Code": work_order.production_item,
-        "Item Name": work_order.item_name,
+        "Item Name": item_name,
         "Responsable": work_order.assembly_specialist_start,
-        "Quantité Validée": work_order.produced_qty,
+        "Quantité Acc.": int(work_order.produced_qty) - int(work_order.scrap_qty),
         "qrcode": work_order.qrcode,
     }
     
