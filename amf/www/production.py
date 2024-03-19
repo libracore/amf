@@ -25,12 +25,26 @@ def create_work_order(form_data: str) -> dict:
             'destination': 'N/A',
             'qty': int(data['quantity']) + int(data['scrap_quantity']),
             'wip_warehouse': 'Main Stock - AMF21',
-            'fg_warehouse': 'Main Stock - AMF21',
+            'fg_warehouse': 'Quality Control - AMF21',
             'company': frappe.db.get_single_value('Global Defaults', 'default_company'),
             'assembly_specialist_start': data['machinist'],
             'assembly_specialist_end': data['machinist'],
             'start_date_time': data['start_date'],
             'end_date_time': data['end_date'],
+            'scrap_qty': data['scrap_quantity'],
+            'machine': data['machine'],
+            'raw_material': data['raw_material'],
+            'raw_material_batch': data['raw_material_batch'],
+            'raw_material_dim': data['raw_material_dimensions'],
+            'start_datetime': data['start_date'],
+            'end_datetime': data['end_date'],
+            'cycle_time': data['cycle_time'],
+            'program': data['program'],
+            'program_time': data['programmation'],
+            'setup_time': data['met'],
+            'production_comments': data['comment'],
+            'simple_description': data['commentprd'],
+            'label': data['m_number'],
             # Additional fields can be added here if required
         })
         work_order.insert()
@@ -110,7 +124,7 @@ def make_stock_entry_(work_order_id, purpose, qty=None, scrap=None, ft_stock_ent
     #frappe.db.commit()
 
     # Create the second stock entry for transferring finished goods to scrap, if scrap is provided
-    if scrap and (qty is None):
+    if qty is None:
         create_stock_entry(work_order, purpose, None, scrap, False, ft_stock_entry)
         # Commit after creating the second stock entry
         #frappe.db.commit()

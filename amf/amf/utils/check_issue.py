@@ -14,7 +14,7 @@ def fetch_open_issues():
     # Dynamic ordering based on input_selection and then by issue_type.
     # Assuming 'input_selection' is a field name to sort by, and you have it available here.
     input_selection = 'input_selection'  # Example, replace with actual field name if different.
-    issues.sort(key=lambda x: (x[input_selection], x['issue_type']))
+    issues.sort(key=lambda x: (x.get(input_selection, "") or "", x.get('issue_type', "") or ""))
     if test_mode:
         print(issues)
     generate_html_report(issues)
@@ -70,11 +70,12 @@ def send_email_report(html_content, owner_emails):
             'cc': '',  # Adjust CC as necessary
             'attachments': [],  # Add any attachments if necessary
         }
-
+    
         # Creating communication and sending email
     try:
         comm = make(**email_context)
         print(f"'make' email sent successfully to {owner_emails}.")
+        return comm
     except AttributeError as e:
         print(f"AttributeError occurred: {str(e)}")
     except Exception as e:
