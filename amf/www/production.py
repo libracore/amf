@@ -124,7 +124,7 @@ def make_stock_entry_(work_order_id, purpose, qty=None, scrap=None, ft_stock_ent
     #frappe.db.commit()
 
     # Create the second stock entry for transferring finished goods to scrap, if scrap is provided
-    if scrap and (qty is None):
+    if qty is None:
         create_stock_entry(work_order, purpose, None, scrap, False, ft_stock_entry)
         # Commit after creating the second stock entry
         #frappe.db.commit()
