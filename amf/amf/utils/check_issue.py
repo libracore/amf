@@ -70,7 +70,7 @@ def send_email_report(html_content, owner_emails):
             'cc': '',  # Adjust CC as necessary
             'attachments': [],  # Add any attachments if necessary
         }
-
+    
         # Creating communication and sending email
     try:
         comm = make(**email_context)
