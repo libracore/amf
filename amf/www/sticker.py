@@ -14,7 +14,7 @@ def get_details_for_work_order(work_order_name):
         "Item Code": work_order.production_item,
         "Item Name": item_name,
         "Responsable": work_order.assembly_specialist_start,
-        "Quantité Acc.": int(work_order.produced_qty) - int(work_order.scrap_qty),
+        "Quantité": int(work_order.produced_qty) - int(work_order.scrap_qty),
         "qrcode": work_order.qrcode,
     }
     
