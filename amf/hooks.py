@@ -136,6 +136,7 @@ doc_events = {
     "Stock Entry": {"before_save": "amf.www.fftest.update_rate_and_availability_ste"},
     "Stock Entry": {"on_submit": "amf.amf.utils.custom.qr_code_to_document"},
     "Production Order": {"before_submit": "amf.amf.utils.custom.attach_qr_code_to_document"},
+    #"Batch": {"after_insert": "amf.amf.utils.barcode.after_insert_handler"},
 }
 
 # Scheduled Tasks
