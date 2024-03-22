@@ -140,7 +140,7 @@ def create_batch_name(item_code, work_order_qty):
     """
     date_str = today()
     unique_id = random_string(5)
-    batch_name = f"{item_code} • {date_str} • AMF • {work_order_qty} • {unique_id}"
+    batch_name = f"{item_code} {date_str} AMF {work_order_qty} {unique_id}"
     print(batch_name)
     return batch_name
 
