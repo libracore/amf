@@ -51,6 +51,7 @@ def get_details_for_work_order(work_order_name):
     if last_item_with_batch_or_serial:
         infoDocType.update({
             "Batch": last_item_with_batch_or_serial.get("batch_no", ""),
+            #get the barcode from the batch.name
             "Serial n/o": last_item_with_batch_or_serial.get("serial_no", ""),
             "Matière": rawMatCode
         })
