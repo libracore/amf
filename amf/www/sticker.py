@@ -11,11 +11,11 @@ def get_details_for_work_order(work_order_name):
     item_name = frappe.db.get_value('Item', work_order.production_item, 'item_name')
     # Initialize your infoDocType structure with details from the Work Order
     infoDocType = {
-        "OF": work_order.name,
+        "Ordre Fab": work_order.name,
         "Item Code": work_order.production_item,
         "Item Name": item_name,
-        "Responsable": work_order.assembly_specialist_start,
-        "Quantité": int(work_order.produced_qty) - int(work_order.scrap_qty),
+        "Leader": work_order.assembly_specialist_start,
+        "Quantité": (int(work_order.produced_qty or 0) - int(work_order.scrap_qty or 0)),
         "qrcode": work_order.qrcode,
     }
     
@@ -51,7 +51,8 @@ def get_details_for_work_order(work_order_name):
     if last_item_with_batch_or_serial:
         infoDocType.update({
             "Batch": last_item_with_batch_or_serial.get("batch_no", ""),
+            #get the barcode from the batch.name
             "Serial n/o": last_item_with_batch_or_serial.get("serial_no", ""),
-            "Raw Material": rawMatCode
+            "Matière": rawMatCode
         })
     return infoDocType

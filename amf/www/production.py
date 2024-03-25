@@ -175,14 +175,14 @@ def create_batch_if_manufacture(self):
 
         if item_has_batch_no:
             posting_date = self.posting_date
-            batch_id = f"{last_item.item_code} • {posting_date} • AMF • {self.fg_completed_qty}"
+            batch_id = f"{last_item.item_code} {posting_date} AMF {self.fg_completed_qty}"
             existing_batch = frappe.db.exists('Batch', {'batch_id': batch_id})
 
             if existing_batch:
                 # Handling duplicate - generating a unique batch ID
                 # Example: appending a timestamp or a counter
                 unique_suffix = now_datetime().strftime('%H%M%S')  # Using timestamp for uniqueness
-                batch_id += f" • {unique_suffix}"
+                batch_id += f" {unique_suffix}"
 
             # Create new batch with either the original or updated unique batch ID
             new_batch_doc = frappe.get_doc({

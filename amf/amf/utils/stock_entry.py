@@ -13,7 +13,7 @@ def batch_to_stock_entry(doc, method=None):
         # If the item has a batch number
         if has_batch_no:
             # Generate the batch_id using the given format
-            batch_id = f"{last_item.item_code} • {doc.posting_date} • {doc.work_order} • {int(doc.fg_completed_qty)}"
+            batch_id = f"{last_item.item_code} {doc.posting_date} {doc.work_order} {int(doc.fg_completed_qty)}"
             print(batch_id)
             # Create a new Batch entry
             new_batch = frappe.get_doc(

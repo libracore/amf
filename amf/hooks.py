@@ -136,6 +136,7 @@ doc_events = {
     "Stock Entry": {"before_save": "amf.www.fftest.update_rate_and_availability_ste"},
     "Stock Entry": {"on_submit": "amf.amf.utils.custom.qr_code_to_document"},
     "Production Order": {"before_submit": "amf.amf.utils.custom.attach_qr_code_to_document"},
+    "Batch": {"after_insert": "amf.amf.utils.barcode.after_insert_handler"},
 }
 
 # Scheduled Tasks
@@ -146,14 +147,14 @@ scheduler_events = {
     # 		"amf.tasks.all"
     # 	],
     "daily": [
-        "amf.amf.utils.safety_stock_check.check_stock_levels",
         "amf.amf.utils.item_image.update_item_images",
     ],
     "hourly": [
         "amf.amf.utils.document_notification.update_purchase_orders",
     ],
     "weekly": [
-    	"amf.amf.utils.check_issue.fetch_open_issues"
+    	"amf.amf.utils.check_issue.fetch_open_issues",
+        "amf.amf.utils.safety_stock_check.check_stock_levels",
     ],
     # 	"monthly": [
     # 		"amf.tasks.monthly"
