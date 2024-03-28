@@ -377,3 +377,55 @@ def generate_dhl(delivery_note_id):
     }).insert()
 
     return {"status": "success", "data": dhl_data, "message": "File has been successfully generated"}
+
+def check_serial_nos(doc, method):
+    test_mode = False
+    # Iterate over all Delivery Note Items
+    for item in doc.items:
+        if test_mode: print("item:",item.name)
+        serial_no_list = []
+        # Fetch the 'has_serial_no' field value from the linked Item
+        item_details = frappe.get_doc('Item', item.item_code)
+        if test_mode: print("item_details:",item_details.name)
+        if item_details.has_serial_no:
+            if test_mode: print("has_serial_no")
+            # If the Item requires a serial number, proceed to find linked Work Orders
+            sales_order_linked = item.against_sales_order
+            if test_mode: print(sales_order_linked)
+            if sales_order_linked:
+                work_orders = frappe.get_list('Work Order',
+                                              filters={
+                                                  'sales_order': sales_order_linked,
+                                                  'status': ['in', ['Completed', 'In Progress']]
+                                              },
+                                              fields=['name'])
+                if test_mode: print("work_orders:",work_orders)
+                for wo in work_orders:
+                    # Fetch Stock Entries linked to this Work Order
+                    stock_entries = frappe.get_list('Stock Entry',
+                                                    filters={'work_order': wo.name, 'docstatus': 1},
+                                                    fields=['name'])
+                    
+                    for se in stock_entries:
+                        # Fetch serial numbers from each Stock Entry Detail
+                        serial_numbers = frappe.db.sql("""
+                            SELECT serial_no
+                            FROM `tabStock Entry Detail`
+                            WHERE parent=%s AND docstatus=1
+                        """, (se.name), as_dict=1)
+                        # Process the fetched serial numbers for both cases
+                        if test_mode: print(serial_numbers)
+                        for sn in serial_numbers:
+                            if sn['serial_no'] and ('\n' in sn['serial_no']):
+                                # If serial numbers are concatenated with newline, split and extend the list
+                                serial_no_list.extend(sn['serial_no'].split('\n'))
+                            elif sn['serial_no']:
+                                # If single serial number, append it to the list
+                                serial_no_list.append(sn['serial_no'])
+
+                # Remove any empty strings that might have resulted from splitting
+                serial_no_list = [sn for sn in serial_no_list if sn]
+                print(serial_no_list)
+                if serial_no_list:
+                    # Update the custom field in the Delivery Note Item with the serial numbers
+                    item.db_set('serial_no', '\n'.join(serial_no_list))

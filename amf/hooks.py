@@ -137,6 +137,9 @@ doc_events = {
     "Stock Entry": {"on_submit": "amf.amf.utils.custom.qr_code_to_document"},
     "Production Order": {"before_submit": "amf.amf.utils.custom.attach_qr_code_to_document"},
     "Batch": {"after_insert": "amf.amf.utils.barcode.after_insert_handler"},
+    "Delivery Note": {
+        #"validate": "amf.amf.utils.delivery_note_api.check_serial_nos"
+    }
 }
 
 # Scheduled Tasks
