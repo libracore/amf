@@ -196,3 +196,39 @@ def set_all_standard_fields(doctype, standard_field, new_custom_field):
         error_message = f'Error updating documents: {str(e)}'
         frappe.log_error(error_message, 'set_all_standard_fields')
         return error_message  # Provide more detailed feedback to the caller.
+
+@frappe.whitelist()    
+def update_item_descriptions():
+    # Fetch all items in the 'Valve Head' group
+    test_mode = False
+    items = frappe.get_list('Item', filters={'item_group': 'Valve Head', 'disabled': False}, fields=['name'])
+    if test_mode: items = frappe.get_list('Item', filters={'item_code': 'V-DS-1-10-100-C-P', 'item_group': 'Valve Head'}, fields=['name'])
+    for item in items:
+        try:
+            if test_mode: print(item)
+            # Clear the description first
+            frappe.db.set_value('Item', item.name, 'description', '')
+            item_doc = frappe.get_doc('Item', item.name)
+            
+            # Building the new description from item attributes
+            # Building the new description from item attributes in HTML table format
+            # Building the new description from item attributes in HTML table format with styling
+            new_description = """
+            <table style="width: 20%; border-collapse: collapse;">
+            """
+            for attribute in item_doc.attributes:
+                new_description += f"""
+                <tr>
+                    <td style="background-color: #f2f2f2;">{attribute.attribute}</td>
+                    <td>{attribute.attribute_value}</td>
+                </tr>
+                """
+            new_description += "</table>"
+
+            # Clear and update the description
+            item_doc.description = new_description
+            item_doc.save()
+        except frappe.exceptions.ValidationError as e:
+            # Log the error for later review, including the item name that caused it
+            frappe.log_error(f"Error updating item {item.name}: {str(e)}", "Item Update Error")
+            continue  # Proceed with the next item
