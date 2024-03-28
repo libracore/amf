@@ -126,7 +126,7 @@ doc_events = {
     },
     "Job Card": {"on_submit": "amf.amf.utils.custom.qr_code_to_document"},
     "Lead": {
-        "before_save": [
+        "after_insert": [
             "amf.amf.utils.lead_customization.create_address_from_lead",
             "amf.amf.utils.lead_customization.create_contact_from_lead",
         ]
