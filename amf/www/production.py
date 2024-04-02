@@ -148,6 +148,7 @@ def create_stock_entry(work_order, purpose, qty, scrap, from_bom, ft_stock_entry
         stock_entry.to_warehouse = 'Scrap - AMF21'
         item = ft_stock_entry['items'][-1]
         item['qty'] = scrap
+        item['s_warehouse'] = stock_entry.from_warehouse
         item['t_warehouse'] = stock_entry.to_warehouse
         stock_entry.append('items', item)
         
@@ -160,7 +161,8 @@ def create_stock_entry(work_order, purpose, qty, scrap, from_bom, ft_stock_entry
 
     stock_entry.set_stock_entry_type()
     stock_entry.get_stock_and_rate()
-    
+    if purpose == "Material Transfer":
+        print(stock_entry.as_dict())
     stock_entry.insert()
     batch_no = create_batch_if_manufacture(stock_entry) if qty else None
     
@@ -189,6 +191,7 @@ def create_batch_if_manufacture(self):
                 'doctype': 'Batch',
                 'item': last_item.item_code,
                 'batch_id': batch_id,
+                'work_order': self.work_order,
             })
             new_batch_doc.insert()
             last_item.batch_no = new_batch_doc.name
