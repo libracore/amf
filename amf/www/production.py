@@ -2,6 +2,7 @@ import json
 import frappe
 from frappe import _
 from frappe.utils.data import now_datetime
+from frappe.utils.file_manager import save_file
 
 @frappe.whitelist()  # Allows this method to be called from the client side
 def create_work_order(form_data: str) -> dict:
@@ -148,6 +149,7 @@ def create_stock_entry(work_order, purpose, qty, scrap, from_bom, ft_stock_entry
         stock_entry.to_warehouse = 'Scrap - AMF21'
         item = ft_stock_entry['items'][-1]
         item['qty'] = scrap
+        item['s_warehouse'] = stock_entry.from_warehouse
         item['t_warehouse'] = stock_entry.to_warehouse
         stock_entry.append('items', item)
         
@@ -160,7 +162,7 @@ def create_stock_entry(work_order, purpose, qty, scrap, from_bom, ft_stock_entry
 
     stock_entry.set_stock_entry_type()
     stock_entry.get_stock_and_rate()
-    
+
     stock_entry.insert()
     batch_no = create_batch_if_manufacture(stock_entry) if qty else None
     
@@ -189,7 +191,30 @@ def create_batch_if_manufacture(self):
                 'doctype': 'Batch',
                 'item': last_item.item_code,
                 'batch_id': batch_id,
+                'work_order': self.work_order,
             })
             new_batch_doc.insert()
             last_item.batch_no = new_batch_doc.name
             return last_item.batch_no
+        
+@frappe.whitelist()
+def attach_sticker_image(work_order_id, image_data):
+    try:
+        # Ensure work_order_id is valid
+        if not frappe.db.exists('Work Order', work_order_id):
+            return {'success': False, 'message': 'Work Order not found'}
+
+        # Decode the Base64 image data
+        from base64 import b64decode
+        image_content = b64decode(image_data.split(",")[1])
+
+        # Save the image and attach it to the Work Order
+        file_name = f"{work_order_id}_sticker.png"
+        filedoc = save_file(file_name, image_content, 'Work Order', work_order_id, is_private=1)
+
+        # Optionally update a custom field (e.g., 'sticker_image') with the file URL
+        frappe.db.set_value('Work Order', work_order_id, 'sticker_image', filedoc.file_url)
+        return {'success': True}
+    except Exception as e:
+        frappe.log_error(message=str(e), title="Attach Sticker Image Error")
+        return {'success': False, 'message': str(e)}
