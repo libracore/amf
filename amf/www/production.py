@@ -3,6 +3,7 @@ import frappe
 from frappe import _
 from frappe.utils.data import now_datetime
 from frappe.utils.file_manager import save_file
+from weasyprint import HTML
 
 @frappe.whitelist()  # Allows this method to be called from the client side
 def create_work_order(form_data: str) -> dict:
@@ -217,4 +218,42 @@ def attach_sticker_image(work_order_id, image_data):
         return {'success': True}
     except Exception as e:
         frappe.log_error(message=str(e), title="Attach Sticker Image Error")
+        return {'success': False, 'message': str(e)}
+
+@frappe.whitelist()
+def html_to_pdf(html_content):
+    # Convert HTML to PDF
+    pdf = HTML(string=html_content).write_pdf()
+
+    # Save the PDF to a file or return it as a response
+    file_name = "output.pdf"
+    with open(file_name, "wb") as f:
+        f.write(pdf)
+
+    return file_name
+
+@frappe.whitelist()
+def html_to_pdf_and_attach(work_order_id, html_content):
+    try:
+        # Ensure work_order_id is valid
+        if not frappe.db.exists('Work Order', work_order_id):
+            return {'success': False, 'message': 'Work Order not found'}
+
+        # Convert HTML to PDF
+        pdf_content = HTML(string=html_content).write_pdf()
+        
+        # Convert the PDF content to bytes if it's not already in bytes format
+        if not isinstance(pdf_content, bytes):
+            pdf_content = pdf_content.encode()
+
+        # Save the PDF and attach it to the Work Order
+        file_name = f"{work_order_id}_sticker.pdf"
+        filedoc = save_file(file_name, pdf_content, 'Work Order', work_order_id, is_private=1)
+
+        # Optionally update a custom field (e.g., 'sticker_image') with the file URL
+        frappe.db.set_value('Work Order', work_order_id, 'sticker_image', filedoc.file_url)
+
+        return {'success': True, 'message': 'PDF successfully attached', 'file_url': filedoc.file_url}
+    except Exception as e:
+        frappe.log_error(message=str(e), title="Attach PDF Error")
         return {'success': False, 'message': str(e)}
