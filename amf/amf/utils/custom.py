@@ -4,6 +4,7 @@ from collections import defaultdict
 from frappe.utils.file_manager import save_file
 from base64 import b64decode
 from amf.amf.utils.qr_code_generator import generate_qr_code
+import re
 
 @frappe.whitelist()
 def get_latest_serial_no(so_detail, sales_order, item_code):
@@ -232,3 +233,98 @@ def update_item_descriptions():
             # Log the error for later review, including the item name that caused it
             frappe.log_error(f"Error updating item {item.name}: {str(e)}", "Item Update Error")
             continue  # Proceed with the next item
+
+# Function to extract quantity from the item name
+def extract_qty_from_item_name(item_name):
+    # Find the first occurrence of a digit followed by a hyphen and another digit
+    match = re.findall('-\d', item_name)
+    if match:
+        # Return the quantity which is the second digit in the matched pattern
+        return int(match[1].replace('-', ''))
+    return None
+
+def create_new_items_and_boms():
+
+    cancel_and_delete_boms_and_items_with_pattern()
+
+    # Define the starting point for the new item codes
+    item_code_start = {
+        'Plug': 100001,
+        'Valve Seat': 200001  # Starting code for Valve Seat items
+    }
+    
+    # Fetch all items from the "Plug" and "Valve Seat" item groups
+    item_groups = {
+        'Plug': frappe.get_all('Item', filters={'item_group': 'Plug', 'disabled': False}, fields=['name', 'item_name']),
+        'Valve Seat': frappe.get_all('Item', filters={'item_group': 'Valve Seat', 'disabled': False}, fields=['name', 'item_name'])
+    }
+    
+    for group_name, items in item_groups.items():
+        for item in items:
+            # Extract the item code suffix
+            item_code_suffix = extract_qty_from_item_name(item['item_name']) if group_name == 'Plug' else 2
+
+            # Prepare the new item code and name
+            new_item_code = str(item_code_start[group_name])
+            new_item_name = 'P' + item['item_name'][4:] + '-ASM' if group_name == 'Plug' else 'S' + item['item_name'][4:] + '-ASM'
+            suffix_code = 'SPL.3013' if group_name == 'Plug' else 'SPL.3039'
+
+            # Create the new Item
+            new_item = frappe.get_doc({
+                'doctype': 'Item',
+                'item_code': new_item_code,
+                'item_name': new_item_name,
+                'stock_uom': 'Nos',
+                'is_stock_item': True,
+                'include_item_in_manufacturing': True,
+                'default_material_request_type': 'Manufacture',
+                'description': f'{group_name} {new_item_name} Assembly w/ Components',
+                'item_group': group_name,
+                'item_defaults': [{
+                    'company': 'Advanced Microfluidics SA',
+                    'default_warehouse': 'Assemblies - AMF21'
+                }],
+            })
+            new_item.insert(ignore_permissions=True)
+
+            # Prepare the BOM
+            new_bom = frappe.get_doc({
+                'doctype': 'BOM',
+                'item': new_item_code,
+                'quantity': 1,
+                'is_default': 1,
+                'is_active': 1,
+                'items': [
+                    {'item_code': item['name'], 'qty': 1},
+                    {'item_code': suffix_code, 'qty': item_code_suffix},
+                ],
+            })
+            new_bom.insert(ignore_permissions=True)
+            new_bom.submit()
+
+            # Increment the item code for the next new item
+            item_code_start[group_name] += 1
+
+    # Commit the transaction
+    frappe.db.commit()
+
+def cancel_and_delete_boms_and_items_with_pattern():
+    # Pattern to match a six-digit number
+    pattern = "______"
+    
+    # Fetch all items with a six-digit item code
+    items_to_delete = frappe.get_all('Item', filters={'item_code': ['like', pattern], 'item_group': ['like', 'Plug'], 'item_group': ['like', 'Valve Seat']}, fields=['name', 'item_code'], order_by='item_code asc')
+
+    # For each item, cancel and delete associated BOMs
+    for item in items_to_delete:
+        associated_boms = frappe.get_all('BOM', filters={'item': item['name']}, fields=['name', 'docstatus'])
+        for bom in associated_boms:
+            if bom['docstatus'] == 1:  # BOM is submitted
+                bom_doc = frappe.get_doc('BOM', bom['name'])
+                bom_doc.cancel()
+            frappe.delete_doc('BOM', bom['name'], force=1)
+        
+        # Once all BOMs are handled, delete the item
+        frappe.delete_doc('Item', item['name'], force=1)
+
+    frappe.db.commit()
