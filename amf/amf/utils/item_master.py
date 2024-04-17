@@ -10,22 +10,28 @@ def fetch_items(item_group, disabled=False):
 def create_new_items(items, start_code=300001):
     """Create new items based on existing ones with modifications."""
     for item in items:
-        new_item_code = str(start_code)
-        new_item_name = f"{item['item_code']}-ASM"
-        
         new_item = frappe.get_doc({
             'doctype': 'Item',
-            'item_code': new_item_code,
-            'item_name': new_item_name,
+            'item_code': str(start_code),
+            'item_name': f"{item['item_code']}-ASM",
             'item_group': 'Valve Head',
+            'stock_uom': 'Nos',
+            'is_stock_item': True,
+            'include_item_in_manufacturing': True,
+            'default_material_request_type': 'Manufacture',
+            'description': f"Valve Head {item['item_code']}-ASM Assembly w/ Components",
+            'item_defaults': [{
+                    'company': 'Advanced Microfluidics SA',
+                    'default_warehouse': 'Assemblies - AMF21'
+                }],
             'disabled': False
         })
-        new_item.insert()
+        new_item.insert(ignore_permissions=True)
         frappe.db.commit()
         start_code += 1
 
     print("All new items have been created successfully.")
-    return start_code
+    return None
 
 def process_item_codes(items):
     """Process item codes to split and further process parts."""
@@ -38,14 +44,63 @@ def process_item_codes(items):
         processed_items.append({'item_code': item['item_code'], 'item_name': item['item_name'], 'split_parts': processed_parts})
     return processed_items
 
-def print_matching_items(processed_items, print_mode):
+def print_matching_items(processed_items, code_group, print_mode):
     """Print matching plugs and seats for processed items."""
     matching_items = get_matching_plugs_seats(processed_items)
-    if print_mode:
-        for match in matching_items:
+    for match in matching_items:
+        if print_mode:
             print("Valve Head: ", match['valve_head'])
             print("Matching Plugs: ", [plug['item_name'] for plug in match['plug_items']])
             print("Matching Seats: ", [seat['item_name'] for seat in match['seat_items']])
+            # Create missing Plugs and Seats
+        if not match['plug_items']:  # No matching plugs found
+            create_item('Plug', code_group['Plug'], match['plug_pattern'])
+            print(f"Created missing plug: P-{match['plug_pattern']}")
+            code_group['Plug'] += 1
+        if not match['seat_items']:  # No matching seats found
+            create_item('Valve Seat', code_group['Valve Seat'], match['seat_pattern'])
+            print(f"Created missing seat: S-{match['seat_pattern']}")
+            code_group['Valve Seat'] += 1
+
+def create_item(item_group, code_group, item_pattern):
+    """Create an item in the specified item group with the given pattern."""
+    prefix = 'P' if item_group == 'Plug' else 'S'
+    new_item_name = f"{prefix}-{item_pattern}"
+    accessory_qty = extract_bom_qty(new_item_name) if item_group == 'Plug' else 2
+    new_item = frappe.get_doc({
+        'doctype': 'Item',
+        'item_code': str(code_group),
+        'item_name': new_item_name,
+        'item_group': item_group,
+        'stock_uom': 'Nos',
+        'is_stock_item': True,
+        'include_item_in_manufacturing': True,
+        'default_material_request_type': 'Manufacture',
+        'description': f"{item_group} {new_item_name} Assembly w/ Components",
+        'item_defaults': [{
+            'company': 'Advanced Microfluidics SA',
+            'default_warehouse': 'Assemblies - AMF21'
+        }],
+        'disabled': False
+    })
+    new_item.insert(ignore_permissions=True)
+
+    # # Prepare the BOM
+    # new_bom = frappe.get_doc({
+    #     'doctype': 'BOM',
+    #     'item': str(code_group),
+    #     'quantity': 1,
+    #     'is_default': 1,
+    #     'is_active': 1,
+    #     'items': [
+    #         {'item_code': str(code_group), 'qty': 1},
+    #         {'item_code': 'SPL.3013' if item_group == 'Plug' else 'SPL.3039', 'qty': accessory_qty},
+    #     ],
+    # })
+    # new_bom.insert(ignore_permissions=True)
+    # new_bom.submit()
+
+    frappe.db.commit()
 
 def fetch_items_with_group(item_groups):
     """Fetch all items from specified item groups."""
@@ -79,19 +134,22 @@ def get_matching_plugs_seats(processed_items):
             matched_items.append({
                 'valve_head': item['item_code'],
                 'plug_items': filtered_plugs,
-                'seat_items': filtered_seats
+                'seat_items': filtered_seats,
+                'plug_pattern': pattern_plug,
+                'seat_pattern': pattern_seat
             })
 
     return matched_items
 
 # MASTER METHOD
 @frappe.whitelist()
-def get_valve_head_items(creation_mode=False, print_mode=True):
+def get_valve_head_items(creation_mode=True, print_mode=True):
     items = fetch_items('Valve Head')
     if creation_mode:
+        code_group = create_new_items_and_boms()
         create_new_items(items)
     processed_items = process_item_codes(items)
-    print_matching_items(processed_items, print_mode)
+    print_matching_items(processed_items, code_group, print_mode)
 
 
 def create_new_items_and_boms():
@@ -158,6 +216,7 @@ def create_new_items_and_boms():
 
     # Commit the transaction
     frappe.db.commit()
+    return item_code_start
 
 # Function to extract quantity from the item name
 def extract_bom_qty(item_name):
@@ -179,7 +238,7 @@ def extract_bom_qty(item_name):
 
 def fetch_items_to_delete():
     """Fetch items from specified groups with an '-ASM' suffix."""
-    item_groups = ['Plug', 'Valve Seat']
+    item_groups = ['Plug', 'Valve Seat', 'Valve Head']
     items = frappe.get_all('Item', 
                            filters={'item_name': ['like', '%-ASM%'], 
                                     'item_group': ['in', item_groups]},
