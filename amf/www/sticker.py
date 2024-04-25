@@ -56,3 +56,7 @@ def get_details_for_work_order(work_order_name):
             "Matière": rawMatCode
         })
     return infoDocType
+
+@frappe.whitelist()
+def get_qrcode(doc_name):
+    return frappe.get_all('Serial No', filters={'name': doc_name}, fields=['qrcode'])

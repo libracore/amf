@@ -328,3 +328,23 @@ def cancel_and_delete_boms_and_items_with_pattern():
         frappe.delete_doc('Item', item['name'], force=1)
 
     frappe.db.commit()
+
+
+def qrcode_serial_no(doc, method=None):
+    data = doc.name
+    print("data: ", data)
+    # Generate the QR code image as a base64 string
+    img_base64 = generate_qr_code(data)
+
+    # Decode the base64 string to binary data
+    img_data = b64decode(img_base64)
+
+    # Filename for the QR code image
+    file_name = f"{doc.name}_qr.png"
+    
+    # Create and attach the file to the document
+    file_url = save_file(file_name, img_data, doc.doctype, doc.name, is_private=1).file_url
+    
+    # Optionally update a field in the document with the URL of the attached image
+    doc.db_set('qrcode', file_url)
+    return None
