@@ -25,10 +25,10 @@ def generate_and_attach_qrcode(item_code):
         print("after removing")
         item_name = item.name.replace("/","-")
         qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_L,
-            box_size=4,
-            border=0,
+            version=10,
+            error_correction=qrcode.constants.ERROR_CORRECT_H,
+            box_size=2,
+            border=1,
         )
         qr.add_data(item_name)
         qr.make(fit=True)

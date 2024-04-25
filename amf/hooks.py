@@ -139,7 +139,8 @@ doc_events = {
     "Batch": {"after_insert": "amf.amf.utils.barcode.after_insert_handler"},
     "Delivery Note": {
         #"validate": "amf.amf.utils.delivery_note_api.check_serial_nos"
-    }
+    },
+    "Serial No": {"after_insert": "amf.amf.utils.custom.qrcode_serial_no"}
 }
 
 # Scheduled Tasks
