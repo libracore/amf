@@ -84,14 +84,14 @@ def extract_cogs(from_date, to_date, company):
 		"4900 - Stock variation - AMF21",
 		"4901 - Accessory costs (production) - AMF21",
 		"4998 - Capitalization of production materials and services - AMF21",
-		"4011 - Cost of test instruments (R&D) - AMF21",
-		"4012 - Cost of materials (R&D) - AMF21",
-		"4013 - Cost of tools (R&D) - AMF21",
-		"4014 - Cost of services (R&D) - AMF21",
-		"4016 - Quality system - AMF21",
-		"4470 - Import fees (R&D) - AMF21",
-		"4471 - Cost of customs duties (R&D) - AMF21",
-		"4472 - Transport fees (R&D) - AMF21"
+		"4811 - Cost of test instruments (R&D) - AMF21",
+		"4812 - Cost of materials (R&D) - AMF21",
+		"4813 - Cost of tools (R&D) - AMF21",
+		"4814 - Cost of services (R&D) - AMF21",
+		"4816 - Quality system - AMF21",
+		"4870 - Import fees (R&D) - AMF21",
+		"4871 - Cost of customs duties (R&D) - AMF21",
+		"4872 - Transport fees (R&D) - AMF21"
     ]
 
     total_cogs = 0
@@ -113,14 +113,14 @@ def extract_cogs(from_date, to_date, company):
 def extract_inventory_data(from_date, to_date, company):
     # Define the inventory related accounts (same as used in COGS calculation)
     inventory_accounts = [
-		"1410 - Stock In Hand - AMF21",
-		"1411 - Work In Progress Stock - AMF21",
-		"1412 - Finished Goods Stock - AMF21",
-		"1413 - External Stock - AMF21",
-		"1414 - Demo Devices - AMF21",
-		"1415 - Repair Stock - AMF21",
-		"1416 - R&D Stock - AMF21",
-		"1417 - Waste Stock - AMF21",
+		"1210 - Stock In Hand - AMF21",
+        "1211 - Work In Progress Stock - AMF21",
+        "1212 - Finished Goods Stock - AMF21",
+        "1213 - External Stock - AMF21",
+        "1214 - Demo Devices - AMF21",
+        "1215 - Repair Stock - AMF21",
+        "1216 - R&D Stock - AMF21",
+        "1217 - Waste Stock - AMF21",
     ]
 	
 	# Calculate opening inventory
