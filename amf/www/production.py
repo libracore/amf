@@ -35,6 +35,7 @@ def create_work_order(form_data: str) -> dict:
             'end_date_time': data['end_date'],
             'scrap_qty': data['scrap_quantity'],
             'machine': data['machine'],
+            'skip_transfer': 1,
             'raw_material': data['raw_material'],
             'raw_material_batch': data['raw_material_batch'],
             'raw_material_dim': data['raw_material_dimensions'],
