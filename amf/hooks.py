@@ -153,6 +153,7 @@ scheduler_events = {
     "daily": [
         "amf.amf.utils.item_image.update_item_images",
         "amf.amf.utils.capacity.update_capacity_utilization_rate",
+        "amf.www.tracking.fetch_and_display_tracking_info",
     ],
     "hourly": [
         "amf.amf.utils.document_notification.update_purchase_orders",
