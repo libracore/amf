@@ -48,7 +48,7 @@ def get_tracking_info(tracking_number):
     connection.request("GET", "/track/shipments?" + params, "", headers)
     response = connection.getresponse()
     data = response.read()
-    print(response.status)
+    #print(response.status)
     if response.status == 200:
         return json.loads(data)
     else:
