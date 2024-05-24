@@ -17,7 +17,7 @@ API_KEY = "tMos8Bxs5uGkkHpGAf7LlGdAa5F0OKWP"
 @frappe.whitelist()
 def get_tracking_numbers():
 
-    three_months_ago = add_months(now_datetime(), -1)
+    three_months_ago = add_months(now_datetime(), -3)
 
     # Fetch all delivery notes with the tracking_no and customer field
     delivery_notes = frappe.get_all(
