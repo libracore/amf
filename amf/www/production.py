@@ -13,17 +13,26 @@ def create_work_order(form_data: str) -> dict:
         # Validate item existence
         if not frappe.db.exists('Item', data['item_code']):
             return {'success': False, 'message': 'Item code not found'}
-
-        # Fetch the default BOM for the item code
-        bom_no = frappe.db.get_value('BOM', {'item': data['item_code'], 'is_default': 1}, 'name')
+        
+        # Fetch the BOM number based on the raw material and ensure it's an active BOM
+        bom_no = frappe.db.get_value('BOM Item', 
+                                     {'item_code': data['raw_material'], 'parenttype': 'BOM', 'parentfield': 'items'}, 
+                                     ['parent'],
+                                     order_by='creation DESC',
+                                     as_dict=True)
         if not bom_no:
-            return {'success': False, 'message': f"No default BOM found for item code {data['item_code']}"}
+            return {'success': False, 'message': f"No BOM found for raw material {data['raw_material']}"}
+        
+        # Check if the fetched BOM is active
+        active_bom = frappe.db.get_value('BOM', {'name': bom_no['parent'], 'is_active': 1}, 'name')
+        if not active_bom:
+            return {'success': False, 'message': f"No active BOM found for raw material {data['raw_material']}"}
 
         # Create and submit the work order document
         work_order = frappe.get_doc({
             'doctype': 'Work Order',
             'production_item': data['item_code'],
-            'bom_no': bom_no,
+            'bom_no': active_bom,
             'destination': 'N/A',
             'qty': int(data['quantity']) + int(data['scrap_quantity']),
             'wip_warehouse': 'Main Stock - AMF21',
@@ -35,6 +44,7 @@ def create_work_order(form_data: str) -> dict:
             'end_date_time': data['end_date'],
             'scrap_qty': data['scrap_quantity'],
             'machine': data['machine'],
+            'skip_transfer': 1,
             'raw_material': data['raw_material'],
             'raw_material_batch': data['raw_material_batch'],
             'raw_material_dim': data['raw_material_dimensions'],
@@ -87,31 +97,34 @@ def get_item_name(item_code):
 
 @frappe.whitelist()
 def get_mat_items_from_bom(item_code):
-    # First, get the default BOM for the given item code
-    default_bom = frappe.db.get_value('BOM', {'item': item_code, 'is_default': 1}, 'name')
+    # Get all active BOMs for the given item code
+    active_boms = frappe.db.get_list('BOM', {'item': item_code, 'is_active': 1}, 'name')
     
-    if not default_bom:
-        return {'message': _('No default BOM found for item code {0}').format(item_code), 'items': []}
+    if not active_boms:
+        return {'message': _('No active BOM found for item code {0}').format(item_code), 'items': []}
     
-    # Query the BOM Item table for items starting with "MAT" in the default BOM
-    mat_items = frappe.db.get_list('BOM Item',
-                                   filters={
-                                       'parent': default_bom,
-                                       'item_code': ['like', 'MAT%']
-                                   },
-                                   fields=['item_code', 'item_name'])
+    mat_items = []
+    
+    # Iterate over each BOM to get the BOM items
+    for bom in active_boms:
+        bom_items = frappe.db.get_list('BOM Item',
+                                       filters={
+                                           'parent': bom['name'],
+                                           'item_code': ['like', 'MAT%']
+                                       },
+                                       fields=['item_code', 'item_name'])
+        mat_items.extend(bom_items)
     
     if mat_items:
         # Create a list to hold "item_code: item_name" strings
         items_list = ['{}: {}'.format(item['item_code'], item['item_name']) for item in mat_items]
-        
         return {
             'message': 'MAT items found',
             'items': items_list
         }
     else:
         return {
-            'message': 'No "MAT" items found in the default BOM for item code {}'.format(item_code),
+            'message': 'No "MAT" items found in the active BOMs for item code {}'.format(item_code),
             'items': []
         }
 
@@ -257,3 +270,11 @@ def html_to_pdf_and_attach(work_order_id, html_content):
     except Exception as e:
         frappe.log_error(message=str(e), title="Attach PDF Error")
         return {'success': False, 'message': str(e)}
+
+def test_bom():
+    raw = 'MAT.1004'
+    bom_no = frappe.db.get_value('BOM Item', {'item_code': raw}, 'parent')
+    if not bom_no:
+        print("Error BOM")
+    else:
+        print(bom_no)

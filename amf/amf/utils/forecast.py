@@ -63,7 +63,7 @@ def generate_html_table(items_details):
     html_content = """
     <style>
         table {
-            width: 50%;
+            width: 100%;
             border-collapse: collapse;
             font-family: 'Courier New', Courier, monospace; /* Applying Courier New font */
         }
