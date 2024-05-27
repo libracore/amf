@@ -12,7 +12,6 @@ import pandas as pd
 
 # DHL API details
 DHL_API_URL = "https://api-eu.dhl.com/track/shipments"
-API_KEY = "tMos8Bxs5uGkkHpGAf7LlGdAa5F0OKWP"
 
 @frappe.whitelist()
 def get_tracking_numbers():
@@ -36,6 +35,9 @@ def get_tracking_numbers():
     return tracking_info
 
 def get_tracking_info(tracking_number):
+    
+    API_KEY = frappe.get_value("ERPNext AMF Settings", "59f1eea5ee", "dhl_api_key")
+
     params = urllib.parse.urlencode({
         'trackingNumber': tracking_number,
         'service': 'express'
