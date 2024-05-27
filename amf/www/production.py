@@ -13,17 +13,26 @@ def create_work_order(form_data: str) -> dict:
         # Validate item existence
         if not frappe.db.exists('Item', data['item_code']):
             return {'success': False, 'message': 'Item code not found'}
-
-        # Fetch the default BOM for the item code
-        bom_no = frappe.db.get_value('BOM', {'item': data['item_code'], 'is_default': 1}, 'name')
+        
+        # Fetch the BOM number based on the raw material and ensure it's an active BOM
+        bom_no = frappe.db.get_value('BOM Item', 
+                                     {'item_code': data['raw_material'], 'parenttype': 'BOM', 'parentfield': 'items'}, 
+                                     ['parent'],
+                                     order_by='creation DESC',
+                                     as_dict=True)
         if not bom_no:
-            return {'success': False, 'message': f"No default BOM found for item code {data['item_code']}"}
+            return {'success': False, 'message': f"No BOM found for raw material {data['raw_material']}"}
+        
+        # Check if the fetched BOM is active
+        active_bom = frappe.db.get_value('BOM', {'name': bom_no['parent'], 'is_active': 1}, 'name')
+        if not active_bom:
+            return {'success': False, 'message': f"No active BOM found for raw material {data['raw_material']}"}
 
         # Create and submit the work order document
         work_order = frappe.get_doc({
             'doctype': 'Work Order',
             'production_item': data['item_code'],
-            'bom_no': bom_no,
+            'bom_no': active_bom,
             'destination': 'N/A',
             'qty': int(data['quantity']) + int(data['scrap_quantity']),
             'wip_warehouse': 'Main Stock - AMF21',
@@ -261,3 +270,11 @@ def html_to_pdf_and_attach(work_order_id, html_content):
     except Exception as e:
         frappe.log_error(message=str(e), title="Attach PDF Error")
         return {'success': False, 'message': str(e)}
+
+def test_bom():
+    raw = 'MAT.1004'
+    bom_no = frappe.db.get_value('BOM Item', {'item_code': raw}, 'parent')
+    if not bom_no:
+        print("Error BOM")
+    else:
+        print(bom_no)
