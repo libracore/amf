@@ -36,7 +36,7 @@ def get_tracking_numbers():
 
 def get_tracking_info(tracking_number):
     
-    API_KEY = frappe.get_value("ERPNext AMF Settings", "59f1eea5ee", "dhl_api_key")
+    API_KEY = frappe.get_value("ERPNext AMF Settings", "ERPNext AMF Settings", "dhl_api_key")
 
     params = urllib.parse.urlencode({
         'trackingNumber': tracking_number,
