@@ -88,31 +88,34 @@ def get_item_name(item_code):
 
 @frappe.whitelist()
 def get_mat_items_from_bom(item_code):
-    # First, get the default BOM for the given item code
-    default_bom = frappe.db.get_value('BOM', {'item': item_code, 'is_default': 1}, 'name')
+    # Get all active BOMs for the given item code
+    active_boms = frappe.db.get_list('BOM', {'item': item_code, 'is_active': 1}, 'name')
     
-    if not default_bom:
-        return {'message': _('No default BOM found for item code {0}').format(item_code), 'items': []}
+    if not active_boms:
+        return {'message': _('No active BOM found for item code {0}').format(item_code), 'items': []}
     
-    # Query the BOM Item table for items starting with "MAT" in the default BOM
-    mat_items = frappe.db.get_list('BOM Item',
-                                   filters={
-                                       'parent': default_bom,
-                                       'item_code': ['like', 'MAT%']
-                                   },
-                                   fields=['item_code', 'item_name'])
+    mat_items = []
+    
+    # Iterate over each BOM to get the BOM items
+    for bom in active_boms:
+        bom_items = frappe.db.get_list('BOM Item',
+                                       filters={
+                                           'parent': bom['name'],
+                                           'item_code': ['like', 'MAT%']
+                                       },
+                                       fields=['item_code', 'item_name'])
+        mat_items.extend(bom_items)
     
     if mat_items:
         # Create a list to hold "item_code: item_name" strings
         items_list = ['{}: {}'.format(item['item_code'], item['item_name']) for item in mat_items]
-        
         return {
             'message': 'MAT items found',
             'items': items_list
         }
     else:
         return {
-            'message': 'No "MAT" items found in the default BOM for item code {}'.format(item_code),
+            'message': 'No "MAT" items found in the active BOMs for item code {}'.format(item_code),
             'items': []
         }
 
