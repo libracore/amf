@@ -13,7 +13,7 @@
    "label": "DHL API Keys"
   }
  ],
- "modified": "2024-05-27 06:39:53.623022",
+ "modified": "2024-05-29 10:23:53.623022",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "ERPNext AMF Settings",
@@ -32,7 +32,7 @@
    "write": 1
   }
  ],
- "quick_entry": 1,
+ "issingle": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "track_changes": 1

@@ -162,5 +162,18 @@ def get_data():
                        "description": _("VAT query")
                    }
             ]
+        },
+        {
+            "label": _("Switzerland"),
+            "icon": "fa fa-money",
+            "items": [
+                {
+                    "type": "doctype",
+                    "name": "ERPNext AMF Settings",
+                    "label": _("ERPNext AMF Settings"),
+                    "description": _("ERPNext AMF Settings")
+                }
+            ]
         }
+        
 ]
