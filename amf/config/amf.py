@@ -164,7 +164,7 @@ def get_data():
             ]
         },
         {
-            "label": _("Switzerland"),
+            "label": _("Settings"),
             "icon": "fa fa-money",
             "items": [
                 {
