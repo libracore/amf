@@ -169,9 +169,9 @@ def get_data():
             "items": [
                 {
                     "type": "doctype",
-                    "name": "ERPNext AMF Settings",
-                    "label": _("ERPNext AMF Settings"),
-                    "description": _("ERPNext AMF Settings")
+                    "name": "AMF DHL Settings",
+                    "label": _("AMF DHL Settings"),
+                    "description": _("AMF DHL Settings")
                 }
             ]
         }
