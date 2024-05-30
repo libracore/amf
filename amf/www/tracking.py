@@ -36,14 +36,12 @@ def get_tracking_numbers():
 
 def get_tracking_info(tracking_number):
     
-    API_KEY = frappe.get_value("ERPNext AMF Settings", "ERPNext AMF Settings", "dhl_api_key")
+    API_KEY = frappe.db.get_single_value("AMF DHL Settings", "dhl_api_key")
 
     params = urllib.parse.urlencode({
         'trackingNumber': tracking_number,
-        'service': 'express'
     })
     headers = {
-        'Accept': 'application/json',
         "DHL-API-Key": API_KEY
     }
     connection = http.client.HTTPSConnection("api-eu.dhl.com")
@@ -51,9 +49,19 @@ def get_tracking_info(tracking_number):
     response = connection.getresponse()
     data = response.read()
     #print(response.status)
+    
+    # Assuming response.status is an integer, convert it to a string
+    status = str(response.status)
+    # Convert the data to a JSON formatted string
+    json_data = json.dumps(json.loads(data), indent=4)  # Adding indent for better readability, optional
+    # Open the file and write the data
+    with open("output.txt", "a+") as text_file:
+        text_file.write(status + "\n" + json_data + "\n")
+    #print(response.status + "\n" + json.loads(data) + "\n")
     if response.status == 200:
         return json.loads(data)
     else:
+        print("Error:", response.status, "Reason:", response.reason)
         return None
 
 @frappe.whitelist()
@@ -61,48 +69,32 @@ def fetch_and_display_tracking_info():
     tracking_infos = get_tracking_numbers()  # Call the function to get tracking numbers and customers
     tracking_data = []
     for info in tracking_infos:
-        name = info['name']
-        tracking_number = info['tracking_no']
-        customer = info['customer']
-        date = info['date']
-        
-        # Initialize the tracking data with default values
-        tracking_entry = {
-            "name": name,
-            "tracking_number": tracking_number,
-            "customer": customer,
-            "date": date,
-            "status": "Unknown",  # Default value for status
-            "last_update": "N/A"  # Default value for last_update
-        }
-
-        api_info = get_tracking_info(tracking_number)
+        api_info = get_tracking_info(info['tracking_no'])
         if api_info and 'shipments' in api_info and len(api_info['shipments']) > 0:
             shipment_info = api_info['shipments'][0]
-            tracking_entry["status"] = shipment_info['status']['description'],  # Adjust based on the actual API response structure
-            tracking_entry["last_update"] = shipment_info['status']['timestamp'],  # Adjust based on the actual API response structure
+            tracking_info_dict = {
+                'name': info['name'],
+                'tracking_number': info['tracking_no'],
+                'customer': info['customer'],
+                'date': info['date'],
+                'status': shipment_info['status']['description'],  # Adjust based on the actual API response structure
+                'last_update': shipment_info['status']['timestamp'],  # Adjust based on the actual API response structure
+        }
+        else:
+            tracking_info_dict = {
+                'name': info['name'],
+                'tracking_number': info['tracking_no'],
+                'customer': info['customer'],
+                'date': info['date'],
+                'status': None,
+                'last_update': None,
+                'destination': None
+        }
+        tracking_data.append(tracking_info_dict)
 
-        tracking_data.append(tracking_entry)
-
-        # # Read existing data from the file if it exists
-        # if os.path.exists("data.txt"):
-        #     with open("data.txt", "r") as file:
-        #         try:
-        #             existing_data = json.load(file)
-        #             if existing_data is None:
-        #                 existing_data = []
-        #         except json.JSONDecodeError:
-        #             existing_data = []
-        # else:
-        #     existing_data = []
-
-        # # Append the new api_info to the existing data
-        # existing_data.append(api_info)
-
-        # # Write the updated data back to the file
-        # with open("data.txt", "w") as file:
-        #     file.write(json.dumps(existing_data, indent=4))
-            
+    with open("output_data.txt", "w+") as text_file:
+        for entry in tracking_data:
+            text_file.write(str(entry) + "\n") 
     # Insert tracking data into the database
     for data in tracking_data:
         existing_doc = frappe.get_all('DHL Tracking Information', filters={'tracking_number': data['tracking_number']}, limit=1)
