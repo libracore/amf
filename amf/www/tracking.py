@@ -86,9 +86,9 @@ def fetch_and_display_tracking_info():
                 'tracking_number': info['tracking_no'],
                 'customer': info['customer'],
                 'date': info['date'],
-                'status': None,
-                'last_update': None,
-                'destination': None
+                'status': '',
+                'last_update': '',
+                'destination': ''
         }
         tracking_data.append(tracking_info_dict)
 
