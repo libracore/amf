@@ -1,0 +1,23 @@
+{
+ "content": null,
+ "creation": "2024-05-30 16:20:43.371539",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2024-05-30 16:20:47.248015",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "3pl-tracking",
+ "owner": "Administrator",
+ "page_name": "3PL Tracking",
+ "roles": [
+  {
+   "role": "System Manager"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "3PL Tracking Information"
+}

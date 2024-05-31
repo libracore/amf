@@ -1,0 +1,23 @@
+{
+ "content": null,
+ "creation": "2024-05-29 15:08:52.381822",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2024-05-29 15:08:58.544337",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "home",
+ "owner": "Administrator",
+ "page_name": "Home",
+ "roles": [
+  {
+   "role": "System Manager"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "AMF Operations"
+}
