@@ -3,3 +3,4 @@ qrcode
 reportlab
 treepoem
 weasyprint
+ratelimit

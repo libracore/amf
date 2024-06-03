@@ -1,14 +1,13 @@
 import http
 import json
-import os
 import re
 from turtle import pd
 import urllib.parse
 import frappe
-import requests
-import csv
 from frappe.utils import now_datetime, add_months
 import pandas as pd
+from ratelimit import limits, sleep_and_retry
+import time
 
 # DHL API details
 DHL_API_URL = "https://api-eu.dhl.com/track/shipments"
@@ -34,6 +33,8 @@ def get_tracking_numbers():
     ]
     return tracking_info
 
+@sleep_and_retry
+@limits(calls=1, period=10)
 def get_tracking_info(tracking_number):
     
     API_KEY = frappe.db.get_single_value("AMF DHL Settings", "dhl_api_key")
@@ -49,7 +50,7 @@ def get_tracking_info(tracking_number):
     response = connection.getresponse()
     data = response.read()
     #print(response.status)
-    
+    #time.sleep(6)
     # Assuming response.status is an integer, convert it to a string
     status = str(response.status)
     # Convert the data to a JSON formatted string
@@ -59,6 +60,7 @@ def get_tracking_info(tracking_number):
         text_file.write(status + "\n" + json_data + "\n")
     #print(response.status + "\n" + json.loads(data) + "\n")
     if response.status == 200:
+        print("Status:", response.status, "Reason:", response.reason)
         return json.loads(data)
     else:
         print("Error:", response.status, "Reason:", response.reason)
