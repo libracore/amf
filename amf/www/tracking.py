@@ -1,7 +1,7 @@
 import http
 import json
 import re
-from turtle import pd
+#from turtle import pd      # compatibility issue with TKInter
 import urllib.parse
 import frappe
 from frappe.utils import now_datetime, add_months
