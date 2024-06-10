@@ -15,24 +15,29 @@ def create_work_order(form_data: str) -> dict:
             return {'success': False, 'message': 'Item code not found'}
         
         # Fetch the BOM number based on the raw material and ensure it's an active BOM
-        bom_no = frappe.db.get_value('BOM Item', 
+        bom_no_list = frappe.db.get_all('BOM Item', 
                                      {'item_code': data['raw_material'], 'parenttype': 'BOM', 'parentfield': 'items'}, 
-                                     ['parent'],
-                                     order_by='creation DESC',
-                                     as_dict=True)
-        if not bom_no:
-            return {'success': False, 'message': f"No BOM found for raw material {data['raw_material']}"}
+                                     ['parent'])
+        print(bom_no_list)
+        if not bom_no_list :
+                    return {'success': False, 'message': f"No BOM found for raw material {data['raw_material']}"}
         
-        # Check if the fetched BOM is active
-        active_bom = frappe.db.get_value('BOM', {'name': bom_no['parent'], 'is_active': 1}, 'name')
-        if not active_bom:
-            return {'success': False, 'message': f"No active BOM found for raw material {data['raw_material']}"}
+        matched_bom_no = None
+        
+        for bom in bom_no_list:
+            bom_no = bom['parent']
+            bom_item_code = frappe.db.get_value('BOM', {'name': bom_no, 'is_active': 1}, 'item')
+            if bom_item_code == data['item_code']:
+                matched_bom_no = bom_no
+                break
+
+        print(matched_bom_no)
 
         # Create and submit the work order document
         work_order = frappe.get_doc({
             'doctype': 'Work Order',
             'production_item': data['item_code'],
-            'bom_no': active_bom,
+            'bom_no': matched_bom_no,
             'destination': 'N/A',
             'qty': int(data['quantity']) + int(data['scrap_quantity']),
             'wip_warehouse': 'Main Stock - AMF21',
