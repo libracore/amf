@@ -1,0 +1,69 @@
+{
+ "creation": "2024-05-23 10:46:21.186242",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "dn",
+  "tracking_number",
+  "customer",
+  "status",
+  "last_update",
+  "fetch_date"
+ ],
+ "fields": [
+  {
+   "fieldname": "dn",
+   "fieldtype": "Link",
+   "label": "dn",
+   "options": "Delivery Note"
+  },
+  {
+   "fieldname": "tracking_number",
+   "fieldtype": "Data",
+   "label": "tracking_number"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Data",
+   "label": "customer"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Data",
+   "label": "status"
+  },
+  {
+   "fieldname": "last_update",
+   "fieldtype": "Data",
+   "label": "last_update"
+  },
+  {
+   "fieldname": "fetch_date",
+   "fieldtype": "Data",
+   "label": "fetch_date"
+  }
+ ],
+ "modified": "2024-06-10 10:35:20.001899",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "DHL Tracking Information",
+ "owner": "alexandre.ringwald@amf.ch",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

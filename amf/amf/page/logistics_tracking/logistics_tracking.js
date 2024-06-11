@@ -13,10 +13,13 @@ frappe.pages['logistics-tracking'].on_page_load = function(wrapper) {
         method: 'frappe.client.get_list',
         args: {
             doctype: 'DHL Tracking Information',
-            fields: ['dn', 'tracking_number', 'customer', 'status', 'last_update', 'fetch_date']
+            fields: ['dn', 'tracking_number', 'customer', 'status', 'last_update', 'fetch_date'],
+            order_by: 'fetch_date',
+            limit_page_length:500,
         },
         callback: function(response) {
             var data = response.message;
+            console.log(data)
             if (data && data.length > 0) {
                 // Create a table
                 var table = $('<table class="table table-bordered"><thead><tr></tr></thead><tbody></tbody></table>');
