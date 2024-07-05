@@ -94,11 +94,15 @@ def create_work_order(form_data: str) -> dict:
     
 @frappe.whitelist()
 def get_item_name(item_code):
-    item_name = frappe.db.get_value('Item', item_code, 'item_name')
+    item_name = frappe.db.get_value('Item', {'item_code': item_code}, 'item_name')
     if item_name:
         return {'item_name': item_name}
     else:
-        return {'item_name': 'Item not found'}
+        item_name = frappe.db.get_value('Item', {'reference_code': item_code}, 'item_name')
+        if item_name:
+            return {'item_name': item_name}
+        else:
+            return {'item_name': 'Item not found'}
 
 @frappe.whitelist()
 def get_mat_items_from_bom(item_code):
