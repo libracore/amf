@@ -15,7 +15,7 @@ ref_code_head = 300001
 ref_code_head_asm = 310001
 
 @frappe.whitelist()
-def refactor_items(print_mode):
+def refactor_items():
     # Fetch items in the 'Plug' item group
     #items = frappe.get_all('Item', filters={'item_group': 'Plug', 'disabled': '0'}, fields=['name', 'item_code', 'item_name', 'item_group'])
     items = frappe.get_all('Item', filters={'item_group': ['in', ['Plug', 'Valve Seat', 'Valve Head']], 'disabled': '0'}, fields=['name', 'item_code', 'item_name', 'item_group'])
@@ -411,6 +411,15 @@ def update_item_bom_fields(item_code):
         # Since we are fetching the default BOM, we assign it to default_bom
         if bom['is_default']:
             default_bom = bom_name
+        bom_before = bom
+        try:
+            frappe.get_doc("BOM", bom).update_cost(from_child_bom=False)
+        except Exception as error:
+            print("An error occurred:", error)
+        bom_after = bom
+        if bom_after != bom_before:
+            print(bom_before)
+            print(bom_after)
 
     #print(bom_items)
     # Update the item
@@ -425,8 +434,8 @@ def update_item_bom_fields(item_code):
     # Save the updated item document
     try:
         item_doc.save()
-    except ValidationError:
-        print("ValidationError:", ValidationError)
+    except Exception as error:
+        print("An error occurred:", error)
     except:
         print("Can't save item.") 
             
