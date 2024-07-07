@@ -368,21 +368,20 @@ def update_bom_list():
         fields=['item'],
         distinct=True
     )
-
-    #print(items_with_bom)
     
     # Iterate through each item and update the fields
     for item in items_with_bom:
         item_code = item['item']
         if frappe.db.get_value('Item', item_code, 'disabled'):
             continue
+        remove_old_company_defaults(item_code)
         update_item_bom_fields(item_code)
     
     frappe.db.commit()
     print("BOM list updated for all items with active BOMs.")
 
 def update_item_bom_fields(item_code):
-    #print(item_code)
+    if item_code == 'VALVE POSITION SENSOR': print(item_code)
     # Fetch all BOMs for the item
     boms = frappe.get_all(
         'BOM',
@@ -411,26 +410,22 @@ def update_item_bom_fields(item_code):
         # Since we are fetching the default BOM, we assign it to default_bom
         if bom['is_default']:
             default_bom = bom_name
-        bom_before = bom
+        
         try:
             frappe.get_doc("BOM", bom).update_cost(from_child_bom=False)
         except Exception as error:
             print("An error occurred:", error)
-        bom_after = bom
-        if bom_after != bom_before:
-            print(bom_before)
-            print(bom_after)
 
-    #print(bom_items)
+
+
     # Update the item
     item_doc = frappe.get_doc('Item', item_code)
-    item_doc.bom_default = default_bom
+    item_doc.item_default_bom = default_bom
     item_doc.bom_cost = total_cost
     item_doc.set('bom_table', [])
-
     for bom_item in bom_items:
         item_doc.append('bom_table', bom_item)
-    #print(item_doc)
+
     # Save the updated item document
     try:
         item_doc.save()
@@ -438,4 +433,29 @@ def update_item_bom_fields(item_code):
         print("An error occurred:", error)
     except:
         print("Can't save item.") 
+
+def remove_old_company_defaults(item_code):
+    try:
+        # Fetch the item document using the item_code
+        item = frappe.get_doc("Item", item_code)
+        
+        # Filter out the 'item_defaults' child table rows where the company is 'Advanced Microfluidics SA (OLD)'
+        item_defaults_to_keep = [
+            row for row in item.item_defaults if row.company != "Advanced Microfluidics SA (OLD)"
+        ]
+
+        # Check if any rows were removed
+        if len(item_defaults_to_keep) != len(item.item_defaults):
+            # Assign the filtered list back to the item
+            item.item_defaults = item_defaults_to_keep
             
+            # Save the item document
+            item.save()
+            frappe.db.commit()
+            print(f"Removed old company defaults for item: {item_code}")
+        else:
+            print(f"No old company defaults found for item: {item_code}")
+    except frappe.DoesNotExistError:
+        print(f"Item with code {item_code} does not exist.")
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
