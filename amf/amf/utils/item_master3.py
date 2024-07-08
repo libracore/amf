@@ -70,16 +70,15 @@ def refactor_items():
             frappe.db.set_value('Item', name, 'customs_tariff_number', '8487.9000')
             frappe.db.set_value('Item', name, 'weight_per_unit', '0.10')
             frappe.db.set_value('Item', name, 'weight_uom', 'Kg')
-            item.item_defaults = []
-            if 'item_defaults' not in item or not isinstance(item['item_defaults'], list):
-
-                item['item_defaults'] = []
-            item['item_defaults'].append({
-                "company": "Advanced Microfluidics SA",
-                "default_warehouse": "Main Stock - AMF21",
-                "expense_account": "4009 - Cost of material: Valve Head - AMF21",
-                "income_account": "3007 - Valve Head sales revenue - AMF21",
-            })
+            # item.item_defaults = []
+            # if 'item_defaults' not in item or not isinstance(item['item_defaults'], list):
+            #     item['item_defaults'] = []
+            # item['item_defaults'].append({
+            #     "company": "Advanced Microfluidics SA",
+            #     "default_warehouse": "Main Stock - AMF21",
+            #     "expense_account": "4009 - Cost of material: Valve Head - AMF21",
+            #     "income_account": "3007 - Valve Head sales revenue - AMF21",
+            # })
 
         frappe.rename_doc('Item', name, f"{ref_item_code}", merge=False)
         
