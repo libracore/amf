@@ -1,3 +1,4 @@
+import re
 import frappe
 import time
 
@@ -15,14 +16,14 @@ ref_code_head = 300001
 ref_code_head_asm = 310001
 
 @frappe.whitelist()
-def refactor_items(print_mode):
+def refactor_items():
     # Fetch items in the 'Plug' item group
-    #items = frappe.get_all('Item', filters={'item_group': 'Plug', 'disabled': '0'}, fields=['name', 'item_code', 'item_name', 'item_group'])
+    #items = frappe.get_all('Item', filters={'item_group': 'Valve Head', 'disabled': '0'}, fields=['name', 'item_code', 'item_name', 'item_group'])
     items = frappe.get_all('Item', filters={'item_group': ['in', ['Plug', 'Valve Seat', 'Valve Head']], 'disabled': '0'}, fields=['name', 'item_code', 'item_name', 'item_group'])
-
+    
     for item in items:
         item_info = get_item_info(item)
-        #if print_mode: print(item_info)
+
         if item_info is None:
             continue
 
@@ -38,6 +39,15 @@ def refactor_items(print_mode):
             ref_item_code = ref_code_seat
         elif item_group == 'Valve Head':
             ref_item_code = ref_code_head
+            match = re.search(r'-(\w{1,2})-', item_name)
+            if match:
+                index = match.start(1)
+                # Extract the part after the single or double letters
+                tail = item_name[index:]
+                # Define the new prefix
+                new_prefix = "VALVE HEAD-"
+                # Combine new prefix with the tail
+                item_name = f"{new_prefix}{tail}"
 
         reference_name = f"{old_item_code}: {item_name.upper()}"
         if item_group == 'Valve Head':
@@ -58,14 +68,25 @@ def refactor_items(print_mode):
         if item_group == 'Valve Head':
             frappe.db.set_value('Item', name, 'variant_of', '')
             frappe.db.set_value('Item', name, 'customs_tariff_number', '8487.9000')
-        frappe.rename_doc('Item', name, f"{ref_item_code}", merge=False)
+            frappe.db.set_value('Item', name, 'weight_per_unit', '0.10')
+            frappe.db.set_value('Item', name, 'weight_uom', 'Kg')
+            # item.item_defaults = []
+            # if 'item_defaults' not in item or not isinstance(item['item_defaults'], list):
+            #     item['item_defaults'] = []
+            # item['item_defaults'].append({
+            #     "company": "Advanced Microfluidics SA",
+            #     "default_warehouse": "Main Stock - AMF21",
+            #     "expense_account": "4009 - Cost of material: Valve Head - AMF21",
+            #     "income_account": "3007 - Valve Head sales revenue - AMF21",
+            # })
 
-        #if print_mode: print(name, old_item_code, item_name, old_item_code, reference_name)
+        frappe.rename_doc('Item', name, f"{ref_item_code}", merge=False)
         
         if item_group != 'Valve Head':
             create_new_item(item, old_item_code)
-        #if print_mode: print('-------------------------------------------------------------------------------------------------------')
+
         print("Refactor:", name)
+        
         if item_group == 'Plug':
             increment_code(PLUG)
         elif item_group == 'Valve Seat':
@@ -100,7 +121,7 @@ def create_new_item(item, old_item_code):
         'item_group': item['item_group'],
         'reference_code': f"{old_item_code}.ASM",
         'reference_name': f"{old_item_code}.ASM: {item['item_name']}",
-        'has_batch'
+        'has_batch_no': 0,
         'stock_uom': 'Nos',
         'is_stock_item': True,
         'include_item_in_manufacturing': True,
@@ -186,10 +207,7 @@ def create_raw_bom(item):
                     [
                         {'item_code': mat, 'qty': qty_raw},
                     ],
-        }
-        #print(new_bom)
-
-    
+        }    
 
         try:
             create_document('BOM', new_bom)
@@ -247,8 +265,6 @@ def create_bom_head(item):
         print("ValidationError:", ValidationError)
     except:
         print("Can't create BOM Head.")
-
-
 
     commit_transaction()
     print("BOM associated created:", ref_item_code_asm)
@@ -315,7 +331,6 @@ def get_item_info(item):
             else:
                 item_info[key] = part
 
-
     # Return the dictionary containing the item information
     #print(item_info)
     return item_info
@@ -352,13 +367,6 @@ def commit_transaction():
     time.sleep(2)
 
 
-
-
-
-
-
-
-
 """====================================================================="""
 def update_bom_list():
     # Fetch all items with active BOMs
@@ -368,21 +376,20 @@ def update_bom_list():
         fields=['item'],
         distinct=True
     )
-
-    #print(items_with_bom)
     
     # Iterate through each item and update the fields
     for item in items_with_bom:
         item_code = item['item']
         if frappe.db.get_value('Item', item_code, 'disabled'):
             continue
+        remove_old_company_defaults(item_code)
         update_item_bom_fields(item_code)
     
     frappe.db.commit()
     print("BOM list updated for all items with active BOMs.")
 
 def update_item_bom_fields(item_code):
-    #print(item_code)
+    if item_code == 'VALVE POSITION SENSOR': print(item_code)
     # Fetch all BOMs for the item
     boms = frappe.get_all(
         'BOM',
@@ -411,22 +418,50 @@ def update_item_bom_fields(item_code):
         # Since we are fetching the default BOM, we assign it to default_bom
         if bom['is_default']:
             default_bom = bom_name
+        
+        try:
+            frappe.get_doc("BOM", bom).update_cost(from_child_bom=False)
+        except Exception as error:
+            print("An error occurred:", error)
 
-    #print(bom_items)
     # Update the item
     item_doc = frappe.get_doc('Item', item_code)
-    item_doc.bom_default = default_bom
+    item_doc.item_default_bom = default_bom
     item_doc.bom_cost = total_cost
     item_doc.set('bom_table', [])
-
     for bom_item in bom_items:
         item_doc.append('bom_table', bom_item)
-    #print(item_doc)
+
     # Save the updated item document
     try:
         item_doc.save()
-    except ValidationError:
-        print("ValidationError:", ValidationError)
+    except Exception as error:
+        print("An error occurred:", error)
     except:
         print("Can't save item.") 
+
+def remove_old_company_defaults(item_code):
+    try:
+        # Fetch the item document using the item_code
+        item = frappe.get_doc("Item", item_code)
+        
+        # Filter out the 'item_defaults' child table rows where the company is 'Advanced Microfluidics SA (OLD)'
+        item_defaults_to_keep = [
+            row for row in item.item_defaults if row.company != "Advanced Microfluidics SA (OLD)"
+        ]
+
+        # Check if any rows were removed
+        if len(item_defaults_to_keep) != len(item.item_defaults):
+            # Assign the filtered list back to the item
+            item.item_defaults = item_defaults_to_keep
             
+            # Save the item document
+            item.save()
+            frappe.db.commit()
+            print(f"Removed old company defaults for item: {item_code}")
+        else:
+            print(f"No old company defaults found for item: {item_code}")
+    except frappe.DoesNotExistError:
+        print(f"Item with code {item_code} does not exist.")
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
