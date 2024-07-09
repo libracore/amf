@@ -1,3 +1,4 @@
+import datetime
 import re
 import frappe
 import time
@@ -15,11 +16,31 @@ ref_code_seat_asm = 210001
 ref_code_head = 300001
 ref_code_head_asm = 310001
 
+log_id = None
+
+@frappe.whitelist()
+def call_refactor(number):
+    if number == 1:
+        refactor_items()
+    elif number == 2:
+        refactor_items()
+        create_raw_mat_bom()
+    elif number == 3:
+        refactor_items()
+        create_raw_mat_bom()
+        create_bom_for_items()
+    else:
+        print("Error in choosing number of methods to call.")
+    return None
+
 @frappe.whitelist()
 def refactor_items():
+    create_log_entry("Starting amf.amf.utils.item_master3 method...", "refactor_items()")
     # Fetch items in the 'Plug' item group
     #items = frappe.get_all('Item', filters={'item_group': 'Valve Head', 'disabled': '0'}, fields=['name', 'item_code', 'item_name', 'item_group'])
-    items = frappe.get_all('Item', filters={'item_group': ['in', ['Plug', 'Valve Seat', 'Valve Head']], 'disabled': '0'}, fields=['name', 'item_code', 'item_name', 'item_group'])
+    items = frappe.get_all('Item', filters={'item_group': ['in', ['Plug', 'Valve Seat', 'Valve Head']],
+                                            'disabled': '0'},
+                                   fields=['name', 'item_code', 'item_name', 'item_group'])
     
     for item in items:
         item_info = get_item_info(item)
@@ -53,7 +74,10 @@ def refactor_items():
         if item_group == 'Valve Head':
             reference_name = f"{ref_item_code}: {old_item_code}"
         
-        description = f"<div><strong>Code</strong>: {ref_item_code}</div><div><strong>Reference</strong>: {old_item_code}</div><div><strong>Name</strong>: {item_name.upper()}</div><div><strong>Group</strong>: {item_group}</div>"
+        description = f"""<div><strong>Code</strong>: {ref_item_code}</div>
+                          <div><strong>Reference</strong>: {old_item_code}</div>
+                          <div><strong>Name</strong>: {item_name.upper()}</div>
+                          <div><strong>Group</strong>: {item_group}</div>"""
         
         # Update the item
         frappe.db.set_value('Item', name, 'item_code', ref_item_code)
@@ -70,22 +94,16 @@ def refactor_items():
             frappe.db.set_value('Item', name, 'customs_tariff_number', '8487.9000')
             frappe.db.set_value('Item', name, 'weight_per_unit', '0.10')
             frappe.db.set_value('Item', name, 'weight_uom', 'Kg')
-            # item.item_defaults = []
-            # if 'item_defaults' not in item or not isinstance(item['item_defaults'], list):
-            #     item['item_defaults'] = []
-            # item['item_defaults'].append({
-            #     "company": "Advanced Microfluidics SA",
-            #     "default_warehouse": "Main Stock - AMF21",
-            #     "expense_account": "4009 - Cost of material: Valve Head - AMF21",
-            #     "income_account": "3007 - Valve Head sales revenue - AMF21",
-            # })
 
         frappe.rename_doc('Item', name, f"{ref_item_code}", merge=False)
         
         if item_group != 'Valve Head':
             create_new_item(item, old_item_code)
 
-        print("Refactor:", name)
+        try:
+            update_log_entry(log_id, f"Processing item {ref_item_code} with code {old_item_code}")
+        except Exception as e:
+            update_log_entry(log_id, f"Error creating BOM for item: {str(name)} - {str(e)}")
         
         if item_group == 'Plug':
             increment_code(PLUG)
@@ -95,8 +113,7 @@ def refactor_items():
             increment_code(HEAD)
 
     frappe.db.commit()
-
-    print("Item list refactored successfully.")
+    update_log_entry(log_id, "Item list refactored successfully.")
     return None
 
 def create_new_item(item, old_item_code):
@@ -106,11 +123,19 @@ def create_new_item(item, old_item_code):
     if item['item_group'] == 'Plug':
         ref_item_code = ref_code_plug
         ref_item_code_asm = ref_code_plug_asm
-        description = f"<div><strong>Code</strong>: {ref_item_code_asm}</div><div><strong>Reference</strong>: {old_item_code}.ASM</div><div><strong>Name</strong>: {item['item_name']}</div><div><strong>Group</strong>: {item['item_group']}</div><div><strong>Components</strong>: {ref_item_code} + SPL.3013</div>"
+        description = f"""<div><strong>Code</strong>: {ref_item_code_asm}</div>
+                          <div><strong>Reference</strong>: {old_item_code}.ASM</div>
+                          <div><strong>Name</strong>: {item['item_name']}</div>
+                          <div><strong>Group</strong>: {item['item_group']}</div>
+                          <div><strong>Components</strong>: {ref_item_code} + SPL.3013</div>"""
     elif item['item_group'] == 'Valve Seat':
         ref_item_code = ref_code_seat
         ref_item_code_asm = ref_code_seat_asm
-        description = f"<div><strong>Code</strong>: {ref_item_code_asm}</div><div><strong>Reference</strong>: {old_item_code}.ASM</div><div><strong>Name</strong>: {item['item_name']}</div><div><strong>Group</strong>: {item['item_group']}</div><div><strong>Components</strong>: {ref_item_code} + SPL.3039</div>"
+        description = f"""<div><strong>Code</strong>: {ref_item_code_asm}</div>
+                          <div><strong>Reference</strong>: {old_item_code}.ASM</div>
+                          <div><strong>Name</strong>: {item['item_name']}</div>
+                          <div><strong>Group</strong>: {item['item_group']}</div>
+                          <div><strong>Components</strong>: {ref_item_code} + SPL.3039</div>"""
     elif item['item_group'] == 'Valve Head':
         custom_number = '8487.9000'
 
@@ -139,23 +164,31 @@ def create_new_item(item, old_item_code):
         'customs_tariff_number': custom_number,
     }
     create_document('Item', new_item)
+    
+    try:
+        update_log_entry(log_id, f"BOM created successfully for item: {ref_item_code_asm}")
+    except Exception as e:
+        update_log_entry(log_id, f"Error creating BOM for item: {ref_item_code_asm} - {str(e)}")
+    
     commit_transaction()
-    print("Creation:", ref_item_code_asm)
     return None
 
 @frappe.whitelist()
 def create_raw_mat_bom():
+    # Create initial log entry
+    create_log_entry("Starting amf.amf.utils.item_master3 method...", "create_raw_mat_bom()")
     code_raw = '_0%'
     items = get_items_with_specific_code(code_raw)
 
     for item in items:
         create_raw_bom(item)
     
+    update_log_entry(log_id, f">>> End of create_raw_mat_bom() <<<")
     return None 
 
 def create_raw_bom(item):
     item_info = get_item_info(item)
-    print(item_info)
+
     ref_item_code = item['item_code']
     if item['item_group'] == 'Plug':
         w_station = 'EMCOTURN 45'
@@ -211,24 +244,29 @@ def create_raw_bom(item):
 
         try:
             create_document('BOM', new_bom)
-        except ValidationError:
-            print("ValidationError:", ValidationError)
-        except:
-            print("Can't create BOM Raw.")
-        print("Create Raw BOM:", ref_item_code)
+        except Exception as e:
+            print(f"An error occurred: {str(e)}")
+
+        try:
+            update_log_entry(log_id, f"BOM created successfully for item: {ref_item_code}")
+        except Exception as e:
+            update_log_entry(log_id, f"Error creating BOM for item: {ref_item_code} - {str(e)}")
+
         commit_transaction()
-        #print("BOM associated created.")
 
     return None  
 
 @frappe.whitelist()
 def create_bom_for_items():
+    # Create initial log entry
+    create_log_entry("Starting amf.amf.utils.item_master3 method...", "create_bom_for_items()")
     code_asm = '_1%'
     items = get_items_with_specific_code(code_asm)
     
     for item in items:
         create_bom_head(item)
 
+    update_log_entry(log_id, f">>> End of create_bom_for_items() <<<")
     return None
 
 def create_bom_head(item):
@@ -255,20 +293,20 @@ def create_bom_head(item):
         'is_active': 1,
         'items': bom_items,
     }
-    #print(new_bom)
 
     disable_existing_boms(ref_item_code_asm)
 
     try:
         create_document('BOM', new_bom)
-    except ValidationError:
-        print("ValidationError:", ValidationError)
-    except:
-        print("Can't create BOM Head.")
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
 
+    try:
+        update_log_entry(log_id, f"BOM created successfully for item: {ref_item_code_asm}")
+    except Exception as e:
+        update_log_entry(log_id, f"Error creating BOM for item: {ref_item_code_asm} - {str(e)}")
+    
     commit_transaction()
-    print("BOM associated created:", ref_item_code_asm)
-
     return None
 
 def disable_existing_boms(item_code):
@@ -300,7 +338,6 @@ def get_items_with_specific_code(code):
     return items
 
 def get_item_info(item):
-    #print(item)
     if item['item_group'] == 'Valve Head':
         item_name = item['item_code']
     else:
@@ -326,13 +363,12 @@ def get_item_info(item):
                 try:
                     item_info[key] = int(part)
                 except ValueError:
-                    print('ERROR INT CONVERSION')
+                    update_log_entry(log_id, f"Int Conversion Error for {item}")
                     return None  # Return None if conversion to integer fails
             else:
                 item_info[key] = part
 
     # Return the dictionary containing the item information
-    #print(item_info)
     return item_info
 
 def increment_code(code):
@@ -364,8 +400,28 @@ def create_document(doc_type, data):
 def commit_transaction():
     """Commit the current transaction to the database."""
     frappe.db.commit()
-    time.sleep(2)
-
+    time.sleep(1)
+    
+def update_log_entry(log_id, message):
+    """ Update an existing log entry with additional messages """
+    log = frappe.get_doc("Log Entry", log_id)
+    log.message += "\n" + message  # Append new information
+    log.save(ignore_permissions=True)
+    
+def create_log_entry(message, category):
+    """ Create a new log entry and return its ID """
+    log_doc = frappe.get_doc({
+        "doctype": "Log Entry",
+        "timestamp": datetime.datetime.now(),
+        "category": category,
+        "message": message
+    })
+    log_doc.insert(ignore_permissions=True)
+    frappe.db.commit()
+    global log_id
+    log_id = log_doc.name
+    print(log_id)
+    return None
 
 """====================================================================="""
 def update_bom_list():
@@ -389,7 +445,6 @@ def update_bom_list():
     print("BOM list updated for all items with active BOMs.")
 
 def update_item_bom_fields(item_code):
-    if item_code == 'VALVE POSITION SENSOR': print(item_code)
     # Fetch all BOMs for the item
     boms = frappe.get_all(
         'BOM',
@@ -437,8 +492,6 @@ def update_item_bom_fields(item_code):
         item_doc.save()
     except Exception as error:
         print("An error occurred:", error)
-    except:
-        print("Can't save item.") 
 
 def remove_old_company_defaults(item_code):
     try:
