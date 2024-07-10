@@ -1,0 +1,48 @@
+{
+ "autoname": "naming_series:",
+ "creation": "2024-07-10 13:12:49.065148",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "naming_series"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title"
+  },
+  {
+   "default": "SA-.YY.###",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "SA-.YY.###"
+  }
+ ],
+ "modified": "2024-07-10 13:12:49.065148",
+ "modified_by": "Administrator",
+ "module": "Master CRM",
+ "name": "Sales Action",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "title",
+ "track_changes": 1
+}
