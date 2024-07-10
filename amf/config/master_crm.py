@@ -18,7 +18,6 @@ def get_data():
                         "label": _("Customer"),
                         "description": _("Customer")
                     },
-                    ,
                     {
                         "type": "doctype",
                         "name": "Sales Action",
