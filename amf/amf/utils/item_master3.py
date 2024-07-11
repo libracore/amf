@@ -38,8 +38,8 @@ def call_refactor(number):
         refactor_items()
         create_raw_mat_bom()
         create_bom_for_items()    
-        update_bom_list()  
-        new_bom_valve_head()  
+        new_bom_valve_head()
+        update_bom_list() 
     else:
         print("Error in choosing number of methods to call.")
     return None
@@ -508,6 +508,7 @@ def create_log_entry(message, category):
 
 """====================================================================="""
 def update_bom_list():
+    create_log_entry("Starting amf.amf.utils.item_master3 method...", "update_bom_list()")
     # Fetch all items with active BOMs
     items_with_bom = frappe.get_all(
         'BOM',
@@ -525,7 +526,7 @@ def update_bom_list():
         update_item_bom_fields(item_code)
     
     frappe.db.commit()
-    print("BOM list updated for all items with active BOMs.")
+    update_log_entry(log_id, f"BOM list updated for all items with active BOMs.")
 
 def update_item_bom_fields(item_code):
     # Fetch all BOMs for the item
@@ -574,7 +575,7 @@ def update_item_bom_fields(item_code):
     try:
         item_doc.save()
     except Exception as error:
-        print("An error occurred:", error)
+        update_log_entry(log_id, f"An error occurred: {error}")
 
 def remove_old_company_defaults(item_code):
     try:
@@ -594,10 +595,10 @@ def remove_old_company_defaults(item_code):
             # Save the item document
             item.save()
             frappe.db.commit()
-            print(f"Removed old company defaults for item: {item_code}")
+            update_log_entry(log_id, f"Removed old company defaults for item: {item_code}")
         else:
-            print(f"No old company defaults found for item: {item_code}")
+            update_log_entry(log_id, f"No old company defaults found for item: {item_code}")
     except frappe.DoesNotExistError:
-        print(f"Item with code {item_code} does not exist.")
+        update_log_entry(log_id, f"Item with code {item_code} does not exist.")
     except Exception as e:
-        print(f"An error occurred: {str(e)}")
+        update_log_entry(log_id, f"An error occurred: {str(e)}")
