@@ -132,7 +132,7 @@ doc_events = {
         ]
     },
     "Planning": {"on_update": "amf.www.planification.get_filter_value"},
-    # "Stock Entry": {"before_submit": "amf.amf.utils.stock_entry.batch_to_stock_entry"},
+    #"Stock Entry": {"before_submit": "amf.amf.utils.stock_entry.batch_to_stock_entry"},
     "Stock Entry": {"before_save": "amf.www.fftest.update_rate_and_availability_ste"},
     "Stock Entry": {"on_submit": "amf.amf.utils.custom.qr_code_to_document"},
     "Production Order": {"before_submit": "amf.amf.utils.custom.attach_qr_code_to_document"},
