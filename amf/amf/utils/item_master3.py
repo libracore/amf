@@ -29,6 +29,17 @@ def call_refactor(number):
         refactor_items()
         create_raw_mat_bom()
         create_bom_for_items()
+    elif number == 4:
+        refactor_items()
+        create_raw_mat_bom()
+        create_bom_for_items()    
+        update_bom_list()
+    elif number == 5:
+        refactor_items()
+        create_raw_mat_bom()
+        create_bom_for_items()    
+        update_bom_list()  
+        new_bom_valve_head()  
     else:
         print("Error in choosing number of methods to call.")
     return None
@@ -45,7 +56,7 @@ def refactor_items():
     for item in items:
         item_info = get_item_info(item)
 
-        if item_info is None:
+        if item_info is None and item['item_group'] != 'Valve Head':
             continue
 
         name = item['name']
@@ -171,6 +182,77 @@ def create_new_item(item, old_item_code):
         update_log_entry(log_id, f"Error creating BOM for item: {ref_item_code_asm} - {str(e)}")
     
     commit_transaction()
+    return None
+
+@frappe.whitelist()
+def new_bom_valve_head():
+    create_log_entry("Starting amf.amf.utils.item_master3 method...", "create_bom_head()")
+    
+    valve_head_items = frappe.get_all('Item', filters={'item_group': 'Valve Head', 'disabled': '0'}, fields=['name', 'reference_code'])
+
+    for item in valve_head_items:
+        item_code = item['name']
+        reference_code = item['reference_code']
+        disable_existing_boms(item_code)
+        
+        # Fetch matching patterns from 'Plug' and 'Valve Seat' groups
+        matching_plug, matching_seat = match_pattern(reference_code)
+
+        if matching_plug and matching_seat:
+            # Create new BOM (assuming you have a function to create BOM)
+            create_new_bom(item_code, matching_plug, matching_seat)
+        else:
+            update_log_entry(log_id, f"No matching pattern found for {reference_code}")
+    
+    update_log_entry(log_id, f"Done creating new BOM for Valve Heads.")           
+    return None
+
+def match_pattern(reference_code):
+    # Extract the last 6 elements of the reference code pattern
+    try:
+        pattern = '-'.join(reference_code.split('-')[-6:-2])
+        head_seat_suffix = reference_code.split('-')[-2]
+        head_plug_suffix = reference_code.split('-')[-1]
+        update_log_entry(log_id, f"Valve Head main pattern: {pattern} with suffix: {head_seat_suffix} and {head_plug_suffix}")
+    except Exception as e:
+        pattern = None
+        head_seat_suffix = None
+        head_plug_suffix = None
+        update_log_entry(log_id, f"Error split Valve Head for item: {reference_code} - {str(e)}")
+    
+    # Construct the patterns to match
+    plug_pattern = f"%{pattern}-{head_plug_suffix}%"
+    seat_pattern = f"%{pattern}-{head_seat_suffix}%"
+    
+    # Fetch items in 'Plug' and 'Valve Seat' groups
+    plug = frappe.get_all('Item', filters={'item_group': 'Plug', 'disabled': '0', 'item_code': ['like', '_1%'], 'item_name': ['like', plug_pattern]}, fields=['name', 'item_name'])
+    seat = frappe.get_all('Item', filters={'item_group': 'Valve Seat', 'disabled': '0', 'item_code': ['like', '_1%'], 'item_name': ['like', seat_pattern]}, fields=['name', 'item_name']) 
+    
+    matching_plug = plug[0]['name'] if plug else None
+    matching_seat = seat[0]['name'] if seat else None
+    
+    update_log_entry(log_id, f"Plug / Seat: {matching_plug} / {matching_seat}")
+    return matching_plug, matching_seat
+
+def create_new_bom(item_code, plug_code, seat_code):
+    update_log_entry(log_id, f"Creating new BOM for item {item_code} with plug {plug_code} and seat {seat_code}")
+    
+    new_bom = frappe.get_doc({
+        'doctype': 'BOM',
+        'item': item_code,
+        'is_active': 1,
+        'is_default': 1,
+        'items': [
+            {'item_code': plug_code, 'qty': 1},
+            {'item_code': seat_code, 'qty': 1},
+        ],
+        # Add additional BOM fields here as required
+    })
+    new_bom.insert()
+    new_bom.submit()
+    commit_transaction()
+    
+    update_log_entry(log_id, f"New BOM created for item {item_code} with plug {plug_code} and seat {seat_code}")
     return None
 
 @frappe.whitelist()
@@ -321,7 +403,8 @@ def disable_existing_boms(item_code):
         # Disable the BOM
         frappe.db.set_value('BOM', bom['name'], 'is_active', 0)
         frappe.db.set_value('BOM', bom['name'], 'is_default', 0)
-
+    
+    frappe.db.commit()
     return None
 
 # Utility Functions
