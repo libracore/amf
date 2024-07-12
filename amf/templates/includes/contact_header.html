@@ -9,7 +9,12 @@
             <label class="control-label" style="padding-right: 0px;">{{ _("First Name") }}</label>
             <div class="input-group">
                 <span class="input-group-addon"><i class="fa fa-users" aria-hidden="true"></i></span>
-                <input type="text" class="form-control" placeholder="{{ _('First Name') }}" id="first_name" value="{{ doc.first_name or "" }}">
+                <input type="text" 
+                    class="form-control" 
+                    placeholder="{{ _('First Name') }}" 
+                    id="first_name" 
+                    value="{{ doc.first_name or "" }}"
+                    onchange="cur_frm.set_value('first_name', this.value);">
             </div>
         </div>
         
@@ -17,7 +22,12 @@
             <label class="control-label" style="padding-right: 0px;">{{ _("Last Name") }}</label>
             <div class="input-group">
                 <span class="input-group-addon"><i class="fa fa-users" aria-hidden="true"></i></span>
-                <input type="text" class="form-control" placeholder="{{ _('Last Name') }}" id="last_name" value="{{ doc.last_name or "" }}">
+                <input type="text" 
+                    class="form-control" 
+                    placeholder="{{ _('Last Name') }}" 
+                    id="last_name" 
+                    value="{{ doc.last_name or "" }}"
+                    onchange="cur_frm.set_value('last_name', this.value);">
             </div>
         </div>
 
@@ -61,6 +71,22 @@
                 <span class="input-group-addon"><i class="fa fa-star" aria-hidden="true"></i></span>
                 <a href="{{ customer_url or '#' }}" class="form-control">{{ customer_name or doc.company_name or "" }}</a>
             </div>
+        </div>
+        
+        <div class="form-column" style="padding-top: 10px;">
+            <label class="control-label" style="padding-right: 0px;">{{ _("Status") }}</label>
+            <div class="input-group">
+                <span class="input-group-addon"><i class="fa fa-arrow-up" aria-hidden="true"></i></span>
+                <select
+                     class="form-control" 
+                     id="status"
+                     onchange="cur_frm.set_value('status', this.value);" >
+                        {% for o in (status.options or "").split("\n") %}
+                            <option value="{{ o }}" {% if status.value == o %}selected{% endif %}>{{ o }}</option>
+                        {% endfor %}
+                </select>
+            </div>
+
         </div>
     </div>
 </div>

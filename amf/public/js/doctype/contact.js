@@ -61,12 +61,6 @@ function validate_email(email) {
 }
 
 function attach_header_form_handlers() {
-    document.getElementById('first_name').onchange = function() {
-        cur_frm.set_value('first_name', document.getElementById('first_name').value);
-    };
-    document.getElementById('last_name').onchange = function() {
-        cur_frm.set_value('last_name', document.getElementById('last_name').value);
-    };
     document.getElementById('email').onchange = function() {
         let updated = false;
         if (cur_frm.doc.email_ids) {

@@ -12,8 +12,13 @@ def get_header(contact=None):
     address_display = ""
     customer_url = ""
     customer_name = ""
+    status = {
+        'value': 'Lead',
+        'options': 'Lead'
+    }
     if contact and frappe.db.exists("Contact", contact):
         contact_doc = frappe.get_doc("Contact", contact)
+        status['value'] = contact_doc.status
         if contact_doc.address:
             # fetch address from contact
             address_display = get_address_display(address)
@@ -28,14 +33,21 @@ def get_header(contact=None):
                     if address:
                         address_display = get_address_display(address.name)
                     break
-        
+    
+    # get status
+    contact_fields = frappe.get_meta("Contact").as_dict().get('fields')
+    for f in contact_fields:
+        if f['fieldname'] == "status":
+            status['options'] = f['options']
+            
     html = frappe.render_template(
         "amf/templates/includes/contact_header.html", 
         {
             'doc': contact_doc, 
             'address_display': address_display,
             'customer_url': customer_url,
-            'customer_name': customer_name
+            'customer_name': customer_name,
+            'status': status
         }
     )
     return html
