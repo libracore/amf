@@ -1,0 +1,31 @@
+{
+ "custom_fields": [],
+ "custom_perms": [],
+ "doctype": "Contact Phone",
+ "property_setters": [
+  {
+   "_assign": null,
+   "_comments": null,
+   "_liked_by": null,
+   "_user_tags": null,
+   "creation": "2020-04-17 08:33:49.387279",
+   "default_value": null,
+   "doc_type": "Contact Phone",
+   "docstatus": 0,
+   "doctype_or_field": "DocField",
+   "field_name": "is_primary_phone",
+   "idx": 0,
+   "modified": "2020-04-17 08:33:49.387279",
+   "modified_by": "emilie.collot@amf.ch",
+   "name": "Contact Phone-is_primary_phone-default",
+   "owner": "emilie.collot@amf.ch",
+   "parent": null,
+   "parentfield": null,
+   "parenttype": null,
+   "property": "default",
+   "property_type": "Text",
+   "value": "1"
+  }
+ ],
+ "sync_on_migrate": 1
+}
