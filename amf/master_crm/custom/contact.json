@@ -1277,7 +1277,7 @@
    "doctype_or_field": "DocField",
    "field_name": "status",
    "idx": 0,
-   "modified": "2024-07-12 10:51:50.200227",
+   "modified": "2024-07-16 14:29:50.200227",
    "modified_by": "Administrator",
    "name": "Contact-status-options",
    "owner": "Administrator",
@@ -1286,7 +1286,7 @@
    "parenttype": null,
    "property": "options",
    "property_type": "Text",
-   "value": "Lead\nProspect\nCustomer\nBack-Office"
+   "value": "Lead\nProspect\nCustomer\nBack-Office\nPassive"
   },
   {
    "_assign": null,
