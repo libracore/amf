@@ -177,7 +177,7 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
     try:
         create_document('BOM', new_bom)
     except Exception as e:
-        print(new_bom)
+        #print(new_bom)
         print(f"An error occurred: {str(e)}")
             
     commit_database()
