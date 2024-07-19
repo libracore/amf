@@ -102,6 +102,7 @@ def update_item(item, item_name, new_item_code, reference_name, description, log
         frappe.db.set_value('Item', item['name'], 'has_batch_no', 1)
         frappe.db.set_value('Item', item['name'], 'create_new_batch', 0)
         frappe.db.set_value('Item', item['name'], 'sales_uom', 'Nos')
+        frappe.db.set_value('Item', item['name'], 'purchase_uom', 'Nos')
         frappe.db.set_value('Item', item['name'], 'country_of_origin', 'Switzerland')
         frappe.db.set_value('Item', item['name'], 'variant_of', '')
         if ['item_group'] == 'Valve Head':
@@ -110,6 +111,7 @@ def update_item(item, item_name, new_item_code, reference_name, description, log
             frappe.db.set_value('Item', item['name'], 'weight_uom', 'Kg')
         
         frappe.rename_doc('Item', item['item_code'], f"{new_item_code}", merge=False)
+    
     update_log_entry(log, f"Updated: {item}")
     commit_database()
     return None
@@ -188,7 +190,7 @@ def new_bom_component():
                 item_info['time_in_mins'] = 6
                 item_info['qty_raw'] = 0.02
                 if 'P' in item_info['raw_material']:
-                    raw_mat = ['MAT.1007', 'MAT.1001']
+                    raw_mat = ['MAT.1001', 'MAT.1007']
                 elif 'U' in item_info['raw_material']:
                     raw_mat = ['MAT.1003']
                 else:
@@ -586,3 +588,77 @@ def split_item_info(item, new_head=None):
             return split_parts(parts, is_valve_head=True)
     except:
         raise ValueError("Item does not match known patterns for Plug, Valve Seat, or Valve Head.")
+    
+def add_variant():
+    log = create_log_entry("Starting amf.amf.utils.item_master6 method...", "add_variant()")
+    items = frappe.get_all('Item', filters={'item_group': ['in', ['Plug', 'Valve Seat', 'Valve Head']],
+                                            'item_code': ['like', '______'],
+                                            'disabled': '0'},
+                                   fields=['name', 'item_code', 'item_name', 'item_group'])
+    for item in items:
+        item_info = split_item_info(item)
+        print(item)
+        if item['item_group'] == 'Plug':
+            frappe.db.set_value('Item', item['name'], 'variant_of', 'P')
+        # elif item['item_group'] == 'Valve Seat':
+        #     frappe.db.set_value('Item', item['name'], 'variant_of', )
+        # elif item['item_group'] == 'Valve Head':
+        #     frappe.db.set_value('Item', item['name'], 'variant_of', )
+    return None
+
+def create_product():
+    log = create_log_entry("Starting amf.amf.utils.item_master6 method...", "create_product()")
+    drivers = ['P100-O', 'P100-L', 'P101-O', 'P200-O', 'P201-O', 'P211-O', 'P221-O', 'UFM']
+    heads = frappe.get_all('Item', filters={'item_group': 'Valve Head', 'item_code': ['like', '3_%'], 'disabled': '0'}, fields=['name', 'item_code', 'item_name', 'item_group', 'reference_code'])
+    digit_driver = 40
+    for driver in drivers:
+        driver_name = driver.replace('-', '')
+        digit_driver += 1
+        for head in heads:
+            head_name = head['reference_code'].replace('-', '')
+            index = head['item_code'][-2:]
+            new_item = {
+                'doctype': 'Item',
+                'item_code': f"{digit_driver}00{index}",
+                'item_name': f"{driver} {head['reference_code']}",
+                'item_group': 'Products',
+                'reference_code': f"{driver_name}|{head_name}",
+                'reference_name': f"{digit_driver}00{index}: {driver_name}-{head_name}",
+                'has_batch_no': 0,
+                'stock_uom': 'Nos',
+                'is_stock_item': True,
+                'include_item_in_manufacturing': True,
+                'default_material_request_type': 'Manufacture',
+                'description': '',
+                'disabled': False,
+                'country_of_origin': 'Switzerland',
+                'sales_uom': 'Nos',
+                'has_serial_no': 1,
+            }
+            create_document('Item', new_item)
+            # original_description = new_item['description'] or ''
+            # additional_html = f""" {driver} + {head['item_code']}</div>"""
+            # frappe.db.set_value('Item', new_item['name'], 'description', f"{original_description}{additional_html}")
+            bom_items = [
+                {'item_code': head['item_code'], 'qty': 1},
+                {'item_code': driver, 'qty': 1},
+            ]
+            
+            new_bom = {
+                        'doctype': 'BOM',
+                        'item': new_item['item_code'],
+                        'quantity': 1,
+                        'is_default': 1,
+                        'is_active': 1,
+                        'with_operations': 0,
+                        'items': bom_items,
+                    }    
+            try:
+                create_document('BOM', new_bom)
+                update_log_entry(log, f"Creation of: {driver} & {head}")
+            except Exception as e:
+                print(f"An error occurred: {str(e)}")
+            
+            commit_database()
+            
+    return None
