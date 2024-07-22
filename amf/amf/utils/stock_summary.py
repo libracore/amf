@@ -17,7 +17,6 @@ def get_stock(code=None):
         item_codes = frappe.get_all('Item', filters={'disabled': 0}, fields=['item_code', 'item_name', 'reference_code'])
 
     for item in item_codes:
-        print(item)
         item_code = item['item_code']
         item_name = item['item_name'] if 'item_name' in item else ''
         item_refc = item['reference_code'] if 'reference_code' in item else ''
