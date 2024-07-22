@@ -16,10 +16,10 @@ def create_product_variant():
     attributes = frappe.get_all('Item Attribute', filters={'attribute_name': ['in', ['Driver', 'Valve Head', 'Syringe']]}, fields=['name'])
     
     # Initialize dictionaries to store attribute values
-    drivers = []
-    valve_heads = []
-    syringes = []
-    count=0
+    drivers, valve_heads, syringes = [], [], []
+    count, group_digit, driver_digit = 0, 4, 1
+    item_code, last_item_code = None, None
+
     
     # Separate attribute values based on their type
     for attribute in attributes:
@@ -39,42 +39,53 @@ def create_product_variant():
             return False
         # P100-O, P100-L, P101-O always go with a valve head (only V-D models) and a syringe
         if driver in ['P100-O', 'P100-L', 'P101-O']:
-            if not (valve_head.startswith('V-S') or valve_head.startswith('V-O') or valve_head.startswith('V-B')):
+            if (valve_head.startswith('V-S') or valve_head.startswith('V-O') or valve_head.startswith('V-B')):
                 return False
         # P201-O, P200-O, P211-O, P221-O go with all valve heads but no syringes
         elif driver in ['P201-O', 'P200-O', 'P211-O', 'P221-O']:
                 return 'RVM'
         return 'TRUE'
-    
-    group_digit = 4
-    driver_digit = 0
-    item_code=None
+
     # Create combinations
     for driver in drivers:
-        driver_digit += 1
-        for valve_head in valve_heads:
-            head_code = frappe.db.get_value('Item', {'reference_code': valve_head}, 'item_code')
-            head_digit = head_code[-2:]
-            syringe_digit = 0
-            for syringe in syringes:
-                syringe_digit += 1
-                if is_valid_combination(driver, valve_head, syringe) == 'RVM':
-                    if item_code == f"{group_digit}{driver_digit}00{head_digit}":
-                        continue
-                    item_code = f"{group_digit}{driver_digit}00{head_digit}"
-                    #print(item_code)
-                    create_item(item_code, valve_head, driver)
-                    update_log_entry(log, f"Created item: {item_code}")
-                    count+=1
-                elif is_valid_combination(driver, valve_head, syringe) == 'TRUE':
-                    item_code = f"{group_digit}{driver_digit}{syringe_digit:02}{head_digit}"
-                    #print(item_code)
-                    create_item(item_code, valve_head, driver, syringe)
-                    update_log_entry(log, f"Created item: {item_code}")
-                    count+=1
-                
+        if not driver:
+            break
 
-    print(group_digit, driver_digit, syringe_digit, head_digit)
+        for valve_head in valve_heads:
+            if not valve_head:
+                break
+            
+            # Retrieve head_code and head_digit once per valve_head
+            head_code = frappe.db.get_value('Item', {'reference_code': valve_head}, 'item_code')
+            if not head_code:
+                break
+            head_digit = head_code[-2:]
+
+            syringe_digit = 1
+            for syringe in syringes:
+                if not syringe:
+                    break
+
+                combination = is_valid_combination(driver, valve_head, syringe)
+                if combination == 'RVM':
+                    item_code = f"{group_digit}{driver_digit:01}00{head_digit}"
+                    if last_item_code != item_code:
+                        create_item(item_code, valve_head, driver)
+                        #update_log_entry(log, f"Created item: {item_code}")
+                        count += 1
+                        last_item_code = item_code
+                elif combination == 'TRUE':
+                    item_code = f"{group_digit}{driver_digit:01}{syringe_digit:02}{head_digit}"
+                    create_item(item_code, valve_head, driver, syringe)
+                    #update_log_entry(log, f"Created item: {item_code}")
+                    count += 1
+
+                syringe_digit += 1
+                
+        driver_digit += 1
+        print(">> Driver:", driver, "done")
+        
+    update_log_entry(log, f"Done creating items.")
     print(count)
     
     return None
@@ -184,6 +195,7 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
     #update_log_entry(log, f"Creation of: {item}")
     return None
 
+@frappe.whitelist()
 def delete_item():
     # Fetch all items with item_code starting with '4_' and not disabled
     products = frappe.get_all('Item', filters={'item_code': ['like', '4_%'], 'disabled': '0'}, fields=['name'])
