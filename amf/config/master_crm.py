@@ -55,5 +55,18 @@ def get_data():
                         "description": _("Issue")
                     }
             ]
+        },
+        {
+            "label": _("Maintenance"),
+            "icon": "octicon octicon-git-compare",
+            "items": [
+                    {
+                        "type": "report",
+                        "name": "Duplicate Contacts",
+                        "label": _("Duplicate Contacts"),
+                        "doctype": "Contact",
+                        "is_query_report": True
+                    }
+            ]
         }
 ]

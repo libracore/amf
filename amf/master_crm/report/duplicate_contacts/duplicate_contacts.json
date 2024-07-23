@@ -1,0 +1,32 @@
+{
+ "add_total_row": 0,
+ "creation": "2024-07-23 17:36:17.794727",
+ "disable_prepared_report": 0,
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "idx": 0,
+ "is_standard": "Yes",
+ "letter_head": "Standard",
+ "modified": "2024-07-23 17:37:02.988033",
+ "modified_by": "Administrator",
+ "module": "Master CRM",
+ "name": "Duplicate Contacts",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "query": "SELECT `tabContact`.`name` AS `Contact:Link/Contact:200`, \n   `tabContact`.`email_id` AS `Email::300`\nFROM `tabContact`\n   INNER JOIN (SELECT `email_id` AS `email_id`\n               FROM   `tabContact`\n               GROUP  BY `email_id`\n               HAVING COUNT(`name`) > 1) AS `dup`\n           ON `tabContact`.`email_id` = `dup`.`email_id`\nWHERE LENGTH(`tabContact`.`email_id`) > 1\nORDER BY `tabContact`.`email_id` ASC;",
+ "ref_doctype": "Contact",
+ "report_name": "Duplicate Contacts",
+ "report_type": "Query Report",
+ "roles": [
+  {
+   "role": "Sales User"
+  },
+  {
+   "role": "Sales Manager"
+  },
+  {
+   "role": "System Manager"
+  }
+ ]
+}
