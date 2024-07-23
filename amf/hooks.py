@@ -19,6 +19,7 @@ app_include_css = [
     "/assets/amf/css/common.css",
 ]
 app_include_js = [
+    "assets/js/amf_templates.min.js",
     "/assets/amf/js/amf_common.js",
     "/assets/amf/js/common.js",
 ]

@@ -44,6 +44,11 @@ frappe.ui.form.on('Contact', {
         frm.add_custom_button(__("Quotation"), function() {
             create_quotation(frm);
         }, __("Create"));
+    },
+    before_save: function(frm) {
+        if (frm.doc.contact_function === "Primary") {
+            cur_frm.set_value("is_primary_contact", 1);
+        }
     }
 });
 

@@ -1,0 +1,8 @@
+{
+    "js/amf_common.min.js": [
+        "public/js/amf_common.js"
+    ],
+    "js/amf_templates.min.js": [
+        "public/js/templates/contact_list.html"
+    ]
+}
