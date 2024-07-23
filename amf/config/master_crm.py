@@ -25,5 +25,23 @@ def get_data():
                         "description": _("Sales Action")
                     } 
             ]
+        },
+        {
+            "label": _("Activities"),
+            "icon": "octicon octicon-git-compare",
+            "items": [
+                    {
+                        "type": "doctype",
+                        "name": "Campaign",
+                        "label": _("Campaign"),
+                        "description": _("Campaign")
+                    },
+                    {
+                        "type": "doctype",
+                        "name": "Sales Activity",
+                        "label": _("Sales Activity"),
+                        "description": _("Sales Activity")
+                    }
+            ]
         }
 ]
