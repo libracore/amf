@@ -69,6 +69,7 @@ doctype_js = {
 # include js in doctype list views
 doctype_list_js = {
     "Item": ["public/js/list/item_list.js"],
+    "Contact": "public/js/list/contact_list.js"
 }
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
