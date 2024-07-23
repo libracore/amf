@@ -35,7 +35,8 @@ web_include_css = [
 
 # include js in doctype views
 doctype_js = {
-    "Contact": ["public/js/doctype/contact.js"]
+    "Contact": ["public/js/doctype/contact.js"],
+    "Delivery Note": "public/js/delivery_note.js"
 }
 """ doctype_js = {
     "Asset": ["public/js/doctype/asset.js"],

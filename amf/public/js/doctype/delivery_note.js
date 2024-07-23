@@ -137,6 +137,7 @@ frappe.ui.form.on("Delivery Note", {
             // select DN-RET- as naming series
             cur_frm.set_value("naming_series", "DN-RET-");
         }
+        
         console.log("refresh end");
     },
 

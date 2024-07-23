@@ -6,6 +6,8 @@ What this does:
 * Handles click on "Add shipping and taxes" button:
     * Empties taxes table
     * Replaces by two items: first item shipping, second item VAT (applies to previous total)
+
+NOTE: this file is only for documentation, it is not loaded. Refer to ./public/js/... or the Custom Script
 */
 
 frappe.ui.form.on("Delivery Note", {
@@ -102,6 +104,7 @@ frappe.ui.form.on("Delivery Note", {
             // select DN-RET- as naming series
             cur_frm.set_value("naming_series", "DN-RET-");
         }
+        
         console.log("refresh end");
     },
 
