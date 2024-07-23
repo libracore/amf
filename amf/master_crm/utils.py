@@ -5,6 +5,7 @@
 import frappe 
 from frappe.utils import get_url_to_form
 from frappe.model.mapper import get_mapped_doc
+from datetime import datetime
 
 @frappe.whitelist()
 def update_status(contact, status):
@@ -29,6 +30,15 @@ def update_status(contact, status):
         frappe.db.commit()
     return
 
+@frappe.whitelist()
+def update_last_po(contact):
+    if frappe.db.exists("Contact", contact):
+        contact_doc = frappe.get_doc("Contact", contact)
+        contact_doc.last_po = datetime.today().date()
+        contact_doc.save()
+        frappe.db.commit()
+    return
+    
 @frappe.whitelist()
 def make_customer(company_name, customer_group, territory):
     if frappe.db.exists("Customer", company_name):

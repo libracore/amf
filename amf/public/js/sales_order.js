@@ -13,5 +13,14 @@ frappe.ui.form.on("Sales Order", {
                 }
             });
         }
+        // update last PO
+        if (frm.doc.contact_person) {
+            frappe.call({
+                'method': 'amf.master_crm.utils.update_last_po',
+                'args': {
+                    'contact': frm.doc.contact_person
+                }
+            });
+        }
     }
 });
