@@ -1,3 +1,20 @@
+<script>
+function link_customer() {
+    frappe.prompt([
+        {'fieldname': 'customer', 'fieldtype': 'Link', 'label': __('Customer'), 'options': 'Customer', 'reqd': 1}  
+    ],
+    function(values) {
+        let child = cur_frm.add_child('links');
+        frappe.model.set_value(child.doctype, child.name, 'link_doctype', 'Customer');
+        frappe.model.set_value(child.doctype, child.name, 'link_name', values.customer);
+        cur_frm.set_value('company_name', values.customer);
+        cur_frm.refresh_field('links');
+    },
+    __('Link customer'),
+    __('Link')
+    )
+}
+</script>
 <div class="row">
     <div class="col-sm-1">
         <img src="/assets/amf/img/contact.png">
@@ -69,7 +86,11 @@
             <label class="control-label" style="padding-right: 0px;">{{ _("Company") }}</label>
             <div class="input-group">
                 <span class="input-group-addon"><i class="fa fa-star" aria-hidden="true"></i></span>
-                <a href="{{ customer_url or '#' }}" class="form-control">{{ customer_name or doc.company_name or "" }}</a>
+                {% if customer_url %}
+                    <a href="{{ customer_url or '#' }}" class="form-control">{{ customer_name or doc.company_name or "" }}</a>
+                {% else %}
+                    <button class="btn" onclick="link_customer();">Link</button>
+                {% endif %}
             </div>
         </div>
         

@@ -8,6 +8,10 @@ cur_frm.dashboard.add_transactions([
     {
         'label': __("Pre-Sales"),
         'items': ["Quotation", "Sales Activity"]
+    },
+    {
+        'label': __("Complaints"),
+        'items': ["Issue"]
     }
 ]);
 

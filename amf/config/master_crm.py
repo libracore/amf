@@ -43,5 +43,17 @@ def get_data():
                         "description": _("Sales Activity")
                     }
             ]
+        },
+        {
+            "label": _("Complaints"),
+            "icon": "octicon octicon-git-compare",
+            "items": [
+                    {
+                        "type": "doctype",
+                        "name": "Issue",
+                        "label": _("Issue"),
+                        "description": _("Issue")
+                    }
+            ]
         }
 ]
