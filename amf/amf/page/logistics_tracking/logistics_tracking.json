@@ -9,7 +9,7 @@
  "module": "AMF",
  "name": "logistics-tracking",
  "owner": "Administrator",
- "page_name": "3PL Tracking",
+ "page_name": "DHL Tracking",
  "roles": [
   {
    "role": "System Manager"
@@ -19,5 +19,5 @@
  "standard": "Yes",
  "style": null,
  "system_page": 0,
- "title": "3PL Tracking Information"
+ "title": "DHL Tracking Information"
 }
