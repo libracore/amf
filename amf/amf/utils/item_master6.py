@@ -98,7 +98,7 @@ def update_item(item, item_name, new_item_code, reference_name, description, log
         frappe.db.set_value('Item', item['name'], 'item_name', item_name.upper())
         frappe.db.set_value('Item', item['name'], 'reference_name', reference_name)
         frappe.db.set_value('Item', item['name'], 'reference_code', item['item_code'])
-        frappe.db.set_value('Item', item['name'], 'description', description)
+        frappe.db.set_value('Item', item['name'], 'internal_description', description)
         frappe.db.set_value('Item', item['name'], 'has_batch_no', 1)
         frappe.db.set_value('Item', item['name'], 'create_new_batch', 0)
         frappe.db.set_value('Item', item['name'], 'sales_uom', 'Nos')
@@ -153,7 +153,7 @@ def new_asm_component():
             'is_stock_item': True,
             'include_item_in_manufacturing': True,
             'default_material_request_type': 'Manufacture',
-            'description': description,
+            'internal_description': description,
             'item_defaults': [{
                 'company': 'Advanced Microfluidics SA',
                 'default_warehouse': 'Main Stock - AMF21',
@@ -315,7 +315,7 @@ def new_bom_head():
             if bom_items:
                 original_description = item['description'] or ''
                 additional_html = f'<div><strong>Components</strong>: {code_plug} + {code_seat}</div>'
-                frappe.db.set_value('Item', item['name'], 'description', f"{original_description}{additional_html}")
+                frappe.db.set_value('Item', item['name'], 'internal_description', f"{original_description}{additional_html}")
                 
                 disable_existing_boms(item['item_code'])
                 
@@ -661,4 +661,56 @@ def create_product():
             
             commit_database()
             
+    return None
+
+def att_variant():
+    log = create_log_entry("Starting amf.amf.utils.item_master6 method...", "att_variant()")
+    items = frappe.get_all('Item', filters={'item_group': ['in', ['Plug']],
+                                            'disabled': '0', 'item_code': ['like', '_0%']},
+                                   fields=['name', 'item_code', 'item_name', 'item_group', 'reference_code'])
+    
+    code_template = 100000
+    item_template = frappe.get_doc('Item', {'item_code': code_template})
+        
+    for item in items:
+        item_info = split_item_info(item)
+        #print(item_info)
+        if item_info != None:
+            frappe.db.set_value('Item', item['name'], 'variant_of', code_template)
+            # Process each attribute defined in the template, using an index to access corresponding item_info
+            for idx, template_attr in enumerate(item_template.attributes, start=1):
+                if idx < len(item_info):  # Ensure there is a corresponding element in item_info
+                    # Insert a new attribute row
+                    frappe.get_doc({
+                        'doctype': 'Item Variant Attribute',
+                        'parent': item['name'],
+                        'parentfield': 'attributes',
+                        'parenttype': 'Item',
+                        'attribute': template_attr.attribute,
+                        'attribute_value': list(item_info.values())[idx],
+                    }).insert()
+                else:
+                    print("No data provided for attribute:", template_attr.attribute)
+            
+            # Save changes to the item
+            try:
+                frappe.get_doc('Item', item['name']).save()
+            except:
+                print('ERROR', item)
+    return None
+
+def kill_variant():
+    log = create_log_entry("Starting amf.amf.utils.item_master6 method...", "att_variant()")
+    items = frappe.get_all('Item', filters={'item_group': ['in', ['Plug']],
+                                            'disabled': '0'},
+                                   fields=['name', 'item_code', 'item_name', 'item_group', 'reference_code'])
+        
+    for item in items:
+        try:
+            frappe.db.set_value('Item', item['name'], 'variant_of', '')
+            frappe.get_doc('Item', item['name']).save()
+        except:
+            print('ERROR',{item})
+        # Save changes to the item
+        
     return None
