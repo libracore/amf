@@ -96,8 +96,8 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
             return f"""<div><strong>Code</strong>: {pdt_code}</div>
                     <div><strong>Reference</strong>: {new_ref_code}</div>
                     <div><strong>Name</strong>: {new_item_name}</div>
-                    <div><strong>Group</strong>: 'Products'</div>
-                    <div style="border-bottom: 1px solid lightgrey;"><strong>Components</strong></div>
+                    <div><strong>Group</strong>: Products</div>
+                    <div style="border-bottom: 1px solid lightgrey;"><strong>___________________________________________________________________</strong></div>
                     <div><strong>Driver: </strong>{driver.item_code}</div>
                     <div><strong>Valve: </strong>{head.reference_code}</div>
                     <div><strong>Syringe: </strong>{syringe.item_code}</div>"""
@@ -105,8 +105,8 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
             return f"""<div><strong>Code</strong>: {pdt_code}</div>
                     <div><strong>Reference</strong>: {new_ref_code}</div>
                     <div><strong>Name</strong>: {new_item_name}</div>
-                    <div><strong>Group</strong>: 'Products'</div>
-                    <div style="border-bottom: 1px solid lightgrey;"><strong>Components</strong></div>
+                    <div><strong>Group</strong>: Products</div>
+                    <div style="border-bottom: 1px solid lightgrey;"><strong>________________________________________</strong></div>
                     <div><strong>Driver: </strong>{driver.item_code}</div>
                     <div><strong>Valve: </strong>{head.reference_code}</div>"""
     
