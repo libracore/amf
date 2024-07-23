@@ -2,6 +2,16 @@
 Contact Client Custom Script
 ----------------------------
 */
+
+// extend/create dashboard
+cur_frm.dashboard.add_transactions([
+    {
+        'label': __("Pre-Sales"),
+        'items': ["Quotation"]
+    }
+]);
+
+
 frappe.ui.form.on('Contact', {
     refresh: function(frm) {
         // load the header section
