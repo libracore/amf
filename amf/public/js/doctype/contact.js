@@ -64,21 +64,34 @@ function attach_header_form_handlers() {
         }
     };
     document.getElementById('phone').onchange = function() {
-        let updated = false;
-        if (cur_frm.doc.phone_nos) {
-            for (let i = 0; i < cur_frm.doc.phone_nos.length; i++) {
-                if (cur_frm.doc.phone_nos[i].is_primary_phone) {
-                    frappe.model.set_value(cur_frm.doc.phone_nos[i].doctype, cur_frm.doc.phone_nos[i].name, 'phone', document.getElementById('phone').value);
-                    updated = true;
-                    break;
+        let updated = false;    // default is false: insert in case there is nothing to update
+        let phone_no = document.getElementById('phone').value;
+        if (!phone_no) {
+            // phone was cleared - remove if there is a primary phone
+            if (cur_frm.doc.phone_nos) {
+                for (let i = 0; i < cur_frm.doc.phone_nos.length; i++) {
+                    if (cur_frm.doc.phone_nos[i].is_primary_phone) {
+                        cur_frm.get_field("phone_nos").grid.grid_rows[i].remove();
+                        break;
+                    }
                 }
             }
-        }
-        if (!updated) {
-            var child = cur_frm.add_child('email_ids');
-            frappe.model.set_value(child.doctype, child.name, 'phone', document.getElementById('phone').value);
-            frappe.model.set_value(child.doctype, child.name, 'is_primary_phone', 1);
-            
+        } else {
+            if (cur_frm.doc.phone_nos) {
+                for (let i = 0; i < cur_frm.doc.phone_nos.length; i++) {
+                    if (cur_frm.doc.phone_nos[i].is_primary_phone) {
+                        frappe.model.set_value(cur_frm.doc.phone_nos[i].doctype, cur_frm.doc.phone_nos[i].name, 'phone', phone_no);
+                        updated = true;
+                        break;
+                    }
+                }
+            }
+            if (!updated) {
+                var child = cur_frm.add_child('phone_nos');
+                frappe.model.set_value(child.doctype, child.name, 'phone', document.getElementById('phone').value);
+                frappe.model.set_value(child.doctype, child.name, 'is_primary_phone', 1);
+                
+            }
         }
         // cur_frm.set_value('phone', document.getElementById('phone').value);
         cur_frm.refresh_field('phone_nos');
