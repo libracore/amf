@@ -61,6 +61,16 @@ function attach_header_form_handlers() {
                     'indicator': 'red'
                 });
             }
+        } else {
+            // email was cleared, remove
+            if (cur_frm.doc.email_ids) {
+                for (let i = 0; i < cur_frm.doc.email_ids.length; i++) {
+                    if (cur_frm.doc.email_ids[i].is_primary) {
+                        cur_frm.get_field("email_ids").grid.grid_rows[i].remove();
+                        break;
+                    }
+                }
+            }
         }
     };
     document.getElementById('phone').onchange = function() {
