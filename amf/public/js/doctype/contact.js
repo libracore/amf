@@ -38,7 +38,12 @@ frappe.ui.form.on('Contact', {
         cur_frm.remove_custom_button( __("Invite as User") );
         
         // note: this is async - the result takes a while (therefore not in before_save)
-        check_duplicates(frm);   
+        check_duplicates(frm);
+        
+        // action buttons
+        frm.add_custom_button(__("Quotation"), function() {
+            create_quotation(frm);
+        }, __("Create"));
     }
 });
 
@@ -149,5 +154,56 @@ function check_duplicates(frm) {
             }
         }
     });
+}
+
+function create_quotation(frm) {
+    if ((!frm.doc.links) || (frm.doc.links.length === 0)) {
+        // ask for company name
+        frappe.prompt([
+                {'fieldname': 'company_name', 'fieldtype': 'Data', 'label': __('Company Name'), 'reqd': 1, 'default': frm.doc.company_name},
+                {'fieldname': 'customer_group', 'fieldtype': 'Link', 'label': __('Customer Group'), 'reqd': 1, 'options': 'Customer Group'},
+                {'fieldname': 'territory', 'fieldtype': 'Link', 'label': __('Territory'), 'reqd': 1, 'options': 'Territory'}
+            ],
+            function(values) {
+                cur_frm.set_value('company_name', values.company_name);
+                
+                frappe.call({
+                    'method': "amf.master_crm.utils.make_customer",
+                    'args': {
+                        'company_name': values.company_name,
+                        'customer_group': values.customer_group,
+                        'territory': values.territory
+                    },
+                    'callback': function(response) {
+                        // link customer
+                        let child = cur_frm.add_child('links');
+                        frappe.model.set_value(child.doctype, child.name, 'link_doctype', 'Customer');
+                        frappe.model.set_value(child.doctype, child.name, 'link_name', response.message.name);
+                        cur_frm.refresh_field('links');
+                        cur_frm.save().then(function() {
+                            make_quotation(cur_frm);
+                        });
+                    }
+                });
+            
+            },
+            __('Enter Company Name'),
+            __('OK')
+        );
+    } else {
+        // customer available
+        make_quotation(frm);
+    }
+}
+
+
+function make_quotation(frm) {
+    frappe.model.open_mapped_doc({
+        'method': "amf.master_crm.utils.make_quotation",
+        'args': {
+            'contact_name': frm.doc.name
+        },
+        'frm': frm
+    })
 }
 
