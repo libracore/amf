@@ -32,6 +32,12 @@ def get_data():
             "items": [
                     {
                         "type": "doctype",
+                        "name": "Quotation",
+                        "label": _("Quotation"),
+                        "description": _("Quotation")
+                    },
+                    {
+                        "type": "doctype",
                         "name": "Campaign",
                         "label": _("Campaign"),
                         "description": _("Campaign")

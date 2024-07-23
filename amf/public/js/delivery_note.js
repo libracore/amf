@@ -1,3 +1,6 @@
+// Copyright (c) 2024, libracore and contributors
+// For license information, please see license.txt
+
 frappe.ui.form.on("Delivery Note", {
     refresh: function (frm) {
         // attach tooltip for EUR.1 form
