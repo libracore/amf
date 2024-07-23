@@ -37,6 +37,8 @@ frappe.ui.form.on('Contact', {
         // remove the invite as user button
         cur_frm.remove_custom_button( __("Invite as User") );
         
+        // note: this is async - the result takes a while (therefore not in before_save)
+        check_duplicates(frm);   
     }
 });
 
@@ -121,3 +123,31 @@ function attach_header_form_handlers() {
         cur_frm.refresh_field('phone_nos');
     };
 }
+
+function check_duplicates(frm) {
+    frappe.call({
+        'method': 'frappe.client.get_list',
+        'args': {
+            'doctype': 'Contact',
+            'filters': [
+                ['email_id', '=', frm.doc.email_id]
+            ],
+            'fields': ['name', 'email_id'],
+        },
+        'callback': function(response) {
+            if ((response.message) && (response.message.length > 1)) {
+                let message = __("Please check the following contacts with the same email id:") + "<br>";
+                for (let i = 0; i < response.message.length; i++) {
+                    message += "<a href='" + frappe.utils.get_form_link("Contact", response.message[i].name)
+                        + "' target='_blank'>" + response.message[i].name + "</a> (" + response.message[i].email_id + ")<br>";
+                }
+                frappe.msgprint({
+                    'message': message, 
+                    'title': __("Duplicates detected"), 
+                    'indicator': 'red'
+                });
+            }
+        }
+    });
+}
+
