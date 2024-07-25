@@ -10,6 +10,9 @@ def main():
 
 def create_product_variant():
     log = create_log_entry("Starting amf.amf.utils.product_master method...", "create_product_variant()")
+    update_log_entry(log, f"Starting the 4X items creation...")
+    print("Starting the 4X items creation...")
+    
     item_group = 'Products'
     
     # Fetch the item attributes
@@ -84,6 +87,7 @@ def create_product_variant():
                 
         driver_digit += 1
         print(">> Driver:", driver, "done")
+        update_log_entry(log, f">> Driver: {driver} done.")
         
     update_log_entry(log, f"Done creating items.")
     print(count)
@@ -97,7 +101,7 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
                     <div><strong>Reference</strong>: {new_ref_code}</div>
                     <div><strong>Name</strong>: {new_item_name}</div>
                     <div><strong>Group</strong>: Products</div>
-                    <div style="border-bottom: 1px solid lightgrey;"><strong>___________________________________________________________________</strong></div>
+                    <div><strong>___________________________________________________________________</strong></div>
                     <div><strong>Driver: </strong>{driver.item_code}</div>
                     <div><strong>Valve: </strong>{head.reference_code}</div>
                     <div><strong>Syringe: </strong>{syringe.item_code}</div>"""
@@ -106,7 +110,7 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
                     <div><strong>Reference</strong>: {new_ref_code}</div>
                     <div><strong>Name</strong>: {new_item_name}</div>
                     <div><strong>Group</strong>: Products</div>
-                    <div style="border-bottom: 1px solid lightgrey;"><strong>________________________________________</strong></div>
+                    <div><strong>________________________________________</strong></div>
                     <div><strong>Driver: </strong>{driver.item_code}</div>
                     <div><strong>Valve: </strong>{head.reference_code}</div>"""
     
@@ -133,7 +137,7 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
             'is_stock_item': True,
             'include_item_in_manufacturing': True,
             'default_material_request_type': 'Manufacture',
-            'description': description,
+            'internal_description': description,
             'item_defaults': [{
                 'company': 'Advanced Microfluidics SA',
                 'default_warehouse': 'Main Stock - AMF21'
