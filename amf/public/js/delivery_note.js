@@ -1,6 +1,8 @@
 // Copyright (c) 2024, libracore and contributors
 // For license information, please see license.txt
 
+const eur1form_note = __('You have not entered the EUR.1 form number. If an EUR.1 form is not necessary for this shipment, please indicate below with a check mark.');
+
 frappe.ui.form.on("Delivery Note", {
     refresh: function (frm) {
         // attach tooltip for EUR.1 form
@@ -16,14 +18,18 @@ frappe.ui.form.on("Delivery Note", {
             }
         }
         
+        // show dashboard note
+        if ((frm.doc.eur1_form_not_required === 0) && (!frm.doc.eur1_form)) {
+            cur_frm.dashboard.add_comment(eur1form_note, 'yellow', true);
+        }
     },
-    validate: function (frm) {
+    before_submit: function (frm) {
         // validate eur.1 form
         if ((frm.doc.eur1_form_not_required === 0) && (!frm.doc.eur1_form)) {
             frappe.msgprint({
                 indicator: 'red',
                 title: __('Validation'),
-                message: __('You have not entered the EUR.1 form number. If an EUR.1 form is not necessary for this shipment, please indicate below with a check mark.')
+                message: eur1form_note
             });
             frappe.validated = false;
         }
