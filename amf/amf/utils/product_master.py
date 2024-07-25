@@ -124,6 +124,17 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
         new_ref_code = (f"{driver.item_code}{head.item_code}").replace('-', '')
         new_item_name = f"{driver.item_code}/{head.reference_code}"
     description = generate_info(head, new_ref_code, new_item_name, pdt_code, driver, syringe)
+    
+    def get_income_account(item_code):
+        if item_code in ['P201-O', 'P200-O', 'P221-O', 'P211-O']:
+            return '3003 - RVM sales revenue - AMF21', '4003 - Cost of material: RVM rotary valve - AMF21'
+        elif item_code in ['P100-O', 'P101-O']:
+            return '3002 - SPM sales revenue - AMF21', '4002 - Cost of material: SPM - AMF21'
+        elif item_code in ['P100-L']:
+            return '3001 - LSP sales revenue - AMF21', '4001 - Cost of material: LSP - AMF21'
+
+    # Get the appropriate income account based on driver.item_code
+    income_account, expense_account = get_income_account(driver.item_code)
 
     new_item = {
             'doctype': 'Item',
@@ -140,7 +151,9 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
             'internal_description': description,
             'item_defaults': [{
                 'company': 'Advanced Microfluidics SA',
-                'default_warehouse': 'Main Stock - AMF21'
+                'default_warehouse': 'Main Stock - AMF21',
+                'expense_account': expense_account,
+                'income_account': income_account
             }],
             'uoms': [{
                 'uom': 'Nos',
@@ -153,6 +166,9 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
             'is_sales_item': 1,
             'is_purchase_item': 0,
             'has_serial_no': 1,
+            'purchase_uom': Nos,
+            'weight_uom': 'Kg',
+            'warranty_period': '365',
     }
     #print(new_item)
     create_document('Item', new_item)
