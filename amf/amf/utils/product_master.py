@@ -193,9 +193,13 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
             bom_items.append({'item_code': 'RVM.3002', 'qty': 2})
         else:
             bom_items.append({'item_code': 'SPL.3028', 'qty': 2})
-
-    ### LES CAPUCHONS A AJOUTER
-         
+        if '8-100' in head.reference_code or '10-050' in head.reference_code '10-100' in head.reference_code or '10-075' in head.reference_code or '10-080' in head.reference_code or '12-050' in head.reference_code or '12-080' in head.reference_code or '12-100' in head.reference_code:
+            bom_items.append({'item_code': 'RVM.3038', 'qty': 1})
+        else if head.reference_code.startswith('V-S') or head.reference_code.startswith('V-O'):
+            bom_items.append({'item_code': 'RVM.3039', 'qty': 1})
+        else:
+            bom_items.append({'item_code': 'RVM.3040', 'qty': 1})
+             
     new_bom = {
                         'doctype': 'BOM',
                         'item': pdt_code,
@@ -242,4 +246,47 @@ def delete_item():
             return None
         frappe.db.commit()  # Commit the item deletion
         #print("Product deleted:",product)
+    return None
+
+def update_product_descriptions():
+    # Get all items in the 'Products' item group
+    products = frappe.get_all('Item', filters={'item_code': ['like', '4_%'], 'disabled': '0'}, fields=['name'])
+
+    for product in products:
+        product_name = product['name']
+        
+        # Get the default BOM for the item
+        default_bom = frappe.db.get_value('BOM', {'item': product_name, 'is_default': 1, 'docstatus': 1}, 'name')
+        
+        if not default_bom:
+            frappe.log_error(f"No default BOM found for product {product_name}")
+            continue
+        
+        # Get the BOM items
+        bom_items = frappe.get_all('BOM Item', filters={'parent': default_bom}, fields=['item_code'])
+        
+        if not bom_items:
+            frappe.log_error(f"No items found in BOM {default_bom} for product {product_name}")
+            continue
+        
+        for bom_item in bom_items:
+            item_code = bom_item['item_code']
+            
+            # Get the item group of the BOM item
+            item_group = frappe.db.get_value('Item', item_code, 'item_group')
+            
+            if item_group == 'Valve Head':
+                # Get the description of the Valve Head item
+                valve_head_description = frappe.db.get_value('Item', item_code, 'description')
+                
+                if valve_head_description:
+                    # Update the product's description
+                    frappe.db.set_value('Item', product_name, 'description', valve_head_description)
+                    frappe.db.commit()
+                    
+                    frappe.msgprint(f"Updated description of product {product_name} with Valve Head description.")
+                    break
+                else:
+                    frappe.log_error(f"Description not found for Valve Head item {item_code} in product {product_name}")
+    
     return None
