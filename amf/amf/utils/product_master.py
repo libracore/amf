@@ -10,6 +10,9 @@ def main():
 
 def create_product_variant():
     log = create_log_entry("Starting amf.amf.utils.product_master method...", "create_product_variant()")
+    update_log_entry(log, f"Starting the 4X items creation...")
+    print("Starting the 4X items creation...")
+    
     item_group = 'Products'
     
     # Fetch the item attributes
@@ -84,6 +87,7 @@ def create_product_variant():
                 
         driver_digit += 1
         print(">> Driver:", driver, "done")
+        update_log_entry(log, f">> Driver: {driver} done.")
         
     update_log_entry(log, f"Done creating items.")
     print(count)
@@ -97,7 +101,7 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
                     <div><strong>Reference</strong>: {new_ref_code}</div>
                     <div><strong>Name</strong>: {new_item_name}</div>
                     <div><strong>Group</strong>: Products</div>
-                    <div style="border-bottom: 1px solid lightgrey;"><strong>___________________________________________________________________</strong></div>
+                    <div><strong>___________________________________________________________________</strong></div>
                     <div><strong>Driver: </strong>{driver.item_code}</div>
                     <div><strong>Valve: </strong>{head.reference_code}</div>
                     <div><strong>Syringe: </strong>{syringe.item_code}</div>"""
@@ -106,7 +110,7 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
                     <div><strong>Reference</strong>: {new_ref_code}</div>
                     <div><strong>Name</strong>: {new_item_name}</div>
                     <div><strong>Group</strong>: Products</div>
-                    <div style="border-bottom: 1px solid lightgrey;"><strong>________________________________________</strong></div>
+                    <div><strong>________________________________________</strong></div>
                     <div><strong>Driver: </strong>{driver.item_code}</div>
                     <div><strong>Valve: </strong>{head.reference_code}</div>"""
     
@@ -120,6 +124,17 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
         new_ref_code = (f"{driver.item_code}{head.item_code}").replace('-', '')
         new_item_name = f"{driver.item_code}/{head.reference_code}"
     description = generate_info(head, new_ref_code, new_item_name, pdt_code, driver, syringe)
+    
+    def get_income_account(item_code):
+        if item_code in ['P201-O', 'P200-O', 'P221-O', 'P211-O']:
+            return '3003 - RVM sales revenue - AMF21', '4003 - Cost of material: RVM rotary valve - AMF21'
+        elif item_code in ['P100-O', 'P101-O']:
+            return '3002 - SPM sales revenue - AMF21', '4002 - Cost of material: SPM - AMF21'
+        elif item_code in ['P100-L']:
+            return '3001 - LSP sales revenue - AMF21', '4001 - Cost of material: LSP - AMF21'
+
+    # Get the appropriate income account based on driver.item_code
+    income_account, expense_account = get_income_account(driver.item_code)
 
     new_item = {
             'doctype': 'Item',
@@ -133,10 +148,12 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
             'is_stock_item': True,
             'include_item_in_manufacturing': True,
             'default_material_request_type': 'Manufacture',
-            'description': description,
+            'internal_description': description,
             'item_defaults': [{
                 'company': 'Advanced Microfluidics SA',
-                'default_warehouse': 'Main Stock - AMF21'
+                'default_warehouse': 'Main Stock - AMF21',
+                'expense_account': expense_account,
+                'income_account': income_account
             }],
             'uoms': [{
                 'uom': 'Nos',
@@ -149,6 +166,9 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
             'is_sales_item': 1,
             'is_purchase_item': 0,
             'has_serial_no': 1,
+            'purchase_uom': Nos,
+            'weight_uom': 'Kg',
+            'warranty_period': '365',
     }
     #print(new_item)
     create_document('Item', new_item)
@@ -173,9 +193,13 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
             bom_items.append({'item_code': 'RVM.3002', 'qty': 2})
         else:
             bom_items.append({'item_code': 'SPL.3028', 'qty': 2})
-
-    ### LES CAPUCHONS A AJOUTER
-         
+        if '8-100' in head.reference_code or '10-050' in head.reference_code '10-100' in head.reference_code or '10-075' in head.reference_code or '10-080' in head.reference_code or '12-050' in head.reference_code or '12-080' in head.reference_code or '12-100' in head.reference_code:
+            bom_items.append({'item_code': 'RVM.3038', 'qty': 1})
+        else if head.reference_code.startswith('V-S') or head.reference_code.startswith('V-O'):
+            bom_items.append({'item_code': 'RVM.3039', 'qty': 1})
+        else:
+            bom_items.append({'item_code': 'RVM.3040', 'qty': 1})
+             
     new_bom = {
                         'doctype': 'BOM',
                         'item': pdt_code,
@@ -222,4 +246,47 @@ def delete_item():
             return None
         frappe.db.commit()  # Commit the item deletion
         #print("Product deleted:",product)
+    return None
+
+def update_product_descriptions():
+    # Get all items in the 'Products' item group
+    products = frappe.get_all('Item', filters={'item_code': ['like', '4_%'], 'disabled': '0'}, fields=['name'])
+
+    for product in products:
+        product_name = product['name']
+        
+        # Get the default BOM for the item
+        default_bom = frappe.db.get_value('BOM', {'item': product_name, 'is_default': 1, 'docstatus': 1}, 'name')
+        
+        if not default_bom:
+            frappe.log_error(f"No default BOM found for product {product_name}")
+            continue
+        
+        # Get the BOM items
+        bom_items = frappe.get_all('BOM Item', filters={'parent': default_bom}, fields=['item_code'])
+        
+        if not bom_items:
+            frappe.log_error(f"No items found in BOM {default_bom} for product {product_name}")
+            continue
+        
+        for bom_item in bom_items:
+            item_code = bom_item['item_code']
+            
+            # Get the item group of the BOM item
+            item_group = frappe.db.get_value('Item', item_code, 'item_group')
+            
+            if item_group == 'Valve Head':
+                # Get the description of the Valve Head item
+                valve_head_description = frappe.db.get_value('Item', item_code, 'description')
+                
+                if valve_head_description:
+                    # Update the product's description
+                    frappe.db.set_value('Item', product_name, 'description', valve_head_description)
+                    frappe.db.commit()
+                    
+                    frappe.msgprint(f"Updated description of product {product_name} with Valve Head description.")
+                    break
+                else:
+                    frappe.log_error(f"Description not found for Valve Head item {item_code} in product {product_name}")
+    
     return None
