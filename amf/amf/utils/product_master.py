@@ -166,7 +166,7 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
             'is_sales_item': 1,
             'is_purchase_item': 0,
             'has_serial_no': 1,
-            'purchase_uom': Nos,
+            'purchase_uom': 'Nos',
             'weight_uom': 'Kg',
             'warranty_period': '365',
     }
