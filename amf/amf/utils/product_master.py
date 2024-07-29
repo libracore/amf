@@ -193,7 +193,14 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
             bom_items.append({'item_code': 'RVM.3002', 'qty': 2})
         else:
             bom_items.append({'item_code': 'SPL.3028', 'qty': 2})
-        if ('8-100' in head.reference_code) or ('10-050' in head.reference_code) or ('10-100' in head.reference_code) or ('10-075' in head.reference_code) or ('10-080' in head.reference_code) or ('12-050' in head.reference_code) or ('12-080' in head.reference_code) or ('12-100' in head.reference_code):
+        if ('8-100' in head.reference_code) \
+            or ('10-050' in head.reference_code) \
+            or ('10-100' in head.reference_code) \
+            or ('10-075' in head.reference_code) \
+            or ('10-080' in head.reference_code) \
+            or ('12-050' in head.reference_code) \
+            or ('12-080' in head.reference_code) \
+            or ('12-100' in head.reference_code):
             bom_items.append({'item_code': 'RVM.3038', 'qty': 1})
         elif head.reference_code.startswith('V-S') or head.reference_code.startswith('V-O'):
             bom_items.append({'item_code': 'RVM.3039', 'qty': 1})
