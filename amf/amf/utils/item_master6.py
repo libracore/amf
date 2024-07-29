@@ -667,20 +667,37 @@ def create_product():
 
 def att_variant():
     log = create_log_entry("Starting amf.amf.utils.item_master6 method...", "att_variant()")
-    items = frappe.get_all('Item', filters={'item_group': ['in', ['Plug']],
-                                            'disabled': '0', 'item_code': ['like', '_0%']},
-                                   fields=['name', 'item_code', 'item_name', 'item_group', 'reference_code'])
+    
+    def get_attribute_value(attribute, abbreviation):
+        # Fetch the attribute value based on the abbreviation
+        attribute_value = frappe.db.get_value('Item Attribute Value', {'parent': attribute, 'abbr': abbreviation}, 'attribute_value')
+        return attribute_value
+    
+    items = frappe.get_all('Item', 
+        filters=[
+            ['item_group', 'in', ['Plug']],
+            ['disabled', '=', '0'],
+            ['item_code', 'like', '_0%'],
+            ['item_code', 'not like', '100000']
+        ],
+        fields=['name', 'item_code', 'item_name', 'item_group', 'reference_code']
+    )
     
     code_template = 100000
     item_template = frappe.get_doc('Item', {'item_code': code_template})
-        
+
     for item in items:
         item_info = split_item_info(item)
-        #print(item_info)
-        if item_info != None:
+
+        if item_info:
             frappe.db.set_value('Item', item['name'], 'variant_of', code_template)
             # Process each attribute defined in the template, using an index to access corresponding item_info
             for idx, template_attr in enumerate(item_template.attributes, start=1):
+                
+                abbreviation = list(item_info.values())[idx]
+                # Fetch the attribute value corresponding to the abbreviation
+                attribute_value = get_attribute_value(template_attr.attribute, abbreviation)
+                
                 if idx < len(item_info):  # Ensure there is a corresponding element in item_info
                     # Insert a new attribute row
                     frappe.get_doc({
@@ -689,7 +706,7 @@ def att_variant():
                         'parentfield': 'attributes',
                         'parenttype': 'Item',
                         'attribute': template_attr.attribute,
-                        'attribute_value': list(item_info.values())[idx],
+                        'attribute_value': attribute_value,
                     }).insert()
                 else:
                     print("No data provided for attribute:", template_attr.attribute)
@@ -697,8 +714,9 @@ def att_variant():
             # Save changes to the item
             try:
                 frappe.get_doc('Item', item['name']).save()
-            except:
-                print('ERROR', item)
+            except Exception as e:
+                print('ERROR:', e)
+                
     return None
 
 def kill_variant():
