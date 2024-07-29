@@ -1,5 +1,6 @@
 import datetime
 import re
+from apps.amf.amf.amf.utils.utilities import update_log_entry
 import frappe
 import time
 
@@ -485,11 +486,11 @@ def commit_transaction():
     frappe.db.commit()
     time.sleep(1)
     
-def update_log_entry(log_id, message):
-    """ Update an existing log entry with additional messages """
-    log = frappe.get_doc("Log Entry", log_id)
-    log.message += "\n" + message  # Append new information
-    log.save(ignore_permissions=True)
+# def update_log_entry(log_id, message):
+#     """ Update an existing log entry with additional messages """
+#     log = frappe.get_doc("Log Entry", log_id)
+#     log.message += "\n" + message  # Append new information
+#     log.save(ignore_permissions=True)
     
 def create_log_entry(message, category):
     """ Create a new log entry and return its ID """
