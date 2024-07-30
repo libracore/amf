@@ -5,7 +5,6 @@ import re
 import urllib.parse
 import frappe
 from frappe.utils import now_datetime, add_months
-import pandas as pd
 from ratelimit import limits, sleep_and_retry
 import time
 
@@ -81,7 +80,7 @@ def fetch_and_display_tracking_info():
                 'date': info['date'],
                 'status': shipment_info['status']['description'],  # Adjust based on the actual API response structure
                 'last_update': shipment_info['status']['timestamp'],  # Adjust based on the actual API response structure
-        }
+            }
         else:
             tracking_info_dict = {
                 'name': info['name'],
@@ -91,12 +90,12 @@ def fetch_and_display_tracking_info():
                 'status': '',
                 'last_update': '',
                 'destination': ''
-        }
-        tracking_data.append(tracking_info_dict)
+            }
+        try:
+            tracking_data.append(tracking_info_dict)
+        except Exception as e:
+            print("Error in tracking_data:", {e})
 
-    with open("output_data.txt", "w+") as text_file:
-        for entry in tracking_data:
-            text_file.write(str(entry) + "\n") 
     # Insert tracking data into the database
     for data in tracking_data:
         existing_doc = frappe.get_all('DHL Tracking Information', filters={'tracking_number': data['tracking_number']}, limit=1)
@@ -118,5 +117,5 @@ def fetch_and_display_tracking_info():
                 'status': data['status'],
                 'last_update': data['last_update']
             }).insert()
-
-
+        
+        frappe.db.commit()
