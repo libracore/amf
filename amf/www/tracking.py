@@ -66,6 +66,7 @@ def fetch_and_display_tracking_info():
     log = create_log_entry("Starting amf.amf.www.tracking method...", "fetch_and_display_tracking_info()")
     tracking_infos = get_tracking_numbers()  # Call the function to get tracking numbers and customers
     tracking_data = []
+    update_log_entry(log, f"Tracking Numbers & Info Global: {tracking_infos}")
     for info in tracking_infos:
         time.sleep(12)
         api_info = get_tracking_info(info['tracking_no'])
