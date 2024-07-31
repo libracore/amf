@@ -316,7 +316,7 @@ def new_bom_head():
                 bom_items.append({'item_code': code_seat, 'qty': qty_seat})
             
             if bom_items:
-                original_description = item['description'] or ''
+                original_description = item['internal_description'] or ''
                 additional_html = f'<div><strong>Components</strong>: {code_plug} + {code_seat}</div>'
                 frappe.db.set_value('Item', item['name'], 'internal_description', f"{original_description}{additional_html}")
                 
