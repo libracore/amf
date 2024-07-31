@@ -5,8 +5,6 @@ import re
 import urllib.parse
 import frappe
 from frappe.utils import now_datetime, add_months
-import pandas as pd
-from ratelimit import limits, sleep_and_retry
 import time
 
 # DHL API details
@@ -33,8 +31,6 @@ def get_tracking_numbers():
     ]
     return tracking_info
 
-@sleep_and_retry
-@limits(calls=1, period=10)
 def get_tracking_info(tracking_number):
     
     API_KEY = frappe.db.get_single_value("AMF DHL Settings", "dhl_api_key")
@@ -49,8 +45,6 @@ def get_tracking_info(tracking_number):
     connection.request("GET", "/track/shipments?" + params, "", headers)
     response = connection.getresponse()
     data = response.read()
-    #print(response.status)
-    #time.sleep(6)
     # Assuming response.status is an integer, convert it to a string
     status = str(response.status)
     # Convert the data to a JSON formatted string
@@ -71,6 +65,9 @@ def fetch_and_display_tracking_info():
     tracking_infos = get_tracking_numbers()  # Call the function to get tracking numbers and customers
     tracking_data = []
     for info in tracking_infos:
+        t_end = time.time() + 10
+        while time.time() < t_end:
+            pass    
         api_info = get_tracking_info(info['tracking_no'])
         if api_info and 'shipments' in api_info and len(api_info['shipments']) > 0:
             shipment_info = api_info['shipments'][0]
@@ -81,7 +78,7 @@ def fetch_and_display_tracking_info():
                 'date': info['date'],
                 'status': shipment_info['status']['description'],  # Adjust based on the actual API response structure
                 'last_update': shipment_info['status']['timestamp'],  # Adjust based on the actual API response structure
-        }
+            }
         else:
             tracking_info_dict = {
                 'name': info['name'],
@@ -91,12 +88,12 @@ def fetch_and_display_tracking_info():
                 'status': '',
                 'last_update': '',
                 'destination': ''
-        }
-        tracking_data.append(tracking_info_dict)
+            }
+        try:
+            tracking_data.append(tracking_info_dict)
+        except Exception as e:
+            print("Error in tracking_data:", {e})
 
-    with open("output_data.txt", "w+") as text_file:
-        for entry in tracking_data:
-            text_file.write(str(entry) + "\n") 
     # Insert tracking data into the database
     for data in tracking_data:
         existing_doc = frappe.get_all('DHL Tracking Information', filters={'tracking_number': data['tracking_number']}, limit=1)
@@ -118,5 +115,5 @@ def fetch_and_display_tracking_info():
                 'status': data['status'],
                 'last_update': data['last_update']
             }).insert()
-
-
+        
+        frappe.db.commit()
