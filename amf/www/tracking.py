@@ -3,6 +3,7 @@ import json
 import re
 #from turtle import pd      # compatibility issue with TKInter
 import urllib.parse
+from apps.amf.amf.amf.utils.utilities import create_log_entry, update_log_entry
 import frappe
 from frappe.utils import now_datetime, add_months
 import time
@@ -62,12 +63,13 @@ def get_tracking_info(tracking_number):
 
 @frappe.whitelist()
 def fetch_and_display_tracking_info():
+    log = create_log_entry("Starting amf.amf.www.tracking method...", "fetch_and_display_tracking_info()")
     tracking_infos = get_tracking_numbers()  # Call the function to get tracking numbers and customers
     tracking_data = []
     for info in tracking_infos:
         t_end = time.time() + 12
         while time.time() < t_end:
-            pass    
+            pass  
         api_info = get_tracking_info(info['tracking_no'])
         if api_info and 'shipments' in api_info and len(api_info['shipments']) > 0:
             shipment_info = api_info['shipments'][0]
@@ -89,6 +91,7 @@ def fetch_and_display_tracking_info():
                 'last_update': '',
                 'destination': ''
             }
+        update_log_entry(log, f"Tracking No: {info['tracking_no']} for Tracking Info: {tracking_info_dict}")
         try:
             tracking_data.append(tracking_info_dict)
         except Exception as e:
@@ -99,12 +102,14 @@ def fetch_and_display_tracking_info():
         existing_doc = frappe.get_all('DHL Tracking Information', filters={'tracking_number': data['tracking_number']}, limit=1)
         
         if existing_doc:
+            update_log_entry(log, f"Updating existing doc: {existing_doc[0].name}")
             # Update the existing document
             doc = frappe.get_doc('DHL Tracking Information', existing_doc[0].name)
             doc.status = data['status']
             doc.last_update = data['last_update']
             doc.save()
         else:
+            update_log_entry(log, f"Creating new doc...")
             # Insert a new document
             frappe.get_doc({
                 'doctype': 'DHL Tracking Information',
