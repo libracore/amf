@@ -3,7 +3,7 @@ import json
 import re
 #from turtle import pd      # compatibility issue with TKInter
 import urllib.parse
-from apps.amf.amf.amf.utils.utilities import create_log_entry, update_log_entry
+from amf.amf.utils.utilities import create_log_entry, update_log_entry
 import frappe
 from frappe.utils import now_datetime, add_months
 import time
