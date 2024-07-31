@@ -65,7 +65,7 @@ def fetch_and_display_tracking_info():
     tracking_infos = get_tracking_numbers()  # Call the function to get tracking numbers and customers
     tracking_data = []
     for info in tracking_infos:
-        t_end = time.time() + 10
+        t_end = time.time() + 12
         while time.time() < t_end:
             pass    
         api_info = get_tracking_info(info['tracking_no'])
