@@ -14,7 +14,7 @@ DHL_API_URL = "https://api-eu.dhl.com/track/shipments"
 @frappe.whitelist()
 def get_tracking_numbers():
 
-    three_months_ago = add_months(now_datetime(), -3)
+    three_months_ago = add_months(now_datetime(), -1)
 
     # Fetch all delivery notes with the tracking_no and customer field
     delivery_notes = frappe.get_all(
