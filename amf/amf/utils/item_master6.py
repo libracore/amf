@@ -291,7 +291,7 @@ def new_bom_asm():
 def new_bom_head():
     log = create_log_entry("Starting amf.amf.utils.item_master6 method...", "new_bom_head()")
     items = frappe.get_all('Item', filters={'item_group': 'Valve Head', 'item_code': ['like', '3_%'], 'disabled': '0',},
-                                   fields=['name', 'item_code', 'item_name', 'item_group', 'reference_code', 'description'],
+                                   fields=['name', 'item_code', 'item_name', 'item_group', 'reference_code', 'internal_description'],
                                    order_by='item_code asc')
     for item in items:
         item_info = split_item_info(item, True)
