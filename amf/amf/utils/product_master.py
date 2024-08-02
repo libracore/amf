@@ -169,6 +169,7 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
             'purchase_uom': 'Nos',
             'weight_uom': 'Kg',
             'warranty_period': '365',
+            'item_type': 'Finished Good',
     }
     #print(new_item)
     create_document('Item', new_item)

@@ -112,6 +112,9 @@ def update_item(item, item_name, new_item_code, reference_name, description, log
             frappe.db.set_value('Item', item['name'], 'customs_tariff_number', '8487.9000')
             frappe.db.set_value('Item', item['name'], 'weight_per_unit', '0.10')
             frappe.db.set_value('Item', item['name'], 'is_sales_item', '1')
+            frappe.db.set_value('Item', item['name'], 'item_type', 'Sub-Assembly')
+        else:
+            frappe.db.set_value('Item', item['name'], 'item_type', 'Component')
         
         frappe.rename_doc('Item', item['item_code'], f"{new_item_code}", merge=False)
     
@@ -167,6 +170,7 @@ def new_asm_component():
             'country_of_origin': 'Switzerland',
             'sales_uom': 'Nos',
             'customs_tariff_number': '8487.9000',
+            'item_type': 'Sub-Assembly'
         }
         create_document('Item', new_item)
         commit_database()
