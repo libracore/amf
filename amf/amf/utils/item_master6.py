@@ -108,12 +108,12 @@ def update_item(item, item_name, new_item_code, reference_name, description, log
         frappe.db.set_value('Item', item['name'], 'default_material_request_type', 'Manufacture')
         frappe.db.set_value('Item', item['name'], 'warranty_period', '365')
         frappe.db.set_value('Item', item['name'], 'weight_uom', 'Kg')
-        if ['item_group'] == 'Valve Head':
+        if item['item_group'] == 'Valve Head':
             frappe.db.set_value('Item', item['name'], 'customs_tariff_number', '8487.9000')
             frappe.db.set_value('Item', item['name'], 'weight_per_unit', '0.10')
             frappe.db.set_value('Item', item['name'], 'is_sales_item', '1')
             frappe.db.set_value('Item', item['name'], 'item_type', 'Sub-Assembly')
-        elif ['item_group'] == 'Valve Seat' or ['item_group'] == 'Plug':
+        elif item['item_group'] == 'Valve Seat' or item['item_group'] == 'Plug':
             frappe.db.set_value('Item', item['name'], 'item_type', 'Component')
         
         frappe.rename_doc('Item', item['item_code'], f"{new_item_code}", merge=False)
