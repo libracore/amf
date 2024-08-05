@@ -15,6 +15,7 @@ def main():
     new_asm_component()
     new_bom_asm()
     new_bom_head()
+    init_item_defaults()
     
     return None
 
@@ -737,4 +738,69 @@ def kill_variant():
             print('ERROR',{item})
         # Save changes to the item
         
+    return None
+
+def init_item_defaults():
+    log = create_log_entry("Starting amf.amf.utils.item_master6 method...", "init_item_defaults()")
+
+    """
+    This method retrieves all items with a 6-digit item code, 
+    clears the item_defaults child table, and sets the 'company', 'default_warehouse',
+    'expense_account', and 'income_account' fields for each entry in item_defaults.
+
+    Returns:
+    int: The number of items updated.
+    """
+    # Get all items with a 6-digit item code and specific item_group
+    items = frappe.get_all('Item', filters={'name': ['like', '_0%'], 'item_group': ['in', ['Plug', 'Valve Seat', 'Valve Head']]}, fields=['name', 'item_group'])
+
+    if not items:
+        frappe.msgprint("No items found with a 6-digit item code.")
+        return 0
+
+    item_count = 0
+
+    for item in items:
+        # Load the item document
+        item_doc = frappe.get_doc('Item', item['name'])
+
+        # Clear the item_defaults table
+        item_doc.item_defaults = []
+
+        # Define the fields to set for the new item_defaults entry
+        company = 'Advanced Microfluidics SA'
+        default_warehouse = 'Main Stock - AMF21'
+        expense_account = None
+        income_account = None
+
+        # Check item group to set specific accounts
+        if item['item_group'] == 'Valve Head':
+            expense_account = '4009 - Cost of material: Valve Head - AMF21'
+            income_account = '3007 - Valve Head sales revenue - AMF21'
+
+        # Create a new item_defaults entry
+        new_item_default = {
+            'company': company,
+            'default_warehouse': default_warehouse
+        }
+
+        # Add expense and income accounts if applicable
+        if expense_account:
+            new_item_default['expense_account'] = expense_account
+        if income_account:
+            new_item_default['income_account'] = income_account
+
+        # Append the new entry to item_defaults
+        item_doc.append('item_defaults', new_item_default)
+
+        # Save the changes to the item document
+        item_doc.save()
+
+        # Increment the counter
+        item_count += 1
+
+    print(f"Total Items Processed: {item_count}")
+    update_log_entry(log, f"No of Items: {item_count}")
+
+    # Return the number of items updated
     return None
