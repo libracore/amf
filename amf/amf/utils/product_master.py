@@ -90,8 +90,8 @@ def create_product_variant():
                 
         driver_digit += 1
         print(">> Driver:", driver, "done")
-        update_log_entry(log, f">> Driver: {driver} done.")
-        frappe.msgprint(f">> Driver: {driver} done.")
+        update_log_entry(log, f">> Driver: {driver} done")
+        frappe.msgprint(f">> Driver: {driver} done")
     
     update_log_entry(log, f"Done creating items.")
     print(count)
