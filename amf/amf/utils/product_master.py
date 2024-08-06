@@ -6,6 +6,7 @@ from amf.amf.utils.item_master6 import split_item_info
 @frappe.whitelist()
 def main():
     create_product_variant()
+    frappe.msgprint("Eof create_product_variant()")
     return None
 
 def create_product_variant():
@@ -72,23 +73,26 @@ def create_product_variant():
                 combination = is_valid_combination(driver, valve_head, syringe)
                 if combination == 'RVM':
                     item_code = f"{group_digit}{driver_digit:01}00{head_digit}"
+                    if frappe.db.exists('Item', {'item_code': item_code}):
+                        continue
                     if last_item_code != item_code:
                         create_item(item_code, valve_head, driver)
-                        #update_log_entry(log, f"Created item: {item_code}")
                         count += 1
                         last_item_code = item_code
                 elif combination == 'TRUE':
                     item_code = f"{group_digit}{driver_digit:01}{syringe_digit:02}{head_digit}"
+                    if frappe.db.exists('Item', {'item_code': item_code}):
+                        continue
                     create_item(item_code, valve_head, driver, syringe)
-                    #update_log_entry(log, f"Created item: {item_code}")
                     count += 1
 
                 syringe_digit += 1
                 
         driver_digit += 1
         print(">> Driver:", driver, "done")
-        update_log_entry(log, f">> Driver: {driver} done.")
-        
+        update_log_entry(log, f">> Driver: {driver} done")
+        frappe.msgprint(f">> Driver: {driver} done")
+    
     update_log_entry(log, f"Done creating items.")
     print(count)
     
@@ -169,6 +173,7 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
             'purchase_uom': 'Nos',
             'weight_uom': 'Kg',
             'warranty_period': '365',
+            'item_type': 'Finished Good',
     }
     #print(new_item)
     create_document('Item', new_item)
