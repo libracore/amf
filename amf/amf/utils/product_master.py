@@ -124,10 +124,18 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
     if syringe:
         new_ref_code = (f"{driver.item_code}{head.item_code}{syringe.item_code}").replace('-', '')
         new_item_name = f"{driver.item_code}/{head.reference_code}/{syringe.item_code}"
+        new_description = f"""{head.description}
+                            <div>Driver: {driver.item_code}</div>
+                            <div>Syringe: {syringe.item_code}</div>"""
     else:
         new_ref_code = (f"{driver.item_code}{head.item_code}").replace('-', '')
         new_item_name = f"{driver.item_code}/{head.reference_code}"
+        new_description = f"""{head.description}
+                            <div>Driver: {driver.item_code}</div>
+                            <div>Valve: {head.reference_code}</div>"""
     description = generate_info(head, new_ref_code, new_item_name, pdt_code, driver, syringe)
+
+        
     
     def get_income_account(item_code):
         if item_code in ['P201-O', 'P200-O', 'P221-O', 'P211-O']:
@@ -153,7 +161,7 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
             'include_item_in_manufacturing': True,
             'default_material_request_type': 'Manufacture',
             'internal_description': description,
-            'description': head.description,
+            'description': new_description,
             'item_defaults': [{
                 'company': 'Advanced Microfluidics SA',
                 'default_warehouse': 'Main Stock - AMF21',
