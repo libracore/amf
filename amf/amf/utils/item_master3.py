@@ -1,6 +1,6 @@
 import datetime
 import re
-from apps.amf.amf.amf.utils.utilities import update_log_entry
+from amf.amf.utils.utilities import update_log_entry
 import frappe
 import time
 
