@@ -118,7 +118,7 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
                     <div><strong>Driver: </strong>{driver.item_code}</div>
                     <div><strong>Valve: </strong>{head.reference_code}</div>"""
     
-    head = frappe.db.get_value('Item', {'reference_code': valve_head}, ['item_code', 'item_name', 'item_group', 'reference_code'], as_dict=1)
+    head = frappe.db.get_value('Item', {'reference_code': valve_head}, ['item_code', 'item_name', 'item_group', 'reference_code', 'description'], as_dict=1)
     syringe = frappe.db.get_value('Item', {'item_code': syringe}, ['item_code', 'item_name', 'item_group'], as_dict=1) if syringe else ''
     driver = frappe.db.get_value('Item', {'item_code': driver}, ['item_code', 'item_name', 'item_group'], as_dict=1)
     if syringe:
@@ -153,6 +153,7 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
             'include_item_in_manufacturing': True,
             'default_material_request_type': 'Manufacture',
             'internal_description': description,
+            'description': head.description,
             'item_defaults': [{
                 'company': 'Advanced Microfluidics SA',
                 'default_warehouse': 'Main Stock - AMF21',
