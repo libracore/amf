@@ -5,8 +5,6 @@ import frappe
 import json
 import frappe.utils
 from frappe import _
-import tkinter as tk
-from tkinter import messagebox
 
 @frappe.whitelist()
 def make_work_orders(items, sales_order, company, project=None):
@@ -165,3 +163,39 @@ def make_work_order(item_code, sales_order=None, qty=1, bom_no=None):
     work_order.save()
 
     return work_order
+
+@frappe.whitelist()
+def generate_sub_assembly_work_orders(work_order_name, sub_assembly_items, generate_for_all=False):
+    sub_assembly_items = frappe.parse_json(sub_assembly_items)
+    work_order_doc = frappe.get_doc('Work Order', work_order_name)
+
+    created_work_orders = []
+
+    for item_code in sub_assembly_items:
+        # Check if we need to generate a Work Order
+        if generate_for_all or should_generate_work_order_for_item(item_code):
+            new_work_order = frappe.get_doc({
+                'doctype': 'Work Order',
+                'production_item': item_code,
+                'bom_no': get_default_bom(item_code),  # Function to get default BOM for item
+                'qty': work_order_doc.qty,  # Adjust quantity as needed
+                'company': work_order_doc.company,
+                # Include any other necessary fields here
+            })
+            new_work_order.insert()
+            new_work_order.submit()
+            created_work_orders.append(new_work_order.name)
+
+    return created_work_orders
+
+def should_generate_work_order_for_item(item_code):
+    # Logic to determine if a Work Order should be generated for the item
+    # This could involve checking stock levels, existing Work Orders, etc.
+    return True  # For simplicity, always return True
+
+def get_default_bom(item_code):
+    # Logic to fetch the default BOM for the given item
+    bom = frappe.db.get_value('BOM', {'item': item_code, 'is_default': 1}, 'name')
+    if not bom:
+        frappe.throw(f"No default BOM found for item {item_code}")
+    return bom
