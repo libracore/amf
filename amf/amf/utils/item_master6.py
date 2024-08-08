@@ -108,6 +108,7 @@ def update_item(item, item_name, new_item_code, reference_name, description, log
         frappe.db.set_value('Item', item['name'], 'variant_of', '')
         frappe.db.set_value('Item', item['name'], 'default_material_request_type', 'Manufacture')
         frappe.db.set_value('Item', item['name'], 'warranty_period', '365')
+        frappe.db.set_value('Item', item['name'], 'end_of_life', '31-12-2099')
         frappe.db.set_value('Item', item['name'], 'weight_uom', 'Kg')
         if item['item_group'] == 'Valve Head':
             frappe.db.set_value('Item', item['name'], 'customs_tariff_number', '8487.9000')
