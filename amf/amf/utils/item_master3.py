@@ -597,8 +597,6 @@ def remove_old_company_defaults(item_code):
             item.save()
             frappe.db.commit()
             update_log_entry(log_id, f"Removed old company defaults for item: {item_code}")
-        else:
-            update_log_entry(log_id, f"No old company defaults found for item: {item_code}")
     except frappe.DoesNotExistError:
         update_log_entry(log_id, f"Item with code {item_code} does not exist.")
     except Exception as e:
