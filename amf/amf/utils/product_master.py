@@ -125,13 +125,13 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
         new_ref_code = (f"{driver.item_code}{head.item_code}{syringe.item_code}").replace('-', '')
         new_item_name = f"{driver.item_code}/{head.reference_code}/{syringe.item_code}"
         new_description = f"""{head.description}
-                            <div>Driver: {driver.item_code}</div>
+                            <div>Driver: {driver.item_name}</div>
                             <div>Syringe: {syringe.item_code}</div>"""
     else:
         new_ref_code = (f"{driver.item_code}{head.item_code}").replace('-', '')
         new_item_name = f"{driver.item_code}/{head.reference_code}"
         new_description = f"""{head.description}
-                            <div>Driver: {driver.item_code}</div>"""
+                            <div>Driver: {driver.item_name}</div>"""
     description = generate_info(head, new_ref_code, new_item_name, pdt_code, driver, syringe)
 
         
