@@ -205,7 +205,7 @@ def on_submit_work_order(doc_name, method=None):
     return sub_assembly_items
 
 @frappe.whitelist()
-def create_work_orders(items, qty):
+def create_work_orders(items, qty, parent_work_order):
     # Convert the items string to a list
     if isinstance(items, str):
         items = json.loads(items)
@@ -216,6 +216,7 @@ def create_work_orders(items, qty):
                 production_item=item,
                 bom_no=frappe.db.get_value('BOM', {'item': item, 'is_default': 1, 'is_active': 1}, 'name'),
                 qty=int(qty),
+                parent_work_order=parent_work_order,
             )).insert()
         work_order.set_work_order_operations()
         work_order.save()
