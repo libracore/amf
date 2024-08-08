@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 from amf.amf.utils.stock_summary import get_stock
-from amf.amf.utils.utilities import commit_database
+from amf.amf.utils.utilities import *
 import frappe
 import json
 import frappe.utils
@@ -164,29 +164,66 @@ def make_work_order(item_code, sales_order=None, qty=1, bom_no=None):
 
     return work_order
 
+def check_sub_assembly_items(work_order):
+    # List to hold all sub-assembly items
+    sub_assembly_items = []
+
+    def get_sub_assemblies(bom_no):
+        # Fetch all items in the BOM
+        bom_items = frappe.get_all('BOM Item', filters={'parent': bom_no}, fields=['item_code'])
+
+        for item in bom_items:
+            # Fetch the item_type from the Item doctype
+            item_type = frappe.db.get_value('Item', item['item_code'], 'item_type')
+            
+            # Check if the item type is 'Sub-Assembly'
+            if item_type == 'Sub-Assembly':
+                # Append to the list
+                sub_assembly_items.append(item['item_code'])
+                
+                # Fetch the default BOM for this item
+                default_bom = frappe.db.get_value('BOM', {'item': item['item_code'], 'is_default': 1, 'is_active': 1}, 'name')
+                
+                # If there is a default BOM, recurse into it
+                if default_bom:
+                    get_sub_assemblies(default_bom)
+
+    # Get the BOM linked to the work order
+    work_order_doc = frappe.get_doc('Work Order', work_order)
+    bom_no = work_order_doc.bom_no
+    
+    # Start the recursion from the main BOM
+    get_sub_assemblies(bom_no)
+
+    # Optional: Return the list of sub-assembly items
+    return sub_assembly_items
+
 @frappe.whitelist()
-def generate_sub_assembly_work_orders(work_order_name, sub_assembly_items, generate_for_all=False):
-    sub_assembly_items = frappe.parse_json(sub_assembly_items)
-    work_order_doc = frappe.get_doc('Work Order', work_order_name)
+def on_submit_work_order(doc_name, method=None):
+    sub_assembly_items = check_sub_assembly_items(doc_name) # PUT doc.name when using hooks.py
+    print("Sub-Assembly:", sub_assembly_items)
+    return sub_assembly_items
 
-    created_work_orders = []
-
-    for item_code in sub_assembly_items:
-        # Check if we need to generate a Work Order
-        if generate_for_all or should_generate_work_order_for_item(item_code):
-            new_work_order = frappe.get_doc({
-                'doctype': 'Work Order',
-                'production_item': item_code,
-                'bom_no': get_default_bom(item_code),  # Function to get default BOM for item
-                'qty': work_order_doc.qty,  # Adjust quantity as needed
-                'company': work_order_doc.company,
-                # Include any other necessary fields here
-            })
-            new_work_order.insert()
-            new_work_order.submit()
-            created_work_orders.append(new_work_order.name)
-
-    return created_work_orders
+@frappe.whitelist()
+def create_work_orders(items, qty):
+    # Convert the items string to a list
+    if isinstance(items, str):
+        items = json.loads(items)
+    work_order_links = []
+    for item in items:
+        work_order = frappe.get_doc(dict(
+                doctype='Work Order',
+                production_item=item,
+                bom_no=frappe.db.get_value('BOM', {'item': item, 'is_default': 1, 'is_active': 1}, 'name'),
+                qty=int(qty),
+            )).insert()
+        work_order.set_work_order_operations()
+        work_order.save()
+        work_order.submit()
+        work_order_links.append(work_order.name)
+    
+    commit_database()
+    return work_order_links
 
 def should_generate_work_order_for_item(item_code):
     # Logic to determine if a Work Order should be generated for the item
