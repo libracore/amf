@@ -509,11 +509,10 @@ def create_log_entry(message, category):
 
 """====================================================================="""
 def update_bom_list():
-    log_id = create_log_entry("Starting amf.amf.utils.item_master3 method...", "update_bom_list()")
     # Fetch all items with active BOMs
     items_with_bom = frappe.get_all(
         'BOM',
-        filters={'is_active': 1},
+        filters={'is_active': 0},
         fields=['item'],
         distinct=True
     )
@@ -523,13 +522,13 @@ def update_bom_list():
         item_code = item['item']
         if frappe.db.get_value('Item', item_code, 'disabled'):
             continue
-        remove_old_company_defaults(log_id, item_code)
-        update_item_bom_fields(log_id, item_code)
+        remove_old_company_defaults(item_code)
+        update_item_bom_fields(item_code)
     
     frappe.db.commit()
-    update_log_entry(log_id, f"BOM list updated for all items with active BOMs.")
+    #update_log_entry(f"BOM list updated for all items with active BOMs.")
 
-def update_item_bom_fields(log_id, item_code):
+def update_item_bom_fields(item_code):
     # Fetch all BOMs for the item
     boms = frappe.get_all(
         'BOM',
@@ -563,7 +562,7 @@ def update_item_bom_fields(log_id, item_code):
             frappe.get_doc("BOM", bom).update_cost(from_child_bom=False)
         except Exception as error:
             print("An error occurred:", error)
-            update_log_entry(log_id, f"An error occurred: {error}")
+            #update_log_entry(log_id, f"An error occurred: {error}")
 
     # Update the item
     item_doc = frappe.get_doc('Item', item_code)
@@ -577,9 +576,10 @@ def update_item_bom_fields(log_id, item_code):
     try:
         item_doc.save()
     except Exception as error:
-        update_log_entry(log_id, f"An error occurred: {error}")
+        print("An error occurred:", error)
+        #update_log_entry(log_id, f"An error occurred: {error}")
 
-def remove_old_company_defaults(log_id, item_code):
+def remove_old_company_defaults(item_code):
     try:
         # Fetch the item document using the item_code
         item = frappe.get_doc("Item", item_code)
@@ -597,8 +597,10 @@ def remove_old_company_defaults(log_id, item_code):
             # Save the item document
             item.save()
             frappe.db.commit()
-            update_log_entry(log_id, f"Removed old company defaults for item: {item_code}")
+            #update_log_entry(log_id, f"Removed old company defaults for item: {item_code}")
     except frappe.DoesNotExistError:
-        update_log_entry(log_id, f"Item with code {item_code} does not exist.")
+        print("frappe.DoesNotExistError")
+        #update_log_entry(log_id, f"Item with code {item_code} does not exist.")
     except Exception as e:
-        update_log_entry(log_id, f"An error occurred: {str(e)}")
+        print("An error e occurred:", e)
+        #update_log_entry(log_id, f"An error occurred: {str(e)}")
