@@ -142,9 +142,22 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
         elif item_code in ['P100-L']:
             return '3001 - LSP sales revenue - AMF21', '4001 - Cost of material: LSP - AMF21'
 
+    def get_weight(item_code):
+        if item_code in ['P201-O', 'P221-O', 'P211-O']:
+            return 0.53
+        elif item_code in ['P200-O']:
+            return 0.33
+        elif item_code in ['P100-O']:
+            return 1.31
+        elif item_code in ['P101-O']:
+            return 1.34
+        elif item_code in ['P100-L']:
+            return 2.18
+    
     # Get the appropriate income account based on driver.item_code
     income_account, expense_account = get_income_account(driver.item_code)
-
+    weight = get_weight(driver.item_code)
+    
     new_item = {
             'doctype': 'Item',
             'item_code': pdt_code,
@@ -178,6 +191,7 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
             'has_serial_no': 0,
             'purchase_uom': 'Nos',
             'weight_uom': 'Kg',
+            'weight_per_unit': weight,
             'warranty_period': '365',
             'item_type': 'Finished Good',
     }
