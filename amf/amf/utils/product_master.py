@@ -1,7 +1,5 @@
-import re
 import frappe
 from amf.amf.utils.utilities import *
-from amf.amf.utils.item_master6 import split_item_info
 
 @frappe.whitelist()
 def main():

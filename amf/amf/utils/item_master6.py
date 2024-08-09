@@ -18,9 +18,10 @@ def main():
     new_bom_asm()
     new_bom_head()
     init_item_defaults()
+    frappe.msgprint("EoF Item Update")
     create_product_variant()
     update_bom_list()
-    
+    frappe.msgprint("EoF Global")
     return None
 
 def find_corresponding_items(item_info):
