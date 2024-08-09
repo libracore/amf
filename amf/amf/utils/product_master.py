@@ -144,15 +144,15 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
 
     def get_weight(item_code):
         if item_code in ['P201-O', 'P221-O', 'P211-O']:
-            return 0.53
+            return '0.53'
         elif item_code in ['P200-O']:
-            return 0.33
+            return '0.33'
         elif item_code in ['P100-O']:
-            return 1.31
+            return '1.31'
         elif item_code in ['P101-O']:
-            return 1.34
+            return '1.34'
         elif item_code in ['P100-L']:
-            return 2.18
+            return '2.18'
     
     # Get the appropriate income account based on driver.item_code
     income_account, expense_account = get_income_account(driver.item_code)
