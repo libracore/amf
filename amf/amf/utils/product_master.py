@@ -1,7 +1,5 @@
-import re
 import frappe
 from amf.amf.utils.utilities import *
-from amf.amf.utils.item_master6 import split_item_info
 
 @frappe.whitelist()
 def main():
@@ -118,16 +116,23 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
                     <div><strong>Driver: </strong>{driver.item_code}</div>
                     <div><strong>Valve: </strong>{head.reference_code}</div>"""
     
-    head = frappe.db.get_value('Item', {'reference_code': valve_head}, ['item_code', 'item_name', 'item_group', 'reference_code'], as_dict=1)
+    head = frappe.db.get_value('Item', {'reference_code': valve_head}, ['item_code', 'item_name', 'item_group', 'reference_code', 'description'], as_dict=1)
     syringe = frappe.db.get_value('Item', {'item_code': syringe}, ['item_code', 'item_name', 'item_group'], as_dict=1) if syringe else ''
     driver = frappe.db.get_value('Item', {'item_code': driver}, ['item_code', 'item_name', 'item_group'], as_dict=1)
     if syringe:
         new_ref_code = (f"{driver.item_code}{head.item_code}{syringe.item_code}").replace('-', '')
         new_item_name = f"{driver.item_code}/{head.reference_code}/{syringe.item_code}"
+        new_description = f"""{head.description}
+                            <div>Driver: {driver.item_name}</div>
+                            <div>Syringe: {syringe.item_code}</div>"""
     else:
         new_ref_code = (f"{driver.item_code}{head.item_code}").replace('-', '')
         new_item_name = f"{driver.item_code}/{head.reference_code}"
+        new_description = f"""{head.description}
+                            <div>Driver: {driver.item_name}</div>"""
     description = generate_info(head, new_ref_code, new_item_name, pdt_code, driver, syringe)
+
+        
     
     def get_income_account(item_code):
         if item_code in ['P201-O', 'P200-O', 'P221-O', 'P211-O']:
@@ -137,9 +142,22 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
         elif item_code in ['P100-L']:
             return '3001 - LSP sales revenue - AMF21', '4001 - Cost of material: LSP - AMF21'
 
+    def get_weight(item_code):
+        if item_code in ['P201-O', 'P221-O', 'P211-O']:
+            return '0.53'
+        elif item_code in ['P200-O']:
+            return '0.33'
+        elif item_code in ['P100-O']:
+            return '1.31'
+        elif item_code in ['P101-O']:
+            return '1.34'
+        elif item_code in ['P100-L']:
+            return '2.18'
+    
     # Get the appropriate income account based on driver.item_code
     income_account, expense_account = get_income_account(driver.item_code)
-
+    weight = get_weight(driver.item_code)
+    
     new_item = {
             'doctype': 'Item',
             'item_code': pdt_code,
@@ -153,6 +171,7 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
             'include_item_in_manufacturing': True,
             'default_material_request_type': 'Manufacture',
             'internal_description': description,
+            'description': new_description,
             'item_defaults': [{
                 'company': 'Advanced Microfluidics SA',
                 'default_warehouse': 'Main Stock - AMF21',
@@ -172,6 +191,7 @@ def create_item(pdt_code, valve_head, driver, syringe=None):
             'has_serial_no': 0,
             'purchase_uom': 'Nos',
             'weight_uom': 'Kg',
+            'weight_per_unit': weight,
             'warranty_period': '365',
             'item_type': 'Finished Good',
     }

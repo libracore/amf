@@ -1,4 +1,6 @@
 import re
+from amf.amf.utils.product_master import create_product_variant
+from amf.amf.utils.item_master3 import update_bom_list
 import frappe
 from amf.amf.utils.utilities import *
 
@@ -16,7 +18,10 @@ def main():
     new_bom_asm()
     new_bom_head()
     init_item_defaults()
-    
+    frappe.msgprint("EoF Item Update")
+    create_product_variant()
+    update_bom_list()
+    frappe.msgprint("EoF Global")
     return None
 
 def find_corresponding_items(item_info):
@@ -108,6 +113,7 @@ def update_item(item, item_name, new_item_code, reference_name, description, log
         frappe.db.set_value('Item', item['name'], 'variant_of', '')
         frappe.db.set_value('Item', item['name'], 'default_material_request_type', 'Manufacture')
         frappe.db.set_value('Item', item['name'], 'warranty_period', '365')
+        frappe.db.set_value('Item', item['name'], 'end_of_life', '2099-12-31')
         frappe.db.set_value('Item', item['name'], 'weight_uom', 'Kg')
         if item['item_group'] == 'Valve Head':
             frappe.db.set_value('Item', item['name'], 'customs_tariff_number', '8487.9000')
