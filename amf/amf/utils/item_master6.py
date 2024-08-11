@@ -93,8 +93,9 @@ def correct_item(row, items, log):
     for item in items:
         update_log_entry(log, f"Correcting: {item}") 
         new_item_code = generate_item_code(row['index'], item)
-        item_name, reference_name, description = generate_info(item, new_item_code)
-        update_item(item, item_name, new_item_code, reference_name, description, log)
+        if not frappe.db.exists('Item', {'item_code': new_item_code}):
+            item_name, reference_name, description = generate_info(item, new_item_code)
+            update_item(item, item_name, new_item_code, reference_name, description, log)
         
     return None
 
