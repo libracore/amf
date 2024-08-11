@@ -10,6 +10,14 @@ from amf.amf.utils.utilities import *
 # Auto Item Creation w/ pop-up window: nb magnets, pins, etc.
 
 @frappe.whitelist()
+def enqueue_main():
+
+    enqueue("amf.amf.utils.item_master6.main", queue='long', timeout=15000)
+
+    return {'result': _('Started main...')}
+
+
+@frappe.whitelist()
 def main():
     item_info = build_item_matrix()
     find_corresponding_items(item_info)
