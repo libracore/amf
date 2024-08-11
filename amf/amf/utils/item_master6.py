@@ -3,6 +3,7 @@ from amf.amf.utils.product_master import create_product_variant
 from amf.amf.utils.item_master3 import update_bom_list
 import frappe
 from amf.amf.utils.utilities import *
+from frappe.utils.background_jobs import enqueue
 
 # TO BE DONE
 # Variants
