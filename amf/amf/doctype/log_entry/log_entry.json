@@ -21,11 +21,11 @@
   },
   {
    "fieldname": "message",
-   "fieldtype": "Text",
+   "fieldtype": "Long Text",
    "label": "Message"
   }
  ],
- "modified": "2024-07-09 09:51:41.669178",
+ "modified": "2024-08-12 16:00:07.304924",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Log Entry",
