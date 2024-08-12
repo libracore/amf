@@ -162,6 +162,8 @@ def new_asm_component():
                                    order_by='item_code asc')
     for item in items:
         new_code = str(int(item['item_code']) + 10000)
+        if frappe.db.exists('Item', {'item_code': new_code}):
+            continue
         description = generate_info(item, new_code)
 
         new_item = {
