@@ -15,7 +15,7 @@ def enqueue_main():
 
     enqueue("amf.amf.utils.item_master6.main", queue='long', timeout=15000)
 
-    return {'result': _('Started main...')}
+    return {'result': frappe._('Started main...')}
 
 
 @frappe.whitelist()
