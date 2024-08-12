@@ -59,14 +59,20 @@ def create_log_entry(message, category):
 def update_log_entry(log_id, message):
     """ Update an existing log entry with additional messages. """
     log = custom_try(frappe.get_doc, "Log Entry", log_id)
-    log.message += "\n" + message  # Append new information
+    if message:
+        log.message += "\n" + message  # Append new information
+    else:
+        log.message += "\n + no message..."
     custom_try(log.save, ignore_permissions=True)
     return None
 
 def update_error_log(message):
     """ Update the existing log entry cat. error with additional messages. """
     log = frappe.get_all('Log Entry', filters={'category': 'Global Errors'}, fields=['name'])
-    log.message += "\n" + message  # Append new information
+    if message:
+        log.message += "\n" + message  # Append new information
+    else:
+        log.message += "\n + no message..."
     custom_try(log.save, ignore_permissions=True)
     return None
 
