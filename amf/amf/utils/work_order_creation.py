@@ -5,6 +5,9 @@ import frappe
 import json
 import frappe.utils
 from frappe import _
+from erpnext.stock.doctype.stock_entry.stock_entry import get_additional_costs
+from frappe.utils.data import flt
+
 
 @frappe.whitelist()
 def make_work_orders(items, sales_order, company, project=None):
@@ -237,3 +240,45 @@ def get_default_bom(item_code):
     if not bom:
         frappe.throw(f"No default BOM found for item {item_code}")
     return bom
+
+@frappe.whitelist()
+def make_stock_entry(work_order_id, purpose, qty=None):
+    work_order = frappe.get_doc("Work Order", work_order_id)
+    if not frappe.db.get_value("Warehouse", work_order.wip_warehouse, "is_group") \
+            and not work_order.skip_transfer:
+        wip_warehouse = work_order.wip_warehouse
+    else:
+        wip_warehouse = None
+
+    stock_entry = frappe.new_doc("Stock Entry")
+    stock_entry.purpose = purpose
+    stock_entry.work_order = work_order_id
+    stock_entry.company = work_order.company
+    stock_entry.from_bom = 1
+    stock_entry.bom_no = work_order.bom_no
+    stock_entry.use_multi_level_bom = work_order.use_multi_level_bom
+    stock_entry.fg_completed_qty = qty or (flt(work_order.qty) - flt(work_order.produced_qty))
+
+    if purpose == "Material Transfer for Manufacture":
+        stock_entry.to_warehouse = wip_warehouse
+        stock_entry.project = work_order.project
+    else:
+        stock_entry.from_warehouse = wip_warehouse
+        stock_entry.to_warehouse = work_order.fg_warehouse
+        stock_entry.project = work_order.project
+        if purpose == "Manufacture":
+            additional_costs = get_additional_costs(work_order, fg_qty=stock_entry.fg_completed_qty)
+            stock_entry.set("additional_costs", additional_costs)
+
+    stock_entry.set_stock_entry_type()
+    stock_entry.get_items()
+
+    # Save the Stock Entry
+    stock_entry.insert()
+    stock_entry.submit()
+
+    # Commit the transaction to ensure the Stock Entry is saved
+    frappe.db.commit()
+
+    return stock_entry.as_dict()
+
