@@ -9,7 +9,7 @@ def generate_barcode(data):
         data=data,
     )
     # Define file path and save the image
-    file_path = frappe.utils.get_files_path(f"{data}.png", is_private=False)
+    file_path = frappe.utils.get_files_path(f"{data}.png", is_private=True)
     img.convert('1').save(file_path)
     # Return the file path for storage in ERPNext
     return file_path

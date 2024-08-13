@@ -3,11 +3,20 @@ from amf.amf.utils.product_master import create_product_variant
 from amf.amf.utils.item_master3 import update_bom_list
 import frappe
 from amf.amf.utils.utilities import *
+from frappe.utils.background_jobs import enqueue
 
 # TO BE DONE
 # Variants
 # Account Defaults
 # Auto Item Creation w/ pop-up window: nb magnets, pins, etc.
+
+@frappe.whitelist()
+def enqueue_main():
+
+    enqueue("amf.amf.utils.item_master6.main", queue='long', timeout=15000)
+
+    return {'result': frappe._('Started main...')}
+
 
 @frappe.whitelist()
 def main():
@@ -153,6 +162,8 @@ def new_asm_component():
                                    order_by='item_code asc')
     for item in items:
         new_code = str(int(item['item_code']) + 10000)
+        if frappe.db.exists('Item', {'item_code': new_code}):
+            continue
         description = generate_info(item, new_code)
 
         new_item = {
