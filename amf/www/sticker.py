@@ -49,9 +49,10 @@ def get_details_for_work_order(work_order_name):
         
     # Update infoDocType with details from the last relevant Stock Entry item
     if last_item_with_batch_or_serial:
+        barcode = frappe.get_all('Batch', filters={'name': last_item_with_batch_or_serial.get("batch_no", "")}, fields=['barcode'])
         infoDocType.update({
             "Batch": last_item_with_batch_or_serial.get("batch_no", ""),
-            #get the barcode from the batch.name
+            "Barcode": barcode,
             "Serial n/o": last_item_with_batch_or_serial.get("serial_no", ""),
             "Matière": rawMatCode
         })
