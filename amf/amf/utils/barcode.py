@@ -14,7 +14,7 @@ def generate_barcode(data):
     # Return the file path for storage in ERPNext
     return file_path
 
-def after_insert_handler(doc, method):
+def after_insert_handler(doc, method=None):
     # Generate a barcode for the new document using its name or any unique identifier
     barcode_path = generate_barcode(doc.name)
     # Attach the barcode image to the document or store the path
