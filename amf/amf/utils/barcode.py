@@ -1,6 +1,7 @@
 # Import necessary Frappe framework functions
 import frappe
 import treepoem
+import os
 
 def generate_barcode(data):
     # Generate a barcode image
@@ -11,8 +12,11 @@ def generate_barcode(data):
     # Define file path and save the image
     file_path = frappe.utils.get_files_path(f"{data}.png", is_private=True)
     img.convert('1').save(file_path)
-    # Return the file path for storage in ERPNext
-    return file_path
+    # Strip the site path prefix to get the relative path
+    relative_path = os.path.relpath(file_path, start=frappe.utils.get_site_path())
+    
+    # Return the relative file path for storage in ERPNext
+    return f"/{relative_path}"
 
 def after_insert_handler(doc, method=None):
     # Generate a barcode for the new document using its name or any unique identifier
