@@ -322,3 +322,89 @@ def update_product_descriptions():
                     frappe.log_error(f"Description not found for Valve Head item {item_code} in product {product_name}")
     
     return None
+
+@frappe.whitelist()
+def enqueue_main():
+    frappe.enqueue("amf.amf.utils.product_master.fetch_items_with_pattern", queue='long', timeout=15000)
+    return {'result': frappe._('Started main...')}
+
+def fetch_items_with_pattern():
+    patterns = ['%P200-O-%', '%P201-O-%', '%P100-O-%', '%P100-L-%']
+    
+    for pattern in patterns:
+        print(f"Processing pattern: {pattern}")
+        items = frappe.get_all('Item', filters={'item_code': ['like', pattern]}, fields=['name', 'item_code'])
+        
+        for item in items:
+            # Check if the item is present in any Delivery Note
+            delivery_note_item_exists = frappe.get_all('Delivery Note Item', filters={'item_code': item['item_code']})
+            
+            if delivery_note_item_exists:
+                print(f"Item {item['item_code']} is present in a Delivery Note, skipping...")
+                continue  # Skip processing for this item
+
+            # Enable the item (set 'disabled' to 0)
+            frappe.db.set_value('Item', item['name'], 'disabled', 0)
+            
+            active_boms = frappe.get_all('BOM', filters={'item': item['name']}, fields=['name'])
+            
+            for bom in active_boms:
+                work_orders = frappe.get_all('Work Order', filters={'bom_no': bom['name'], 'docstatus': 1}, fields=['name', 'status'])
+                
+                for work_order in work_orders:
+                    print(f"  Item: {item['item_code']}")
+                    print(f"    BOM: {bom['name']}")
+                    print(f"      Work Order: {work_order['name']} (Status: {work_order['status']})")
+                    
+                    job_cards = frappe.get_all('Job Card', filters={'work_order': work_order['name']}, fields=['name', 'status'])
+                    print("        Job Cards:")
+                    for job_card in job_cards:
+                        print(f"          Job Card: {job_card['name']} (Status: {job_card['status']})")
+                        job_card_doc = frappe.get_doc('Job Card', job_card['name'])
+                        job_card_doc.cancel()
+                        job_card_doc.delete()
+                        print(f"          Job Card: {job_card['name']} has been cancelled.")
+                    
+                    stock_entries = frappe.get_all(
+                        'Stock Entry',
+                        filters={'work_order': work_order['name'], 'docstatus': 1},
+                        fields=['name', 'purpose'],
+                        order_by='creation desc'
+                    )
+                    print("        Stock Entries:")
+                    for stock_entry in stock_entries:
+                        print(f"          Stock Entry: {stock_entry['name']} (Purpose: {stock_entry['purpose']})")
+                        stock_entry_doc = frappe.get_doc('Stock Entry', stock_entry['name'])
+                        stock_entry_doc.cancel()
+                        stock_entry_doc.delete()
+                        print(f"          Stock Entry: {stock_entry['name']} has been cancelled.")
+                
+                    work_order_doc = frappe.get_doc('Work Order', work_order['name'])
+                    work_order_doc.cancel()
+                    work_order_doc.delete()
+                    
+                # frappe.db.set_value('BOM', bom['name'], 'is_active', 0)
+                # frappe.db.set_value('BOM', bom['name'], 'is_default', 0)
+                bom_doc = frappe.get_doc('BOM', bom['name'])
+                
+                try:
+                    bom_doc.cancel()
+                except Exception as e:
+                    print(e)
+                try:
+                    bom_doc.delete()
+                except Exception as e:
+                    print(e)
+                        
+                
+            item_doc = frappe.get_doc('Item', item['name'])
+            try:
+                item_doc.delete()
+            except Exception as e:
+                frappe.db.set_value('Item', item['name'], 'disabled', 1)
+                print(e)
+            frappe.db.commit()    
+            
+
+
+
