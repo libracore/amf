@@ -118,7 +118,7 @@ def generate_html_table(items_details):
 def send_email_forecast(email_content):
     # Creating email context
     email_context = {
-        'recipients': 'sales@amf.ch',
+        'recipients': 'sales@amf.ch,nathan.favereau@amf.ch',
         'content': email_content,
         'subject': "Weekly Availibity of Standard Items",
         'communication_medium': 'Email',

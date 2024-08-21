@@ -12,6 +12,11 @@ import time
 DHL_API_URL = "https://api-eu.dhl.com/track/shipments"
 
 @frappe.whitelist()
+def fetch_and_display_tracking_info_enqueue():
+    enqueue("amf.www.tracking.fetch_and_display_tracking_info", queue='long', tiemout=15000)
+    return None
+
+@frappe.whitelist()
 def get_tracking_numbers():
 
     three_months_ago = add_months(now_datetime(), -1)
