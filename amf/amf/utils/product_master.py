@@ -404,7 +404,44 @@ def fetch_items_with_pattern():
                 frappe.db.set_value('Item', item['name'], 'disabled', 1)
                 print(e)
             frappe.db.commit()    
-            
+  
+
+
+
+@frappe.whitelist()
+def replace_description_enqueue():
+    enqueue("amf.amf.utils.product_master.replace_word_in_item_description", queue='long', tiemout=15000)
+    return {'result': frappe._('Started replace_description_enqueue...')}
+
+
+def replace_word_in_item_description():
+    # Fetch all items where item_code starts with '4_'
+    items_product = frappe.get_all('Item', filters={'item_code': ['like', '4_%']}, fields=['name', 'description', 'internal_description'])
+    items_head = frappe.get_all('Item', filters={'item_code': ['like', '3_%']}, fields=['name', 'description', 'internal_description'])
+
+    items = items_product + items_head
+    
+    for item in items:
+        # Check if 'Driver' is in the description
+        if item.description:
+            # Replace 'Driver' with 'Body'
+            new_description = item.description.replace('Driver', 'Body')
+            new_description = new_description.replace('material', 'Material')
+            new_description = new_description.replace('size', 'Size')
+            new_description = new_description.replace('ports', 'Ports')
+            new_description = new_description.replace('stages', 'Stages')
+            new_description = new_description.replace('type', 'Type')
+            # Update the item description
+            frappe.db.set_value('Item', item.name, 'description', new_description)
+        if item.internal_description:
+            # Replace 'Driver' with 'Body'
+            new_internal_description = item.internal_description.replace('Driver', 'Body')
+            # Update the item description
+            frappe.db.set_value('Item', item.name, 'internal_description', new_internal_description)
+        
+        frappe.db.commit()
+
+    return None            
 
 
 
