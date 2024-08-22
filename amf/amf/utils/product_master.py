@@ -405,10 +405,21 @@ def fetch_items_with_pattern():
                 print(e)
             frappe.db.commit()    
   
-@frappe.whitelist()         
+
+
+
+@frappe.whitelist()
+def replace_description_enqueue():
+    enqueue("amf.amf.utils.product_master.replace_word_in_item_description", queue='long', tiemout=15000)
+    return {'result': frappe._('Started replace_description_enqueue...')}
+
+
 def replace_word_in_item_description():
     # Fetch all items where item_code starts with '4_'
-    items = frappe.get_all('Item', filters={'item_code': ['like', '4_%']}, fields=['name', 'description', 'internal_description'])
+    items_product = frappe.get_all('Item', filters={'item_code': ['like', '4_%']}, fields=['name', 'description', 'internal_description'])
+    items_head = frappe.get_all('Item', filters={'item_code': ['like', '3_%']}, fields=['name', 'description', 'internal_description'])
+
+    items = items_product + items_head
     
     for item in items:
         # Check if 'Driver' is in the description
