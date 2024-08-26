@@ -410,7 +410,7 @@ def fetch_items_with_pattern():
 
 @frappe.whitelist()
 def replace_description_enqueue():
-    frappe.enqueue("amf.amf.utils.product_master.replace_word_in_item_description", queue='long', tiemout=15000)
+    frappe.enqueue("amf.amf.utils.product_master.replace_word_in_item_description", queue='long', timeout=15000)
     return {'result': frappe._('Started replace_description_enqueue...')}
 
 
