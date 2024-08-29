@@ -82,7 +82,6 @@ def get_data():
                     }
             ]
         },
-        ,
         {
             "label": _("Integration"),
             "icon": "octicon octicon-git-compare",
