@@ -91,6 +91,12 @@ def get_data():
                         "name": "Brevo",
                         "label": _("Brevo"),
                         "description": _("Brevo")
+                    },
+                    {
+                        "type": "doctype",
+                        "name": "Gravity Forms",
+                        "label": _("Gravity Forms"),
+                        "description": _("Gravity Forms")
                     }
             ]
         }
