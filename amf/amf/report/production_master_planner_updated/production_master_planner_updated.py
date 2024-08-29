@@ -24,7 +24,7 @@ def execute(filters=None):
 
 def get_columns():
     return [
-        _("ITEM CODE")+":Link/Item:250",
+        _("ITEM CODE: ITEM NAME")+":Link/Item:350",
         _("SO")+":Link/Sales Order:100",
         _("TYPE")+":Link/Sales Order:100",
         _("QTY")+":Int:50",
@@ -48,7 +48,7 @@ def get_data(filters):
     # SQL query to fetch the required data
     sql_query = """
         SELECT
-            so_item.item_code,
+            CONCAT(so_item.item_code, ': ', item.item_name) as item_code_and_name,
             so.name as sales_order,
             so.sales_order_type as type,
             so_item.qty,
