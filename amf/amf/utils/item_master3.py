@@ -508,6 +508,11 @@ def create_log_entry(message, category):
     return None
 
 """====================================================================="""
+@frappe.whitelist()
+def update_bom_list_enqueue():
+    frappe.enqueue("amf.amf.utils.item_master3.update_bom_list", queue='long', timeout=15000)
+    return None
+
 def update_bom_list():
     # Fetch all items with active BOMs
     items_with_bom = frappe.get_all(
