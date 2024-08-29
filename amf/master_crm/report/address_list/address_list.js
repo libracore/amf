@@ -4,6 +4,11 @@
 
 frappe.query_reports["Address List"] = {
     "filters": [
-
+        {
+            'fieldname': 'country',
+            'label': __("Country"),
+            'fieldtype': "Link",
+            'options': "Country"
+        }
     ]
 };

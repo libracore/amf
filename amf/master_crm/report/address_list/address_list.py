@@ -30,7 +30,10 @@ def get_columns():
     ]
     
 def get_data(filters):
-            
+    conditions = ""
+    if filters.country:
+        conditions += """ WHERE `tUAdr`.`country` = "{0}" """.format(filters.country)
+        
     sql_query = """SELECT 
           `tabCustomer`.`name` AS `customer`,
           `tabCustomer`.`customer_name` AS `customer_name`,
@@ -59,7 +62,8 @@ def get_data(filters):
                 `tabAddress`.`address_line2` AS `address_line2`,
                 `tabAddress`.`pincode` AS `pincode`,
                 `tabAddress`.`city` AS `city`,
-                `tDL`.`link_name` AS `customer`
+                `tDL`.`link_name` AS `customer`,
+                `tabAddress`.`country` AS `country`
               FROM `tabAddress`
               LEFT JOIN `tabDynamic Link` AS `tDL` ON (
                 `tabAddress`.`name` = `tDL`.`parent` 
@@ -70,8 +74,9 @@ def get_data(filters):
             ) AS `tAdr`
             GROUP BY `tAdr`.`customer`
         ) AS `tUAdr` ON `tabCustomer`.`name` = `tUAdr`.`customer`
+        {conditions} 
         ORDER BY `tabCustomer`.`name` ASC;
-      """
+      """.format(conditions=conditions)
 
     data = frappe.db.sql(sql_query, as_dict=1)
 
