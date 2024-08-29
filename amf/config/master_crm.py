@@ -81,5 +81,18 @@ def get_data():
                         "is_query_report": True
                     }
             ]
+        },
+        ,
+        {
+            "label": _("Integration"),
+            "icon": "octicon octicon-git-compare",
+            "items": [
+                    {
+                        "type": "doctype",
+                        "name": "Brevo",
+                        "label": _("Brevo"),
+                        "description": _("Brevo")
+                    }
+            ]
         }
 ]
