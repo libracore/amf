@@ -21,7 +21,7 @@ def get_header(contact=None):
         status['value'] = contact_doc.status
         if contact_doc.address:
             # fetch address from contact
-            address_display = get_address_display(address)
+            address_display = get_address_display(contact_doc.address)
         elif contact_doc.links and len(contact_doc.links) > 0:
             # fetch address from company
             for l in contact_doc.links:

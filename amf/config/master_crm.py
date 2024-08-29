@@ -23,7 +23,14 @@ def get_data():
                         "name": "Sales Action",
                         "label": _("Sales Action"),
                         "description": _("Sales Action")
-                    } 
+                    },
+                    {
+                        "type": "report",
+                        "name": "Address List",
+                        "label": _("Address List"),
+                        "doctype": "Contact",
+                        "is_query_report": True
+                    }
             ]
         },
         {
