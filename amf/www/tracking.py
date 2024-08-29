@@ -13,7 +13,7 @@ DHL_API_URL = "https://api-eu.dhl.com/track/shipments"
 
 @frappe.whitelist()
 def fetch_and_display_tracking_info_enqueue():
-    enqueue("amf.www.tracking.fetch_and_display_tracking_info", queue='long', tiemout=15000)
+    frappe.enqueue("amf.www.tracking.fetch_and_display_tracking_info", queue='long', timeout=15000)
     return None
 
 @frappe.whitelist()
