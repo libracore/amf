@@ -58,6 +58,19 @@ def get_data():
             ]
         },
         {
+            "label": _("Reporting"),
+            "icon": "octicon octicon-git-compare",
+            "items": [
+                    {
+                        "type": "report",
+                        "name": "Sales Analytics",
+                        "label": _("Sales Analytics"),
+                        "doctype": "Sales Invoice",
+                        "is_query_report": True
+                    }
+            ]
+        },
+        {
             "label": _("Complaints"),
             "icon": "octicon octicon-git-compare",
             "items": [
