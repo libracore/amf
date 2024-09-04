@@ -183,6 +183,7 @@ scheduler_events = {
         "amf.amf.utils.capacity.update_capacity_utilization_rate",
         "amf.www.tracking.fetch_and_display_tracking_info_enqueue",
         "amf.amf.utils.item_master3.update_bom_list_enqueue",
+        "amf.master_crm.doctype.gravity_forms.gravity_forms.daily_sync"
     ],
     "hourly": [
         "amf.amf.utils.document_notification.update_purchase_orders",

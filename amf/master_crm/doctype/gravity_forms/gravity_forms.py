@@ -107,7 +107,6 @@ def fetch_entries():
     if forms:
         for f in forms:
             if cint(frappe.get_value("Gravity Form", f.get('id'), 'disabled')) == 0:
-                frappe.log_error("Fetch {0} entries".format(f.get('id')))
                 entries = fetch_form_entries(f.get('id'))
         
     return
@@ -140,3 +139,9 @@ def fetch_form_entries(gravity_form):
         frappe.db.commit()
         
     return entries
+
+def daily_sync():
+    gravity = frappe.get_doc("Gravity Forms", "Gravity Forms")
+    if cint(gravity.daily_sync) == 1:
+        fetch_entries()
+    return

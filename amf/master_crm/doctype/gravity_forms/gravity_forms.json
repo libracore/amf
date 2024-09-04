@@ -5,6 +5,7 @@
  "engine": "InnoDB",
  "field_order": [
   "gravity_host",
+  "daily_sync",
   "col_main",
   "gravity_key",
   "gravity_secret"
@@ -28,10 +29,16 @@
    "fieldname": "gravity_secret",
    "fieldtype": "Password",
    "label": "Secret"
+  },
+  {
+   "default": "0",
+   "fieldname": "daily_sync",
+   "fieldtype": "Check",
+   "label": "Daily Sync"
   }
  ],
  "issingle": 1,
- "modified": "2024-08-29 17:32:58.405140",
+ "modified": "2024-09-04 16:06:05.031645",
  "modified_by": "Administrator",
  "module": "Master CRM",
  "name": "Gravity Forms",
