@@ -1,0 +1,45 @@
+{
+ "creation": "2024-09-04 15:32:37.296312",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "field_id",
+  "field_name",
+  "import"
+ ],
+ "fields": [
+  {
+   "fieldname": "field_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Field ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "field_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Field name",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "import",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Import"
+  }
+ ],
+ "istable": 1,
+ "modified": "2024-09-04 16:02:19.674525",
+ "modified_by": "Administrator",
+ "module": "Master CRM",
+ "name": "Gravity Form Field",
+ "owner": "Administrator",
+ "permissions": [],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

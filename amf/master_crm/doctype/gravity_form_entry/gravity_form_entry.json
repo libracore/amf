@@ -1,0 +1,103 @@
+{
+ "autoname": "field:gravity_form_entry_id",
+ "creation": "2024-09-04 14:50:08.618054",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "gravity_form",
+  "gravity_form_entry_id",
+  "col_main",
+  "title",
+  "sec_fields",
+  "fields",
+  "sec_content",
+  "content"
+ ],
+ "fields": [
+  {
+   "fieldname": "gravity_form",
+   "fieldtype": "Link",
+   "label": "Gravity Form",
+   "options": "Gravity Form",
+   "read_only": 1
+  },
+  {
+   "fieldname": "content",
+   "fieldtype": "Code",
+   "in_list_view": 1,
+   "label": "Content",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "gravity_form_entry_id",
+   "fieldtype": "Data",
+   "label": "Gravity Form Entry ID",
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "sec_fields",
+   "fieldtype": "Section Break",
+   "label": "Fields"
+  },
+  {
+   "fieldname": "fields",
+   "fieldtype": "Table",
+   "label": "Fields",
+   "options": "Gravity Form Entry Field",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "sec_content",
+   "fieldtype": "Section Break",
+   "label": "Content"
+  },
+  {
+   "fieldname": "col_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "gravity_form.title",
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Title",
+   "read_only": 1
+  }
+ ],
+ "modified": "2024-09-04 16:01:26.461447",
+ "modified_by": "Administrator",
+ "module": "Master CRM",
+ "name": "Gravity Form Entry",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales User",
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
