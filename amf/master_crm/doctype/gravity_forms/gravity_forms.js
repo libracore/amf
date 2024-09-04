@@ -11,6 +11,12 @@ frappe.ui.form.on('Gravity Forms', {
                 fetch_entries(frm);
             });
         }
+        frm.add_custom_button(__("Forms"), function() {
+            frappe.set_route("List", "Gravity Form");
+        });
+        frm.add_custom_button(__("Entries"), function() {
+            frappe.set_route("List", "Gravity Form Entry");
+        });
     }
 });
 
