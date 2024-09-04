@@ -55,6 +55,12 @@ frappe.ui.form.on('Contact', {
         if (!frm.doc.unsubscribed) {
             upload_to_brevo(frm);
         }
+    },
+    first_name: function(frm) {
+        update_full_name(frm);
+    },
+    last_name: function(frm) {
+        update_full_name(frm);
     }
 });
 
@@ -229,4 +235,8 @@ function upload_to_brevo(frm) {
             frappe.show_alert("Brevo: " + response.message.status /* + " - " + response.message.text */);
         }
     });
+}
+
+function update_full_name(frm) {
+    cur_frm.set_value("full_name", (frm.doc.first_name || "") + " " + (frm.doc.last_name || ""));
 }

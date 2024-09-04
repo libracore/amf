@@ -37,7 +37,7 @@ function link_customer() {
                     placeholder=`{{ _("First Name") }}`
                     id="first_name" 
                     value="{{ doc.first_name or "" }}"
-                    onchange=`cur_frm.set_value("first_name", this.value);`>
+                    onchange="cur_frm.set_value(`first_name`, this.value);">
             </div>
         </div>
         
@@ -50,7 +50,7 @@ function link_customer() {
                     placeholder=`{{ _("Last Name") }}` 
                     id="last_name" 
                     value="{{ doc.last_name or "" }}"
-                    onchange=`cur_frm.set_value("last_name", this.value);`>
+                    onchange="cur_frm.set_value(`last_name`, this.value);">
             </div>
         </div>
 
@@ -107,7 +107,7 @@ function link_customer() {
                 <select
                      class="form-control" 
                      id="status"
-                     onchange=`cur_frm.set_value("status", this.value);` >
+                     onchange="cur_frm.set_value(`status`, this.value);" >
                         {% for o in (status.options or "").split("\n") %}
                             <option value="{{ o }}" {% if status.value == o %}selected{% endif %}>{{ o }}</option>
                         {% endfor %}

@@ -133,23 +133,41 @@ doc_events = {
             "amf.amf.utils.on_work_order_submit.on_submit_wo",
         ]
     },
-    "Job Card": {"on_submit": "amf.amf.utils.custom.qr_code_to_document"},
+    "Job Card": {
+        "on_submit": "amf.amf.utils.custom.qr_code_to_document"
+    },
     "Lead": {
         "after_insert": [
             "amf.amf.utils.lead_customization.create_address_from_lead",
             "amf.amf.utils.lead_customization.create_contact_from_lead",
         ]
     },
-    "Planning": {"on_update": "amf.www.planification.get_filter_value"},
+    "Planning": {
+        "on_update": "amf.www.planification.get_filter_value"
+    },
     #"Stock Entry": {"before_submit": "amf.amf.utils.stock_entry.batch_to_stock_entry"},
-    "Stock Entry": {"before_save": "amf.www.fftest.update_rate_and_availability_ste"},
-    "Stock Entry": {"on_submit": "amf.amf.utils.custom.qr_code_to_document"},
-    "Production Order": {"before_submit": "amf.amf.utils.custom.attach_qr_code_to_document"},
-    "Batch": {"after_insert": "amf.amf.utils.barcode.after_insert_handler"},
+    "Stock Entry": {
+        "before_save": "amf.www.fftest.update_rate_and_availability_ste"
+    },
+    "Stock Entry": {
+        "on_submit": "amf.amf.utils.custom.qr_code_to_document"
+    },
+    "Production Order": {
+        "before_submit": "amf.amf.utils.custom.attach_qr_code_to_document"
+    },
+    "Batch": {
+        "after_insert": "amf.amf.utils.barcode.after_insert_handler"
+    },
     "Delivery Note": {
         #"validate": "amf.amf.utils.delivery_note_api.check_serial_nos"
     },
-    "Serial No": {"after_insert": "amf.amf.utils.custom.qrcode_serial_no"}
+    "Serial No": {
+        "after_insert": "amf.amf.utils.custom.qrcode_serial_no"
+    },
+    "Contact": {
+        "autoname": "amf.master_crm.naming.contact_autoname"
+    }
+
 }
 
 # Scheduled Tasks
