@@ -165,7 +165,8 @@ doc_events = {
         "after_insert": "amf.amf.utils.custom.qrcode_serial_no"
     },
     "Contact": {
-        "autoname": "amf.master_crm.naming.contact_autoname"
+        "autoname": "amf.master_crm.naming.contact_autoname",
+        "before_save": "amf.master_crm.contact.before_save"
     }
 
 }
