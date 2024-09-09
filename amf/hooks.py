@@ -140,7 +140,7 @@ doc_events = {
             "amf.amf.utils.lead_customization.create_contact_from_lead",
         ]
     },
-    "Planning": {"on_update": "amf.www.planification.get_filter_value"},
+    # "Planning": {"on_update": "amf.www.planification.get_filter_value"},
     #"Stock Entry": {"before_submit": "amf.amf.utils.stock_entry.batch_to_stock_entry"},
     "Stock Entry": {"before_save": "amf.www.fftest.update_rate_and_availability_ste"},
     "Stock Entry": {"on_submit": "amf.amf.utils.custom.qr_code_to_document"},
