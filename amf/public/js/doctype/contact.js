@@ -49,6 +49,18 @@ frappe.ui.form.on('Contact', {
         if (frm.doc.contact_function === "Primary") {
             cur_frm.set_value("is_primary_contact", 1);
         }
+    },
+    after_save: function(frm) {
+        // transmit to Brevo
+        if (!frm.doc.unsubscribed) {
+            upload_to_brevo(frm);
+        }
+    },
+    first_name: function(frm) {
+        update_full_name(frm);
+    },
+    last_name: function(frm) {
+        update_full_name(frm);
     }
 });
 
@@ -212,3 +224,19 @@ function make_quotation(frm) {
     })
 }
 
+function upload_to_brevo(frm) {
+    frappe.call({
+        'method': 'amf.master_crm.doctype.brevo.brevo.create_update_contact',
+        'args': {
+            'contact': frm.doc.name,
+            'list_ids': [12]
+        },
+        'callback': function(response) {
+            frappe.show_alert("Brevo: " + response.message.status /* + " - " + response.message.text */);
+        }
+    });
+}
+
+function update_full_name(frm) {
+    cur_frm.set_value("full_name", (frm.doc.first_name || "") + " " + (frm.doc.last_name || ""));
+}

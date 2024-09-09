@@ -23,7 +23,14 @@ def get_data():
                         "name": "Sales Action",
                         "label": _("Sales Action"),
                         "description": _("Sales Action")
-                    } 
+                    },
+                    {
+                        "type": "report",
+                        "name": "Address List",
+                        "label": _("Address List"),
+                        "doctype": "Contact",
+                        "is_query_report": True
+                    }
             ]
         },
         {
@@ -51,6 +58,19 @@ def get_data():
             ]
         },
         {
+            "label": _("Reporting"),
+            "icon": "octicon octicon-git-compare",
+            "items": [
+                    {
+                        "type": "report",
+                        "name": "Sales Analytics",
+                        "label": _("Sales Analytics"),
+                        "doctype": "Sales Invoice",
+                        "is_query_report": True
+                    }
+            ]
+        },
+        {
             "label": _("Complaints"),
             "icon": "octicon octicon-git-compare",
             "items": [
@@ -72,6 +92,24 @@ def get_data():
                         "label": _("Duplicate Contacts"),
                         "doctype": "Contact",
                         "is_query_report": True
+                    }
+            ]
+        },
+        {
+            "label": _("Integration"),
+            "icon": "octicon octicon-git-compare",
+            "items": [
+                    {
+                        "type": "doctype",
+                        "name": "Brevo",
+                        "label": _("Brevo"),
+                        "description": _("Brevo")
+                    },
+                    {
+                        "type": "doctype",
+                        "name": "Gravity Forms",
+                        "label": _("Gravity Forms"),
+                        "description": _("Gravity Forms")
                     }
             ]
         }

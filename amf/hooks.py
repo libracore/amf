@@ -133,7 +133,9 @@ doc_events = {
             "amf.amf.utils.on_work_order_submit.on_submit_wo",
         ]
     },
-    "Job Card": {"on_submit": "amf.amf.utils.custom.qr_code_to_document"},
+    "Job Card": {
+        "on_submit": "amf.amf.utils.custom.qr_code_to_document"
+    },
     "Lead": {
         "after_insert": [
             "amf.amf.utils.lead_customization.create_address_from_lead",
@@ -142,14 +144,29 @@ doc_events = {
     },
     # "Planning": {"on_update": "amf.www.planification.get_filter_value"},
     #"Stock Entry": {"before_submit": "amf.amf.utils.stock_entry.batch_to_stock_entry"},
-    "Stock Entry": {"before_save": "amf.www.fftest.update_rate_and_availability_ste"},
-    "Stock Entry": {"on_submit": "amf.amf.utils.custom.qr_code_to_document"},
-    "Production Order": {"before_submit": "amf.amf.utils.custom.attach_qr_code_to_document"},
-    "Batch": {"after_insert": "amf.amf.utils.barcode.after_insert_handler"},
+    "Stock Entry": {
+        "before_save": "amf.www.fftest.update_rate_and_availability_ste"
+    },
+    "Stock Entry": {
+        "on_submit": "amf.amf.utils.custom.qr_code_to_document"
+    },
+    "Production Order": {
+        "before_submit": "amf.amf.utils.custom.attach_qr_code_to_document"
+    },
+    "Batch": {
+        "after_insert": "amf.amf.utils.barcode.after_insert_handler"
+    },
     "Delivery Note": {
         #"validate": "amf.amf.utils.delivery_note_api.check_serial_nos"
     },
-    "Serial No": {"after_insert": "amf.amf.utils.custom.qrcode_serial_no"}
+    "Serial No": {
+        "after_insert": "amf.amf.utils.custom.qrcode_serial_no"
+    },
+    "Contact": {
+        "autoname": "amf.master_crm.naming.contact_autoname",
+        "before_save": "amf.master_crm.contact.before_save"
+    }
+
 }
 
 # Scheduled Tasks
@@ -164,6 +181,7 @@ scheduler_events = {
         "amf.amf.utils.capacity.update_capacity_utilization_rate",
         "amf.www.tracking.fetch_and_display_tracking_info_enqueue",
         "amf.amf.utils.item_master3.update_bom_list_enqueue",
+        "amf.master_crm.doctype.gravity_forms.gravity_forms.daily_sync"
     ],
     "hourly": [
         "amf.amf.utils.document_notification.update_purchase_orders",

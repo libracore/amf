@@ -21,7 +21,7 @@ def get_header(contact=None):
         status['value'] = contact_doc.status
         if contact_doc.address:
             # fetch address from contact
-            address_display = get_address_display(address)
+            address_display = get_address_display(contact_doc.address)
         elif contact_doc.links and len(contact_doc.links) > 0:
             # fetch address from company
             for l in contact_doc.links:
@@ -62,3 +62,36 @@ def get_address_display(address):
         return address_display
     else:
         return None
+
+
+def before_save(self, method):
+    check_unique_primary_contact(self)
+    return
+    
+def check_unique_primary_contact(contact):
+    # check if there is a linked customer
+    customer = None
+    if contact.get('links'):
+        for l in contact.get('links'):
+            if l.get("link_doctype") == "Customer":
+                customer = l.get('link_name')
+                
+    if customer:
+        # check if this customer has other linked primary contacts
+        other_primary_contacts = frappe.db.sql("""
+            SELECT `tabContact`.`name`
+            FROM `tabContact`
+            JOIN `tabDynamic Link` ON `tabDynamic Link`.`parent` = `tabContact`.`name` AND `tabDynamic Link`.`link_doctype` = "Customer"
+            WHERE 
+                `tabContact`.`is_primary_contact` = 1
+                AND `tabDynamic Link`.`link_name` = "{customer}"
+                AND `tabContact`.`name` != "{contact}";
+            """.format(contact=contact.name, customer=customer), as_dict=True)
+            
+        if len(other_primary_contacts) > 0:
+            # disable other primary
+            for o in other_primary_contacts:
+                frappe.db.set_value("Contact", o.get('name'), 'is_primary_contact', 0)
+            frappe.db.commit()
+            
+    return
