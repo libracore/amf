@@ -95,3 +95,55 @@ def check_unique_primary_contact(contact):
             frappe.db.commit()
             
     return
+
+@frappe.whitelist()
+def create_update_contact(first_name=None, last_name=None, phone=None, email=None, position=None):
+    existing_contact = frappe.get_all("Contact", filters={'email_id': email}, fields=['name'])
+    
+    if len(existing_contact) > 0:
+        # update
+        contact = frappe.get_doc("Contact", existing_contact[0]['name'])
+        contact.update({
+            'first_name': first_name or "",
+            'last_name': last_name or "",
+            'position': position or ""
+        })
+        contact.email_ids = []
+        contact_phone_nos = []
+        if email:
+            contact.append("email_ids", {
+                'email_id': email,
+                'is_primary': 1
+            })
+        if phone:
+            contact.append("phone_nos", {
+                'phone': phone,
+                'is_primary_phone': 1
+            })
+        contact.save()
+        frappe.db.commit()
+        return contact.name
+        
+    else:
+        # create
+        new_contact = frappe.get_doc({
+            'doctype': 'Contact',
+            'first_name': first_name or "",
+            'last_name': last_name or "",
+            'full_name': "{0} {1}".format(first_name or "", last_name or ""),
+            'position': position or "",
+            'status': 'Lead'
+        })
+        if email:
+            new_contact.append("email_ids", {
+                'email_id': email,
+                'is_primary': 1
+            })
+        if phone:
+            new_contact.append("phone_nos", {
+                'phone': phone,
+                'is_primary_phone': 1
+            })
+        new_contact.insert()
+        frappe.db.commit()
+        return new_contact.name
