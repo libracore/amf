@@ -6,6 +6,13 @@ function link_customer() {
             "fieldtype": "Link", 
             "label": __("Customer"), 
             "options": "Customer", 
+            "get_query": function(doc) {
+                 return {
+                     filters: {
+                         "is_customer": 1
+                     }
+                 }
+            },
             "reqd": 1
         }  
     ],
