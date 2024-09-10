@@ -6,7 +6,7 @@ frappe.ui.form.on('Planning', {
         set_item_queries(frm);
         if (frm.doc.docstatus === 1) {
             frm.add_custom_button(__('<i class="fa fa-print"></i>&nbsp;&nbsp;•&nbsp;&nbsp;Sticker'), function () {
-                const print_format = "Sticker USI";
+                const print_format = "Sticker_USI";
                 const label_format = "Labels 62x100mm";
 
                 var w = window.open(
