@@ -4,11 +4,11 @@
 frappe.ui.form.on('Planning', {
     refresh: function (frm) {
         set_item_queries(frm);
-        if (frm.doc.docstatus === 1) {
-            frm.add_custom_button(__('<i class="fa fa-print"></i>&nbsp;&nbsp;•&nbsp;&nbsp;Sticker'), function () {
-                printSticker(frm)
-            });
-        }
+        // if (frm.doc.docstatus === 1) {
+        //     frm.add_custom_button(__('<i class="fa fa-print"></i>&nbsp;&nbsp;•&nbsp;&nbsp;Sticker'), function () {
+        //         printSticker(frm)
+        //     });
+        // }
     },
 
     onload: function (frm) {
