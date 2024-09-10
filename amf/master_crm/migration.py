@@ -55,3 +55,18 @@ def populate_full_name():
             frappe.db.commit()
     return
     
+"""
+Patch to assure translation for customer
+"""
+def translate_customer_to_organization():
+    customer_translations = frappe.get_all("Translation", filters={'language': 'en', 'source_name': 'Customer'}, fields=['name'])
+    if len(customer_translations) == 0:
+        frappe.get_doc({
+            'doctype': 'Translation',
+            'language': 'en', 
+            'source_name': 'Customer',
+            'target_name': 'Organization'
+        }).insert()
+        
+    return
+        

@@ -214,3 +214,8 @@ scheduler_events = {
 # override_doctype_dashboards = {
 # 	"Task": "amf.task.get_dashboard_data"
 # }
+
+# hook for migrate cleanup tasks
+after_migrate = [
+    'amf.master_crm.migration.translate_customer_to_organization'
+]
