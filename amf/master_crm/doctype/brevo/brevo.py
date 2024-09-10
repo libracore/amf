@@ -81,7 +81,11 @@ class Brevo(Document):
         parameters = {
             'email': contact_doc.email_id,
             'ext_id': contact_doc.name,
-            'updateEnabled': True
+            'updateEnabled': True,
+            'attributes': {
+                'FNAME': contact_doc.first_name or "", 
+                'LNAME': contact_doc.last_name or ""
+            }
         }
         if list_ids and len(list_ids) > 0:
             parameters['listIds'] = list_ids
