@@ -7,6 +7,7 @@ import json
 import frappe
 from frappe.model.document import Document
 from frappe.utils.data import now_datetime
+from frappe.utils.pdf import get_pdf
 
 class Planning(Document):
     pass
@@ -302,6 +303,3 @@ def _success_response(work_order, manufacture_entry=None, manufacture_batch=None
         'stock_entry': manufacture_entry.name if manufacture_entry else None,
         'batch': manufacture_batch if manufacture_batch else None
     }
-
-
-

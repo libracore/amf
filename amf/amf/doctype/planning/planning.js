@@ -6,22 +6,7 @@ frappe.ui.form.on('Planning', {
         set_item_queries(frm);
         if (frm.doc.docstatus === 1) {
             frm.add_custom_button(__('<i class="fa fa-print"></i>&nbsp;&nbsp;•&nbsp;&nbsp;Sticker'), function () {
-                const print_format = "Sticker_USI";
-                const label_format = "Labels 62x100mm";
-
-                var w = window.open(
-                    frappe.urllib.get_full_url(
-                        "/api/method/amf.amf.utils.labels.download_label_for_doc"
-                        + "?doctype=" + encodeURIComponent(frm.doc.doctype)
-                        + "&docname=" + encodeURIComponent(frm.doc.name)
-                        + "&print_format=" + encodeURIComponent(print_format)
-                        + "&label_reference=" + encodeURIComponent(label_format)
-                    ),
-                    "_blank"
-                );
-                if (!w) {
-                    frappe.msgprint(__("Please enable pop-ups")); return;
-                }
+                printSticker(frm)
             });
         }
     },
@@ -62,6 +47,20 @@ frappe.ui.form.on('Planning', {
     },
 
 });
+
+function printSticker(frm) {
+    // Call the frappe API to trigger printing
+    const printUrl = frappe.urllib.get_full_url("/api/method/frappe.utils.print_format.download_pdf?"
+        + "doctype=" + encodeURIComponent("Planning")
+        + "&name=" + encodeURIComponent(frm.doc.name)
+        + "&format=" + encodeURIComponent("Sticker_USI")
+        + "&no_letterhead=" + encodeURIComponent("1"));
+
+    const win = window.open(printUrl);
+    if (!win) {
+        frappe.msgprint(__("Please enable pop-ups"));
+    }
+}
 
 function set_item_queries(frm) {
     frm.set_query("item_code", () => ({
@@ -109,7 +108,7 @@ function createWorkOrder(frm) {
                     message: __('Ordre de Fabrication crée avec succès.')
                 });
                 frm.save('Update');
-            
+
             } else {
                 // Error handling
                 frappe.validated = false;
