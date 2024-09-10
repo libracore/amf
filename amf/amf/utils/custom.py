@@ -2,9 +2,14 @@ from pipes import quote
 import frappe
 from collections import defaultdict
 from frappe.utils.file_manager import save_file
-from base64 import b64decode
 from amf.amf.utils.qr_code_generator import generate_qr_code
 import re
+from pylibdmtx.pylibdmtx import encode
+from base64 import b64encode, b64decode
+from io import BytesIO
+from PIL import Image
+
+from io import BytesIO
 
 @frappe.whitelist()
 def get_latest_serial_no(so_detail, sales_order, item_code):
@@ -330,7 +335,7 @@ def cancel_and_delete_boms_and_items_with_pattern():
     frappe.db.commit()
 
 
-def qrcode_serial_no(doc, method=None):
+def qrcode_serial_no_old(doc, method=None):
     data = doc.name
     print("data: ", data)
     # Generate the QR code image as a base64 string
@@ -341,6 +346,52 @@ def qrcode_serial_no(doc, method=None):
 
     # Filename for the QR code image
     file_name = f"{doc.name}_qr.png"
+    
+    # Create and attach the file to the document
+    file_url = save_file(file_name, img_data, doc.doctype, doc.name, is_private=1).file_url
+    
+    # Optionally update a field in the document with the URL of the attached image
+    doc.db_set('qrcode', file_url)
+    return None
+
+# def generate_data_matrix_old(data):
+#     buffer = BytesIO()
+#     # Create the Data Matrix barcode and save it to a BytesIO buffer
+#     generate('datamatrix', data, output=buffer)
+    
+#     # Get the base64 string of the image
+#     img_base64 = b64encode(buffer.getvalue()).decode('utf-8')
+#     return img_base64
+
+def generate_data_matrix(data, size='26x26'):
+    # Generate a Data Matrix barcode with a specified size
+    encoded = encode(data.encode(), size=size)
+
+    # Create an image from the encoded data
+    img = Image.frombytes('RGB', (encoded.width, encoded.height), encoded.pixels)
+
+    # Save the image to a BytesIO object
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+
+    # Get the base64 string of the image
+    img_base64 = b64encode(buffer.getvalue()).decode('utf-8')
+    return img_base64
+
+def qrcode_serial_no(doc, method=None):
+    data = doc.name
+    if doc.item_code == "P221-O":
+        data = "BA" + data[-6:]
+    print("data: ", data)
+    
+    # Generate the Data Matrix image as a base64 string with a higher resolution Data Matrix
+    img_base64 = generate_data_matrix(data, size='26x26')
+
+    # Decode the base64 string to binary data
+    img_data = b64decode(img_base64)
+
+    # Filename for the Data Matrix image
+    file_name = f"{doc.name}_dm.png"
     
     # Create and attach the file to the document
     file_url = save_file(file_name, img_data, doc.doctype, doc.name, is_private=1).file_url

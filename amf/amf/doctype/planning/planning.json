@@ -1,0 +1,292 @@
+{
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:name_id",
+ "creation": "2024-09-06 10:21:05.227490",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "column_break_1",
+  "responsable",
+  "entreprise",
+  "section_break_5",
+  "item_code",
+  "item_name",
+  "column_break_8",
+  "quantite_validee",
+  "quantite_scrap",
+  "section_break_9",
+  "machine",
+  "programme",
+  "column_break_12",
+  "matiere",
+  "batch_matiere",
+  "dimension_matiere",
+  "section_break_16",
+  "date_de_debut",
+  "date_de_fin",
+  "column_break_19",
+  "temps_de_cycle_min",
+  "temps_de_programmation_hr",
+  "temps_de_reglage_hr",
+  "section_break_23",
+  "remarque_usinage",
+  "remarque_assemblage",
+  "column_break_26",
+  "suivi_usinage",
+  "section_break_28",
+  "column_break_30",
+  "work_order",
+  "stock_entry",
+  "batch",
+  "section_break_32",
+  "amended_from",
+  "name_id"
+ ],
+ "fields": [
+  {
+   "description": "Exemple: M-0###",
+   "fieldname": "suivi_usinage",
+   "fieldtype": "Data",
+   "label": "Suivi Usinage",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Planning",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "responsable",
+   "fieldtype": "Link",
+   "label": "Responsable",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "entreprise",
+   "fieldtype": "Link",
+   "label": "Entreprise",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_5",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Code Article",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "quantite_validee",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Quantit\u00e9 Valid\u00e9e",
+   "reqd": 1
+  },
+  {
+   "fieldname": "quantite_scrap",
+   "fieldtype": "Int",
+   "label": "Quantit\u00e9 Scrap",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_9",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "Emcoturn E45",
+   "fieldname": "machine",
+   "fieldtype": "Data",
+   "label": "Machine",
+   "reqd": 1
+  },
+  {
+   "fieldname": "programme",
+   "fieldtype": "Data",
+   "label": "Programme",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_12",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "batch_matiere",
+   "fieldtype": "Data",
+   "label": "Batch Mati\u00e8re",
+   "reqd": 1
+  },
+  {
+   "description": "Exemple: \u220516mm x 1000mm",
+   "fieldname": "dimension_matiere",
+   "fieldtype": "Data",
+   "label": "Dimension Mati\u00e8re",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_16",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "date_de_debut",
+   "fieldtype": "Datetime",
+   "label": "Date de D\u00e9but",
+   "reqd": 1
+  },
+  {
+   "fieldname": "date_de_fin",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Date de Fin",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_19",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Exemple: 11'15'' = 11 + (15/60) = 11.25",
+   "fieldname": "temps_de_cycle_min",
+   "fieldtype": "Float",
+   "label": "Temps de Cycle [min]",
+   "reqd": 1
+  },
+  {
+   "fieldname": "temps_de_programmation_hr",
+   "fieldtype": "Float",
+   "label": "Temps de Programmation [hr]",
+   "reqd": 1
+  },
+  {
+   "fieldname": "temps_de_reglage_hr",
+   "fieldtype": "Float",
+   "label": "Temps de Reglage [hr]",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_23",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "-",
+   "fieldname": "remarque_assemblage",
+   "fieldtype": "Small Text",
+   "label": "Remarque &gt; Assemblage",
+   "reqd": 1
+  },
+  {
+   "default": "-",
+   "fieldname": "remarque_usinage",
+   "fieldtype": "Small Text",
+   "label": "Remarque &gt; Usinage",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_26",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_28",
+   "fieldtype": "Section Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "work_order",
+   "fieldtype": "Link",
+   "label": "Work Order",
+   "options": "Work Order",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "stock_entry",
+   "fieldtype": "Link",
+   "label": "Stock Entry",
+   "options": "Stock Entry",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "batch",
+   "fieldtype": "Link",
+   "label": "Batch",
+   "options": "Batch",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_32",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "matiere",
+   "fieldtype": "Select",
+   "label": "Mati\u00e8re",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "name_id",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "name_id",
+   "unique": 1
+  },
+  {
+   "fieldname": "column_break_30",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "is_submittable": 1,
+ "modified": "2024-09-09 13:58:16.899587",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "Planning",
+ "name_case": "UPPER CASE",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "show_name_in_global_search": 1,
+ "sort_field": "name_id",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
