@@ -52,7 +52,9 @@ frappe.ui.form.on('Contact', {
     },
     after_save: function(frm) {
         // transmit to Brevo
-        if (!frm.doc.unsubscribed) {
+        if ((!frm.doc.unsubscribed) 
+            && (frm.doc.email_id) 
+            && (['Lead', 'Prospect', 'Customer'].includes(frm.doc.status))) {
             upload_to_brevo(frm);
         }
     },
