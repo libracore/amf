@@ -63,7 +63,7 @@ class GravityForms(Document):
         return
     
     def get_form_entries(self, form_id):
-        endpoint = "{0}{1}forms/{2}/entries?sorting[key]=id&sorting[direction]=ASC&sorting[is_numeric]=true&paging[page_size]=100".format(self.gravity_host, API_PATH, form_id)
+        endpoint = "{0}{1}forms/{2}/entries?sorting[key]=id&sorting[direction]=DESC&sorting[is_numeric]=true&paging[page_size]=100".format(self.gravity_host, API_PATH, form_id)
 
         response = requests.get(endpoint, auth=self.get_auth())
         
