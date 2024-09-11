@@ -15,6 +15,7 @@ def execute(filters=None):
 
 def get_columns():
     return [
+        {"label": _("Customer"), "fieldname": "customer", "fieldtype": "Link", "options": "Customer", "width": 80},
         {"label": _("Customer name"), "fieldname": "customer_name", "fieldtype": "Data", "width": 120},
         {"label": _("Address"), "fieldname": "address_line1", "fieldtype": "Data", "width": 200},
         {"label": _("Add. address"), "fieldname": "address_line2", "fieldtype": "Data", "width": 200},
@@ -32,7 +33,11 @@ def get_columns():
 def get_data(filters):
     conditions = ""
     if filters.country:
-        conditions += """ WHERE `tUAdr`.`country` = "{0}" """.format(filters.country)
+        conditions += """ AND `tUAdr`.`country` = "{0}" """.format(filters.country)
+    if filters.city:
+        conditions += """ AND `tUAdr`.`city` LIKE "%{0}%" """.format(filters.city)
+    if filters.customer:
+        conditions += """ AND `tabCustomer`.`name` = "{0}" """.format(filters.customer)
         
     sql_query = """SELECT 
           `tabCustomer`.`name` AS `customer`,
@@ -74,7 +79,8 @@ def get_data(filters):
             ) AS `tAdr`
             GROUP BY `tAdr`.`customer`
         ) AS `tUAdr` ON `tabCustomer`.`name` = `tUAdr`.`customer`
-        {conditions} 
+        WHERE `tabContact`.`status` IS NOT NULL
+          {conditions} 
         ORDER BY `tabCustomer`.`name` ASC;
       """.format(conditions=conditions)
 
