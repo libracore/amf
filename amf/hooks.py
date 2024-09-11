@@ -217,6 +217,6 @@ scheduler_events = {
 # }
 
 # hook for migrate cleanup tasks
-after_migrate = [
-    'amf.master_crm.migration.translate_customer_to_organization'
-]
+#after_migrate = [
+#    'amf.master_crm.migration.translate_customer_to_organization'
+#]
