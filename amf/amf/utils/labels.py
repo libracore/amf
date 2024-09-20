@@ -84,11 +84,11 @@ def attach_label(delivery_note, label_reference, content):
 # All js scripts used in print formats (jsbarcode, qrcodejs...) should be imported from cdn.
 
 
-import frappe
+#import frappe          # already imported
 from PIL import Image, ImageDraw, ImageFont
 import requests
-from io import BytesIO
-import os
+#from io import BytesIO
+#import os              # already imported
 
 @frappe.whitelist()
 def fetch_all_serial_nos(item_code=None):
@@ -126,7 +126,7 @@ def print_label(serial_no, item_code='P221-O', qrcode_url=None):
 
     # Load the Arial Bold font from the system (adjust the path if necessary)
     try:
-        font_path = "/home/libracore/Downloads/NimbusSans-master/NimbusSansNarrow-Bold.ttf"  # Typical path on Linux
+        font_path = os.path.join(frappe.utils.get_bench_path(), "apps/amf/amf/public/fonts/NimbusSansNarrow-Bold.ttf")  # Typical path on Linux
         if not os.path.exists(font_path):
             font_path = "C:/Windows/Fonts/arialbd.ttf"  # Typical path on Windows for Arial Bold
 
@@ -213,7 +213,14 @@ def print_label(serial_no, item_code='P221-O', qrcode_url=None):
             print(f"Error fetching or processing QR code: {e}")
 
     # Save the image as a PNG or send directly to the printer
-    img_path = f"/home/libracore/frappe-bench/tmp/{serial_no}_label.png"
-    img.save(img_path)
+    img_name = f"{serial_no}_label.png"
+    physical_img_path = os.path.join(
+        frappe.utils.get_bench_path(), 
+        "sites", 
+        frappe.utils.get_site_path(),
+        "public/files",
+        img_name
+    )
+    img.save(physical_img_path)
 
-    return img_path
+    return f"/files/{img_name}"
