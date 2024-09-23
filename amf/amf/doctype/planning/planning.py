@@ -8,6 +8,8 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils.data import now_datetime
 from frappe.utils.pdf import get_pdf
+from frappe.utils.file_manager import save_file
+from frappe.utils.print_format import download_pdf
 
 class Planning(Document):
     pass
@@ -303,3 +305,23 @@ def _success_response(work_order, manufacture_entry=None, manufacture_batch=None
         'stock_entry': manufacture_entry.name if manufacture_entry else None,
         'batch': manufacture_batch if manufacture_batch else None
     }
+    
+@frappe.whitelist()
+def generate_and_attach_pdf(doctype, docname, print_format):
+    try:
+        print("##### START GENERATE PDF #####")
+        # Get the document
+        # Get the HTML for the document using the specified print format
+        doc = download_pdf(doctype, docname, print_format, None, 1)
+        print(doc)
+        # Define file name
+        file_name = f'{docname}_sticker.pdf'
+        
+        # Attach the PDF to the document
+        _file = save_file(file_name, doc, doctype, docname, is_private=1)
+        
+        # Return success message
+        return {"success": True}
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "PDF Generation Failed")
+        return {"success": False, "error": str(e)}
