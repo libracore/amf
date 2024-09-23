@@ -77,14 +77,36 @@ class Brevo(Document):
         contact_doc = frappe.get_doc("Contact", contact)
         if not contact_doc.email_id:
             return
-            
+        
+        address = None
+        if contact_doc.address:
+            address = frappe.get_doc("Address", contact_doc.address)
+        
+        customer = None
+        if contact_doc.links and len(contact_doc.links) > 0:
+            for c in contact_doc.links:
+                if c.link_doctype == "Customer":
+                    customer = frappe.get_doc("Customer", c.link_name)
+                    break
+        
         parameters = {
             'email': contact_doc.email_id,
             'ext_id': contact_doc.name,
             'updateEnabled': True,
             'attributes': {
-                'FNAME': contact_doc.first_name or "", 
-                'LNAME': contact_doc.last_name or ""
+                'PRENOM': contact_doc.first_name or "", 
+                'NOM': contact_doc.last_name or "",
+                'EMAIL': contact_doc.email_id or "",
+                'COMPANY_NAME': customer.customer_name if customer else "",
+                'COMPANY_PHONE': (address.phone or "") if address else "",
+                'CITY': address.city if address else "",
+                'COUNTRY': address.country if address else "",
+                #'TAG': ,
+                'STATUS': contact_doc.get("status") or "",
+                'DELIVRABILITE': contact_doc.get("delivrability") or "",
+                'FROM': contact_doc.get("source") or "",
+                'SOURCE': contact_doc.get("event_source")_id or "",
+                'LAST_MODIFIED': contact_doc.modified
             }
         }
         if list_ids and len(list_ids) > 0:
