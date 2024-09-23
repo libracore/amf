@@ -26,8 +26,8 @@ def get_data():
                     },
                     {
                         "type": "report",
-                        "name": "Address List",
-                        "label": _("Address List"),
+                        "name": "Campaign List",
+                        "label": _("Campaign List"),
                         "doctype": "Contact",
                         "is_query_report": True
                     }
