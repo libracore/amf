@@ -105,7 +105,7 @@ class Brevo(Document):
                 'STATUS': contact_doc.get("status") or "",
                 'DELIVRABILITE': contact_doc.get("delivrability") or "",
                 'FROM': contact_doc.get("source") or "",
-                'SOURCE': contact_doc.get("event_source")_id or "",
+                'SOURCE': contact_doc.get("event_source") or "",
                 'LAST_MODIFIED': contact_doc.modified
             }
         }

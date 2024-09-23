@@ -188,9 +188,9 @@ scheduler_events = {
         "amf.amf.utils.document_notification.update_purchase_orders",
     ],
     "weekly": [
-    	"amf.amf.utils.check_issue.fetch_open_issues",
-        "amf.amf.utils.safety_stock_check.check_stock_levels",
-        "amf.amf.utils.forecast.get_item_details_and_quantities",
+        #"amf.amf.utils.check_issue.fetch_open_issues",
+        #"amf.amf.utils.safety_stock_check.check_stock_levels",
+        #"amf.amf.utils.forecast.get_item_details_and_quantities",
     ],
     # 	"monthly": [
     # 		"amf.tasks.monthly"
