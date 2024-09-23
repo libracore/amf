@@ -231,7 +231,7 @@ function upload_to_brevo(frm) {
         'method': 'amf.master_crm.doctype.brevo.brevo.create_update_contact',
         'args': {
             'contact': frm.doc.name,
-            'list_ids': [12]
+            'list_ids': [42]
         },
         'callback': function(response) {
             frappe.show_alert("Brevo: " + response.message.status /* + " - " + response.message.text */);
