@@ -1,3 +1,4 @@
+import os
 from pipes import quote
 import frappe
 from collections import defaultdict
@@ -399,3 +400,37 @@ def qrcode_serial_no(doc, method=None):
     # Optionally update a field in the document with the URL of the attached image
     doc.db_set('qrcode', file_url)
     return None
+
+def generate_qr_codes_for_range(start=250, end=550):
+    # Directory path to save the generated QR codes
+    output_directory = '/home/libracore/frappe-bench/sites/site1.local/public/files/'
+    
+    # Ensure the directory exists; create it if it doesn't
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
+    
+    for num in range(start, end + 1):
+        # Format the number to be 6 digits, e.g., 250 -> "000250"
+        serial_no = f"{num:06d}"
+        
+        # Create the data with "BA" prefix
+        data = "BA" + serial_no
+        
+        # Generate the QR code
+        img_base64 = generate_data_matrix(data, size='26x26')
+        
+        # Decode the base64 string to binary data
+        img_data = b64decode(img_base64)
+        
+        # Filename for the QR code image, following the naming convention "code_dm.png"
+        file_name = f"P221-O00{serial_no}_qr.png"
+        
+        # Full path to save the file
+        file_path = os.path.join(output_directory, file_name)
+        
+        # Save the file in the specified directory
+        with open(file_path, "wb") as f:
+            f.write(img_data)
+        
+        # Print the path where the file was saved (optional)
+        print(f"Generated QR Code for {data}, saved as {file_path}")

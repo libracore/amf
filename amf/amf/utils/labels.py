@@ -99,7 +99,7 @@ def fetch_all_serial_nos(item_code=None):
 
     # Fetch all serial numbers from the Serial No DocType
     serial_nos = frappe.get_all('Serial No', filters=filters, fields=['name', 'item_code', 'qrcode'])
-    #serial_nos = frappe.get_all('Serial No', filters={'name': 'P221-O00000308'}, fields=['name', 'item_code', 'qrcode'])
+    #serial_nos = frappe.get_all('Serial No', filters={'name': 'P221-O00000505'}, fields=['name', 'item_code', 'qrcode'])
     return serial_nos
 
 @frappe.whitelist()
