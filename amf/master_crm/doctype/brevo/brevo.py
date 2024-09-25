@@ -170,7 +170,7 @@ class Brevo(Document):
                 'DELIVRABILITE': contact_doc.get("deliverability") or "",
                 'FROM': contact_doc.get("source") or "",
                 'SOURCE': contact_doc.get("event_source") or "",
-                'LAST_MODIFIED': contact_doc.modified
+                'LAST_MODIFIED': contact_doc.modified.strftime("%Y-%m-%d %H:%M:%S")
             }
         }
         if list_ids and len(list_ids) > 0:
