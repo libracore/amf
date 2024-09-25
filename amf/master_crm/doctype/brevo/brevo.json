@@ -4,17 +4,29 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "api_key"
+  "api_key",
+  "col_main",
+  "last_sync"
  ],
  "fields": [
   {
    "fieldname": "api_key",
    "fieldtype": "Password",
    "label": "API Key"
+  },
+  {
+   "fieldname": "col_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "last_sync",
+   "fieldtype": "Datetime",
+   "label": "Last Sync",
+   "read_only": 1
   }
  ],
  "issingle": 1,
- "modified": "2024-08-29 14:47:58.376854",
+ "modified": "2024-09-25 18:12:30.246341",
  "modified_by": "Administrator",
  "module": "Master CRM",
  "name": "Brevo",

@@ -10,6 +10,7 @@ import requests
 import json
 from frappe.utils.background_jobs import enqueue
 from frappe.utils import cint
+from datetime import datetime
 
 API_HOST = "https://api.brevo.com/v3/"
 
@@ -30,7 +31,11 @@ class Brevo(Document):
         contacts = []
         limit = 50
         offset = 0
-        _contact = self.get_contacts(limit, offset)
+        modified_since = None
+        if sync:
+            modified_since = self.last_sync
+            
+        _contact = self.get_contacts(limit, offset, modified_since)
         while _contact:
             for c in _contact:
                 contacts.append(c)
@@ -38,8 +43,11 @@ class Brevo(Document):
                     self.sync_contact(c)
                     
             offset += limit
-            _contact = self.get_contacts(limit, offset)
+            _contact = self.get_contacts(limit, offset, modified_since)
         
+        self.last_sync = datetime.now()
+        self.save()
+        frappe.db.commit()
         return "Received {0} contacts".format(len(contacts))
         
     def sync_contact(self, brevo_contact):
@@ -49,6 +57,7 @@ class Brevo(Document):
             # create new
             contact = frappe.get_doc({
                 'doctype': 'Contact',
+                'email_id': brevo_contact.get("email")
             })
             contact.append('email_ids', {
                 'email_id': brevo_contact.get("email"),
@@ -61,23 +70,34 @@ class Brevo(Document):
         contact.update({
             'first_name': attributes.get("PRENOM"),
             'last_name': attributes.get("NOM"),
+            'full_name': "{0} {1}".format(attributes.get("PRENOM") or "", attributes.get("NOM") or ""),
             'deliverability': attributes.get("DELIVRABILITE"),
             'source': attributes.get("FROM"),
             'event_source': attributes.get("SOURCE") if frappe.db.exists("Event Source", attributes.get("SOURCE")) else None
         })
+        
+        # rewrite some variable conflicts
+        if contact.deliverability == "OK - AMF":
+            contact.deliverability = "OK"
+            
         contact.flags.ignore_mandatory = True
         contact.flags.ignore_validate = True
         contact.save()
         frappe.db.commit()
         return
             
-    def get_contacts(self, limit, offset):
+    def get_contacts(self, limit, offset, modified_since=None):
         parameters = {
             # 'modifiedSince': 'YYYY-MM-DDTHH:mm:ss.SSSZ',
             'limit': '{0}'.format(limit),
             'offset': '{0}'.format(offset),
             #'sort': 'desc',
         }
+        if modified_since:
+            if type(modified_since) == str:
+                modified_since = datetime.strptime(modified_since[:19], "%Y-%m-%d %H:%M:%S")
+            parameters['modifiedSince'] = modified_since.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+            
         endpoint = "{0}contacts".format(API_HOST)
 
         response = requests.get(endpoint, headers=self.get_headers(), params=parameters)
@@ -255,7 +275,7 @@ class Brevo(Document):
                 'DELIVRABILITE': contact_doc.get("deliverability") or "",
                 'FROM': contact_doc.get("source") or "",
                 'SOURCE': contact_doc.get("event_source") or "",
-                'LAST_MODIFIED': contact_doc.modified.strftime("%Y-%m-%d %H:%M:%S")
+                'LAST_MODIFIED': contact_doc.modified.strftime("%Y-%m-%dT%H:%M:%S.000Z")
             }
         }
         if list_ids and len(list_ids) > 0:
