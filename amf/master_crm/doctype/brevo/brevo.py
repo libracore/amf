@@ -9,6 +9,7 @@ from frappe.utils.password import get_decrypted_password
 import requests
 import json
 from frappe.utils.background_jobs import enqueue
+from frappe.utils import cint
 
 API_HOST = "https://api.brevo.com/v3/"
 
@@ -105,15 +106,52 @@ class Brevo(Document):
         
         return contacts
 
-    def get_all_lists(self):
-        endpoint = "{0}contacts/lists".format(API_HOST)
-
-        response = requests.get(endpoint, headers=self.get_headers())
+    def get_all_lists(self, with_folders=False):
+        lists = []
+        limit = 50
+        offset = 0
+        _list = self.get_lists(limit, offset)
+        while _list:
+            for l in _list:
+                lists.append(l)
+                    
+            offset += limit
+            _list = self.get_lists(limit, offset)
         
-        lists = response.json().get('lists')      # list of contacts
+        if cint(with_folders):
+            folders = self.get_all_folders()
+            for l in lists:
+                l['folder_name'] = folders.get(l.get('folderId'))
                 
         return lists
     
+    def get_lists(self, limit, offset):
+        parameters = {
+            # 'modifiedSince': 'YYYY-MM-DDTHH:mm:ss.SSSZ',
+            'limit': '{0}'.format(limit),
+            'offset': '{0}'.format(offset),
+            #'sort': 'desc',
+        }
+        endpoint = "{0}contacts/lists".format(API_HOST)
+
+        response = requests.get(endpoint, headers=self.get_headers(), params=parameters)
+        
+        lists = response.json().get('lists')      # list of contacts
+        
+        """
+        Structure
+            {
+                'folderId': 13
+    ​​            'id': 42
+                'name': "Test List"
+                'totalBlacklisted': 0
+                'totalSubscribers': 0
+                'uniqueSubscribers': 76
+            }
+        """
+        
+        return lists
+        
     def create_list(self, list_name):
         parameters = {
             'name': list_name
@@ -136,7 +174,54 @@ class Brevo(Document):
             return {'status': 'Too Early', 'text': response.text}
         else:
             return {'status': 'Unknown Error', 'text': response.text}
+    
+    def get_all_folders(self):
+        folders = []
+        limit = 50
+        offset = 0
+        _folder = self.get_folders(limit, offset)
+        while _folder:
+            for f in _folder:
+                folders.append(f)
+                    
+            offset += limit
+            _folder = self.get_folders(limit, offset)
+        
+                
+        # restructure so a simple dict
+        folder_map = {}
+        if folders:
+            for f in folders:
+                folder_map[f['id']] = f['name']
+                
+        return folder_map
+        
+    def get_folders(self, limit, offset):
+        parameters = {
+            # 'modifiedSince': 'YYYY-MM-DDTHH:mm:ss.SSSZ',
+            'limit': '{0}'.format(limit),
+            'offset': '{0}'.format(offset),
+            #'sort': 'desc',
+        }
+        endpoint = "{0}contacts/folders".format(API_HOST)
+
+        response = requests.get(endpoint, headers=self.get_headers(), params=parameters)
+        
+        folders = response.json().get('folders')      # list of contacts
+        
+        """
+        Structure
+            {
+                'id': 1,
+                'name': 'Your first folder',
+                'uniqueSubscribers': 0,
+                'totalSubscribers': 0,
+                'totalBlacklisted': 0}]
+            }
+        """
             
+        return folders
+        
     def create_update_contact(self, contact, list_ids=[]):
         contact_doc = frappe.get_doc("Contact", contact)
         if not contact_doc.email_id:
@@ -233,9 +318,9 @@ def sync_contacts():
     return
     
 @frappe.whitelist()
-def fetch_lists():
+def fetch_lists(with_folders=False):
     brevo = frappe.get_doc("Brevo", "Brevo")
-    return brevo.get_all_lists()
+    return brevo.get_all_lists(with_folders)
 
 @frappe.whitelist()
 def create_update_contact(contact, list_ids=[]):
