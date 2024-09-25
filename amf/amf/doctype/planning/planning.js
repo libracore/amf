@@ -4,11 +4,11 @@
 frappe.ui.form.on('Planning', {
     refresh: function (frm) {
         set_item_queries(frm);
-        // if (frm.doc.docstatus === 1) {
-        //     frm.add_custom_button(__('<i class="fa fa-print"></i>&nbsp;&nbsp;•&nbsp;&nbsp;Sticker'), function () {
-        //         printSticker(frm)
-        //     });
-        // }
+        if (frm.doc.docstatus === 1) {
+            frm.add_custom_button(__('<i class="fa fa-print"></i>&nbsp;&nbsp;•&nbsp;&nbsp;Sticker'), function () {
+                printSticker(frm)
+            });
+        }
     },
 
     onload: function (frm) {
@@ -24,8 +24,9 @@ frappe.ui.form.on('Planning', {
     },
 
     on_submit: function (frm) {
-        if (!frm.doc.work_order)
+        if (!frm.doc.work_order) {
             createWorkOrder(frm);
+        }
     },
 
     item_code: function (frm) {
@@ -49,16 +50,21 @@ frappe.ui.form.on('Planning', {
 });
 
 function printSticker(frm) {
-    // Call the frappe API to trigger printing
-    const printUrl = frappe.urllib.get_full_url("/api/method/frappe.utils.print_format.download_pdf?"
-        + "doctype=" + encodeURIComponent("Planning")
-        + "&name=" + encodeURIComponent(frm.doc.name)
-        + "&format=" + encodeURIComponent("Sticker_USI")
-        + "&no_letterhead=" + encodeURIComponent("1"));
+    const print_format = "Sticker_USI";
+    const label_format = "Labels 62x100mm";
 
-    const win = window.open(printUrl);
-    if (!win) {
-        frappe.msgprint(__("Please enable pop-ups"));
+    var w = window.open(
+        frappe.urllib.get_full_url(
+            "/api/method/amf.amf.utils.labels.download_label_for_doc"
+            + "?doctype=" + encodeURIComponent(frm.doc.doctype)
+            + "&docname=" + encodeURIComponent(frm.doc.name)
+            + "&print_format=" + encodeURIComponent(print_format)
+            + "&label_reference=" + encodeURIComponent(label_format)
+        ),
+        "_blank"
+    );
+    if (!w) {
+        frappe.msgprint(__("Please enable pop-ups")); return;
     }
 }
 
@@ -95,6 +101,8 @@ function createWorkOrder(frm) {
         args: {
             'form_data': frm.doc
         },
+        freeze: true,  // Freeze the UI during the call
+        freeze_message: __("Création de l'ordre de fabrication en cours...<br>Mise à jour des entrées de stock...<br>Merci de patienter..."),
         callback: function (response) {
             console.log(response);
             if (response && response.message.success) {
@@ -108,7 +116,7 @@ function createWorkOrder(frm) {
                     message: __('Ordre de Fabrication crée avec succès.')
                 });
                 frm.save('Update');
-
+                frappe.show_alert( __("Fichier mis à jour") );
             } else {
                 // Error handling
                 frappe.validated = false;
