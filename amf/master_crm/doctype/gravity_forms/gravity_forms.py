@@ -136,6 +136,11 @@ def fetch_form_entries(gravity_form):
                         'value': e.get(k)
                     })
                 new_entry.insert(ignore_permissions=True)
+                # override creation and modified
+                new_entry.creation =  e.get('date_created')
+                #new_entry.modified = e.get('date_updated')     # cannot override, this would give a more-recent version error
+                new_entry.save(ignore_permissions=True)
+
         frappe.db.commit()
         
     return entries
