@@ -41,8 +41,28 @@ def get_data(filters):
         conditions += """ AND `tUAdr`.`city` LIKE "%{0}%" """.format(filters.get("city"))
     if filters.get("customer"):
         conditions += """ AND `tabCustomer`.`name` = "{0}" """.format(filters.get("customer"))
+    if filters.get("territory"):
+        conditions += """ AND `tabCustomer`.`territory` = "{0}" """.format(filters.get("territory"))
     if filters.get("modified_after"):
         conditions += """ AND `tabContact`.`modified` >= "{0}" """.format(filters.get("modified_after"))
+    if filters.get("status"):
+        conditions += """ AND `tabContact`.`status` = "{0}" """.format(filters.get("status"))
+    if filters.get("type_of_contact"):
+        conditions += """ AND `tabContact`.`type_of_contact` = "{0}" """.format(filters.get("type_of_contact"))
+    if filters.get("source"):
+        conditions += """ AND `tabContact`.`source` = "{0}" """.format(filters.get("source"))
+    if filters.get("event_source"):
+        conditions += """ AND `tabContact`.`event_source` = "{0}" """.format(filters.get("event_source"))
+    if filters.get("product"):
+        conditions += """ AND `tabContact`.`product` = "{0}" """.format(filters.get("product"))
+    if filters.get("development_stage"):
+        conditions += """ AND `tabContact`.`development_stage` = "{0}" """.format(filters.get("development_stage"))
+    if cint(filters.get("gdpr")):
+        conditions += """ AND `tabContact`.`gdpr_compliant` = 1 """
+    if filters.get("deliverability"):
+        conditions += """ AND `tabContact`.`deliverability` = "{0}" """.format(filters.get("deliverability"))
+    if filters.get("qualification"):
+        conditions += """ AND `tabContact`.`qualification` = "{0}" """.format(filters.get("qualification"))
         
     sql_query = """SELECT 
           `tabCustomer`.`name` AS `customer`,
@@ -60,11 +80,16 @@ def get_data(filters):
           `tabContact`.`mobile_no` AS `contact_mobile`,
           `tabContact`.`status` AS `status`,
           `tabContact`.`modified` AS `modified`,
+          `tabContact`.`creation` AS `created`,
           (SELECT SUM(`tabSales Invoice`.`base_net_total`) 
            FROM `tabSales Invoice` 
            WHERE `tabSales Invoice`.`docstatus` = 1
-             AND `tabSales Invoice`.`customer` = `tabCustomer`.`name`) AS `revenue`
-             
+             AND `tabSales Invoice`.`customer` = `tabCustomer`.`name`) AS `revenue`,
+          (SELECT MAX(`tabSales Order`.`transaction_date`) 
+           FROM `tabSales Order` 
+           WHERE `tabSales Order`.`docstatus` = 1
+             AND `tabSales Order`.`contact_person` = `tabContact`.`name`) AS `last_po_date`
+        
         FROM `tabCustomer`
         JOIN `tabDynamic Link` AS `DL1` ON (`tabCustomer`.`name` = `DL1`.`link_name` AND `DL1`.`link_doctype` = 'Customer' AND `DL1`.`parenttype` = 'Contact')
         LEFT JOIN `tabContact` ON `DL1`.`parent` = `tabContact`.`name`
@@ -101,6 +126,22 @@ def get_data(filters):
         out = []
         for d in data:
             if cint(d.get("revenue")) >= filters.get("revenue"):
+                out.append(d)
+                
+        data = out
+    
+    if filters.get("last_po"):
+        out = []
+        for d in data:
+            if d.get("last_po_date") and d.get("last_po_date") >= filters.get("last_po"):
+                out.append(d)
+                
+        data = out
+    
+    if filters.get("created_after"):
+        out = []
+        for d in data:
+            if d.get("created") and d.get("created") >= filters.get("created_after"):
                 out.append(d)
                 
         data = out

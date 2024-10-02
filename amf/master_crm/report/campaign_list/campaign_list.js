@@ -1,19 +1,20 @@
-// Copyright (c) 2016, libracore AG and contributors
+// Copyright (c) 2024, libracore AG and contributors
 // For license information, please see license.txt
 /* eslint-disable */
 
 frappe.query_reports["Campaign List"] = {
     "filters": [
         {
-            'fieldname': 'country',
-            'label': __("Country"),
-            'fieldtype': "Link",
-            'options': "Country"
+            'fieldname': 'status',
+            'label': __("Status"),
+            'fieldtype': "Select",
+            'options': "\nLead\nProspect\nCustomer\nSupplier\nBack-Office\nPassive"
         },
         {
-            'fieldname': 'city',
-            'label': __("City"),
-            'fieldtype': "Data"
+            'fieldname': 'type_of_contact',
+            'label': __("Type of Contact"),
+            'fieldtype': "Select",
+            'options': "\nPrimary\nPurchase\nSupply\nShipping\nInvoice\nQuality\nR&D\nOthers"
         },
         {
             'fieldname': 'customer',
@@ -22,9 +23,77 @@ frappe.query_reports["Campaign List"] = {
             'options': "Customer"
         },
         {
+            'fieldname': 'city',
+            'label': __("City"),
+            'fieldtype': "Data"
+        },
+        {
+            'fieldname': 'country',
+            'label': __("Country"),
+            'fieldtype': "Link",
+            'options': "Country"
+        },
+        {
+            'fieldname': 'territory',
+            'label': __("Territory"),
+            'fieldtype': "Link",
+            'options': "Territory"
+        },
+        {
+            'fieldname': 'source',
+            'label': __("Source"),
+            'fieldtype': "Select",
+            'options': "\nEvent\nDatabase\nSEA\nSEO"
+        },
+        {
+            'fieldname': 'event_source',
+            'label': __("Event Source"),
+            'fieldtype': "Link",
+            'options': "Lead Source"
+        },
+        {
+            'fieldname': 'product',
+            'label': __("Product"),
+            'fieldtype': "Select",
+            'options': "\nRVM\nSPM\nLSPone\nValves\nCustom"
+        },
+        {
+            'fieldname': 'last_po',
+            'label': __("Last PO (after)"),
+            'fieldtype': "Date"
+        },
+        {
+            'fieldname': 'development_stage',
+            'label': __("Development Stage"),
+            'fieldtype': "Select",
+            'options': "\nProof of concept\nPrototype\nCommercial v1\nCommercial v2"
+        },
+        {
             'fieldname': 'revenue',
             'label': __("Revenue"),
             'fieldtype': "Currency"
+        },
+        
+        {
+            'fieldname': 'qualification',
+            'label': __("Qualification"),
+            'fieldtype': "Rating"
+        },
+        {
+            'fieldname': 'deliverability',
+            'label': __("Deliverability"),
+            'fieldtype': "Select",
+            'options': "\nOK\nTBD\nINVALID"
+        },
+        {
+            'fieldname': 'gdpr',
+            'label': __("GDPR"),
+            'fieldtype': "Check"
+        },
+        {
+            'fieldname': 'created_after',
+            'label': __("Created after"),
+            'fieldtype': "Date"
         },
         {
             'fieldname': 'modified_after',
