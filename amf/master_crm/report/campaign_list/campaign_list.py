@@ -35,6 +35,7 @@ def get_columns():
     
 def get_data(filters):
     conditions = ""
+    revenue_conditions = ""
     if filters.get("country"):
         conditions += """ AND `tUAdr`.`country` = "{0}" """.format(filters.get("country"))
     if filters.get("city"):
@@ -48,7 +49,7 @@ def get_data(filters):
     if filters.get("status"):
         conditions += """ AND `tabContact`.`status` = "{0}" """.format(filters.get("status"))
     if filters.get("type_of_contact"):
-        conditions += """ AND `tabContact`.`type_of_contact` = "{0}" """.format(filters.get("type_of_contact"))
+        conditions += """ AND `tabContact`.`contact_function` = "{0}" """.format(filters.get("type_of_contact"))
     if filters.get("source"):
         conditions += """ AND `tabContact`.`source` = "{0}" """.format(filters.get("source"))
     if filters.get("event_source"):
@@ -63,6 +64,12 @@ def get_data(filters):
         conditions += """ AND `tabContact`.`deliverability` = "{0}" """.format(filters.get("deliverability"))
     if filters.get("qualification"):
         conditions += """ AND `tabContact`.`qualification` = {0} """.format(filters.get("qualification"))
+    if filters.get("tag"):
+        conditions += """ AND `tabContact`.`tag` = {0} """.format(filters.get("tag"))
+    if filters.get("revenue_from"):
+        revenue_conditions += """ AND `tabSales Invoice`.`posting_date` >= "{0}" """.format(filters.get("revenue_from"))
+    if filters.get("revenue_to"):
+        revenue_conditions += """ AND `tabSales Invoice`.`posting_date` <= "{0}" """.format(filters.get("revenue_to"))
         
     # base table is customer: contacts not linked to a customer are not shown
     sql_query = """SELECT 
@@ -85,7 +92,8 @@ def get_data(filters):
           (SELECT SUM(`tabSales Invoice`.`base_net_total`) 
            FROM `tabSales Invoice` 
            WHERE `tabSales Invoice`.`docstatus` = 1
-             AND `tabSales Invoice`.`customer` = `tabCustomer`.`name`) AS `revenue`,
+             AND `tabSales Invoice`.`customer` = `tabCustomer`.`name`
+             {revenue_conditions}) AS `revenue`,
           (SELECT MAX(`tabSales Order`.`transaction_date`) 
            FROM `tabSales Order` 
            WHERE `tabSales Order`.`docstatus` = 1
@@ -119,7 +127,7 @@ def get_data(filters):
         WHERE `tabContact`.`status` IS NOT NULL
           {conditions} 
         ORDER BY `tabCustomer`.`name` ASC;
-      """.format(conditions=conditions)
+      """.format(conditions=conditions, revenue_conditions=revenue_conditions)
     #frappe.throw(sql_query)
     data = frappe.db.sql(sql_query, as_dict=1)
 
@@ -133,16 +141,18 @@ def get_data(filters):
     
     if filters.get("last_po"):
         out = []
+        cut_off_date = datetime.datetime.strptime(filters.get("last_po"), "%Y-%m-%d").date()
         for d in data:
-            if d.get("last_po_date") and d.get("last_po_date") >= filters.get("last_po"):
+            if d.get("last_po_date") and d.get("last_po_date") >= cut_off_date:
                 out.append(d)
                 
         data = out
     
     if filters.get("created_after"):
         out = []
+        cut_off_date = datetime.datetime.strptime(filters.get("created_after"), "%Y-%m-%d").date()
         for d in data:
-            if d.get("created") and d.get("created") >= filters.get("created_after"):
+            if d.get("created") and d.get("created") >= cut_off_date:
                 out.append(d)
                 
         data = out

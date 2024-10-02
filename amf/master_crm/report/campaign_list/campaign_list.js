@@ -40,6 +40,12 @@ frappe.query_reports["Campaign List"] = {
             'options': "Territory"
         },
         {
+            'fieldname': 'tag',
+            'label': __("Tag"),
+            'fieldtype': "Select",
+            'options': "\nAcademic Research\nIndustry"
+        },
+        {
             'fieldname': 'source',
             'label': __("Source"),
             'fieldtype': "Select",
@@ -73,7 +79,16 @@ frappe.query_reports["Campaign List"] = {
             'label': __("Revenue"),
             'fieldtype': "Currency"
         },
-        
+        {
+            'fieldname': 'revenue_from',
+            'label': __("Revenue from"),
+            'fieldtype': "Date"
+        },
+        {
+            'fieldname': 'revenue_to',
+            'label': __("Revenue to"),
+            'fieldtype': "Date"
+        },
         {
             'fieldname': 'qualification',
             'label': __("Qualification"),
@@ -105,6 +120,12 @@ frappe.query_reports["Campaign List"] = {
         report.page.add_inner_button(__('Upload to Brevo'), function () {
             upload_to_brevo()
         });
+        
+        // hide chart buttons
+        setTimeout(function() {
+            frappe.query_report.page.remove_inner_button( __("Set Chart") );
+            frappe.query_report.page.remove_inner_button( __("Hide Chart") );
+        }, 500);
     }
 };
 
