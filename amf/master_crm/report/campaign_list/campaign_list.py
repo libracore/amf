@@ -62,8 +62,9 @@ def get_data(filters):
     if filters.get("deliverability"):
         conditions += """ AND `tabContact`.`deliverability` = "{0}" """.format(filters.get("deliverability"))
     if filters.get("qualification"):
-        conditions += """ AND `tabContact`.`qualification` = "{0}" """.format(filters.get("qualification"))
+        conditions += """ AND `tabContact`.`qualification` = {0} """.format(filters.get("qualification"))
         
+    # base table is customer: contacts not linked to a customer are not shown
     sql_query = """SELECT 
           `tabCustomer`.`name` AS `customer`,
           `tabCustomer`.`customer_name` AS `customer_name`,
@@ -119,7 +120,7 @@ def get_data(filters):
           {conditions} 
         ORDER BY `tabCustomer`.`name` ASC;
       """.format(conditions=conditions)
-
+    #frappe.throw(sql_query)
     data = frappe.db.sql(sql_query, as_dict=1)
 
     if filters.get("revenue"):
