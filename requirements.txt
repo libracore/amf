@@ -4,3 +4,4 @@ reportlab
 treepoem
 weasyprint
 pylibdmtx
+tqdm
