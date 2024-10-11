@@ -96,3 +96,36 @@ def get_last_item_code(item_group=None):
     else:
         frappe.throw("No valid two-digit item codes found in the specified groups.")
 
+@frappe.whitelist()
+def create_item(doc, item_type):
+    """
+    Creates an item (plug, seat, valve head, or final product) based on the item_type provided.
+    """
+    doc = frappe._dict(doc)  # Convert the incoming doc to a dict format
+    
+    if item_type == 'plug':
+        return create_plug(doc)
+    elif item_type == 'seat':
+        return create_seat(doc)
+    elif item_type == 'valve_head':
+        return create_valve_head(doc)
+    elif item_type == 'final_product':
+        return create_final_product(doc)
+    else:
+        frappe.throw("Invalid item type. Please specify 'plug', 'seat', 'valve_head', or 'final_product'.")
+
+def create_plug(doc):
+    # Logic for plug creation
+    pass
+
+def create_seat(doc):
+    # Logic for seat creation
+    pass
+
+def create_valve_head(doc):
+    # Logic for valve head creation
+    pass
+
+def create_final_product(doc):
+    # Logic for final product creation
+    pass

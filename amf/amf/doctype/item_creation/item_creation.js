@@ -77,34 +77,31 @@ frappe.ui.form.on('Item Creation', {
 
 });
 
-function createItems(frm) {
+function createPlug(frm) {
     frappe.call({
-        method: 'amf.amf.doctype.',
+        method: 'amf.amf.doctype.item_creation.item_creation.create_item',
         args: {
-            '': frm.doc
+            'doc': frm.doc,
+            'item_type': 'plug'
         },
-        freeze: true,  // Freeze the UI during the call
-        freeze_message: __("Création de l'ordre de fabrication en cours...<br>Mise à jour des entrées de stock...<br>Merci de patienter..."),
+        freeze: true,
+        freeze_message: __("Item <strong>PLUG</strong> creation in process...<br>Mise à jour des entrées de stock...<br>Merci de patienter..."),
         callback: function (response) {
             console.log(response);
             if (response && response.message.success) {
                 // Set the values returned from the response
-                frm.set_value('work_order', response.message.work_order);
-                frm.set_value('stock_entry', response.message.stock_entry);
-                frm.set_value('batch', response.message.batch);
+                
+                // Display a popup
                 frappe.msgprint({
-                    title: __('Planning confirmé'),
+                    title: __('New Item Creation'),
                     indicator: 'green',
-                    message: __('Ordre de Fabrication crée avec succès.')
+                    message: __('New Plug successfully created.')
                 });
                 frm.save('Update');
-                frappe.show_alert( __("Fichier mis à jour") );
             } else {
-                // Error handling
                 frappe.validated = false;
-                console.error('Failed to create work order');
-                alert('Failed to create work order. Error: ' + (response.message ? response.message : 'Unknown error'));
-
+                console.error('Failed to create Plug');
+                alert('Error: ' + (response.message ? response.message : 'Unknown error'));
             }
         }
     });
