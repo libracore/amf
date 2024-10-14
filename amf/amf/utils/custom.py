@@ -381,7 +381,7 @@ def generate_data_matrix(data, size='26x26'):
 
 def qrcode_serial_no(doc, method=None):
     data = doc.name
-    if doc.item_code == "P221-O":
+    if doc.item_code == "522100":
         data = "BA" + data[-6:]
     print("data: ", data)
     
