@@ -2,6 +2,7 @@ import frappe
 from amf.amf.utils.qr_code_generator import generate_qr_code
 import os
 
+
 @frappe.whitelist()
 def generate_serial_number_qr_codes(stock_entry):
     doc = frappe.get_doc("Stock Entry", stock_entry)
@@ -12,12 +13,15 @@ def generate_serial_number_qr_codes(stock_entry):
             for serial_number in serial_numbers:
                 if serial_number.strip():
                     qr_code_base64 = generate_qr_code(serial_number)
-                    stock_entry_qr.append({"serial_number": serial_number, "qr_code": qr_code_base64})
+                    stock_entry_qr.append(
+                        {"serial_number": serial_number, "qr_code": qr_code_base64})
                     # Create a new child table entry for each QR code
-                    doc.append('stock_entry_qr', {"serial_number": serial_number, "qr_code": qr_code_base64})
+                    doc.append('stock_entry_qr', {
+                               "serial_number": serial_number, "qr_code": qr_code_base64})
     doc.save()  # Save the document to persist the new child table entries
     doc.reload()
     return stock_entry_qr
+
 
 def update_sales_order(doc, method):
     # Dictionary to store aggregated quantities
@@ -51,7 +55,7 @@ def update_sales_order(doc, method):
         if item_code in item_qty_map:
             # Update the delivered_qty field (assuming it exists)
             item.delivered_qty = item_qty_map[item_code]
-    
+
     # Get the DocType
     doctype = frappe.get_doc("DocType", "Sales Order Item")
 
@@ -67,9 +71,10 @@ def update_sales_order(doc, method):
 
     # Bypass read-only restriction
     # sales_order.flags.ignore_permissions = True
-    
+
     # Save the updated Sales Order
     sales_order.save()
+
 
 @frappe.whitelist()
 def generate_dhl(delivery_note_id):
@@ -333,13 +338,16 @@ def generate_dhl(delivery_note_id):
         first_part = parts[0]
         second_part = parts[1] if len(parts) > 1 else ""
         subpart1, subpart2 = second_part[:2], second_part[2:]
-        formatted_commodity_code = "{}.{}.{}".format(first_part, subpart1, subpart2)
+        formatted_commodity_code = "{}.{}.{}".format(
+            first_part, subpart1, subpart2)
         # Map the country of origin to a 2-letter code
-        country_of_origin_code = country_mapping.get(item.get("country_of_origin", ""), "")
+        country_of_origin_code = country_mapping.get(
+            item.get("country_of_origin", ""), "")
 
         item_line = "1|INV_ITEM|{item_name}|{item_commodity_code}|{qty}|PCS|{net_rate}|{currency}|{weight_per_unit}||{country_of_origin}|MID|{item_code}||".format(
             item_name=item.item_name,
-            item_commodity_code=formatted_commodity_code, # Assuming customs_tariff_number is a custom field
+            # Assuming customs_tariff_number is a custom field
+            item_commodity_code=formatted_commodity_code,
             qty=int(item.qty),
             net_rate=item.net_rate,
             currency=delivery_note.currency,
@@ -357,7 +365,8 @@ def generate_dhl(delivery_note_id):
         os.makedirs(file_directory)
 
     # Define the complete path
-    file_path = os.path.join(file_directory, 'dhl_file_{}.txt'.format(delivery_note_id))
+    file_path = os.path.join(
+        file_directory, 'dhl_file_{}.txt'.format(delivery_note_id))
 
     # Write data to the txt file
     with open(file_path, 'w') as f:
@@ -378,20 +387,25 @@ def generate_dhl(delivery_note_id):
 
     return {"status": "success", "data": dhl_data, "message": "File has been successfully generated"}
 
+
 def check_serial_nos(doc, method):
     test_mode = False
     # Iterate over all Delivery Note Items
     for item in doc.items:
-        if test_mode: print("item:",item.name)
+        if test_mode:
+            print("item:", item.name)
         serial_no_list = []
         # Fetch the 'has_serial_no' field value from the linked Item
         item_details = frappe.get_doc('Item', item.item_code)
-        if test_mode: print("item_details:",item_details.name)
+        if test_mode:
+            print("item_details:", item_details.name)
         if item_details.has_serial_no:
-            if test_mode: print("has_serial_no")
+            if test_mode:
+                print("has_serial_no")
             # If the Item requires a serial number, proceed to find linked Work Orders
             sales_order_linked = item.against_sales_order
-            if test_mode: print(sales_order_linked)
+            if test_mode:
+                print(sales_order_linked)
             if sales_order_linked:
                 work_orders = frappe.get_list('Work Order',
                                               filters={
@@ -399,13 +413,15 @@ def check_serial_nos(doc, method):
                                                   'status': ['in', ['Completed', 'In Progress']]
                                               },
                                               fields=['name'])
-                if test_mode: print("work_orders:",work_orders)
+                if test_mode:
+                    print("work_orders:", work_orders)
                 for wo in work_orders:
                     # Fetch Stock Entries linked to this Work Order
                     stock_entries = frappe.get_list('Stock Entry',
-                                                    filters={'work_order': wo.name, 'docstatus': 1},
+                                                    filters={
+                                                        'work_order': wo.name, 'docstatus': 1},
                                                     fields=['name'])
-                    
+
                     for se in stock_entries:
                         # Fetch serial numbers from each Stock Entry Detail
                         serial_numbers = frappe.db.sql("""
@@ -414,11 +430,13 @@ def check_serial_nos(doc, method):
                             WHERE parent=%s AND docstatus=1
                         """, (se.name), as_dict=1)
                         # Process the fetched serial numbers for both cases
-                        if test_mode: print(serial_numbers)
+                        if test_mode:
+                            print(serial_numbers)
                         for sn in serial_numbers:
                             if sn['serial_no'] and ('\n' in sn['serial_no']):
                                 # If serial numbers are concatenated with newline, split and extend the list
-                                serial_no_list.extend(sn['serial_no'].split('\n'))
+                                serial_no_list.extend(
+                                    sn['serial_no'].split('\n'))
                             elif sn['serial_no']:
                                 # If single serial number, append it to the list
                                 serial_no_list.append(sn['serial_no'])
@@ -429,3 +447,77 @@ def check_serial_nos(doc, method):
                 if serial_no_list:
                     # Update the custom field in the Delivery Note Item with the serial numbers
                     item.db_set('serial_no', '\n'.join(serial_no_list))
+
+
+def before_save_dn(doc, method):
+    """
+    Pre-save hook for Delivery Note to fetch and populate serial numbers from related Work Orders.
+    This function checks each delivery note item, fetches related work orders, and gathers serial numbers
+    from the stock entries of the 'Manufacture' type, storing them in the 'product_serial_no' field.
+    """
+    for item in doc.items:
+        sales_order = item.against_sales_order
+        
+        # Log or print sales order for debugging purposes
+        if not sales_order:
+            frappe.log_error(f"No sales order found for item {item.item_code} in Delivery Note {doc.name}")
+            continue  # Skip if no sales order is found
+
+        try:
+            # Fetch all Work Orders associated with the sales order and item
+            work_orders = frappe.get_all(
+                'Work Order', 
+                filters={
+                    'sales_order': sales_order,
+                    'production_item': item.item_code
+                }, 
+                fields=['name']
+            )
+
+            if not work_orders:
+                frappe.log_error(f"No Work Orders found for Sales Order {sales_order} and Item {item.item_code}")
+                continue  # Skip if no work orders are found
+
+            serial_nos = []  # Initialize the list to store serial numbers
+
+            for wo in work_orders:
+                # Fetch Stock Entries with the purpose 'Manufacture' linked to the Work Order
+                stock_entries = frappe.get_all(
+                    'Stock Entry',
+                    filters={
+                        'work_order': wo.name,
+                        'purpose': 'Manufacture'  # Only get stock entries with 'Manufacture' purpose
+                    },
+                    order_by='creation desc',
+                    fields=['name']
+                )
+
+                if not stock_entries:
+                    frappe.log_error(f"No Stock Entries found for Work Order {wo.name}")
+                    continue  # Skip if no stock entries are found for this work order
+
+                for stock_entry in stock_entries:
+                    # Fetch the complete Stock Entry document
+                    stock_entry_doc = frappe.get_doc('Stock Entry', stock_entry.name)
+
+                    if stock_entry_doc.items:
+                        # Ensure the last row exists and has a serial number
+                        last_item_row = stock_entry_doc.items[-1]
+                        if last_item_row.serial_no:
+                            # Append the serial number to the serial_nos list
+                            serial_nos.append(last_item_row.serial_no)
+                        else:
+                            frappe.log_error(f"No serial number in the last item of Stock Entry {stock_entry.name}")
+                    else:
+                        frappe.log_error(f"No items found in Stock Entry {stock_entry.name}")
+
+            # After processing all stock entries, update the delivery note item field
+            if serial_nos:
+                item.product_serial_no = '\n'.join(serial_nos)  # Join serial numbers with a newline
+            else:
+                item.product_serial_no = None  # Set to None if no serial numbers found
+                frappe.log_error(f"No serial numbers found for item {item.item_code} in Delivery Note {doc.name}")
+
+        except Exception as e:
+            # Log the exception for troubleshooting
+            frappe.log_error(f"Error processing item {item.item_code} in Delivery Note {doc.name}: {str(e)}")

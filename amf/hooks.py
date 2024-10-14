@@ -158,7 +158,7 @@ doc_events = {
         "after_insert": "amf.amf.utils.barcode.after_insert_handler"
     },
     "Delivery Note": {
-        #"validate": "amf.amf.utils.delivery_note_api.check_serial_nos"
+        "before_save": "amf.amf.utils.delivery_note_api.before_save_dn"
     },
     "Serial No": {
         "after_insert": "amf.amf.utils.custom.qrcode_serial_no"
