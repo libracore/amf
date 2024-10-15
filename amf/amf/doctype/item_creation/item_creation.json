@@ -1,0 +1,311 @@
+{
+ "creation": "2024-10-10 10:10:10.134641",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_group",
+  "item_type",
+  "section_break_3",
+  "body_check",
+  "body",
+  "section_break_5",
+  "head_check",
+  "read_only_6",
+  "head_name",
+  "head_code",
+  "head_rnd",
+  "head_item",
+  "column_break_10",
+  "head_group",
+  "section_break_9",
+  "seat_check",
+  "seat_information",
+  "seat_name",
+  "seat_code",
+  "seat_rnd",
+  "seat_acc",
+  "seat_mat",
+  "seat_item",
+  "column_break_14",
+  "plug_check",
+  "plug_information",
+  "plug_name",
+  "plug_code",
+  "plug_rnd",
+  "plug_acc",
+  "plug_mat",
+  "plug_item",
+  "section_break_28",
+  "screw_type",
+  "cap_type",
+  "column_break_31",
+  "screw_quantity",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "default": "Products",
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "label": "Item Group",
+   "options": "Item Group"
+  },
+  {
+   "fieldname": "item_type",
+   "fieldtype": "Select",
+   "label": "Item Type",
+   "options": "Component\nFinished Good"
+  },
+  {
+   "fieldname": "section_break_3",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:doc.body_check=='Yes'",
+   "fieldname": "body",
+   "fieldtype": "Link",
+   "label": "Body",
+   "options": "Item"
+  },
+  {
+   "fieldname": "section_break_5",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "VALVE HEAD-",
+   "depends_on": "eval:doc.head_check=='Yes'",
+   "fieldname": "head_name",
+   "fieldtype": "Data",
+   "label": "Item Name"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Item Creation",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.head_check=='Yes'",
+   "fieldname": "head_code",
+   "fieldtype": "Data",
+   "label": "Item Code"
+  },
+  {
+   "default": "V-",
+   "depends_on": "eval:doc.head_check=='Yes'",
+   "fieldname": "head_rnd",
+   "fieldtype": "Data",
+   "label": "R&D Code"
+  },
+  {
+   "default": "SEAT-",
+   "depends_on": "eval:doc.seat_check=='Yes'",
+   "fieldname": "seat_name",
+   "fieldtype": "Data",
+   "label": "Item Name"
+  },
+  {
+   "depends_on": "eval:doc.seat_check=='Yes'",
+   "fieldname": "seat_code",
+   "fieldtype": "Data",
+   "label": "Item Code"
+  },
+  {
+   "depends_on": "eval:doc.seat_check=='Yes'",
+   "fieldname": "seat_rnd",
+   "fieldtype": "Data",
+   "label": "R&D Code"
+  },
+  {
+   "default": "2",
+   "depends_on": "eval:doc.seat_check=='Yes'",
+   "fieldname": "seat_acc",
+   "fieldtype": "Int",
+   "label": "No. of Pins"
+  },
+  {
+   "default": "PCTFE",
+   "depends_on": "eval:doc.seat_check=='Yes'",
+   "fieldname": "seat_mat",
+   "fieldtype": "Select",
+   "label": "Raw Material",
+   "options": "PCTFE\nPEEK\nPTFE\nPMMA"
+  },
+  {
+   "default": "PLUG-",
+   "depends_on": "eval:doc.plug_check=='Yes'",
+   "fieldname": "plug_name",
+   "fieldtype": "Data",
+   "label": "Item Name"
+  },
+  {
+   "depends_on": "eval:doc.plug_check=='Yes'",
+   "fieldname": "plug_code",
+   "fieldtype": "Data",
+   "label": "Item Code"
+  },
+  {
+   "depends_on": "eval:doc.plug_check=='Yes'",
+   "fieldname": "plug_rnd",
+   "fieldtype": "Data",
+   "label": "R&D Code"
+  },
+  {
+   "depends_on": "eval:doc.plug_check=='Yes'",
+   "fieldname": "plug_acc",
+   "fieldtype": "Int",
+   "label": "No. of Magnets"
+  },
+  {
+   "default": "PTFE",
+   "depends_on": "eval:doc.plug_check=='Yes'",
+   "fieldname": "plug_mat",
+   "fieldtype": "Select",
+   "label": "Raw Material",
+   "options": "PTFE\nPE-UHMW"
+  },
+  {
+   "fieldname": "column_break_14",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.head_check=='Yes'",
+   "fieldname": "section_break_9",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "SEAT CREATION",
+   "depends_on": "eval:doc.seat_check=='Yes'",
+   "fieldname": "seat_information",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "default": "PLUG CREATION",
+   "depends_on": "eval:doc.plug_check=='Yes'",
+   "fieldname": "plug_information",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "default": "VALVE HEAD CREATION",
+   "depends_on": "eval:doc.head_check=='Yes'",
+   "fieldname": "read_only_6",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.head_check=='Yes'",
+   "fieldname": "column_break_10",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Valve Head",
+   "depends_on": "eval:doc.head_check=='Yes'",
+   "fieldname": "head_group",
+   "fieldtype": "Link",
+   "label": "Item Group",
+   "options": "Item Group",
+   "read_only": 1
+  },
+  {
+   "fieldname": "seat_check",
+   "fieldtype": "Select",
+   "label": "Do you need to create the <strong>Seat</strong> ?",
+   "options": "\nYes\nNo"
+  },
+  {
+   "fieldname": "plug_check",
+   "fieldtype": "Select",
+   "label": "Do you need to create the <strong>Plug</strong> ?",
+   "options": "\nYes\nNo"
+  },
+  {
+   "depends_on": "eval:doc.head_check",
+   "fieldname": "section_break_28",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "screw_type",
+   "fieldtype": "Link",
+   "label": "Assembly Screws",
+   "options": "Item"
+  },
+  {
+   "fieldname": "cap_type",
+   "fieldtype": "Link",
+   "label": "Head Cap",
+   "options": "Item"
+  },
+  {
+   "fieldname": "column_break_31",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "screw_quantity",
+   "fieldtype": "Int",
+   "label": "Screw Quantity"
+  },
+  {
+   "fieldname": "body_check",
+   "fieldtype": "Select",
+   "label": "Do you need to use a <strong>Body</strong> ?",
+   "options": "\nYes\nNo"
+  },
+  {
+   "fieldname": "head_check",
+   "fieldtype": "Select",
+   "label": "Do you need to create a <strong>Valve Head</strong> ?",
+   "options": "\nYes\nNo"
+  },
+  {
+   "depends_on": "eval:doc.head_check=='No'",
+   "fieldname": "head_item",
+   "fieldtype": "Link",
+   "label": "Which <strong>Valve Head</strong> would you like to use ?",
+   "options": "Item"
+  },
+  {
+   "depends_on": "eval:doc.seat_check=='No'",
+   "fieldname": "seat_item",
+   "fieldtype": "Link",
+   "label": "Which <strong>Seat</strong> would you like to use ?",
+   "options": "Item"
+  },
+  {
+   "depends_on": "eval:doc.plug_check=='No'",
+   "fieldname": "plug_item",
+   "fieldtype": "Link",
+   "label": "Which <strong>Plug</strong> would you like to use ?",
+   "options": "Item"
+  }
+ ],
+ "is_submittable": 1,
+ "modified": "2024-10-10 16:51:52.091012",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "Item Creation",
+ "name_case": "UPPER CASE",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
