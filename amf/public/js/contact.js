@@ -7,7 +7,11 @@ Contact Client Custom Script
 cur_frm.dashboard.add_transactions([
     {
         'label': __("Pre-Sales"),
-        'items': ["Quotation", "Sales Activity"]
+        'items': ["Opportunity", "Quotation", "Sales Activity"]
+    },
+    {
+        'label': __("Procurement"),
+        'items': ["Purchase Order"]
     },
     {
         'label': __("Complaints"),
