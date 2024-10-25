@@ -4,6 +4,7 @@
 
 import frappe
 from amf.master_crm.naming import get_fixed_length_string, naming_patterns
+from tqdm import tqdm  # Import the tqdm library for the progress bar
 
 """
 Run this to move contacts into naming series
@@ -70,3 +71,25 @@ def translate_customer_to_organization():
         
     return
         
+
+"""
+Master CRM: pull company from "old" gravity entries into top-level field
+
+Run with
+    bench execute amf.master_crm.migration.pull_company_from_gravity_fields
+"""
+def pull_company_from_gravity_fields():
+    entries = frappe.get_all("Gravity Form Entry", fields=['name'])
+    for e in tqdm(entries, desc="Processing Gravity Form Entries", unit="#"):
+        if not e.company:
+            company = frappe.db.sql("""
+                SELECT `value`
+                FROM `tabGravity Form Entry Field`
+                WHERE `parent` = "{e}"
+                  AND `field_name` = "Company"
+                  AND `parenttype` = "Gravity Form Entry";
+                """.format(e=e['name']),  as_dict=True)
+            if len(company) > 0:
+                frappe.db.set_value("Gravity Form Entry", e['name'], 'company', company[0]['value'])
+                frappe.db.commit()
+    return

@@ -135,6 +135,8 @@ def fetch_form_entries(gravity_form):
                         'field_name': v,
                         'value': e.get(k)
                     })
+                    if v == "Company":                          # 35: pull company field to entry-level
+                        new_entry.company = e.get(k)
                 new_entry.insert(ignore_permissions=True)
                 # override creation and modified
                 new_entry.creation =  e.get('date_created')
