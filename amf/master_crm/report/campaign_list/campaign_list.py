@@ -65,7 +65,7 @@ def get_data(filters):
     if filters.get("qualification"):
         conditions += """ AND `tabContact`.`qualification` = {0} """.format(filters.get("qualification"))
     if filters.get("tag"):
-        conditions += """ AND `tabContact`.`tag` = {0} """.format(filters.get("tag"))
+        conditions += """ AND `tabContact`.`tag` = "{0}" """.format(filters.get("tag"))
     if filters.get("revenue_from"):
         revenue_conditions += """ AND `tabSales Invoice`.`posting_date` >= "{0}" """.format(filters.get("revenue_from"))
     if filters.get("revenue_to"):
