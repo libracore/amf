@@ -40,10 +40,10 @@ frappe.query_reports["Campaign List"] = {
             'options': "Territory"
         },
         {
-            'fieldname': 'tag',
-            'label': __("Tag"),
-            'fieldtype': "Select",
-            'options': "\nAcademic Research\nIndustry"
+            'fieldname': 'customer_group',
+            'label': __("Customer Group"),
+            'fieldtype': "Link",
+            'options': "Customer Group"
         },
         {
             'fieldname': 'source',
@@ -52,8 +52,8 @@ frappe.query_reports["Campaign List"] = {
             'options': "\nEvent\nDatabase\nSEA\nSEO"
         },
         {
-            'fieldname': 'event_source',
-            'label': __("Event Source"),
+            'fieldname': 'from_source',
+            'label': __("From Source"),
             'fieldtype': "Link",
             'options': "Lead Source"
         },

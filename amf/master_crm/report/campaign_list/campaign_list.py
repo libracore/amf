@@ -52,8 +52,8 @@ def get_data(filters):
         conditions += """ AND `tabContact`.`contact_function` = "{0}" """.format(filters.get("type_of_contact"))
     if filters.get("source"):
         conditions += """ AND `tabContact`.`source` = "{0}" """.format(filters.get("source"))
-    if filters.get("event_source"):
-        conditions += """ AND `tabContact`.`event_source` = "{0}" """.format(filters.get("event_source"))
+    if filters.get("from_source"):
+        conditions += """ AND `tabContact`.`from_source` = "{0}" """.format(filters.get("from_source"))
     if filters.get("product"):
         conditions += """ AND `tabContact`.`product` = "{0}" """.format(filters.get("product"))
     if filters.get("development_stage"):
@@ -64,8 +64,8 @@ def get_data(filters):
         conditions += """ AND `tabContact`.`deliverability` = "{0}" """.format(filters.get("deliverability"))
     if filters.get("qualification"):
         conditions += """ AND `tabContact`.`qualification` = {0} """.format(filters.get("qualification"))
-    if filters.get("tag"):
-        conditions += """ AND `tabContact`.`tag` = "{0}" """.format(filters.get("tag"))
+    if filters.get("customer_group"):
+        conditions += """ AND `tabContact`.`customer_group` = "{0}" """.format(filters.get("customer_group"))
     if filters.get("revenue_from"):
         revenue_conditions += """ AND `tabSales Invoice`.`posting_date` >= "{0}" """.format(filters.get("revenue_from"))
     if filters.get("revenue_to"):
