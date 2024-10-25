@@ -114,6 +114,12 @@ frappe.query_reports["Campaign List"] = {
             'fieldname': 'modified_after',
             'label': __("Modified after"),
             'fieldtype': "Date"
+        },
+        {
+            'fieldname': 'is_customer',
+            'label': __("Is Customer"),
+            'fieldtype': "Select",
+            'options': "\nYes\nNo"
         }
     ],
     "onload": (report) => {

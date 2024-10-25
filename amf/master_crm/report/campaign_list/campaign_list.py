@@ -70,6 +70,8 @@ def get_data(filters):
         revenue_conditions += """ AND `tabSales Invoice`.`posting_date` >= "{0}" """.format(filters.get("revenue_from"))
     if filters.get("revenue_to"):
         revenue_conditions += """ AND `tabSales Invoice`.`posting_date` <= "{0}" """.format(filters.get("revenue_to"))
+    if filters.get("is_customer"):
+        conditions += """ AND `tabCustomer`.`is_customer` = {0} """.format(1 if filters.get("is_customer") == "Yes" else 0)
         
     # base table is customer: contacts not linked to a customer are not shown
     sql_query = """SELECT 
