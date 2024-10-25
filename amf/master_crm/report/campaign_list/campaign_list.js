@@ -34,12 +34,6 @@ frappe.query_reports["Campaign List"] = {
             'options': "Country"
         },
         {
-            'fieldname': 'territory',
-            'label': __("Territory"),
-            'fieldtype': "Link",
-            'options': "Territory"
-        },
-        {
             'fieldname': 'customer_group',
             'label': __("Customer Group"),
             'fieldtype': "Link",
