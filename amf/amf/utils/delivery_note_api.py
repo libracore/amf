@@ -501,13 +501,15 @@ def before_save_dn(doc, method):
                     stock_entry_doc = frappe.get_doc('Stock Entry', stock_entry.name)
 
                     if stock_entry_doc.items:
-                        # Ensure the last row exists and has a serial number
-                        last_item_row = stock_entry_doc.items[-1]
-                        if last_item_row.serial_no:
-                            # Append the serial number to the serial_nos list
-                            serial_nos.append(last_item_row.serial_no)
-                        else:
-                            frappe.log_error(f"No serial number in the last item of Stock Entry {stock_entry.name}")
+                        # Loop through all rows to find rows with a serial number
+                        for item_row in stock_entry_doc.items:
+                            if item_row.serial_no:
+                                # Append the serial number to the serial_nos list
+                                serial_nos.append(item_row.serial_no)
+                        
+                        if not serial_nos:
+                            # Log an error if no serial number found in any item row
+                            frappe.log_error(f"No serial numbers found in any items of Stock Entry {stock_entry.name}")
                     else:
                         frappe.log_error(f"No items found in Stock Entry {stock_entry.name}")
 
