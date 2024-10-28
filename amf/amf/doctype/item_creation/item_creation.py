@@ -57,42 +57,58 @@ def populate_fields(head_name):
     }
     
 @frappe.whitelist()
-def get_last_item_code(item_group=None):
+def get_last_item_code(code_body=None):
     """
     Fetch the last two digits from items in the 'Valve Seat', 'Valve Head', and 'Plug' item groups
     and return the highest two-digit number.
     """
     # Define the relevant item groups
-    item_groups = ['Valve Head', 'Valve Seat', 'Plug']
-
-    # Query to find all item codes in the specified item groups
-    items = frappe.db.sql("""
-        SELECT item_code
-        FROM `tabItem`
-        WHERE item_group IN (%s, %s, %s)
-    """, tuple(item_groups))
-
+    
+    if code_body:
+        item_groups = ['Products']
+        # Query to find all item codes in the specified item groups
+        items = frappe.db.sql("""
+            SELECT item_code
+            FROM `tabItem`
+            WHERE item_group IN (%s)
+            AND disabled = 0
+            AND item_code REGEXP '^[0-9]{6}$'
+        """, tuple(item_groups))
+    else:
+        item_groups = ['Valve Head', 'Valve Seat', 'Plug']
+        # Query to find all item codes in the specified item groups
+        items = frappe.db.sql("""
+            SELECT item_code
+            FROM `tabItem`
+            WHERE item_group IN (%s, %s, %s)
+            AND disabled = 0
+            AND item_code REGEXP '^[0-9]{6}$'
+        """, tuple(item_groups))
+        
     # Variable to store the highest two-digit number
-    highest_three_digit_number = None
+    highest_digit_number = None
 
     # Process each item and extract the last two digits
     for item in items:
         item_code = item[0]  # Assuming 'name' is the item code
         
         # Extract the last two digits from the item code (assumes the format allows this)
-        last_three_digits = item_code[-3:]  # Take the last two characters
+        if code_body:
+            last_digits = item_code[-2:]  # Take the last two characters
+        else:
+            last_digits = item_code[-3:]
         
         # Check if the last two characters are numeric
-        if last_three_digits.isdigit():
-            last_three_digits = int(last_three_digits)
+        if last_digits.isdigit():
+            last_digits = int(last_digits)
             
             # Compare to find the highest two-digit number
-            if highest_three_digit_number is None or last_three_digits > highest_three_digit_number:
-                highest_three_digit_number = last_three_digits
+            if highest_digit_number is None or last_digits > highest_digit_number:
+                highest_digit_number = last_digits
 
     # Return the highest two-digit number found, or throw an error if none found
-    if highest_three_digit_number is not None:
-        return highest_three_digit_number
+    if highest_digit_number is not None:
+        return highest_digit_number
     else:
         frappe.throw("No valid two-digit item codes found in the specified groups.")
 

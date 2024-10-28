@@ -2,6 +2,38 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Item Creation', {
+
+    refresh: function (frm) {
+        frm.set_query("body", () => ({
+            filters: [
+                ['Item', 'item_code', 'in', ['P200-O', 'P201-O', 'P211-O', 'P221-O', 'P100-O', 'P101-O', 'P100-L']]
+            ],
+        }));
+        frm.set_query("head_item", () => ({
+            filters: [
+                ['Item', 'item_group', '=', 'Valve Head'],
+                ['Item', 'item_code', 'like', '3_%']
+            ],
+        }));
+        frm.set_query("seat_item", () => ({
+            filters: [
+                ['Item', 'item_group', '=', 'Valve Seat'],
+                ['Item', 'item_code', 'like', '21_%']
+            ],
+        }));
+        frm.set_query("plug_item", () => ({
+            filters: [
+                ['Item', 'item_group', '=', 'Plug'],
+                ['Item', 'item_code', 'like', '11_%']
+            ],
+        }));
+        frm.set_query("cap_type", () => ({
+            filters: [
+                ['Item', 'item_code', 'in', ['RVM.3038', 'RVM.3039', 'RVM.3040']]
+            ],
+        }));
+    },
+
     head_name: function (frm) {
         if (frm.doc.head_name) {
             frappe.call({
@@ -24,7 +56,7 @@ frappe.ui.form.on('Item Creation', {
     head_check: function(frm) {
         if (frm.doc.head_check === 'Yes') {
             frappe.call({
-                method: 'amf.amf.doctype.item_creation.item_creation.get_last_item_code',  // Replace with the correct path to your method
+                method: 'amf.amf.doctype.item_creation.item_creation.get_last_item_code',
                 callback: function(r) {
                     if (!r.exc) {
                         console.log("Last 6-digit item code: " + r.message);
@@ -75,6 +107,27 @@ frappe.ui.form.on('Item Creation', {
         }
     },
 
+    item_group: function(frm) {
+        if (frm.doc.item_group === 'Products') {
+            frm.set_value('item_type', 'Finished Good');
+        }
+    },
+
+    body: function(frm) {
+        //get value of body and map it
+        //send the code as args
+        frappe.call({
+            method: 'amf.amf.doctype.item_creation.item_creation.get_last_item_code',
+            args: {
+                'code_body': 1
+            },
+            callback: function(r) {
+                if (!r.exc) {
+                    console.log("Last 6-digit item code: " + r.message);
+                }
+            }
+        });
+    }
 });
 
 function createPlug(frm) {

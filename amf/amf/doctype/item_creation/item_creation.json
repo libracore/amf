@@ -4,12 +4,20 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "section_break_1",
+  "1_item_definition",
   "item_group",
   "item_type",
+  "column_break_3",
+  "new_code",
   "section_break_3",
+  "2_body_definition",
   "body_check",
   "body",
+  "column_break_8",
+  "syringe",
   "section_break_5",
+  "3_valve_head_definition",
   "head_check",
   "read_only_6",
   "head_name",
@@ -19,6 +27,7 @@
   "column_break_10",
   "head_group",
   "section_break_9",
+  "4_seat_plug_definition",
   "seat_check",
   "seat_information",
   "seat_name",
@@ -28,6 +37,7 @@
   "seat_mat",
   "seat_item",
   "column_break_14",
+  "4b_plug_definition",
   "plug_check",
   "plug_information",
   "plug_name",
@@ -37,15 +47,17 @@
   "plug_mat",
   "plug_item",
   "section_break_28",
+  "5_parts_definition",
   "screw_type",
   "cap_type",
   "column_break_31",
   "screw_quantity",
+  "section_break_49",
+  "6_accessories_definition",
   "amended_from"
  ],
  "fields": [
   {
-   "default": "Products",
    "fieldname": "item_group",
    "fieldtype": "Link",
    "label": "Item Group",
@@ -55,7 +67,7 @@
    "fieldname": "item_type",
    "fieldtype": "Select",
    "label": "Item Type",
-   "options": "Component\nFinished Good"
+   "options": "\nComponent\nSub-Assembly\nFinished Good"
   },
   {
    "fieldname": "section_break_3",
@@ -282,10 +294,74 @@
    "fieldtype": "Link",
    "label": "Which <strong>Plug</strong> would you like to use ?",
    "options": "Item"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "new_code",
+   "fieldtype": "Data",
+   "label": "Potential New Product Code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.body == 'P100-O' || doc.body == 'P101-O' || doc.body == 'P100-L';",
+   "fieldname": "syringe",
+   "fieldtype": "Link",
+   "label": "Syringe",
+   "options": "Item"
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "1_item_definition",
+   "fieldtype": "Heading",
+   "label": "1. Item Definition"
+  },
+  {
+   "fieldname": "2_body_definition",
+   "fieldtype": "Heading",
+   "label": "2. Body Definition"
+  },
+  {
+   "fieldname": "3_valve_head_definition",
+   "fieldtype": "Heading",
+   "label": "3. Valve Head Definition"
+  },
+  {
+   "fieldname": "4_seat_plug_definition",
+   "fieldtype": "Heading",
+   "label": "4a. Seat Definition"
+  },
+  {
+   "fieldname": "5_parts_definition",
+   "fieldtype": "Heading",
+   "label": "5. Parts Definition"
+  },
+  {
+   "fieldname": "section_break_49",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "6_accessories_definition",
+   "fieldtype": "Heading",
+   "label": "6. Accessories Definition"
+  },
+  {
+   "fieldname": "4b_plug_definition",
+   "fieldtype": "Heading",
+   "label": "4b. Plug Definition"
   }
  ],
  "is_submittable": 1,
- "modified": "2024-10-10 16:51:52.091012",
+ "modified": "2024-10-18 14:00:12.800792",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Item Creation",

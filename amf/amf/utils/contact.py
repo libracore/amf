@@ -238,3 +238,73 @@ def validate_csv_columns(df, required_columns):
     missing_columns = [col for col in required_columns if col not in df.columns]
     if missing_columns:
         raise ValueError(f"Missing columns in CSV: {missing_columns}")
+    
+import frappe
+
+import frappe
+
+def update_contact_status():
+    try:
+        # Fetch contacts with status different from 'back-office', 'supplier', 'AMF', or 'distributor'
+        contacts = frappe.get_all(
+            "Contact",
+            filters={
+                "status": ["not in", ["Back-Office", "Supplier", "AMF", "Distributor"]]
+            },
+            fields=["name", "status"]  # Add any additional fields you may need
+        )
+
+        if not contacts:
+            frappe.msgprint("No contacts found with the specified statuses.")
+            return
+
+        updated_contacts = []
+
+        for contact in contacts:
+            try:
+                # Fetch sales orders for the contact first, as we assume most contacts may have sales orders
+                sales_orders = frappe.get_all(
+                    "Sales Order",
+                    filters={"contact_person": contact.name, "docstatus": 1},  # Only submitted sales orders
+                    fields=["name"]
+                )
+
+                # Fetch quotes for the contact only if no sales orders are found
+                quotes = []
+                if not sales_orders:
+                    quotes = frappe.get_all(
+                        "Quotation",
+                        filters={"contact_person": contact.name, "docstatus": 1},  # Only submitted quotations
+                        fields=["name"]
+                    )
+
+                # Update status to 'Customer' if there is at least one sales order
+                if sales_orders:
+                    print("Customer:", contact.name)
+                    frappe.db.set_value("Contact", contact.name, "status", "Customer")
+                    updated_contacts.append((contact.name, "Customer"))
+
+                # Update status to 'Prospect' if there are quotes but no sales orders
+                elif quotes:
+                    print("Prospect:", contact.name)
+                    frappe.db.set_value("Contact", contact.name, "status", "Prospect")
+                    updated_contacts.append((contact.name, "Prospect"))
+
+            except Exception as e:
+                frappe.log_error(f"Error processing contact {contact.name}: {str(e)}", "Contact Status Update Error")
+
+        # Commit transaction after processing all contacts
+        frappe.db.commit()
+
+        # Log results
+        if updated_contacts:
+            message = "\n".join([f"Contact {name} updated to {status}" for name, status in updated_contacts])
+            frappe.msgprint(f"Updated contacts:\n{message}")
+        else:
+            frappe.msgprint("No contacts were updated.")
+
+    except Exception as e:
+        frappe.log_error(f"Error in update_contact_status: {str(e)}", "Contact Status Update Error")
+        frappe.throw(f"An error occurred during the update: {str(e)}")
+
+

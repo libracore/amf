@@ -130,7 +130,7 @@ doctype_list_js = {
 doc_events = {
     "Work Order": {
         "on_submit": [
-            "amf.amf.utils.custom.qr_code_to_document",
+            #"amf.amf.utils.custom.qr_code_to_document",
             "amf.amf.utils.on_work_order_submit.on_submit_wo",
         ]
     },
@@ -149,7 +149,7 @@ doc_events = {
         "before_save": "amf.www.fftest.update_rate_and_availability_ste"
     },
     "Stock Entry": {
-        "on_submit": "amf.amf.utils.custom.qr_code_to_document"
+        #"on_submit": "amf.amf.utils.custom.qr_code_to_document"
     },
     "Production Order": {
         "before_submit": "amf.amf.utils.custom.attach_qr_code_to_document"
