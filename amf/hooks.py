@@ -185,7 +185,7 @@ scheduler_events = {
         "amf.master_crm.doctype.gravity_forms.gravity_forms.daily_sync"
     ],
     "hourly": [
-        "amf.amf.utils.document_notification.update_purchase_orders",
+        #"amf.amf.utils.document_notification.update_purchase_orders",
     ],
     "weekly": [
         #"amf.amf.utils.check_issue.fetch_open_issues",

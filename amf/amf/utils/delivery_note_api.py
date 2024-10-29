@@ -486,7 +486,8 @@ def before_save_dn(doc, method):
                     'Stock Entry',
                     filters={
                         'work_order': wo.name,
-                        'purpose': 'Manufacture'  # Only get stock entries with 'Manufacture' purpose
+                        'purpose': 'Manufacture',  # Only get stock entries with 'Manufacture' purpose
+                        'docstatus': 1
                     },
                     order_by='creation desc',
                     fields=['name']
