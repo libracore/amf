@@ -58,3 +58,99 @@ def get_stock_balance_for_all_warehouses(item_code):
     """, (item_code), as_dict=1)
 
     return {row.warehouse: row.actual_qty for row in stock_balance}
+
+
+import frappe
+from frappe.model.rename_doc import rename_doc
+import traceback
+
+@frappe.whitelist()
+def update_boms_with_latest_versions_enqueue():
+    frappe.enqueue("amf.amf.utils.bom_creation.update_boms_with_latest_versions", queue='long', timeout=15000)
+    return None
+
+def update_boms_with_latest_versions():
+    try:
+        # Fetch all active and default BOMs
+        all_boms = frappe.get_all('BOM', filters={'is_active': 1, 'is_default': 1}, fields=['name', 'item'])
+        
+        for bom in all_boms:
+            print(f"Processing BOM: {bom.name} for Item: {bom.item}")
+            try:
+                create_new_bom_version(bom.name)
+            except Exception as e:
+                print(f"Error processing BOM {bom.name}: {e}")
+                print(traceback.format_exc())
+    except Exception as e:
+        print(f"Failed to retrieve BOM list: {e}")
+        print(traceback.format_exc())
+
+def create_new_bom_version(bom_name):
+    try:
+        # Load the original BOM document
+        original_bom = frappe.get_doc('BOM', bom_name)
+        
+        # Create a new draft copy of the BOM
+        new_bom = frappe.copy_doc(original_bom)
+        new_bom.is_active = 1
+        new_bom.is_default = 0  # New version not set as default yet
+        new_bom.docstatus = 0   # Set to draft
+
+        updated = False
+
+        # Loop through each item in the BOM
+        for item in new_bom.items:
+            if item.bom_no:
+                # Fetch the latest active BOM for this item
+                latest_bom = get_latest_bom(item.item_code)
+                
+                # Update to the latest BOM if it's different from the current one
+                if latest_bom and latest_bom != item.bom_no:
+                    print(f"Updating BOM for component: {item.item_code} - {item.bom_no} -> {latest_bom}")
+                    item.bom_no = latest_bom
+                    updated = True
+
+        # Only save and submit if there were updates
+        if updated:
+            try:
+                new_bom.insert()  # Insert as a new BOM
+                new_bom.submit()  # Submit the new BOM version
+                set_default_bom(new_bom.item, new_bom.name)
+                print(f"New BOM {new_bom.name} created and submitted successfully.")
+            except Exception as e:
+                print(f"Failed to save or submit new BOM for {bom_name}: {e}")
+                print(traceback.format_exc())
+
+    except Exception as e:
+        print(f"Error copying or updating BOM {bom_name}: {e}")
+        print(traceback.format_exc())
+
+def get_latest_bom(item_code):
+    """Helper function to get the latest active BOM for a given item."""
+    try:
+        latest_bom = frappe.db.get_value('BOM', 
+                                         filters={'item': item_code, 'is_active': 1, 'is_default': 1},
+                                         fieldname='name',
+                                         order_by='creation desc')
+        return latest_bom
+    except Exception as e:
+        print(f"Failed to retrieve latest BOM for item {item_code}: {e}")
+        print(traceback.format_exc())
+        return None
+
+def set_default_bom(item_code, bom_name):
+    """Set the specified BOM as the default BOM for the item."""
+    try:
+        frappe.db.set_value('BOM', bom_name, 'is_default', 1)
+        frappe.db.sql("""UPDATE `tabBOM` SET is_default = 0 WHERE item = %s AND name != %s""", (item_code, bom_name))
+        frappe.db.commit()
+    except Exception as e:
+        print(f"Failed to set default BOM for item {item_code}: {e}")
+        print(traceback.format_exc())
+
+# Execute the update routine
+try:
+    update_boms_with_latest_versions()
+except Exception as e:
+    print(f"An unexpected error occurred: {e}")
+    print(traceback.format_exc())
