@@ -516,7 +516,8 @@ def before_save_dn(doc, method):
 
             # After processing all stock entries, update the delivery note item field
             if serial_nos:
-                item.product_serial_no = '\n'.join(serial_nos)  # Join serial numbers with a newline
+                if not item.product_serial_no:
+                    item.product_serial_no = '\n'.join(serial_nos)  # Join serial numbers with a newline
             else:
                 item.product_serial_no = None  # Set to None if no serial numbers found
                 frappe.log_error(f"No serial numbers found for item {item.item_code} in Delivery Note {doc.name}")
