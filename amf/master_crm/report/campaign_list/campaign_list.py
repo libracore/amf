@@ -101,9 +101,9 @@ def get_data(filters):
            WHERE `tabSales Order`.`docstatus` = 1
              AND `tabSales Order`.`contact_person` = `tabContact`.`name`) AS `last_po_date`
         
-        FROM `tabCustomer`
-        JOIN `tabDynamic Link` AS `DL1` ON (`tabCustomer`.`name` = `DL1`.`link_name` AND `DL1`.`link_doctype` = 'Customer' AND `DL1`.`parenttype` = 'Contact')
-        LEFT JOIN `tabContact` ON `DL1`.`parent` = `tabContact`.`name`
+        FROM `tabContact`
+        LEFT JOIN `tabDynamic Link` AS `DL1` ON (`tabContact`.`name` = `DL1`.`parent` AND `DL1`.`link_doctype` = 'Customer' AND `DL1`.`parenttype` = 'Contact')
+        LEFT JOIN `tabCustomer` ON `DL1`.`link_name` = `tabContact`.`name`
         LEFT JOIN (
             SELECT *
             FROM (
