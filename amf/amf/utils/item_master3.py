@@ -517,7 +517,7 @@ def update_bom_list():
     # Fetch all items with active BOMs
     items_with_bom = frappe.get_all(
         'BOM',
-        filters={'is_active': 0},
+        filters={'is_default': 1},
         fields=['item'],
         distinct=True
     )
@@ -580,6 +580,7 @@ def update_item_bom_fields(item_code):
     # Save the updated item document
     try:
         item_doc.save()
+        frappe.db.commit()
     except Exception as error:
         print("An error occurred:", error)
         #update_log_entry(log_id, f"An error occurred: {error}")
