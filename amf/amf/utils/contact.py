@@ -69,11 +69,7 @@ def update_contact_products():
         for contact in contacts:
             try:
                 # Fetch submitted Sales Orders for the contact
-                sales_orders = frappe.get_all(
-                    "Sales Order",
-                    filters={"contact_person": contact.name, "docstatus": 1},
-                    fields=["name"]
-                )
+                sales_orders = frappe.get_all("Sales Order", {"contact_person": contact.name, "docstatus": 1}, ["name"])
 
                 if not sales_orders:
                     continue  # Skip if no new sales orders for this contact
@@ -83,36 +79,25 @@ def update_contact_products():
 
                 # Collect item quantities across all sales orders
                 for so in sales_orders:
-                    sales_order_items = frappe.get_all(
-                        "Sales Order Item",
-                        filters={"parent": so.name},
-                        fields=["item_code", "qty"]
-                    )
+                    sales_order_items = frappe.get_all("Sales Order Item", {"parent": so.name}, ["item_code", "qty"])
 
                     # Accumulate quantities by item_code
                     for item in sales_order_items:
                         item_code = item["item_code"]
                         item_quantities[item_code] = item_quantities.get(item_code, 0) + item["qty"]
-                        print(item_quantities, "for contact:", contact)
+                        print(item_quantities, "for contact:", contact.name)
 
                 # Update the 'contact_product' child table
                 for item_code, qty in item_quantities.items():
                     # Check if item_code already exists in the contact's product table
-                    existing_product = frappe.get_value(
-                        "contact_product",
-                        filters={"parent": contact.name, "parentfield": "products", "item_code": item_code},
-                        fieldname=["name", "quantity"]
-                    )
+                    existing_product = frappe.get_value("contact_product", {"parent": contact.name, "parentfield": "products", "item_code": item_code}, ["name", "quantity"])
 
                     if existing_product:
-                        print(existing_product, "1 for contact:", contact)
                         # Update the existing row's quantity
                         new_qty = existing_product[1] + qty  # `quantity` is second in `existing_product`
                         frappe.db.set_value("contact_product", existing_product[0], "quantity", new_qty)
-                        print(existing_product, "2 for contact:", contact)
                     else:
                         # Add a new row in the contact's product child table
-                        print("trying to append to contact")
                         contact_doc = frappe.get_doc("Contact", contact.name)
                         contact_doc.append("products", {
                             "item_code": item_code,
