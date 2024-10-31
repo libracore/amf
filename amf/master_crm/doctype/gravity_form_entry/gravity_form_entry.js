@@ -8,6 +8,11 @@ frappe.ui.form.on('Gravity Form Entry', {
                 create_contact(frm);
             });
         }
+        if (frm.doc.contact) {
+            frm.add_custom_button(__("Open Contact"), function() {
+                window.open("/desk#Form/Contact/" + frm.doc.contact, "_blank");
+            });
+        }
     }
 });
 
