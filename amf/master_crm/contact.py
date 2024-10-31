@@ -5,6 +5,7 @@
 import frappe 
 from frappe.utils import get_url_to_form
 from erpnextswiss.scripts.crm_tools import get_primary_customer_address
+from frappe import _
 
 @frappe.whitelist()
 def get_header(contact=None):
@@ -66,6 +67,22 @@ def get_address_display(address):
 
 def before_save(self, method):
     check_unique_primary_contact(self)
+    return
+    
+def validate(self, method):
+    # prevent_duplicates(self)              # uncomment this to enable duplicate validation on save
+    return
+    
+def prevent_duplicates(self):
+    if self.email_id:
+        other_contacts = frappe.db.sql("""
+            SELECT `name` 
+            FROM `tabContact`
+            WHERE `email_id` = "{email_id}"
+              AND `name` != "{name}";
+            """.format(email_id=self.get("email_id"), name=self.get("name")), as_dict=True)
+        if len (other_contacts) > 0:
+            frappe.throw( _("Another contact with this email exists: {0}").format(other_contacts[0]['name']), _("Validation") )
     return
     
 def check_unique_primary_contact(contact):

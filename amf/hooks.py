@@ -165,7 +165,8 @@ doc_events = {
     },
     "Contact": {
         "autoname": "amf.master_crm.naming.contact_autoname",
-        "before_save": "amf.master_crm.contact.before_save"
+        "before_save": "amf.master_crm.contact.before_save",
+        "validate": "amf.master_crm.contact.validate"
     }
 
 }
