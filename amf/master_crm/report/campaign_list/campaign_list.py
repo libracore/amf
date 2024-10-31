@@ -37,7 +37,7 @@ def get_data(filters):
     conditions = ""
     revenue_conditions = ""
     if filters.get("country"):
-        conditions += """ AND `tUAdr`.`country` = "{0}" """.format(filters.get("country"))
+        conditions += """ AND (`tUAdr`.`country` = "{0}" OR `tabContact`.`country` = "{0}")""".format(filters.get("country"))
     if filters.get("city"):
         conditions += """ AND `tUAdr`.`city` LIKE "%{0}%" """.format(filters.get("city"))
     if filters.get("customer"):
