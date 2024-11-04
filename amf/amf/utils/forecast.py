@@ -23,7 +23,7 @@ def get_item_details_and_quantities():
         `tabItem Price` ip ON i.item_code = ip.item_code
     WHERE 
         i.item_code IN ({})
-        AND ip.price_list = 'Price List 2023 AMF CHF'
+        AND ip.price_list = '[NEW] Price List 2023 AMF - CHF'
     ORDER BY 
         i.item_group, i.item_code
     """.format(','.join(['%s'] * len(item_codes)))  # SQL placeholders for item codes
