@@ -84,7 +84,10 @@ doc_events = {
         "autoname": "amf.master_crm.naming.contact_autoname",
         "before_save": "amf.master_crm.contact.before_save",
         "validate": "amf.master_crm.contact.validate"
-    }
+    },
+    "Item": {
+        "after_insert": "amf.amf.utils.custom.qr_code_to_document"
+    },
 }
 
 # Scheduled Tasks
