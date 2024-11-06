@@ -13,18 +13,19 @@ def check_stock_levels():
     # avg_lead_time = 90  # Average lead time in days
     # std_dev_lead_time = 15  # Standard deviation of lead time in days
     item_group_data = {
-        "Kits": {"lead_time": 30, "std_dev_lead_time": 6},
+        "Kit": {"lead_time": 30, "std_dev_lead_time": 6},
         "Glass": {"lead_time": 90, "std_dev_lead_time": 20},
-        "Cables": {"lead_time": 15, "std_dev_lead_time": 5},
+        "Cable": {"lead_time": 15, "std_dev_lead_time": 5},
         "Plunger": {"lead_time": 90, "std_dev_lead_time": 20},
         "Syringe": {"lead_time": 90, "std_dev_lead_time": 20},
         "Valve Head": {"lead_time": 15, "std_dev_lead_time": 5},
-        "Raw Materials": {"lead_time": 120, "std_dev_lead_time": 30},
-        "Electronic Boards": {"lead_time": 90, "std_dev_lead_time": 20},
+        "Raw Material": {"lead_time": 120, "std_dev_lead_time": 30},
+        "Electronic Board": {"lead_time": 90, "std_dev_lead_time": 20},
         "Plug": {"lead_time": 30, "std_dev_lead_time": 10},
         "Valve Seat": {"lead_time": 60, "std_dev_lead_time": 20},
-        "Parts": {"lead_time": 15, "std_dev_lead_time": 5},
-        "Products": {"lead_time": 30, "std_dev_lead_time": 6}
+        "Part": {"lead_time": 15, "std_dev_lead_time": 5},
+        "Product": {"lead_time": 30, "std_dev_lead_time": 6},
+        "Body": {"lead_time": 30, "std_dev_lead_time": 6}
     }
     # Get the current year and calculate last year's dates
     current_year = datetime.datetime.now().year
