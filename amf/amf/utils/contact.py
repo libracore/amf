@@ -1,3 +1,6 @@
+import csv
+from frappe import _  # for error messages
+from frappe.utils.file_manager import get_file_path
 import frappe
 
 def update_contact_status():
@@ -119,3 +122,37 @@ def update_contact_products():
         frappe.log_error(f"Error in update_contact_products: {str(e)}", "Contact Product Update Error")
         frappe.throw(f"An error occurred during the update: {str(e)}")
 
+def update_customer_email_ids():
+    # Define the path to the file
+    file_path = get_file_path("/private/files/email_ids.csv")
+    
+    # Open and read the CSV file
+    with open(file_path, mode='r') as file:
+        reader = csv.reader(file)
+        
+        # Skip the header row if there is one
+        next(reader)
+        
+        # Iterate through each row in the CSV
+        for row in reader:
+            if len(row) < 2 or not row[0].strip() or not row[1].strip():
+                # Skip rows with missing data
+                frappe.log_error(_("Skipping row due to missing data: {0}").format(row))
+                continue
+            
+            # Extract customer name and email from the row
+            contact_name, email = row
+            
+            # Update the email_id field for the contact
+            contact_doc = frappe.get_doc("Contact", contact_name)
+            print(contact_doc.email_id)
+            contact_doc.email_id = email
+            
+            # Save the document
+            try:
+                contact_doc.save(ignore_permissions=True)
+                frappe.db.commit()
+            except Exception as e:
+                frappe.log_error(_("Failed to update email for {0}: {1}").format(contact_name, str(e)))
+
+    frappe.msgprint(_("contact emails updated successfully."))
