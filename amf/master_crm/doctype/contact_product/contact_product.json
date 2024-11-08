@@ -13,7 +13,7 @@
    "fieldname": "item_code",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "item_code",
+   "label": "Item Code",
    "options": "Item"
   },
   {
