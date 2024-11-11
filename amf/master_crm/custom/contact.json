@@ -2005,7 +2005,7 @@
    "parenttype": null,
    "property": "options",
    "property_type": "Text",
-   "value": "Lead\nProspect\nCustomer\nSupplier\nBack-Office\nPassive"
+   "value": "Lead\nProspect\nCustomer\nSupplier\nBack-Office\nPassive\nInactive\nDistributor\nAMF"
   },
   {
    "_assign": null,
