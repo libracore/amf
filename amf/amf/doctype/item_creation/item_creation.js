@@ -6,25 +6,30 @@ frappe.ui.form.on('Item Creation', {
     refresh: function (frm) {
         frm.set_query("body", () => ({
             filters: [
-                ['Item', 'item_code', 'in', ['P200-O', 'P201-O', 'P211-O', 'P221-O', 'P100-O', 'P101-O', 'P100-L']]
+                ['Item', 'item_group', '=', 'Body'],
+                ['Item', 'has_serial_no', '=', 'Yes'],
+                ['Item', 'disabled', '=', 'No'],
             ],
         }));
         frm.set_query("head_item", () => ({
             filters: [
                 ['Item', 'item_group', '=', 'Valve Head'],
-                ['Item', 'item_code', 'like', '3_%']
+                ['Item', 'item_code', 'like', '3_%'],
+                ['Item', 'disabled', '=', 'No'],
             ],
         }));
         frm.set_query("seat_item", () => ({
             filters: [
                 ['Item', 'item_group', '=', 'Valve Seat'],
-                ['Item', 'item_code', 'like', '21_%']
+                ['Item', 'item_code', 'like', '21_%'],
+                ['Item', 'disabled', '=', 'No'],
             ],
         }));
         frm.set_query("plug_item", () => ({
             filters: [
                 ['Item', 'item_group', '=', 'Plug'],
-                ['Item', 'item_code', 'like', '11_%']
+                ['Item', 'item_code', 'like', '11_%'],
+                ['Item', 'disabled', '=', 'No'],
             ],
         }));
         frm.set_query("cap_type", () => ({
@@ -108,7 +113,7 @@ frappe.ui.form.on('Item Creation', {
     },
 
     item_group: function(frm) {
-        if (frm.doc.item_group === 'Products') {
+        if (frm.doc.item_group === 'Product') {
             frm.set_value('item_type', 'Finished Good');
         }
     },
