@@ -16,14 +16,15 @@ def get_columns():
         {
             "label": _("Item Code"),
             "fieldname": "item_code",
-            "fieldtype": "Data",
-            "width": 150
+            "fieldtype": "Link",
+            "options": "Item",
+            "width": 250
         },
         {
             "label": _("Item Name"),
             "fieldname": "item_name",
             "fieldtype": "Data",
-            "width": 250
+            "width": 100
         },
         {
             "label": _("Item Group"),
