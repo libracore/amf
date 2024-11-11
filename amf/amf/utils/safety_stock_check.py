@@ -33,24 +33,45 @@ def check_stock_levels():
     items = frappe.get_all("Item", filters={'is_stock_item': 1, 'disabled': 0}, fields=["name", "item_name", "safety_stock", "reorder_level", "reorder", "item_group", "average_monthly_outflow"])
     if test_mode:
         # Test Line
-        items = frappe.get_all("Item", fields=["name", "item_name", "safety_stock", "reorder_level", "reorder", "item_group", "average_monthly_outflow"], filters={"name": "SPL.1208-U"})
+        items = frappe.get_all("Item", fields=["name", "item_name", "safety_stock", "reorder_level", "reorder", "item_group", "average_monthly_outflow"], filters={"name": "INCUBATOR V2.0"})
+    
+    # print("items:",items)
+    # input()
+    
     items_to_email = []  # Create an empty list to hold items that need reordering
     for item in items:
-        #print(item)
+        # print("item:",item)
         # Fetch outflow for this item for each month of the last year
         monthly_outflows = []
-        for month in range(1, 13):
+        annual_outflows = 0
+        current_date = datetime.datetime.now()
+        for month_offset in range(0, 12):
+            # Calculate the target month and year
+            target_date = current_date.replace(day=1) - datetime.timedelta(days=month_offset * 30)
+            target_month = target_date.month
+            target_year = target_date.year
             monthly_outflow = frappe.db.sql(
-                """
-                SELECT SUM(sle.actual_qty)
-                FROM `tabStock Ledger Entry` AS sle
-                JOIN `tabItem` AS item ON sle.item_code = item.item_code
-                WHERE sle.item_code = %s
-                AND MONTH(sle.posting_date) = %s
-                AND YEAR(sle.posting_date) = %s
-                AND sle.actual_qty < 0 AND sle.voucher_type NOT RLIKE 'Stock Reconciliation' AND item.disabled = 0
+            """                
+                SELECT
+                    SUM(sle.actual_qty) AS total_outflow                    
+                FROM
+                    `tabStock Ledger Entry` sle
+                JOIN
+                    `tabItem` i ON sle.item_code = i.item_code
+                LEFT JOIN
+                    `tabStock Entry` se ON sle.voucher_no = se.name
+                WHERE
+                    sle.item_code = %s
+                    AND sle.actual_qty < 0
+                    AND (
+                            (sle.voucher_type = 'Stock Entry' AND se.purpose = 'Manufacture') OR
+                            (sle.voucher_type = 'Delivery Note')
+                        )
+                    AND MONTH(sle.posting_date) = %s
+                    AND YEAR(sle.posting_date) = %s
+                    AND i.disabled = 0
             """,
-                (item["name"], month, current_year - 1),
+                (item["name"], target_month, target_year),
             )
 
             monthly_outflow = (
@@ -59,11 +80,15 @@ def check_stock_levels():
                 else 0
             )
             monthly_outflows.append(-monthly_outflow)  # Converting outflow to positive numbers for demand
-
+        # print("monthly_outflows:",monthly_outflows)
         group_data = item_group_data.get(item['item_group'], {"lead_time": 30, "std_dev_lead_time": 6}) # Default values if needed.
         avg_lead_time = group_data["lead_time"]
         std_dev_lead_time = group_data["std_dev_lead_time"]
+        annual_outflows = sum(monthly_outflows)
         avg_monthly_outflow = statistics.mean(monthly_outflows)
+        # print("avg_monthly_outflow:",avg_monthly_outflow)
+        # print("annual_outflows:",annual_outflows)
+        # input()
         # Calculate standard deviation and average of monthly outflows (demands)
         std_dev_demand = statistics.stdev(monthly_outflows) / 30
         avg_demand = (statistics.mean(monthly_outflows) / 30)  # Assuming 30 days in a month to get daily demand
@@ -81,22 +106,25 @@ def check_stock_levels():
         # Test Print
         if test_mode:
             print("Item:", item["name"])
-            print("avg_lead_time:", avg_lead_time)
-            print("std_dev_lead_time:", std_dev_lead_time)
+            print("avg_lead_time:", math.ceil(avg_lead_time))
+            print("std_dev_lead_time:", math.ceil(std_dev_lead_time))
             print("monthly_outflows:", monthly_outflows)
-            print("avg_monthly_outflow:", avg_monthly_outflow)
-            print("std_dev_demand:", std_dev_demand)
-            print("avg_demand:", avg_demand)
-            print("safety_stock:", safety_stock)
-            print("order_point:", order_point)
+            print("avg_monthly_outflow:", math.ceil(avg_monthly_outflow))
+            print("annual_outflows:", math.ceil(annual_outflows))
+            print("std_dev_demand:", math.ceil(std_dev_demand))
+            print("avg_demand:", math.ceil(avg_demand))
+            print("safety_stock:", math.ceil(safety_stock))
+            print("order_point:", math.ceil(order_point))
 
         # Update safety stock value in Item doctype
         item["average_monthly_outflow"] = avg_monthly_outflow
         item["safety_stock"] = safety_stock
         item["reorder_level"] = order_point
-        frappe.db.set_value("Item", item["name"], "average_monthly_outflow", avg_monthly_outflow)
-        frappe.db.set_value("Item", item["name"], "safety_stock", safety_stock)
-        frappe.db.set_value("Item", item["name"], "reorder_level", order_point)
+        frappe.db.set_value("Item", item["name"], "average_monthly_outflow", math.ceil(avg_monthly_outflow))
+        frappe.db.set_value("Item", item["name"], "annual_outflow", math.ceil(annual_outflows))
+        frappe.db.set_value("Item", item["name"], "safety_stock", math.ceil(safety_stock))
+        frappe.db.set_value("Item", item["name"], "reorder_level", math.ceil(order_point))
+        frappe.db.set_value("Item", item["name"], "lead_time_days", avg_lead_time)
         # Now let's check the stock levels against this new safety stock
         highest_stock = 0  # Initialize variable to store the highest stock value
         all_warehouses = frappe.get_all("Warehouse")
@@ -128,6 +156,9 @@ def check_stock_levels():
             frappe.db.set_value("Item", item["name"], "reorder", 0)
             #print(f"Setting 'reorder' to 0 / Item: {item['name']} / Stock Value = {highest_stock} / Safety Stock = {item['safety_stock']} / Reorder Level = {item['reorder_level']}")
 
+        frappe.db.commit()
+    
+    
     if test_mode:
         items_to_email = None
 

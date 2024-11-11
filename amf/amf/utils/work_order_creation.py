@@ -180,7 +180,7 @@ def check_sub_assembly_items(work_order):
             item_type = frappe.db.get_value('Item', item['item_code'], 'item_type')
             
             # Check if the item type is 'Sub-Assembly'
-            if item_type == 'Sub-Assembly':
+            if item_type == 'Sub-Assembly' or item_type == 'Actuator':
                 # Append to the list
                 sub_assembly_items.append(item['item_code'])
                 
