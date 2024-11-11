@@ -14,7 +14,7 @@ frappe.query_reports["Orders to Fulfill"] = {
 			"fieldname": "include_drafts",
 			"label": __("Include Drafts"),
 			"fieldtype": "Check",
-			"default": 0
+			"default": 1
 		}
 	],
 	initial_depth: 0,
