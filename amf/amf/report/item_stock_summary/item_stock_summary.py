@@ -18,50 +18,50 @@ def get_columns():
             "fieldname": "item_code",
             "fieldtype": "Link",
             "options": "Item",
-            "width": 250
+            "width": 275
         },
         {
             "label": _("Item Name"),
             "fieldname": "item_name",
             "fieldtype": "Data",
-            "width": 100
+            "width": 200
         },
         {
             "label": _("Item Group"),
             "fieldname": "item_group",
             "fieldtype": "Data",
-            "width": 150
+            "width": 130
         },
         {
             "label": _("Warehouse"),
             "fieldname": "warehouse",
             "fieldtype": "Link",
             "options": "Warehouse",
-            "width": 200
+            "width": 180
         },
         {
             "label": _("Stock Available"),
             "fieldname": "stock_available",
             "fieldtype": "Float",
-            "width": 150
+            "width": 110
         },
         {
             "label": _("Reserved Qty"),
             "fieldname": "reserved_qty",
             "fieldtype": "Float",
-            "width": 150
+            "width": 110
         },
         {
             "label": _("Projected Qty"),
             "fieldname": "projected_qty",
             "fieldtype": "Float",
-            "width": 150
+            "width": 110
         },
         {
             "label": _("Selling Price"),
             "fieldname": "last_selling_price",
             "fieldtype": "Currency",
-            "width": 150
+            "width": 120
         },
     ]
 
@@ -76,6 +76,8 @@ def get_item_qty_data(filters):
         conditions += "WHERE i.item_code = %(item_code)s"
     if filters.get("item_name"):
         conditions += " AND i.item_name = %(item_name)s" if conditions else "WHERE i.item_name = %(item_name)s"
+    if filters.get("item_group"):
+        conditions += " AND i.item_group = %(item_group)s" if conditions else "WHERE i.item_group = %(item_group)s"
 
     # Exclusion conditions for specific warehouses
     if conditions:
