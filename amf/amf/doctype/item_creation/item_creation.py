@@ -65,7 +65,7 @@ def get_last_item_code(code_body=None):
     # Define the relevant item groups
     
     if code_body:
-        item_groups = ['Products']
+        item_groups = ['Product']
         # Query to find all item codes in the specified item groups
         items = frappe.db.sql("""
             SELECT item_code

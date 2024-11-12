@@ -11,24 +11,25 @@ def execute(filters=None):
     columns = get_columns()
     data = get_data(filters)
     message = "Test message"
-    chart = get_chart(filters)
+    #chart = get_chart(filters)
+    chart = None
     
     return columns, data, message, chart
 
 def get_columns():
     return [
-        {'fieldtype': 'Data', 'label': '', 'width': 20},
-        {'fieldname': 'weeknum', 'fieldtype': 'Data', 'label': _('Week'), 'width': 80},
+        {'fieldname': 'weeknum', 'fieldtype': 'Data', 'label': _('Week'), 'width': 60},
+        {'fieldname': 'indicator', 'fieldtype': 'Data', 'label': _('Status'), 'width': 100},
         {'fieldname': 'parent', 'fieldtype': 'Link', 'label': _('Sales Order'), 'options': 'Sales Order', 'width': 90},
-        {'fieldname': 'indicator', 'fieldtype': 'Data', 'label': _('Status'), 'width': 90},
         {'fieldname': 'customer', 'fieldtype': 'Link', 'label': _('Customer'), 'options': 'Customer', 'width': 80},
-        {'fieldname': 'customer_name', 'fieldtype': 'Data', 'label': _('Customer Name'), 'width': 150},
+        {'fieldname': 'customer_name', 'fieldtype': 'Data', 'label': _('Customer Name'), 'width': 165},
         {'fieldname': 'ship_date', 'fieldtype': 'Data', 'label': _('Ship date'), 'width': 80},
         # {'fieldname': 'qty', 'fieldtype': 'Int', 'label': _('Qty Ordered'), 'width': 100}, 
         {'fieldname': 'remaining_qty', 'fieldtype': 'Int', 'label': _('Qty to Deliver'), 'width': 100}, 
         {'fieldname': 'item_code', 'fieldtype': 'Link', 'label': _('Item code'), 'options': 'Item', 'width': 300},
         {'fieldname': 'item_name', 'fieldtype': 'Data', 'label': _('Item name'), 'width': 300},
         {'fieldname': 'item_group', 'fieldtype': 'Link', 'label': _('Item group'), 'options': 'Item Group', 'width': 150},
+        {'fieldname': 'unit_price', 'fieldtype': 'Currency', 'label': _('Unit Price'), 'width': 150},
         # {'fieldname': 'status', 'fieldtype': 'Data', 'label': _('Status'), 'width': 100}
     ]
     
@@ -56,6 +57,7 @@ SELECT * FROM ((
         soi.item_code as item_code,
         it.item_name as item_name,
         it.item_group as item_group,
+        soi.rate as unit_price,
         FALSE as is_packed_item,
         soi.idx as idx,
         so.docstatus as docstatus
@@ -82,6 +84,7 @@ SELECT * FROM ((
         pi.item_code as item_code,
         pi.item_name as item_name,
         NULL as item_group,
+        soi.rate as unit_price,
         TRUE as is_packed_item,
         pi.idx as idx,
         so.docstatus as docstatus
@@ -107,10 +110,20 @@ ORDER BY
     print(sql_query)
     data = frappe.db.sql(sql_query, as_dict=True)
     
-    week_colours = itertools.cycle(['black', '#6660A9', '#297045', '#CC5A2B'])
-    day_colours = itertools.cycle(['black', '#6660A9', '#297045', '#CC5A2B'])
+    week_colours = itertools.cycle([
+        'black', '#6660A9', '#297045', '#CC5A2B',  # existing colors
+        '#FF5733', '#C70039', '#900C3F', '#581845',  # new set of colors
+        '#3498DB', '#2ECC71', '#F1C40F', '#8E44AD',
+        '#2C3E50', '#F39C12', '#D35400', '#1ABC9C'
+    ])
 
-    
+    day_colours = itertools.cycle([
+        'black', '#6660A9', '#297045', '#CC5A2B',  # existing colors
+        '#FF5733', '#C70039', '#900C3F', '#581845',  # new set of colors
+        '#3498DB', '#2ECC71', '#F1C40F', '#8E44AD',
+        '#2C3E50', '#F39C12', '#D35400', '#1ABC9C'
+    ])
+
     last_week_num = ''
     last_day = ''
     week_colour = next(week_colours)
