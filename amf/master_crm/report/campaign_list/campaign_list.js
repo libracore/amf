@@ -8,7 +8,7 @@ frappe.query_reports["Campaign List"] = {
             'fieldname': 'status',
             'label': __("Status"),
             'fieldtype': "Select",
-            'options': "\nLead\nProspect\nCustomer\nSupplier\nBack-Office\nPassive"
+            'options': "\nLead\nProspect\nCustomer\nSupplier\nBack-Office\nPassive\nInactive\nAMF\nDistributor"
         },
         {
             'fieldname': 'type_of_contact',
