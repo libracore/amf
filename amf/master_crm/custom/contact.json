@@ -1506,7 +1506,7 @@
    "fieldname": "customer_group",
    "fieldtype": "Link",
    "hidden": 0,
-   "idx": 59,
+   "idx": 60,
    "ignore_user_permissions": 0,
    "ignore_xss_filter": 0,
    "in_global_search": 0,
