@@ -103,7 +103,7 @@ def get_data(filters):
         
         FROM `tabContact`
         LEFT JOIN `tabDynamic Link` AS `DL1` ON (`tabContact`.`name` = `DL1`.`parent` AND `DL1`.`link_doctype` = 'Customer' AND `DL1`.`parenttype` = 'Contact')
-        LEFT JOIN `tabCustomer` ON `DL1`.`link_name` = `tabContact`.`name`
+        LEFT JOIN `tabCustomer` ON `DL1`.`link_name` = `tabCustomer`.`name`
         LEFT JOIN (
             SELECT *
             FROM (
