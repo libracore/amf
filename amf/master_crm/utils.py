@@ -6,6 +6,7 @@ import frappe
 from frappe.utils import get_url_to_form
 from frappe.model.mapper import get_mapped_doc
 from datetime import datetime
+from frappe import _
 
 @frappe.whitelist()
 def update_status(contact, status):
@@ -78,3 +79,19 @@ def make_quotation(contact_name):
     doc.currency = customer.default_currency
     doc.selling_price_list = customer.default_price_list
     return doc
+
+@frappe.whitelist()
+def link_contact_to_customer(contact, customer):
+    if not frappe.db.exists("Contact", contact):
+        frappe.throw( _("Contact {0} not found.").format(contact))
+    if not frappe.db.exists("Customer", customer):
+        frappe.throw( _("Customer {0} not found.").format(customer))
+        
+    contact_doc = frappe.get_doc("Contact", contact)
+    contact_doc.append("links", {
+        'link_doctype': "Customer",
+        'link_name': customer
+    })
+    contact_doc.save()
+    frappe.db.commit()
+    return
