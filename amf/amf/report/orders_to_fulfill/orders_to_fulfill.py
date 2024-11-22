@@ -82,7 +82,6 @@ def get_data(filters):
     delivery_note_map = {
         dnote_item["so_detail"]: True for dnote_item in delivery_notes if dnote_item["parent"] in {dnote["name"] for dnote in draft_delivery_notes}
     }
-    print(delivery_note_map)
     
     sql_query = """
 SELECT * FROM ((
@@ -170,7 +169,6 @@ ORDER BY
     day_colour = next(day_colours)
     
     for row in data:
-        print(row)
         # Assign Work Order (of) and Delivery Note (dn) flags
         row["of"] = 1 if work_order_map.get(row["name"], False) else 0
         row["dn"] = 1 if delivery_note_map.get(row["name"], False) else 0
