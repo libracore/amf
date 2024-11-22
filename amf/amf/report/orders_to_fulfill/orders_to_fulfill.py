@@ -10,11 +10,10 @@ from frappe import _
 def execute(filters=None):
     columns = get_columns()
     data = get_data(filters)
-    message = "Test message"
     #chart = get_chart(filters)
     chart = None
     
-    return columns, data, message, chart
+    return columns, data, chart
 
 def get_columns():
     return [
@@ -24,6 +23,8 @@ def get_columns():
         {'fieldname': 'customer', 'fieldtype': 'Link', 'label': _('Customer'), 'options': 'Customer', 'width': 80},
         {'fieldname': 'customer_name', 'fieldtype': 'Data', 'label': _('Customer Name'), 'width': 165},
         {'fieldname': 'ship_date', 'fieldtype': 'Data', 'label': _('Ship date'), 'width': 80},
+        {'fieldname': 'of', 'fieldtype': 'Check', 'label': _('OF'), 'width': 20},
+        {'fieldname': 'dn', 'fieldtype': 'Check', 'label': _('DN'), 'width': 20},
         # {'fieldname': 'qty', 'fieldtype': 'Int', 'label': _('Qty Ordered'), 'width': 100}, 
         {'fieldname': 'remaining_qty', 'fieldtype': 'Int', 'label': _('Qty to Deliver'), 'width': 100}, 
         {'fieldname': 'item_code', 'fieldtype': 'Link', 'label': _('Item code'), 'options': 'Item', 'width': 300},
@@ -42,6 +43,46 @@ def get_data(filters):
     extra_filters = ""
     if filters.only_manufacturing:
         extra_filters += "AND it.include_item_in_manufacturing = 1"
+        
+    # Filter out item codes starting with 'gx' if include_gx is not set
+    if filters.remove_gx:
+        extra_filters += "AND soi.item_code NOT LIKE 'GX%' "
+    
+    # Collect Sales Order Items
+    sales_order_items = frappe.get_all(
+        "Sales Order Item",
+        filters={"docstatus": ("<=", 1)},  # Include submitted and draft items
+        fields=["name", "parent", "item_code"]
+    )
+
+    # Collect Work Orders
+    work_orders = frappe.get_all(
+        "Work Order",
+        filters={"sales_order_item": ("in", [soi["name"] for soi in sales_order_items]), "docstatus": 1},
+        fields=["sales_order_item"]
+    )
+    work_order_map = {wo["sales_order_item"]: True for wo in work_orders}
+
+    # Collect Delivery Notes
+    delivery_notes = frappe.get_all(
+        "Delivery Note Item",
+        filters={"so_detail": ("in", [soi["name"] for soi in sales_order_items])},
+        fields=["name", "parent", "against_sales_order", "so_detail"],
+    )
+    # Extract unique parent Delivery Notes
+    delivery_note_parents = {dnote["parent"] for dnote in delivery_notes}
+    # Fetch Delivery Notes in draft mode (docstatus = 0)
+    draft_delivery_notes = frappe.get_all(
+        "Delivery Note",
+        filters={"name": ("in", list(delivery_note_parents)), "docstatus": 0},
+        fields=["name"]
+    )
+    
+    #print(draft_delivery_notes)
+    delivery_note_map = {
+        dnote_item["so_detail"]: True for dnote_item in delivery_notes if dnote_item["parent"] in {dnote["name"] for dnote in draft_delivery_notes}
+    }
+    print(delivery_note_map)
     
     sql_query = """
 SELECT * FROM ((
@@ -107,7 +148,6 @@ ORDER BY
     idx;
     """.format(status_filter=status_filter, extra_filters=extra_filters)
 
-    print(sql_query)
     data = frappe.db.sql(sql_query, as_dict=True)
     
     week_colours = itertools.cycle([
@@ -129,7 +169,12 @@ ORDER BY
     week_colour = next(week_colours)
     day_colour = next(day_colours)
     
-    for row in data:       
+    for row in data:
+        print(row)
+        # Assign Work Order (of) and Delivery Note (dn) flags
+        row["of"] = 1 if work_order_map.get(row["name"], False) else 0
+        row["dn"] = 1 if delivery_note_map.get(row["name"], False) else 0
+           
         if row['weeknum'] != last_week_num:
             week_colour = next(week_colours)
             last_week_num = row['weeknum']
@@ -152,7 +197,7 @@ ORDER BY
             row['indicator'] = '<span class="indicator whitespace-nowrap red"><span>Draft</span></span>'
         else:
             row['indicator'] = '<span class="indicator whitespace-nowrap orange"><span>To Deliver</span></span>'
-    
+
     return data
 
 
