@@ -5,17 +5,23 @@
 frappe.query_reports["Orders to Fulfill"] = {
 	filters: [
 		{
-			"fieldname": "only_manufacturing",
-			"label": __("Only manufactured items"),
-			"fieldtype": "Check",
-			"default": 1
-		},
-		{
 			"fieldname": "include_drafts",
 			"label": __("Include Drafts"),
 			"fieldtype": "Check",
 			"default": 1
-		}
+		},
+        {
+			"fieldname": "remove_gx",
+			"label": __("Remove GX"),
+			"fieldtype": "Check",
+			"default": 0
+		},
+        {
+			"fieldname": "only_manufacturing",
+			"label": __("Only Manufactured Items"),
+			"fieldtype": "Check",
+			"default": 0
+		},
 	],
 	initial_depth: 0,
 	/*,
