@@ -326,7 +326,129 @@ class Brevo(Document):
             return {'status': 'Too Early', 'text': response.text}
         else:
             return {'status': 'Unknown Error', 'text': response.text}
+    
+    def get_contact_campaign_stats(self, contact_email):
+        parameters = {
+            # 'modifiedSince': 'YYYY-MM-DDTHH:mm:ss.SSSZ',
+            'start_date': '2020-01-01',
+            'end_date': '2024-12-31',
+            #'sort': 'desc',
+        }
+        endpoint = "{0}contacts/{1}/campaignStats".format(API_HOST, contact_email)
+        
+        response = requests.get(endpoint, headers=self.get_headers(), params=parameters)
+        
+        campaignStats = response.json()       # campaign stats
+        
+        """
+        Structure
+            {'messagesSent': [{'campaignId': 77,
+               'eventTime': '2024-12-10T16:30:47.489+01:00'}],
+             'softBounces': [{'campaignId': 77,
+               'eventTime': '2024-12-10T16:32:08.000+01:00'}]}
+        """
             
+        return campaignStats
+    
+    def get_all_campaigns(self):
+        campaigns = []
+        limit = 50
+        offset = 0
+        _list = self.get_campaigns(limit, offset)
+        while _list:
+            for l in _list:
+                lists.append(l)
+                    
+            offset += limit
+            _list = self.get_campaigns(limit, offset)
+                        
+        return campaigns
+    
+    def get_campaigns(self, limit, offset):
+        parameters = {
+            'limit': '{0}'.format(limit),
+            'offset': '{0}'.format(offset),
+        }
+        endpoint = "{0}emailCampaigns".format(API_HOST)
+
+        response = requests.get(endpoint, headers=self.get_headers(), params=parameters)
+        
+        campaigns = response.json() #.get('lists')      # list of contacts
+        
+        """
+        Structure
+            {'id': 3,
+           'name': '2023',
+           'type': 'classic',
+           'status': 'sent',
+           'testSent': True,
+           'header': '[DEFAULT_HEADER]',
+           'footer': 'EXISTS',
+           'sender': {'name': 'A',
+            'id': 2,
+            'email': 'info@example.com'},
+           'replyTo': '[DEFAULT_REPLY_TO]',
+           'toField': '',
+           'previewText': 'Save the date',
+           'tag': '2023',
+           'inlineImageActivation': True,
+           'mirrorActive': True,
+           'recipients': {'lists': [2, 3], 'exclusionLists': []},
+           'statistics': {'globalStats': {'uniqueClicks': 0,
+             'clickers': 0,
+             'complaints': 0,
+             'delivered': 0,
+             'sent': 0,
+             'softBounces': 0,
+             'hardBounces': 0,
+             'uniqueViews': 0,
+             'unsubscriptions': 0,
+             'viewed': 0,
+             'trackableViews': 0,
+             'trackableViewsRate': 0,
+             'estimatedViews': 0},
+            'campaignStats': [{'listId': 2,
+              'uniqueClicks': 0,
+              'clickers': 0,
+              'complaints': 0,
+              'delivered': 1,
+              'sent': 1,
+              'softBounces': 0,
+              'hardBounces': 0,
+              'uniqueViews': 1,
+              'trackableViews': 1,
+              'unsubscriptions': 0,
+              'viewed': 3,
+              'deferred': 0},
+             {'listId': 3,
+              'uniqueClicks': 15,
+              'clickers': 27,
+              'complaints': 0,
+              'delivered': 2058,
+              'sent': 2341,
+              'softBounces': 98,
+              'hardBounces': 233,
+              'uniqueViews': 226,
+              'trackableViews': 226,
+              'unsubscriptions': 10,
+              'viewed': 331,
+              'deferred': 103}],
+            'mirrorClick': 13,
+            'remaining': 0,
+            'linksStats': {},
+           'htmlContent': '(...html..)'
+           'subject': '2023',
+           'scheduledAt': '2023-02-16T16:00:00.000+01:00',
+           'createdAt': '2023-02-16T10:11:37.000+01:00',
+           'modifiedAt': '2023-02-16T13:29:22.000+01:00',
+           'shareLink': '',
+           'sentDate': '2023-02-16T17:37:49.000+01:00',
+           'sendAtBestTime': False,
+           'abTesting': False}
+        """
+        
+        return campaigns
+        
 @frappe.whitelist()
 def fetch_contacts():
     brevo = frappe.get_doc("Brevo", "Brevo")
