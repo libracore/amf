@@ -66,6 +66,58 @@ def get_serial_numbers_for_manufacture(work_order):
     else:
         return []
 
+@frappe.whitelist()    
+def get_serial_numbers_for_manufacture_updated(work_order):
+    """
+    Fetches the serial numbers for the manufacture process of a given work order.
+
+    Args:
+        work_order (str): The name of the work order.
+
+    Returns:
+        list: A list of serial numbers used in the manufacture process.
+    """
+    # Fetch all Stock Entries with purpose 'Manufacture' linked to this Work Order
+    stock_entries = frappe.get_all(
+        'Stock Entry',
+        filters={'work_order': work_order, 'purpose': 'Manufacture', 'docstatus': 1},
+        order_by="creation desc"
+    )
+
+    serial_no_dict = {}
+
+    for stock_entry in stock_entries:
+        stock_entry_name = stock_entry['name']
+
+        # Fetch the items in the Stock Entry, sorted by creation time
+        stock_entry_items = frappe.get_all(
+            'Stock Entry Detail',
+            filters={'parent': stock_entry_name},
+            fields=['item_code', 'serial_no', 'idx'],
+            order_by="idx desc"
+        )
+
+        # Check the last stock entry item (the one with the highest idx)
+        if stock_entry_items:
+            last_item = stock_entry_items[0]  # Last item based on idx
+            if last_item.serial_no:
+                # Handle multiple serial numbers separated by '\n'
+                serial_numbers = last_item.serial_no.split('\n')
+                serial_numbers = [sn.strip() for sn in serial_numbers if sn.strip()]  # Clean up whitespace
+                print(serial_numbers)
+
+                # Add to the dictionary with Stock Entry name as the key and serial numbers as the value
+                serial_no_dict[stock_entry_name] = serial_numbers
+
+    # If serial numbers are found, consolidate them into a list and return
+    if serial_no_dict:
+        # Flatten the dictionary values (list of lists) into a single list of serial numbers
+        all_serial_numbers = [sn for serials in serial_no_dict.values() for sn in serials]
+        return all_serial_numbers
+    else:
+        return []
+
+
 def print_label(serial_no):
     # Logic to print the label for the given serial number
     # This could involve sending the serial number to a specific printer or creating a print format
