@@ -338,7 +338,7 @@ class Brevo(Document):
         
         response = requests.get(endpoint, headers=self.get_headers(), params=parameters)
         
-        campaignStats = response.json()       # campaign stats
+        campaign_stats = response.json()       # campaign stats
         
         """
         Structure
@@ -347,9 +347,30 @@ class Brevo(Document):
              'softBounces': [{'campaignId': 77,
                'eventTime': '2024-12-10T16:32:08.000+01:00'}]}
         """
-            
-        return campaignStats
+        
+        # restructure
+        campaigns = {}
+        
+        self.update_campaign_parameter(campaigns, campaign_stats, 'messagesSent')
+        self.update_campaign_parameter(campaigns, campaign_stats, 'softBounces')
+        self.update_campaign_parameter(campaigns, campaign_stats, 'hardBounces')
+        self.update_campaign_parameter(campaigns, campaign_stats, 'complaints')
+        self.update_campaign_parameter(campaigns, campaign_stats, 'opened')
+        self.update_campaign_parameter(campaigns, campaign_stats, 'clicked')
+        self.update_campaign_parameter(campaigns, campaign_stats, 'delivered')
+                
+        campaigns_html = frappe.render_template("amf/master_crm/doctype/brevo/contact_stats.html", {'campaigns': campaigns})
+        
+        return {'campaigns': campaigns, 'html': campaigns_html}
     
+    def update_campaign_parameter(self, campaigns, campaign_stats, parameter):
+        for p in (campaign_stats.get(parameter) or []):
+            if p.get("campaignId") not in campaigns:
+                campaigns[p.get("campaignId")] = {parameter: p.get("eventTime")}
+            else:
+                campaigns[p.get("campaignId")][parameter] = p.get("eventTime")
+        return
+        
     def get_all_campaigns(self):
         campaigns = []
         limit = 50
@@ -495,3 +516,8 @@ def create_update_contact(contact, list_ids=[]):
 def fetch_campaigns():
     brevo = frappe.get_doc("Brevo", "Brevo")
     return brevo.get_all_campaigns()
+
+@frappe.whitelist()
+def fetch_contact_stats(contact_email):
+    brevo = frappe.get_doc("Brevo", "Brevo")
+    return brevo.get_contact_campaign_stats(contact_email)

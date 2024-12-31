@@ -55,6 +55,12 @@ frappe.ui.form.on('Contact', {
                     change_company(frm);
                 });
             }
+            
+            if (frm.doc.email_id) {
+                frm.add_custom_button(__("Brevo Stats"), function() {
+                    brevo_stats(frm);
+                });
+            }
         }
     },
     before_save: function(frm) {
@@ -235,7 +241,7 @@ function make_quotation(frm) {
             'contact_name': frm.doc.name
         },
         'frm': frm
-    })
+    });
 }
 
 function upload_to_brevo(frm) {
@@ -283,4 +289,18 @@ function change_company(frm) {
     __("Change linked Company"),
     __('Change')
     );
+}
+
+function brevo_stats(frm) {
+    frappe.call({
+        'method': 'amf.master_crm.doctype.brevo.brevo.fetch_contact_stats',
+        'args': {
+            'contact_email': frm.doc.email_id
+        },
+        'freeze': true,
+        'freeze_message': __("Retrieving contact stats from Brevo.."),
+        'callback': function(response) {
+            frappe.msgprint(response.message.html);
+        }
+    });
 }
