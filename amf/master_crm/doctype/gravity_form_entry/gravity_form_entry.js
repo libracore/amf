@@ -83,6 +83,12 @@ function create_contact(frm) {
                     });
                 },
                 'primary_action_label': action,
+                'secondary_action_label': __("Convert without Update"),
+                'secondary_action': function() {
+                    d.hide();
+                    cur_frm.set_value("converted", 1);
+                    cur_frm.save();
+                },
                 'title': title
             });
             d.show();

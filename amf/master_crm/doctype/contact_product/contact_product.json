@@ -19,7 +19,7 @@
   {
    "fieldname": "item_name",
    "fieldtype": "Data",
-   "label": "item_name"
+   "label": "Item Name"
   },
   {
    "fieldname": "quantity",
@@ -29,10 +29,10 @@
   }
  ],
  "istable": 1,
- "modified": "2024-11-08 09:37:57.392674",
+ "modified": "2024-12-31 13:50:17.803798",
  "modified_by": "Administrator",
  "module": "Master CRM",
- "name": "contact_product",
+ "name": "Contact Product",
  "owner": "Administrator",
  "permissions": [],
  "quick_entry": 1,
