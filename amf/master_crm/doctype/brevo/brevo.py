@@ -357,13 +357,30 @@ class Brevo(Document):
         _list = self.get_campaigns(limit, offset)
         while _list:
             for l in _list:
-                lists.append(l)
+                campaigns.append(l)
                     
             offset += limit
             _list = self.get_campaigns(limit, offset)
-                        
+        
+        self.update_campaigns(campaigns)
+        
         return campaigns
     
+    def update_campaigns(self, campaigns):
+        for campaign in campaigns:
+            if not frappe.db.exists("Brevo Campaign", campaign.get("id")):
+                new_campaign = frappe.get_doc({
+                    'doctype': 'Brevo Campaign',
+                    'title': campaign.get("name"),
+                    'status': campaign.get("status")
+                })
+                new_campaign.insert()
+            else:
+                frappe.db.set_value("Brevo Campaign", campaign.get("id"), "status", campaign.get("status"))
+            frappe.db.commit()
+            
+        return
+        
     def get_campaigns(self, limit, offset):
         parameters = {
             'limit': '{0}'.format(limit),
@@ -373,7 +390,10 @@ class Brevo(Document):
 
         response = requests.get(endpoint, headers=self.get_headers(), params=parameters)
         
-        campaigns = response.json() #.get('lists')      # list of contacts
+        if response.status_code != 200:
+            frappe.throw("Error {0}: {1}".format(response.status_code, response.text))
+
+        campaigns = response.json().get('campaigns')      # list of campaigns
         
         """
         Structure
@@ -470,3 +490,8 @@ def create_update_contact(contact, list_ids=[]):
         list_ids = json.loads(list_ids)
     brevo = frappe.get_doc("Brevo", "Brevo")
     return brevo.create_update_contact(contact, list_ids)
+
+@frappe.whitelist()
+def fetch_campaigns():
+    brevo = frappe.get_doc("Brevo", "Brevo")
+    return brevo.get_all_campaigns()

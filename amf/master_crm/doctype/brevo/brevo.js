@@ -10,6 +10,9 @@ frappe.ui.form.on('Brevo', {
             frm.add_custom_button(__("Fetch lists"), function() {
                 fetch_lists(frm);
             });
+            frm.add_custom_button(__("Fetch campaigns"), function() {
+                fetch_campaigns(frm);
+            });
         }
     }
 });
@@ -45,6 +48,17 @@ function fetch_lists(frm) {
             }
             html += "</table>";
             frappe.msgprint(html);
+        }
+    });
+}
+
+function fetch_campaigns(frm) {
+    frappe.call({
+        'method': 'amf.master_crm.doctype.brevo.brevo.fetch_campaigns',
+        'freeze': true,
+        'freeze_message': __("Retrieving contacts... please stay tuned..."),
+        'callback': function(response) {
+            frappe.msgprint(response.message);
         }
     });
 }
