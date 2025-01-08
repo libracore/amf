@@ -283,3 +283,137 @@ def make_stock_entry(work_order_id, purpose, qty=None):
 
     return stock_entry.as_dict()
 
+#####################################
+### AUTOMATIC WORK ORDER CREATION ###
+#####################################
+TEST_MODE = False
+def create_work_orders_based_on_reorder_levels():
+    # Fetch all items with BOMs
+    items_with_bom = frappe.db.sql("""
+        SELECT name, item_name, reorder_level, default_bom, item_code
+        FROM `tabItem`
+        WHERE default_bom IS NOT NULL
+        AND default_bom != ''
+        AND include_item_in_manufacturing = 1
+        AND item_code NOT LIKE '4%'
+        AND item_code NOT LIKE '5%'
+    """, as_dict=True)
+
+    if TEST_MODE:
+        items_with_bom = frappe.get_all(
+            "Item",
+            filters={
+                "default_bom": ["is", "set"],
+                "include_item_in_manufacturing": 1,
+                "item_code": "320100"
+            },
+            fields=["name", "item_name", "reorder_level"]
+        )
+
+    for item in items_with_bom:
+        if TEST_MODE: print("item:",item)
+        current_stock = get_stock_balance(item["name"])
+        reorder_level = flt(item["reorder_level"])
+        if TEST_MODE: print("current_stock:",current_stock," / reorder_level:",reorder_level)
+        if current_stock < reorder_level:
+            required_qty = reorder_level - current_stock
+            if TEST_MODE: print("required_qty:",required_qty)
+            process_bom_and_create_work_orders(item["name"], required_qty)
+
+def get_stock_balance(item_code, warehouse=("Main Stock - AMF21", "Assemblies - AMF21")):
+    """Get current stock balance for an item in a specific warehouse."""
+    stock_ledger_entry = frappe.db.sql("""
+        SELECT SUM(actual_qty) as actual_qty 
+        FROM `tabBin`
+        WHERE item_code = %s AND warehouse IN %s
+    """, (item_code, warehouse), as_dict=True)
+    return flt(stock_ledger_entry[0].get("actual_qty", 0)) if stock_ledger_entry else 0
+
+def process_bom_and_create_work_orders(item_code, required_qty, parent_work_order=None):
+    """Process BOM and create work orders for items and sub-assemblies."""
+    # Fetch the default BOM for the item
+    bom = frappe.get_value("BOM", {"item": item_code, "is_active": 1, "is_default": 1}, "name")
+    if TEST_MODE: print("bom:",bom)
+    if not bom:
+        frappe.log_error(f"No default BOM found for item {item_code}", "Work Order Creation Error")
+        return
+
+    # Fetch BOM items
+    #bom_items = get_exploded_items(bom)
+    
+    # Check for existing draft or ongoing work orders
+    existing_work_order = frappe.db.exists(
+        "Work Order",
+        {
+            "production_item": item_code,
+            "bom_no": bom,
+            "docstatus": ["<", 2],  # 0 for draft, 1 for submitted but not completed/cancelled
+            "status": ["in", ["Draft", "In Process", "Not Started"]]
+        }
+    )
+
+    if not existing_work_order:
+        #print("Creating WO for item:",item_code)
+        # Create work order for the current item
+        # Determine priority based on required_qty
+        if required_qty <= 1:
+            priority = 10
+        elif required_qty <= 5:
+            priority = 9
+        elif required_qty <= 10:
+            priority = 8
+        elif required_qty <= 20:
+            priority = 7
+        elif required_qty <= 50:
+            priority = 6
+        else:
+            priority = 5
+        work_order = frappe.get_doc({
+            "doctype": "Work Order",
+            "production_item": item_code,
+            "qty": int(required_qty * 1.2),
+            "bom_no": bom,
+            "parent_work_order": parent_work_order,
+            "priority": priority
+        })
+        work_order.insert()
+        frappe.db.commit()  # Commit the transaction if you're running this in a script
+        # work_order.submit()
+    else:
+        print("existing_work_order found:",existing_work_order,"for item:",item_code)
+
+    # # Recursively process sub-assemblies
+    # for bom_item in bom_items:
+    #     sub_item_code = bom_item["item_code"]
+    #     sub_item_qty = flt(bom_item["qty"]) * required_qty
+
+    #     # Check if sub-item has a BOM
+    #     has_bom = frappe.get_value("Item", sub_item_code, "has_bom")
+    #     if has_bom:
+    #         process_bom_and_create_work_orders(sub_item_code, sub_item_qty, work_order.name)
+    return None
+
+def get_exploded_items(bom_name):
+    """Fetch exploded items from the BOM doctype."""
+    bom_doc = frappe.get_doc("BOM", bom_name)
+    exploded_items = bom_doc.get("items")
+    
+    items_with_stock = []
+    
+    for item in exploded_items:
+        stock_balance = frappe.db.get_value(
+            "Bin", 
+            {"item_code": item.item_code, "warehouse": 'Main Stock - AMF21'}, 
+            "actual_qty"
+        ) or 0
+
+        #print(f"Item Code: {item.item_code}, Qty: {item.stock_qty}, UOM: {item.stock_uom}, Stock Balance: {stock_balance}")
+        
+        items_with_stock.append({
+            "item_code": item.item_code,
+            "required_qty": item.stock_qty,
+            "uom": item.stock_uom,
+            "stock_balance": stock_balance
+        })
+    
+    return items_with_stock

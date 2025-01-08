@@ -9,7 +9,7 @@ from frappe.utils import date_diff
 
 # Constants
 SERVICE_LEVEL_Z = 1.64  # Z-score for 95% service level
-DEFAULT_LEAD_TIME = 30  # Default lead time in days
+DEFAULT_LEAD_TIME = 15  # Default lead time in days
 DEFAULT_STD_DEV_LEAD_TIME = 10  # Default standard deviation of lead time
 TEST_MODE = False
 
@@ -80,7 +80,7 @@ def fetch_items(test_mode):
     """
     filters = {'is_stock_item': 1, 'disabled': 0}
     if test_mode:
-        filters["name"] = "420047"
+        filters["name"] = "100024"
     return frappe.get_all(
         "Item",
         filters=filters,
@@ -134,7 +134,8 @@ def calculate_monthly_outflows(item_code):
     for month_offset in range(12):
         target_date = current_date.replace(day=1) - datetime.timedelta(days=month_offset * 30)
         target_month, target_year = target_date.month, target_date.year
-
+        if TEST_MODE:
+            print("target_date:",target_date,"/ target_month:",target_month," / target_year:",target_year)
         monthly_outflow = frappe.db.sql(
             """
                 SELECT
