@@ -71,11 +71,26 @@ def update_boms_with_latest_versions_enqueue():
 
 def update_boms_with_latest_versions():
     try:
-        # Fetch all active and default BOMs
-        all_boms = frappe.get_all('BOM', filters={'is_active': 1, 'is_default': 1}, fields=['name', 'item'])
+        # Fetch all active and default BOMs for enabled items
+        query = """
+            SELECT 
+                bom.name, 
+                bom.item 
+            FROM 
+                `tabBOM` AS bom
+            INNER JOIN 
+                `tabItem` AS item 
+            ON 
+                bom.item = item.name
+            WHERE 
+                bom.is_active = 1 AND 
+                bom.is_default = 1 AND 
+                item.disabled = 0
+        """
+        all_boms = frappe.db.sql(query, as_dict=True)
         
         for bom in all_boms:
-            print(f"Processing BOM: {bom.name} for Item: {bom.item}")
+            #print(f"Processing BOM: {bom.name} for Item: {bom.item}")
             try:
                 create_new_bom_version(bom.name)
             except Exception as e:
