@@ -37,9 +37,16 @@ def send_zpl_to_printer(zpl_command):
 @frappe.whitelist()
 def get_serial_numbers_for_manufacture(work_order):
     # Fetch all Stock Entries with purpose 'Manufacture' linked to this Work Order
-    stock_entries = frappe.get_all('Stock Entry', 
-                                   filters={'work_order': work_order, 'purpose': 'Manufacture'},
-                                   order_by="creation desc")
+    stock_entries = frappe.get_all(
+        "Stock Entry",
+        filters={
+            "work_order": work_order,
+            "purpose": "Manufacture",
+            "docstatus": ["<", 2]
+        },
+        order_by="creation desc"
+    )
+
 
     serial_no_dict = {}
 
