@@ -217,15 +217,14 @@
    "allow_on_submit": 1,
    "fieldname": "work_order",
    "fieldtype": "Link",
-   "label": "Work Order",
-   "options": "Work Order",
-   "read_only": 1
+   "label": "Ordre de Fabrication",
+   "options": "Work Order"
   },
   {
    "allow_on_submit": 1,
    "fieldname": "stock_entry",
    "fieldtype": "Link",
-   "label": "Stock Entry",
+   "label": "Entr\u00e9e de Stock",
    "options": "Stock Entry",
    "read_only": 1
   },
@@ -233,7 +232,7 @@
    "allow_on_submit": 1,
    "fieldname": "batch",
    "fieldtype": "Link",
-   "label": "Batch",
+   "label": "N\u00b0 de Lot",
    "options": "Batch",
    "read_only": 1
   },
@@ -265,7 +264,7 @@
   }
  ],
  "is_submittable": 1,
- "modified": "2024-09-09 13:58:16.899587",
+ "modified": "2025-01-22 09:52:26.642859",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Planning",
