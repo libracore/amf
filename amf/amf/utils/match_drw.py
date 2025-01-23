@@ -103,7 +103,9 @@ def update_items_from_csv(file_path=None):
 
             # Update the fields based on the number  
             if number == 0:  
-                item_doc.is_sales_item = 0  
+                item_doc.is_sales_item = 0
+            if number == 1:  
+                item_doc.is_sales_item = 1
             elif number == 2:  
                 item_doc.disabled = 1  
 
