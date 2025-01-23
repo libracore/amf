@@ -17,16 +17,21 @@ frappe.ui.form.on('Planning', {
             frm.set_value('date_de_fin', frappe.datetime.now_datetime());
             frm.set_value('responsable', frappe.session.user);
             frm.set_value('entreprise', 'Advanced Microfluidics SA');
-            frm.set_value('work_order', null);
             frm.set_value('stock_entry', null);
             frm.set_value('batch', null);
+            frappe.call({
+                method: "amf.amf.doctype.planning.planning.get_next_suivi_usinage",
+                callback: function(r) {
+                    if (r && r.message) {
+                        frm.set_value("suivi_usinage", r.message);
+                    }
+                }
+            });
         }
     },
 
     on_submit: function (frm) {
-        if (!frm.doc.work_order) {
-            createWorkOrder(frm);
-        }
+        createWorkOrder(frm);
     },
 
     item_code: function (frm) {
@@ -99,7 +104,8 @@ function createWorkOrder(frm) {
     frappe.call({
         method: 'amf.amf.doctype.planning.planning.create_work_order',
         args: {
-            'form_data': frm.doc
+            'form_data': frm.doc,
+            'wo': frm.doc.work_order,
         },
         freeze: true,  // Freeze the UI during the call
         freeze_message: __("Création de l'ordre de fabrication en cours...<br>Mise à jour des entrées de stock...<br>Merci de patienter..."),
