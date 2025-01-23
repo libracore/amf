@@ -103,6 +103,7 @@ def create_work_order(form_data: str, wo=None) -> dict:
             work_order.production_comments = data['remarque_usinage']
             work_order.simple_description = data['remarque_assemblage']
             work_order.label = data['suivi_usinage']
+            work_order.bom_no = matched_bom_no
             # ... set other fields as needed ...
 
             # 3. Optionally, pull some info directly from 'data' if relevant
