@@ -287,6 +287,50 @@ def attach_file_to_item(pdf_filename, item_code, version=None, revision=None):
         f"Item '{item_code}' in child table 'Drawing Item'.",
         alert=True
     )
+    
+def set_highest_rev_version_as_default():
+    """
+    For every Item in the system, find the drawing_item row
+    with the highest (version,revision) and set 'is_default' = 1 on that row.
+    All other rows get 'is_default' = 0.
+    """
+    all_items = frappe.get_all("Item", fields=["name"])
+    for i in all_items:
+        item_doc = frappe.get_doc("Item", i.name)
+        if not item_doc.drawing_item:
+            continue  # no child rows at all
+
+        # 1) Find the row with the highest (version,revision)
+        best_row = None
+        best_ver = -1
+        best_rev = -1
+
+        for row in item_doc.drawing_item:
+            # Safely convert version/revision to integers (fallback = 0 if blank)
+            ver = int(row.version or 0)
+            rev = int(row.revision or 0)
+
+            if (ver > best_ver) or (ver == best_ver and rev > best_rev):
+                best_ver = ver
+                best_rev = rev
+                best_row = row
+
+        # 2) Set 'is_default' = 0 for all rows
+        for row in item_doc.drawing_item:
+            row.is_default = 0
+
+        # 3) Mark the best row as default
+        if best_row:
+            best_row.is_default = 1
+            best_row.is_active = 1
+
+        # 4) Save changes
+        item_doc.save(ignore_permissions=True)
+
+    # Finally commit all changes
+    frappe.db.commit()
+
+    frappe.msgprint("Successfully updated is_default for the highest version/revision in each Item.")
 
 
 # ------------------------------------------
@@ -319,7 +363,7 @@ def main():
                 matched_code if matched_code else "No Match",
                 item_code if item_code else "No Match"
             ])
-
+    set_highest_rev_version_as_default()
     frappe.msgprint(f"Mapping completed. Results stored in {csv_output_path}")
     
 ###############################################################################################################################################
