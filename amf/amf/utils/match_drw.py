@@ -243,7 +243,7 @@ def attach_file_to_item(pdf_filename, item_code, version=None, revision=None):
     item_doc = frappe.get_doc("Item", item_code)
 
     # Build the fields we want to compare
-    drawing_path = f"/private/files/drw/{pdf_filename}"
+    drawing_path = f"/private/files/{pdf_filename}"
     ref_code = item_doc.reference_code or ""
     ver = version or ""
     rev = revision or ""
@@ -344,11 +344,11 @@ def main_enqueue():
 
 def main():
     """
-    1) Scan the /private/files/drw directory for .pdf files.
+    1) Scan the /private/files/ directory for .pdf files.
     2) For each file, attempt to map it to an Item.
     3) Write results to a CSV for review.
     """
-    private_files_path = frappe.utils.get_site_path("private", "files", "drw")
+    private_files_path = frappe.utils.get_site_path("private", "files")
     pdf_files = [f for f in os.listdir(private_files_path) if f.lower().endswith(".pdf")]
 
     csv_output_path = os.path.join(private_files_path, "file_item_mapping.csv")
