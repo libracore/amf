@@ -234,7 +234,7 @@ def attach_file_to_item(pdf_filename, item_code, version=None, revision=None):
 
     item_code is assumed to be the docname for the parent Item. If not, adjust the lookup.
     """
-    private_path = frappe.utils.get_site_path("private", "files", "drw", pdf_filename)
+    private_path = frappe.utils.get_site_path("private", "files", pdf_filename)
 
     if not os.path.exists(private_path):
         frappe.throw(f"File {pdf_filename} does not exist in {private_path}.")
