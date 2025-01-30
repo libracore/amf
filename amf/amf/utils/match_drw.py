@@ -447,3 +447,17 @@ def update_items_from_csv(file_path=None):
 
     # Commit all changes  
     frappe.db.commit() 
+    
+@frappe.whitelist()
+def execute_enqueue():
+    frappe.enqueue("amf.amf.utils.match_drw.execute", queue='long', timeout=15000)
+    return None
+
+def execute():
+    # This will set the with_operations field to 0 for all BOMs that currently have it set to 1
+    frappe.db.sql("""
+        UPDATE `tabBOM`
+        SET with_operations = 0
+        WHERE with_operations = 1
+    """)
+    frappe.db.commit()
