@@ -265,7 +265,7 @@
   }
  ],
  "is_submittable": 1,
- "modified": "2025-01-28 15:01:21.334452",
+ "modified": "2025-01-30 10:38:07.110246",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Planning",
@@ -282,6 +282,20 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing User",
+   "share": 1,
+   "submit": 1,
    "write": 1
   }
  ],
