@@ -488,10 +488,23 @@ def execute_enqueue():
     return None
 
 def execute():
-    # This will set the with_operations field to 0 for all BOMs that currently have it set to 1
+    # 1. Remove BOM Operation rows for all BOMs, or filter as needed
+    frappe.db.sql("""
+        DELETE FROM `tabBOM Operation`
+        WHERE parent IN (SELECT name FROM `tabBOM`)
+    """)
+
+    # 2. Reset operating cost field (if it's just a numeric or currency field in the BOM)
+    frappe.db.sql("""
+        UPDATE `tabBOM`
+        SET operating_cost = 0
+    """)
+    
+    # 2. Reset operating cost field (if it's just a numeric or currency field in the BOM)
     frappe.db.sql("""
         UPDATE `tabBOM`
         SET with_operations = 0
-        WHERE with_operations = 1
     """)
+
+    # 3. Commit the changes
     frappe.db.commit()
