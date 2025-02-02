@@ -2,19 +2,21 @@ import os
 import re
 import difflib
 import frappe
+import datetime
+import traceback
 import csv
 
+from amf.amf.utils.utilities import (
+    create_log_entry,
+    update_log_entry,
+    update_error_log
+)
+
+import frappe.utils  # needed for frappe.utils.get_site_path
+
 # ------------------------------------------
-# 1) A Single Regex & Parser
+# 1) Regex Pattern & Parser
 # ------------------------------------------
-"""
-This pattern captures:
-- prefix:       3 letters (e.g. RVM)
-- digits_4:     4 digits (e.g. 1259)
-- dash_suffix:  (optional) text like "-K" or "-C.ASM" or any dash + more
-- version, revision: (optional) two digits each, preceded by .##.##
-- the_rest:     anything else leftover
-"""
 PATTERN = re.compile(
     r"^(?P<prefix>[A-Za-z]{3})\."         # e.g. RVM.
     r"(?P<digits_4>\d{4})"               # e.g. 1259
@@ -26,75 +28,67 @@ PATTERN = re.compile(
 
 def parse_filename_or_refcode(value):
     """
-    Attempts to parse strings like:
-      - RVM.1259
-      - RVM.1259-K
-      - RVM.1259.01.01
-      - RVM.1259-K.01.01
-      - Possibly leftover text (the_rest)
+    Attempt to parse strings like: RVM.1259, RVM.1259-K, RVM.1259.01.01, RVM.1259-K.01.01.
 
-    Returns a dict or None if no match:
-      {
-        "prefix": "RVM",
-        "digits_4": "1259",
-        "dash_suffix": "-K" (or ""),
-        "version": "01" (or None),
-        "revision": "01" (or None),
-        "the_rest": ".whatever" (or "")
-      }
+    Returns:
+      dict with prefix, digits_4, dash_suffix, version, revision, the_rest
+      or None if it doesn't match the pattern.
     """
-    match = PATTERN.match(value.strip())
-    if not match:
+    try:
+        match = PATTERN.match(value.strip())
+        if not match:
+            return None
+        return {
+            "prefix": match.group("prefix"),
+            "digits_4": match.group("digits_4"),
+            "dash_suffix": match.group("dash_suffix") or "",
+            "version": match.group("version"),
+            "revision": match.group("revision"),
+            "the_rest": match.group("the_rest") or ""
+        }
+    except Exception:
+        # If there's any unexpected error, return None
         return None
-
-    return {
-        "prefix": match.group("prefix"),
-        "digits_4": match.group("digits_4"),
-        "dash_suffix": match.group("dash_suffix") or "",
-        "version": match.group("version"),
-        "revision": match.group("revision"),
-        "the_rest": match.group("the_rest") or ""
-    }
 
 
 # ------------------------------------------
-# 2) Build a 'fuzzy_val' for difflib
+# 2) Build 'fuzzy_val' for difflib
 # ------------------------------------------
 def build_fuzzy_val(value, include_version_in_fuzzy=False):
     """
     Given a string like 'RVM.1259-K.01.01' or 'RVM.1259',
-    parse it and return a tuple: (fuzzy_str, version, revision).
+    parse it and return (fuzzy_str, version, revision).
 
-    1) fuzzy_str is the canonical string used for fuzzy matching:
-         - "RVM.1259" + optional dash_suffix
-         - Optionally append ".<version>.<revision>" if `include_version_in_fuzzy=True`.
-    2) version, revision are separate strings (or None) for later usage.
+    - fuzzy_str is used for difflib fuzzy matching (e.g. "RVM.1259-K").
+    - version, revision are the parsed strings (e.g. "01", "01").
 
-    Example:
-      "RVM.1259-K.01.01" -> ("RVM.1259-K.01.01", "01", "01")
-      if `include_version_in_fuzzy=False` -> ("RVM.1259-K", "01", "01")
+    If parsing fails, returns (original_value, None, None).
     """
-    parsed = parse_filename_or_refcode(value)
-    if not parsed:
-        # If parsing fails, fallback: no version/revision, fuzzy_str = original
+    try:
+        parsed = parse_filename_or_refcode(value)
+        if not parsed:
+            return (value, None, None)
+
+        # Build base: prefix + '.' + digits_4
+        base = f"{parsed['prefix']}.{parsed['digits_4']}"
+
+        # Append dash_suffix if present
+        if parsed["dash_suffix"]:
+            base += parsed["dash_suffix"]
+
+        version = parsed["version"]
+        revision = parsed["revision"]
+
+        if include_version_in_fuzzy and version and revision:
+            fuzzy_str = f"{base}.{version}.{revision}"
+        else:
+            fuzzy_str = base
+
+        return (fuzzy_str, version, revision)
+
+    except Exception:
+        # On any error, fallback to the original string
         return (value, None, None)
-
-    # Base: prefix + '.' + digits_4
-    base = f"{parsed['prefix']}.{parsed['digits_4']}"
-    # Append dash_suffix if present
-    if parsed["dash_suffix"]:
-        base += parsed["dash_suffix"]  # e.g. '-K'
-
-    version = parsed["version"]
-    revision = parsed["revision"]
-
-    # If you want to incorporate version/revision in the fuzzy match, do so here:
-    if include_version_in_fuzzy and version and revision:
-        fuzzy_str = f"{base}.{version}.{revision}"
-    else:
-        fuzzy_str = base
-
-    return (fuzzy_str, version, revision)
 
 
 # ------------------------------------------
@@ -102,269 +96,309 @@ def build_fuzzy_val(value, include_version_in_fuzzy=False):
 # ------------------------------------------
 def fuzzy_match_item_code(search_str, codes_list, cutoff=0.6):
     """
-    Attempt to fuzzy-match `search_str` (a string) against
-    `codes_list[i]["fuzzy_val"]` (all strings).
-
-    `codes_list` is a list of dicts, e.g.:
-        {
-          "fuzzy_val": "RVM.1259-K",
-          "reference_code": "RVM.1259-K.01.01",
-          "item_code": "ITEM-0001",
-          "version": "01" or None,
-          "revision": "01" or None
-        }
-
+    Attempt to fuzzy-match `search_str` against codes_list[i]["fuzzy_val"].
     Returns (best_reference_code, best_item_code) or (None, None).
     """
-    if not codes_list or not search_str:
+    try:
+        if not codes_list or not search_str:
+            return (None, None)
+
+        possible_strings = [e["fuzzy_val"] for e in codes_list if e["fuzzy_val"]]
+        best_matches = difflib.get_close_matches(search_str, possible_strings, n=1, cutoff=cutoff)
+
+        if best_matches:
+            best_str = best_matches[0]
+            for entry in codes_list:
+                if entry["fuzzy_val"] == best_str:
+                    return (entry["reference_code"], entry["item_code"])
+
         return (None, None)
-
-    # Build a list of the fuzzy_val strings
-    possible_strings = [entry["fuzzy_val"] for entry in codes_list if entry["fuzzy_val"]]
-    best_matches = difflib.get_close_matches(search_str, possible_strings, n=1, cutoff=cutoff)
-
-    if best_matches:
-        best_str = best_matches[0]
-        # Identify which dict matched
-        for entry in codes_list:
-            if entry["fuzzy_val"] == best_str:
-                return (entry["reference_code"], entry["item_code"])
-
-    return (None, None)
+    except Exception:
+        return (None, None)
 
 
 # ------------------------------------------
-# 4) Fetch Items for Matching
+# 4) Fetch Items for Matching (one DB call)
 # ------------------------------------------
 def get_item_codes_list():
     """
-    Fetch Items from DB, skip empty reference_code.
-    Return a list of dicts with the fields needed for fuzzy matching:
-       {
-         "fuzzy_val": <string for difflib>,
-         "reference_code": <actual code in DB>,
-         "item_code": <Item Code>,
-         "version": <parsed version or None>,
-         "revision": <parsed revision or None>
-       }
+    Fetch Items from DB, skip items with empty reference_code or disabled=1.
+    Returns a list of dicts with:
+      {
+        "fuzzy_val": <string for difflib>,
+        "reference_code": <code in DB>,
+        "item_code": <Item Code>,
+        "version": <parsed version>,
+        "revision": <parsed revision>
+      }
     """
-    all_item_docs = frappe.get_all(
-        "Item",
-        filters={"reference_code": ["!=", ""]},
-        fields=["name", "reference_code", "item_code"]
-    )
+    try:
+        all_item_docs = frappe.get_all(
+            "Item",
+            filters={"reference_code": ["!=", ""], 'disabled': 0},
+            fields=["name", "reference_code", "item_code"]
+        )
 
-    codes_list = []
-    for doc in all_item_docs:
-        ref_code = doc["reference_code"]
-        if not ref_code:
-            continue
+        codes_list = []
+        for doc in all_item_docs:
+            ref_code = doc["reference_code"]
+            if not ref_code:
+                continue
+            fuzzy_val, ver, rev = build_fuzzy_val(ref_code, include_version_in_fuzzy=False)
+            codes_list.append({
+                "fuzzy_val": fuzzy_val,
+                "reference_code": ref_code,
+                "item_code": doc["item_code"],
+                "version": ver,
+                "revision": rev
+            })
 
-        # Here, we parse the reference_code to get a fuzzy_val + version/revision
-        fuzzy_val, ver, rev = build_fuzzy_val(ref_code, include_version_in_fuzzy=False)
-        codes_list.append({
-            "fuzzy_val": fuzzy_val,        # e.g. "RVM.1259-K"
-            "reference_code": ref_code,    # e.g. "RVM.1259-K.01.01"
-            "item_code": doc["item_code"],
-            "version": ver,
-            "revision": rev
-        })
+        print(f"[DEBUG] get_item_codes_list: {len(codes_list)} items loaded.")
+        return codes_list
 
-    return codes_list
+    except Exception as exc:
+        # Return an empty list in case of error
+        print("[ERROR] get_item_codes_list:", exc)
+        return []
 
 
 # ------------------------------------------
-# 5) Main Mapping Logic
+# 5) Attach File to an Item
 # ------------------------------------------
-def map_file_to_item(filename):
+def attach_file_to_item(pdf_filename, item_code, version=None, revision=None, log_id=None):
     """
-    1) Parse the filename (without extension) to build a base_ref_code (RVM.1259[-K]).
-    2) Attempt direct DB lookup on that base code in "Item.reference_code".
-    3) If not found, fallback to fuzzy matching.
-    4) If a match is found, attach the PDF to the child table "drawing_item".
-    5) Return (best_code, item_code) or (None, None).
+    Attach the PDF file to the 'drawing_item' child table of the given item_code.
+    If the file is already attached with the same version/rev, do nothing.
     """
-    raw_name, _ = os.path.splitext(filename)  # remove '.pdf' if present
-    parsed = parse_filename_or_refcode(raw_name)
+    try:
+        private_path = frappe.utils.get_site_path("private", "files", pdf_filename)
+        if not os.path.exists(private_path):
+            msg = f"File {pdf_filename} does not exist in {private_path}."
+            frappe.throw(msg)
 
-    # Attempt direct match
-    if parsed:
-        base_ref_code = f"{parsed['prefix']}.{parsed['digits_4']}"
-        if parsed["dash_suffix"]:
-            base_ref_code += parsed["dash_suffix"]  # e.g. -K, -C.ASM
+        # Fetch parent Item doc
+        item_doc = frappe.get_doc("Item", item_code)
 
-        # Direct DB check
-        item_code = frappe.db.get_value("Item", {"reference_code": base_ref_code}, "item_code")
-        if item_code:
-            # Attach the PDF to the child table. Pass version/revision if you want:
+        drawing_path = f"/private/files/{pdf_filename}"
+        ref_code = item_doc.reference_code or ""
+        ver = version or ""
+        rev = revision or ""
+
+        # Check if this file is already attached
+        for row in item_doc.drawing_item:
+            if (row.drawing == drawing_path and
+                row.version == ver and
+                row.revision == rev and
+                row.reference_code == ref_code):
+                frappe.msgprint(
+                    f"File '{pdf_filename}' (v{ver}, r{rev}) is already attached to {item_code}.",
+                    alert=True
+                )
+                return
+
+        # Otherwise, create new row
+        row = item_doc.append("drawing_item", {})
+        row.drawing = drawing_path
+        row.item_code = item_code
+        row.reference_code = ref_code
+        row.version = ver
+        row.revision = rev
+
+        # Save
+        item_doc.save(ignore_permissions=True)
+        frappe.db.commit()
+
+        frappe.msgprint(
+            f"Attached file '{pdf_filename}' (v{ver}, r{rev}) to Item '{item_code}'.",
+            alert=True
+        )
+
+        if log_id:
+            update_log_entry(log_id, f"Attached '{pdf_filename}' => Item '{item_code}' (v{ver}, r{rev}).")
+
+    except Exception as exc:
+        # Log error
+        err_msg = f"[ERROR attach_file_to_item] file '{pdf_filename}' -> {item_code} failed: {str(exc)}\n"
+        err_msg += traceback.format_exc()
+        if log_id:
+            update_log_entry(log_id, err_msg)
+        update_error_log(err_msg)
+        # We do not re-throw here, because we want to continue processing
+        # pass
+
+
+# ------------------------------------------
+# 6) Mapping Logic
+# ------------------------------------------
+def map_file_to_item(filename, codes_list, log_id=None):
+    """
+    1) Parse filename => base_ref_code.
+    2) Attempt direct match in codes_list.
+    3) Fuzzy fallback if direct match fails.
+    4) If matched, call attach_file_to_item(...).
+    Returns (matched_ref_code, item_code) or (None, None).
+    """
+    try:
+        raw_name, _ = os.path.splitext(filename)
+        parsed = parse_filename_or_refcode(raw_name)
+
+        base_ref_code = None
+        item_code = None
+
+        # Check parse
+        if parsed:
+            base_ref_code = f"{parsed['prefix']}.{parsed['digits_4']}"
+            if parsed["dash_suffix"]:
+                base_ref_code += parsed["dash_suffix"]
+
+            # Exact match
+            for entry in codes_list:
+                if entry["reference_code"] == base_ref_code:
+                    item_code = entry["item_code"]
+                    break
+
+            if item_code:
+                attach_file_to_item(
+                    pdf_filename=filename,
+                    item_code=item_code,
+                    version=parsed["version"],
+                    revision=parsed["revision"],
+                    log_id=log_id
+                )
+                return base_ref_code, item_code
+
+        # Fuzzy fallback
+        search_str, ver, rev = build_fuzzy_val(raw_name, include_version_in_fuzzy=False)
+        (best_code, item_code) = fuzzy_match_item_code(search_str, codes_list, cutoff=0.6)
+        if best_code and item_code:
             attach_file_to_item(
                 pdf_filename=filename,
                 item_code=item_code,
-                version=parsed["version"],
-                revision=parsed["revision"],
+                version=ver,
+                revision=rev,
+                log_id=log_id
             )
-            return base_ref_code, item_code
+            return best_code, item_code
 
-    # Otherwise, fuzzy fallback
-    codes_list = get_item_codes_list()
-    # Build fuzzy_val from the filename
-    search_str, ver, rev = build_fuzzy_val(raw_name, include_version_in_fuzzy=False)
-    best_code, item_code = fuzzy_match_item_code(search_str, codes_list, cutoff=0.6)
+        # If no match
+        return (None, None)
 
-    if best_code and item_code:
-        attach_file_to_item(
-            pdf_filename=filename,
-            item_code=item_code,
-            version=ver,
-            revision=rev,
-        )
-
-    return best_code, item_code
-
-
-def attach_file_to_item(pdf_filename, item_code, version=None, revision=None):
-    """
-    Attach the PDF file to the Item record by creating a row in the 'drawing_item' child table.
-    Child table fields:
-      - drawing (Attach)
-      - item_code (Data)
-      - reference_code (Data)
-      - version (Data)
-      - revision (Data)
-
-    item_code is assumed to be the docname for the parent Item. If not, adjust the lookup.
-    """
-    private_path = frappe.utils.get_site_path("private", "files", pdf_filename)
-
-    if not os.path.exists(private_path):
-        frappe.throw(f"File {pdf_filename} does not exist in {private_path}.")
-
-    # Fetch the parent Item doc
-    item_doc = frappe.get_doc("Item", item_code)
-
-    # Build the fields we want to compare
-    drawing_path = f"/private/files/{pdf_filename}"
-    ref_code = item_doc.reference_code or ""
-    ver = version or ""
-    rev = revision or ""
-
-    # ----------------------------------------
-    # 1) Check if the same row already exists
-    # ----------------------------------------
-    already_exists = False
-    for row in item_doc.drawing_item:
-        if (row.drawing == drawing_path 
-            and row.version == ver 
-            and row.revision == rev 
-            and row.reference_code == ref_code):
-            already_exists = True
-            break
-
-    if already_exists:
-        frappe.msgprint(
-            f"This file '{pdf_filename}' (v{ver}, r{rev}) "
-            f"is already attached to Item '{item_code}' with the same reference code.",
-            alert=True
-        )
-        return
-
-    # ----------------------------------------
-    # 2) If no exact match, create a new row
-    # ----------------------------------------
-    row = item_doc.append("drawing_item", {})
-    row.drawing = drawing_path
-    row.item_code = item_code
-    row.reference_code = ref_code
-    row.version = ver
-    row.revision = rev
-
-    # Save and commit
-    item_doc.save(ignore_permissions=True)
-    frappe.db.commit()
-
-    frappe.msgprint(
-        f"Attached file '{pdf_filename}' (v{ver}, r{rev}) to "
-        f"Item '{item_code}' in child table 'Drawing Item'.",
-        alert=True
-    )
-    
-def set_highest_rev_version_as_default():
-    """
-    For every Item in the system, find the drawing_item row
-    with the highest (version,revision) and set 'is_default' = 1 on that row.
-    All other rows get 'is_default' = 0.
-    """
-    all_items = frappe.get_all("Item", fields=["name"])
-    for i in all_items:
-        item_doc = frappe.get_doc("Item", i.name)
-        if not item_doc.drawing_item:
-            continue  # no child rows at all
-
-        # 1) Find the row with the highest (version,revision)
-        best_row = None
-        best_ver = -1
-        best_rev = -1
-
-        for row in item_doc.drawing_item:
-            # Safely convert version/revision to integers (fallback = 0 if blank)
-            ver = int(row.version or 0)
-            rev = int(row.revision or 0)
-
-            if (ver > best_ver) or (ver == best_ver and rev > best_rev):
-                best_ver = ver
-                best_rev = rev
-                best_row = row
-
-        # 2) Set 'is_default' = 0 for all rows
-        for row in item_doc.drawing_item:
-            row.is_default = 0
-
-        # 3) Mark the best row as default
-        if best_row:
-            best_row.is_default = 1
-            best_row.is_active = 1
-
-        # 4) Save changes
-        item_doc.save(ignore_permissions=True)
-
-    # Finally commit all changes
-    frappe.db.commit()
-
-    frappe.msgprint("Successfully updated is_default for the highest version/revision in each Item.")
+    except Exception as exc:
+        # Log the error, continue
+        err_msg = f"[ERROR map_file_to_item] '{filename}' => {str(exc)}\n"
+        err_msg += traceback.format_exc()
+        if log_id:
+            update_log_entry(log_id, err_msg)
+        update_error_log(err_msg)
+        return (None, None)
 
 
 # ------------------------------------------
-# 6) Main Driver
+# 7) set_highest_rev_version_as_default
+# ------------------------------------------
+def set_highest_rev_version_as_default(log_id=None):
+    """
+    For every Item, find the row with the highest (version, revision) in drawing_item
+    and set is_default=1, is_active=1. All other rows is_default=0.
+    """
+    try:
+        all_items = frappe.get_all("Item", fields=["name"])
+        for i in all_items:
+            item_doc = frappe.get_doc("Item", i.name)
+            if not item_doc.drawing_item:
+                continue
+
+            best_row = None
+            best_ver = -1
+            best_rev = -1
+
+            for row in item_doc.drawing_item:
+                ver = int(row.version or 0)
+                rev = int(row.revision or 0)
+                if (ver > best_ver) or (ver == best_ver and rev > best_rev):
+                    best_ver = ver
+                    best_rev = rev
+                    best_row = row
+
+            # Reset all
+            for row in item_doc.drawing_item:
+                row.is_default = 0
+
+            if best_row:
+                best_row.is_default = 1
+                best_row.is_active = 1
+
+            item_doc.save(ignore_permissions=True)
+
+        frappe.db.commit()
+        frappe.msgprint("Successfully updated 'is_default' for highest version/revision on each Item.")
+        if log_id:
+            update_log_entry(log_id, "set_highest_rev_version_as_default completed successfully.")
+
+    except Exception as exc:
+        err_msg = f"[ERROR set_highest_rev_version_as_default] {str(exc)}\n"
+        err_msg += traceback.format_exc()
+        if log_id:
+            update_log_entry(log_id, err_msg)
+        update_error_log(err_msg)
+        # Do not re-throw, we log and move on.
+
+
+# ------------------------------------------
+# 8) Main Driver
 # ------------------------------------------
 @frappe.whitelist()
 def main_enqueue():
-    """Enqueues the main function on a long queue."""
+    """Enqueues the main function on a background queue."""
     frappe.enqueue("amf.amf.utils.match_drw.main", queue='long', timeout=15000)
     return None
 
+
 def main():
     """
-    1) Scan the /private/files/ directory for .pdf files.
-    2) For each file, attempt to map it to an Item.
-    3) Write results to a CSV for review.
+    1) Create a single Log Entry for the process.
+    2) Scan /private/files/ for PDFs.
+    3) Fetch codes_list once from DB.
+    4) For each file, attempt map_file_to_item => attach to item if found.
+    5) Mark highest rev/version as default.
+    6) Append final success or error message to the log.
     """
-    private_files_path = frappe.utils.get_site_path("private", "files")
-    pdf_files = [f for f in os.listdir(private_files_path) if f.lower().endswith(".pdf")]
+    # Create a new log entry for this run
+    log_id = create_log_entry(
+        message="Starting PDF: Item mapping...",
+        category="File Mapping"
+    )
 
-    csv_output_path = os.path.join(private_files_path, "file_item_mapping.csv")
-    with open(csv_output_path, mode="w", newline="", encoding="utf-8") as csv_file:
-        writer = csv.writer(csv_file)
-        writer.writerow(["Filename", "Matched Reference Code", "Item Code"])
+    try:
+        private_files_path = frappe.utils.get_site_path("private", "files")
+        pdf_files = [f for f in os.listdir(private_files_path) if f.lower().endswith(".pdf")]
+        update_log_entry(log_id, f"Found {len(pdf_files)} PDF files in {private_files_path}.\n")
 
+        # 1) Codes list
+        codes_list = get_item_codes_list()
+
+        # 2) Process each PDF
         for pdf_file in pdf_files:
-            matched_code, item_code = map_file_to_item(pdf_file)
-            writer.writerow([
-                pdf_file,
-                matched_code if matched_code else "No Match",
-                item_code if item_code else "No Match"
-            ])
-    set_highest_rev_version_as_default()
-    frappe.msgprint(f"Mapping completed. Results stored in {csv_output_path}")
+            matched_code, item_code = map_file_to_item(pdf_file, codes_list, log_id=log_id)
+
+            line_msg = (f"File: '{pdf_file}' "
+                        f"Matched RefCode: {matched_code if matched_code else 'No Match'}, "
+                        f"Item: {item_code if item_code else 'No Match'}")
+            update_log_entry(log_id, line_msg)
+
+        # 3) Post-processing: set default
+        set_highest_rev_version_as_default(log_id=log_id)
+
+        # 4) Final success message
+        update_log_entry(log_id, "PDF: Item Mapping completed successfully.")
+        frappe.msgprint(f"Mapping completed. See Log Entry '{log_id}' for details.")
+
+    except Exception as exc:
+        # If something bigger fails in the main loop
+        err_msg = f"[ERROR main] {str(exc)}\nTraceback:\n{traceback.format_exc()}"
+        update_log_entry(log_id, err_msg)
+        update_error_log(err_msg)
+        frappe.throw(err_msg)
     
 ###############################################################################################################################################
 ###############################################################################################################################################
