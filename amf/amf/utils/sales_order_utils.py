@@ -46,7 +46,7 @@ def create_work_orders_for_sales_order(docname):
 
             if shortfall_qty > 0:
                 # Create the main Work Order
-                wo_name = create_work_order(
+                wo_name, existing = create_work_order(
                     item_code     = item_code,
                     qty           = shortfall_qty,
                     warehouse     = warehouse,
@@ -56,7 +56,7 @@ def create_work_orders_for_sales_order(docname):
                 frappe.msgprint(
                     _(
                         """<div style="font-size: 14px; line-height: 1.5; margin: 6px 0;">
-                            <strong>Ordre de fabrication créé :</strong> {0}<br>
+                            <strong>Ordre de fabrication créé :</strong> <a href="https://amf.libracore.ch/desk#Form/Work%20Order/{0}" target="_blank">{0}</a><br>
                             <strong>Article :</strong> {1}<br>
                             <strong>Quantité :</strong> {2} pièce(s)
                         </div>"""
@@ -76,9 +76,9 @@ def create_work_orders_for_sales_order(docname):
                 frappe.msgprint(
                     _(
                         """<div style="font-size: 14px; line-height: 1.5; margin: 6px 0;">
-                            <strong>Aucun ordre de fabrication n'est nécessaire pour l'article :</strong> {0}.<br>
-                            <span style="color: #2b47d9;">Le stock est suffisant.</span><br>
-                            <strong>Requis :</strong> {1}, <strong>En stock :</strong> {2}.
+                            <strong>Aucun ordre de fabrication n'est nécessaire pour l'article :</strong> {0}<br>
+                            <span style="color: #2b47d9;">Le stock est suffisant</span><br>
+                            <strong>Requis :</strong> {1}, <strong>En stock :</strong> {2}
                         </div>"""
                     ).format(item_code, qty_required, current_stock),
                     title=_("Création des ordres de fabrication"),
@@ -131,7 +131,7 @@ def create_work_order(item_code, qty, warehouse, sales_order=None):
         
     existing_wo_name = frappe.db.exists("Work Order", filters)
     if existing_wo_name:
-        print("existing_wo_name:",existing_wo_name)
+        
         # 2. If we found one, update its quantity
         existing_wo = frappe.get_doc("Work Order", existing_wo_name)
         existing_wo.qty = flt(existing_wo.qty) + flt(qty)
@@ -139,7 +139,7 @@ def create_work_order(item_code, qty, warehouse, sales_order=None):
         frappe.db.commit()
 
         # Return the existing WO name (we've just updated it)
-        return existing_wo.name
+        return existing_wo.name, True if existing_wo.name else False
     
     # Get default BOM
     default_bom = get_default_bom(item_code)
@@ -164,7 +164,7 @@ def create_work_order(item_code, qty, warehouse, sales_order=None):
     # wo_doc.submit()
 
     frappe.db.commit()  # commit so subsequent queries can see this record
-    return wo_doc.name
+    return wo_doc.name, False
 
 def recursively_create_subassembly_work_orders(parent_item_code, parent_qty, warehouse):
     """
@@ -203,23 +203,36 @@ def recursively_create_subassembly_work_orders(parent_item_code, parent_qty, war
 
             if child_shortfall_qty > 0:
                 # Create Work Order for the sub-assembly
-                wo_name = create_work_order(
+                wo_name, existing = create_work_order(
                     item_code   = child_item_code,
                     qty         = child_shortfall_qty,
                     warehouse   = warehouse,
                 )
 
-                frappe.msgprint(
-                    _(
-                        """<div style="font-size: 14px; line-height: 1.5; margin: 6px 0;">
-                            <strong>Ordre de fabrication créé :</strong> {0}<br>
-                            <strong>Article sous-assemblé :</strong> {1}<br>
-                            <strong>Quantité :</strong> {2} pièce(s)
-                        </div>"""
-                    ).format(wo_name, child_item_code, child_shortfall_qty),
-                    title=_("Création des ordres de fabrication"),
-                    indicator="blue"
-                )
+                if existing:
+                    frappe.msgprint(
+                        _(
+                            """<div style="font-size: 14px; line-height: 1.5; margin: 6px 0;">
+                                <strong>Ordre de fabrication existant et mis à jour :</strong> <a href="https://amf.libracore.ch/desk#Form/Work%20Order/{0}" target="_blank">{0}</a><br>
+                                <strong>Article sous-assemblé :</strong> {1}<br>
+                                <strong>Quantité ajoutée :</strong> {2} pièce(s)
+                            </div>"""
+                        ).format(wo_name, child_item_code, child_shortfall_qty),
+                        title=_("Création des ordres de fabrication"),
+                        indicator="blue"
+                    )
+                else:
+                    frappe.msgprint(
+                        _(
+                            """<div style="font-size: 14px; line-height: 1.5; margin: 6px 0;">
+                                <strong>Ordre de fabrication créé :</strong> <a href="https://amf.libracore.ch/desk#Form/Work%20Order/{0}" target="_blank">{0}</a><br>
+                                <strong>Article sous-assemblé :</strong> {1}<br>
+                                <strong>Quantité :</strong> {2} pièce(s)
+                            </div>"""
+                        ).format(wo_name, child_item_code, child_shortfall_qty),
+                        title=_("Création des ordres de fabrication"),
+                        indicator="blue"
+                    )
 
                 # Recurse down if the sub-assembly BOM also has sub-assemblies
                 recursively_create_subassembly_work_orders(
