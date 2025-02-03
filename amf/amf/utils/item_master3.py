@@ -508,105 +508,190 @@ def create_log_entry(message, category):
     return None
 
 """====================================================================="""
+import frappe
+from frappe import _
+from frappe.utils import flt
+from erpnext.manufacturing.doctype.bom.bom import get_children as get_bom_items
+
+
 @frappe.whitelist()
-def update_bom_list_enqueue():
-    frappe.enqueue("amf.amf.utils.item_master3.update_bom_list", queue='long', timeout=15000)
+def enqueue_update_bom_list():
+    """
+    Enqueue a long-running task to update BOM-related fields for Items.
+    
+    This function is typically called from a client script or server-side event
+    and uses `frappe.enqueue` to process in the background, thus avoiding timeouts
+    for large datasets.
+    """
+    # Adjust queue and timeout as necessary to handle potentially large item sets
+    frappe.enqueue(
+        method="amf.amf.utils.item_master3.update_bom_list",
+        queue="long",
+        timeout=15000
+    )
     return None
 
+
 def update_bom_list():
-    # Fetch all items with active BOMs
-    items_with_bom = frappe.get_all(
+    """
+    Main task that updates Item master BOM fields for all Items
+    which have at least one default (is_default=1) BOM.
+
+    Steps:
+      1. Retrieve all distinct Items with a default BOM (is_default=1).
+      2. For each Item:
+         - Skip if the Item is disabled.
+         - Remove any old company defaults from its child table.
+         - Update BOM-related fields and child table entries (bom_table).
+      3. Commit changes to the database.
+    """
+    default_bom_items = frappe.get_all(
         'BOM',
         filters={'is_default': 1},
         fields=['item'],
         distinct=True
     )
-    
-    # Iterate through each item and update the fields
-    for item in items_with_bom:
-        item_code = item['item']
-        if frappe.db.get_value('Item', item_code, 'disabled'):
+
+    for record in default_bom_items:
+        item_code = record['item']
+
+        # Skip if this Item is disabled
+        is_disabled = frappe.db.get_value('Item', item_code, 'disabled')
+        if is_disabled:
             continue
+
+        # Remove any 'Advanced Microfluidics SA (OLD)' entries from item_defaults
         remove_old_company_defaults(item_code)
+
+        # Update this item’s BOM fields and tables
         update_item_bom_fields(item_code)
-    
+
     frappe.db.commit()
-    #update_log_entry(f"BOM list updated for all items with active BOMs.")
+    # Optionally log or notify that the bulk update has finished
+    # update_log_entry("BOM list updated for all items with active default BOMs.")
+
 
 def update_item_bom_fields(item_code):
-    # Fetch all BOMs for the item
+    """
+    Fetch active default BOMs for the given item_code and update:
+      - item_default_bom (link to the BOM doctype)
+      - bom_cost (aggregate cost from the default BOM)
+      - bom_table (child table in the Item)
+
+    Logic:
+      1. Look up all BOMs matching:
+         - item = item_code
+         - is_active = 1
+         - is_default = 1
+      2. For each found BOM:
+         - update its cost via BOM.update_cost(from_child_bom=False)
+         - track the BOM name as default_bom
+         - track its total_cost
+         - retrieve its BOM Items for the child table
+      3. If multiple default BOMs exist (which is unusual), the script will:
+         - store the last one found in `default_bom` and `bom_items`.
+         (Consider changing this logic if you want to handle multiple default BOMs differently.)
+      4. Update the Item master:
+         - item_default_bom = default_bom
+         - bom_cost = total_cost
+         - bom_table = [list of child parts from the BOM]
+      5. Save the Item. If an error occurs, catch and log/print it.
+    """
+    # Retrieve BOMs for the item, all of which are both "active" and "default"
     boms = frappe.get_all(
         'BOM',
-        filters={'item': item_code, 'is_active': 1, 'is_default': 1},
+        filters={
+            'item': item_code,
+            'is_active': 1,
+            'is_default': 1
+        },
         fields=['name', 'total_cost', 'is_default']
     )
     if not boms:
-        print(f"No active BOMs found for item {item_code}")
+        print(f"[update_item_bom_fields] No active default BOMs found for item {item_code}.")
         return
-    
+
     default_bom = None
-    total_cost = 0
+    total_cost = 0.0
     bom_items = []
 
+    # Loop through all default BOMs found; this loop also handles the scenario
+    # where multiple default BOMs might exist erroneously.
     for bom in boms:
-        bom_name = bom['name']  # Ensure this is treated as a string
-        total_cost = bom['total_cost']
-        
+        bom_name = bom['name']
+        total_cost = flt(bom['total_cost'])
+
         # Fetch BOM items for the current BOM
         bom_items = frappe.get_all(
             'BOM Item',
             filters={'parent': bom_name},
-            fields=['item_code', 'item_name', 'qty', 'rate', 'amount', 'uom', 'description']
+            fields=[
+                'item_code', 'item_name', 'qty', 'rate', 'amount',
+                'uom', 'description'
+            ]
         )
 
-        # Since we are fetching the default BOM, we assign it to default_bom
+        # If is_default is True, track this as the item’s default_bom
         if bom['is_default']:
             default_bom = bom_name
-        
-        try:
-            frappe.get_doc("BOM", bom).update_cost(from_child_bom=False)
-        except Exception as error:
-            print("An error occurred:", error)
-            #update_log_entry(log_id, f"An error occurred: {error}")
 
-    # Update the item
+        # Attempt to update BOM costs
+        try:
+            # You may need to fetch the BOM doc differently if get_doc requires the name, not the dict
+            bom_doc = frappe.get_doc("BOM", bom_name)
+            bom_doc.update_cost(from_child_bom=False)
+        except Exception as error:
+            print(f"[update_item_bom_fields] Error updating cost for BOM {bom_name}: {error}")
+            # Optionally log to a custom doctype or error log
+            # update_log_entry(log_id, f"Error updating cost for BOM {bom_name}: {error}")
+
+    # Now update the Item with the final default_bom and total_cost from the last BOM in `boms`
     item_doc = frappe.get_doc('Item', item_code)
     item_doc.item_default_bom = default_bom
     item_doc.bom_cost = total_cost
-    item_doc.set('bom_table', [])
-    for bom_item in bom_items:
-        item_doc.append('bom_table', bom_item)
 
-    # Save the updated item document
+    # Replace the entire bom_table child table
+    item_doc.set('bom_table', [])
+    for child_row in bom_items:
+        item_doc.append('bom_table', child_row)
+
+    # Attempt to save and commit
     try:
         item_doc.save()
         frappe.db.commit()
     except Exception as error:
-        print("An error occurred:", error)
-        #update_log_entry(log_id, f"An error occurred: {error}")
+        print(f"[update_item_bom_fields] Error saving Item {item_code}: {error}")
+        # update_log_entry(log_id, f"Error saving Item {item_code}: {error}")
+
 
 def remove_old_company_defaults(item_code):
+    """
+    Remove any Item Default rows whose company == 'Advanced Microfluidics SA (OLD)' 
+    from the target Item's item_defaults table.
+
+    Steps:
+      1. Get the item_doc for item_code.
+      2. Filter out rows with the old company name.
+      3. If changes occur, save and commit.
+    """
     try:
-        # Fetch the item document using the item_code
-        item = frappe.get_doc("Item", item_code)
-        
-        # Filter out the 'item_defaults' child table rows where the company is 'Advanced Microfluidics SA (OLD)'
-        item_defaults_to_keep = [
-            row for row in item.item_defaults if row.company != "Advanced Microfluidics SA (OLD)"
+        item_doc = frappe.get_doc("Item", item_code)
+
+        # Keep only rows that do NOT match the old company
+        filtered_defaults = [
+            row for row in item_doc.item_defaults
+            if row.company != "Advanced Microfluidics SA (OLD)"
         ]
 
-        # Check if any rows were removed
-        if len(item_defaults_to_keep) != len(item.item_defaults):
-            # Assign the filtered list back to the item
-            item.item_defaults = item_defaults_to_keep
-            
-            # Save the item document
-            item.save()
+        # If filtering removed any rows, save the updated doc
+        if len(filtered_defaults) != len(item_doc.item_defaults):
+            item_doc.item_defaults = filtered_defaults
+            item_doc.save()
             frappe.db.commit()
-            #update_log_entry(log_id, f"Removed old company defaults for item: {item_code}")
+
     except frappe.DoesNotExistError:
-        print("frappe.DoesNotExistError")
-        #update_log_entry(log_id, f"Item with code {item_code} does not exist.")
+        print(f"[remove_old_company_defaults] Item {item_code} does not exist.")
+        # update_log_entry(log_id, f"Item {item_code} does not exist.")
     except Exception as e:
-        print("An error e occurred:", e)
-        #update_log_entry(log_id, f"An error occurred: {str(e)}")
+        print(f"[remove_old_company_defaults] Unexpected error for Item {item_code}: {e}")
+        # update_log_entry(log_id, f"Unexpected error removing old defaults for {item_code}: {str(e)}")
