@@ -161,7 +161,8 @@ def create_work_order(item_code, qty, warehouse, sales_order=None):
 
     wo_doc.save(ignore_permissions=True)
     # Optionally submit if you require the Work Order to be in submitted state:
-    # wo_doc.submit()
+    if wo_doc.sales_order:
+        wo_doc.submit()
 
     frappe.db.commit()  # commit so subsequent queries can see this record
     return wo_doc.name, False

@@ -10,6 +10,8 @@ from frappe.utils.data import now_datetime
 from frappe.utils.pdf import get_pdf
 from frappe.utils.file_manager import save_file
 from frappe.utils.print_format import download_pdf
+from datetime import datetime
+from frappe import ValidationError
 
 class Planning(Document):
     pass
@@ -376,36 +378,40 @@ def generate_and_attach_pdf(doctype, docname, print_format):
 @frappe.whitelist()
 def get_next_suivi_usinage():
     """
-    Returns the next suivi_usinage string in the format 'M-XXXX'.
-    It checks the most recent 'Planning' record with a valid pattern,
-    increments the numeric part, and zero-pads to 4 digits.
+    Generate the next suivi_usinage of the form:
+        P-YYYYMMDD-x
+    where:
+        - P is a constant prefix
+        - YYYYMMDD is today's date
+        - x is the incremental digit for today
     """
-    # 1) Query for the last suivi_usinage matching 'M-%'
+    # 1) Construct today's date in YYYYMMDD format
+    today_str = datetime.now().strftime('%Y%m%d')
+
+    # 2) Fetch the most recent record for today's date
+    #    matching the pattern "P-YYYYMMDD-%"
     last_entry = frappe.db.get_list(
         "Planning",
         fields=["suivi_usinage"],
-        filters=[["suivi_usinage", "like", "M-%"]],
+        filters=[["suivi_usinage", "like", f"P-{today_str}-%"]],
         order_by="creation desc",
         limit_page_length=1
     )
 
-    # 2) If a record was found, parse and increment
+    # 3) Parse the last entry’s suffix (digit)
     if last_entry:
         last_value = last_entry[0].get("suivi_usinage", "")
-        # Split e.g. "M-0123" -> ["M", "0123"]
+        # e.g. "P-20250123-5" => ["P", "20250123", "5"]
         parts = last_value.split("-")
-        if len(parts) == 2 and parts[1].isdigit():
-            last_digits_int = int(parts[1])
+        if len(parts) == 3 and parts[2].isdigit():
+            last_digit_int = int(parts[2])
         else:
-            # Fallback if pattern is off
-            last_digits_int = 0
-        new_digits_int = last_digits_int + 1
+            last_digit_int = 0
+        new_digit_int = last_digit_int + 1
     else:
-        # If no matching records, start at 1
-        new_digits_int = 1
+        # If no records for today, start at 1
+        new_digit_int = 1
 
-    # 3) Construct new value with zero-padding (4 digits)
-    new_digits_str = str(new_digits_int).zfill(4)  # or padStart(4,'0') in Python style
-    new_suivi = f"M-{new_digits_str}"
-
+    # 4) Construct the new suivi_usinage
+    new_suivi = f"P-{today_str}-{new_digit_int}"
     return new_suivi

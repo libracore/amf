@@ -480,31 +480,88 @@ def update_items_from_csv(file_path=None):
                 raise e  
 
     # Commit all changes  
-    frappe.db.commit() 
-    
-@frappe.whitelist()
-def execute_enqueue():
-    frappe.enqueue("amf.amf.utils.match_drw.execute", queue='long', timeout=15000)
-    return None
-
-def execute():
-    # 1. Remove BOM Operation rows for all BOMs, or filter as needed
-    frappe.db.sql("""
-        DELETE FROM `tabBOM Operation`
-        WHERE parent IN (SELECT name FROM `tabBOM`)
-    """)
-
-    # 2. Reset operating cost field (if it's just a numeric or currency field in the BOM)
-    frappe.db.sql("""
-        UPDATE `tabBOM`
-        SET operating_cost = 0
-    """)
-    
-    # 2. Reset operating cost field (if it's just a numeric or currency field in the BOM)
-    frappe.db.sql("""
-        UPDATE `tabBOM`
-        SET with_operations = 0
-    """)
-
-    # 3. Commit the changes
     frappe.db.commit()
+
+@frappe.whitelist()
+def execute_db_drw_enqueue():
+    frappe.enqueue("amf.amf.utils.match_drw.remove_drw", queue='long', timeout=15000)
+    return None
+  
+def remove_drw():
+    """
+    Clears the drawing_item child table for all Items,
+    except those belonging to the 'Plug' or 'Valve Seat' item groups.
+    """
+    try:
+        # 1. Retrieve names of items not in the specified groups
+        #    Note: If your field is named differently, adjust the filters accordingly.
+        # List all prefixes to exclude
+        excluded_prefixes = ["EXS.", "BAC.", "BFV.", "DBM.", "FLU.", "HEX.", 
+                            "ILP.", "NAG.", "OPT.", "OUT.", "PAC.", "THF."]
+        
+        # Build filters
+        # Note that each filter is a condition of the form:
+        # [fieldname, operator, value]
+        # or [doctype, fieldname, operator, value]
+        filters = [
+            ["item_group", "not in", ["Plug", "Valve Seat"]],
+            ["disabled", "=", 0],
+        ]
+        
+        # Append "not like" filters for each prefix
+        for prefix in excluded_prefixes:
+            filters.append(["item_code", "not like", f"{prefix}%"])
+
+        item_names = frappe.get_list(
+            "Item",
+            filters=filters,
+            fields=['name']  # Only return the 'name' field
+        )
+        
+        # 2. Iterate over each Item
+        for item_name in item_names:
+            item_doc = frappe.get_doc("Item", item_name)
+            
+            # 3. Clear the drawing_item child table.
+            #    If your child table field name differs, use the correct field name instead.
+            if item_doc.drawing_item:
+                item_doc.drawing_item = []
+            # 4. Save changes. If permissions are restrictive, consider ignore_permissions=True
+            try:
+                item_doc.save(ignore_permissions=True)
+                frappe.db.commit()
+            except frappe.ValidationError as ee:
+                frappe.log_error(
+                    title=f"Drawing Error: {str(ee)}",
+                    message=frappe.get_traceback()
+                )
+
+    except frappe.DoesNotExistError as dne:
+        # Handles the case if "Item" DocType or certain records unexpectedly don't exist
+        frappe.log_error(
+            message=f"Record not found error: {str(dne)}",
+            title="Clearing Drawing Items - DoesNotExistError"
+        )
+        # Raise, handle, or pass based on desired behavior.
+        raise
+    
+    except Exception as e:
+        # Catches any other exceptions that may occur
+        frappe.log_error(
+            message=f"An error occurred while clearing drawing items: {str(e)}",
+            title="Clearing Drawing Items - Exception"
+        )
+        # Re-raise the exception or handle it gracefully here
+        raise
+    
+    except frappe.ValidationError as ee:
+        # If any step failed, roll back to the savepoint
+        #frappe.db.rollback(save_point="before_bom_refactor")
+        frappe.log_error(
+            title=f"Drawing Error: {str(ee)}",
+            message=frappe.get_traceback()
+        )
+        # Move to the next BOM
+        raise    
+    
+    return None
