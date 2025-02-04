@@ -5,7 +5,6 @@ from frappe import ValidationError
 @frappe.whitelist()
 def execute_db_update_enqueue():
     frappe.enqueue("amf.amf.utils.bom_mgt.refactor_boms", queue='long', timeout=15000)
-    frappe.enqueue("amf.amf.utils.bom_mgt.delete_inactive_boms", queue='long', timeout=15000)
     return None
 
 def execute_db_update():
@@ -52,7 +51,7 @@ def refactor_boms():
             continue
 
         # Start a transaction savepoint for each BOM
-        frappe.db.savepoint("before_bom_refactor")
+        #frappe.db.savepoint("before_bom_refactor")
 
         try:
             old_bom_doc = frappe.get_doc("BOM", bom_info["name"])
@@ -102,13 +101,17 @@ def refactor_boms():
 
         except ValidationError:
             # If any step failed, roll back to the savepoint
-            frappe.db.rollback(save_point="before_bom_refactor")
+            #frappe.db.rollback(save_point="before_bom_refactor")
             frappe.log_error(
                 title="BOM Refactor Error",
                 message=frappe.get_traceback()
             )
             # Move to the next BOM
             continue
+    
+    # Last Checkpoint: Delete Inactive BOMs
+    delete_inactive_boms()
+    return None
         
 def delete_inactive_boms():
     """
@@ -123,7 +126,7 @@ def delete_inactive_boms():
 
     for bom_info in inactive_boms:
         # Start a transaction savepoint for each BOM
-        frappe.db.savepoint("before_bom_delete")
+        #frappe.db.savepoint("before_bom_delete")
 
         try:
             bom_doc = frappe.get_doc("BOM", bom_info["name"])
@@ -138,7 +141,7 @@ def delete_inactive_boms():
             frappe.db.commit()
 
         except ValidationError:
-            frappe.db.rollback(save_point="before_bom_delete")
+            #frappe.db.rollback(save_point="before_bom_delete")
             frappe.log_error(
                 title="Could Not Delete Inactive BOM",
                 message=frappe.get_traceback()
