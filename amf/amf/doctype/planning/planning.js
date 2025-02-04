@@ -34,6 +34,10 @@ frappe.ui.form.on('Planning', {
         createWorkOrder(frm);
     },
 
+    after_submit: function (frm) {
+        
+    },
+
     item_code: function (frm) {
         if (frm.doc.item_code) {
             // Fetch the item_name for the selected item_code
@@ -116,6 +120,7 @@ function createWorkOrder(frm) {
                 frm.set_value('work_order', response.message.work_order);
                 frm.set_value('stock_entry', response.message.stock_entry);
                 frm.set_value('batch', response.message.batch);
+                frm.set_df_property(frm.doc.work_order, "read_only", 1);
                 frappe.msgprint({
                     title: __('Planning confirmé'),
                     indicator: 'green',
@@ -128,7 +133,6 @@ function createWorkOrder(frm) {
                 frappe.validated = false;
                 console.error('Failed to create work order');
                 alert('Failed to create work order. Error: ' + (response.message ? response.message : 'Unknown error'));
-
             }
         }
     });
