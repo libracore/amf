@@ -82,7 +82,6 @@ doc_events = {
     "Serial No": {
         "after_insert": [
             "amf.amf.utils.custom.qrcode_serial_no",
-            "amf.amf.utils.sticker_serial.print_sticker",
         ]
         
     },
