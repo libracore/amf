@@ -53,6 +53,8 @@ doc_events = {
             "amf.amf.utils.on_work_order_submit.on_submit_wo",
         ]
     },
+    "Sales Order": {
+    },
     "Job Card": {
         "on_submit": "amf.amf.utils.custom.qr_code_to_document"
     },
@@ -78,7 +80,10 @@ doc_events = {
         "before_save": "amf.amf.utils.delivery_note_api.before_save_dn"
     },
     "Serial No": {
-        "after_insert": "amf.amf.utils.custom.qrcode_serial_no"
+        "after_insert": [
+            "amf.amf.utils.custom.qrcode_serial_no",
+        ]
+        
     },
     "Contact": {
         "autoname": "amf.master_crm.naming.contact_autoname",
@@ -98,8 +103,8 @@ scheduler_events = {
         "amf.amf.utils.item_image.update_item_images",
         "amf.amf.utils.capacity.update_capacity_utilization_rate",
         "amf.www.tracking.fetch_and_display_tracking_info_enqueue",
-        "amf.amf.utils.item_master3.update_bom_list_enqueue",
         "amf.master_crm.doctype.gravity_forms.gravity_forms.daily_sync",
+        "amf.amf.utils.bom_mgt.execute_scheduled",
         "amf.amf.utils.work_order_creation.create_work_orders_based_on_reorder_levels",
     ]
     # "hourly": ["amf.amf.utils.document_notification.update_purchase_orders"],

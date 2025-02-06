@@ -1,6 +1,7 @@
 import frappe
 from frappe import _
 from frappe import ValidationError
+from frappe.utils import flt, now_datetime, add_days
 
 @frappe.whitelist()
 def execute_db_update_enqueue():
@@ -149,3 +150,160 @@ def delete_inactive_boms():
             continue
 
     return None
+
+"""
+##################################################################
+CLEAN AUTO ITEM DOCTYPE. UPDATE DEFAULT_BOM, BOM TABLE, BOM COSTS.
+##################################################################
+"""
+@frappe.whitelist()
+def execute_db_enqueue():
+    """
+    This can be called manually to enqueue the full update of all items.
+    """
+    frappe.enqueue("amf.amf.utils.bom_mgt.execute_all_items", queue='long', timeout=15000)
+    return
+
+def execute_all_items():
+    """
+    Run the full update for every enabled Item, clearing BOM fields
+    and then pulling data from the default BOM.
+    """
+    items = frappe.get_all("Item", filters={"disabled": 0}, fields=["name"])
+    for item_data in items:
+        item_name = item_data["name"]
+        update_item_from_default_bom(item_name)
+
+@frappe.whitelist()
+def execute_scheduled():
+    """
+    This is called by the daily scheduler event to update only Items
+    whose default BOMs have changed in the last 24 hours.
+    """
+    # 1) Get the cutoff date/time (24h ago).
+    cutoff = add_days(now_datetime(), -1)
+    # 2) Identify default BOMs that were modified after the cutoff.
+    #    You might adjust the timeframe or add further logic if needed.
+    #    docstatus=1 => only submitted BOMs
+    active_boms_modified = frappe.get_all(
+        "BOM",
+        filters={
+            "is_active": 1,
+            "docstatus": 1,
+            "modified": [">=", cutoff],
+        },
+        fields=["name", "item"]
+    )
+
+    # 3) For each such BOM, update its associated Item if not disabled
+    for row in active_boms_modified:
+        bom_name = row["name"]
+        item_name = row["item"]
+
+        # Skip if Item is disabled
+        if frappe.db.get_value("Item", item_name, "disabled") == 1:
+            continue
+
+        update_item_from_default_bom(item_name)
+
+
+def update_item_from_default_bom(item_name):
+    """
+    Core logic:
+      1. Clears the item_default_bom, bom_table, and bom_cost fields.
+      2. Fetches the default BOM for the given Item (if any).
+      3. Copies BOM details and cost back into the Item.
+      4. Saves the Item.
+    """
+
+    # Fetch the Item doc
+    try:
+        item_doc = frappe.get_doc("Item", item_name)
+    except frappe.DoesNotExistError:
+        frappe.log_error(
+            title="Item Not Found",
+            message=f"Unable to find Item {item_name}"
+        )
+        return
+
+    # Clear fields
+    item_doc.item_default_bom = None
+    item_doc.bom_table = []
+    item_doc.bom_cost = 0.0  # or None, if your field type allows
+
+    # Find the default BOM for this item
+    # (Make sure docstatus=1 and is_default=1 in your BOM if that’s your definition of “default BOM”.)
+    bom_name = frappe.db.get_value(
+        "BOM",
+        {
+            "item": item_name,
+            "is_default": 1,
+            "docstatus": 1
+        },
+        "name"
+    )
+    if not bom_name:
+        # No default BOM => just save cleared fields
+        item_doc.save()
+        frappe.db.commit()
+        return
+
+    # Load the BOM document
+    try:
+        bom_doc = frappe.get_doc("BOM", bom_name)
+    except frappe.DoesNotExistError:
+        frappe.log_error(
+            title="BOM Not Found",
+            message=f"Unable to find BOM {bom_name} for Item {item_name}"
+        )
+        item_doc.save()
+        frappe.db.commit()
+        return
+
+    # Assign default BOM link
+    item_doc.item_default_bom = bom_doc.name
+
+    # For each BOM item, copy relevant fields to the item’s bom_table
+    for bom_item in bom_doc.items:
+        if frappe.db.get_value("Item", bom_item.item_code, "disabled"):  
+                # Option A: Skip adding this disabled item
+                # Could also log something, e.g.:
+                print(f"Skipping disabled item '{bom_item.item_code}' in BOM '{bom_doc.name}'")
+                continue
+        # Example: fetch the Bin qty in a specific warehouse
+        bin_qty = frappe.db.get_value(
+            "Bin",
+            {"item_code": bom_item.item_code, "warehouse": "Main Stock - AMF21"},
+            "actual_qty"
+        ) or 0
+        bom_default = frappe.db.get_value(
+            "BOM",
+            {"item": bom_item.item_code, "is_default": 1},
+            "name"
+        ) or ""
+
+        child_row = item_doc.append("bom_table", {})
+        child_row.item_code       = bom_item.item_code
+        child_row.item_name       = bom_item.item_name
+        child_row.source_warehouse= "Main Stock - AMF21"
+        child_row.qty             = bom_item.qty
+        child_row.uom             = bom_item.uom
+        child_row.description     = bom_item.description
+        child_row.rate            = bom_item.rate
+        child_row.stock_qty       = bin_qty
+        child_row.bom_no          = bom_default
+        # ... copy any other fields relevant for your process ...
+
+    # Set the cost
+    item_doc.bom_cost = flt(bom_doc.total_cost) or ""
+
+    # Save
+    try:
+        item_doc.save()
+        frappe.db.commit()
+    except frappe.ValidationError as e:
+        frappe.log_error(
+            title="BOM Not Saved",
+            message=f"Unable to save BOM {bom_name} for Item {item_name}: {e}"
+        )
+        return
