@@ -271,3 +271,61 @@ def delete_items_asm():
     except Exception as e:
         frappe.db.rollback()
         print(f"An error occurred: {e}")
+        
+
+@frappe.whitelist()
+def execute_db_enqueue():
+    """
+    This can be called manually to enqueue the full update of all items.
+    """
+    frappe.enqueue("amf.amf.utils.item_master.update_item_defaults", queue='long', timeout=15000)
+    return
+
+def update_item_defaults():
+    mapping = {
+        "30_%": ("4003 - Cost of material: RVM rotary valve - AMF21", "3003 - RVM sales revenue - AMF21"),
+        "41_%": ("4003 - Cost of material: RVM rotary valve - AMF21", "3003 - RVM sales revenue - AMF21"),
+        "42_%": ("4003 - Cost of material: RVM rotary valve - AMF21", "3003 - RVM sales revenue - AMF21"),
+        "43_%": ("4003 - Cost of material: RVM rotary valve - AMF21", "3003 - RVM sales revenue - AMF21"),
+        "44_%": ("4003 - Cost of material: RVM rotary valve - AMF21", "3003 - RVM sales revenue - AMF21"),
+        "45_%": ("4002 - Cost of material: SPM - AMF21", "3002 - SPM sales revenue - AMF21"),
+        "46_%": ("4002 - Cost of material: SPM - AMF21", "3002 - SPM sales revenue - AMF21"),
+        "47_%": ("4001 - Cost of material: LSP - AMF21", "3001 - LSP sales revenue - AMF21"),
+        "51_%": ("4002 - Cost of material: SPM - AMF21", "3002 - SPM sales revenue - AMF21"),
+        "51001_%": ("4001 - Cost of material: LSP - AMF21", "3001 - LSP sales revenue - AMF21"),
+        "52_%": ("4003 - Cost of material: RVM rotary valve - AMF21", "3003 - RVM sales revenue - AMF21"),
+        "UFM": ("4000 - Cost of material: UFM - AMF21", "3000 - UFM sales revenue - AMF21"),
+    }
+    
+    for item_code_pattern, accounts in mapping.items():
+        item_list = frappe.get_all("Item", "name", filters={"item_code": ["like", item_code_pattern]})
+        
+        for item_code in item_list:
+            item_doc = frappe.get_doc("Item", item_code)
+            
+            # Clear existing item_defaults table
+            item_doc.set("item_defaults", [])            
+            
+            # Add new records to item_defaults
+            if isinstance(accounts, list):
+                for expense_account, income_account in accounts:
+                    item_doc.append("item_defaults", {
+                        "company": "Advanced Microfluidics SA",
+                        "default_warehouse": "Main Stock - AMF21",
+                        "expense_account": expense_account,
+                        "income_account": income_account
+                    })
+            else:
+                expense_account, income_account = accounts
+                item_doc.append("item_defaults", {
+                    "company": "Advanced Microfluidics SA",
+                    "default_warehouse": "Main Stock - AMF21",
+                    "expense_account": expense_account,
+                    "income_account": income_account
+                })
+            
+            # Save document
+            item_doc.save()
+            frappe.db.commit()
+            
+            print(f"Updated item: {item_code}")
