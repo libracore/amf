@@ -110,7 +110,6 @@ def attach_qr_code_to_document(doc, method):
 def qr_code_to_document(doc, method=None):
     # Form the URL as specified
     data = frappe.utils.get_url_to_form(doc.doctype, doc.name)
-    print("data: ", data)
     
     # Generate the QR code image as a base64 string
     img_base64 = generate_qr_code(data)
@@ -123,9 +122,11 @@ def qr_code_to_document(doc, method=None):
     
     # Create and attach the file to the document
     file_url = save_file(file_name, img_data, doc.doctype, doc.name, is_private=1).file_url
-    print("file_url: ", file_url)
+
     # Optionally update a field in the document with the URL of the attached image
     doc.db_set('qrcode', file_url)
+    
+    return None
 
 @frappe.whitelist()
 def generate_qr_for_submitted(doctype=None):
@@ -381,9 +382,9 @@ def generate_data_matrix(data, size='26x26'):
 
 def qrcode_serial_no(doc, method=None):
     data = doc.name
+    
     if doc.item_code == "522100":
         data = "BA" + data[-6:]
-    print("data: ", data)
     
     # Generate the Data Matrix image as a base64 string with a higher resolution Data Matrix
     img_base64 = generate_data_matrix(data, size='26x26')
