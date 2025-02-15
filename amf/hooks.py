@@ -50,13 +50,7 @@ doc_events = {
     "Work Order": {
         "on_submit": [
             "amf.amf.utils.custom.qr_code_to_document",
-            "amf.amf.utils.on_work_order_submit.on_submit_wo",
         ]
-    },
-    "Sales Order": {
-    },
-    "Job Card": {
-        "on_submit": "amf.amf.utils.custom.qr_code_to_document"
     },
     "Lead": {
         "after_insert": [
@@ -70,9 +64,6 @@ doc_events = {
     "Stock Entry": {
         "on_submit": "amf.amf.utils.custom.qr_code_to_document"
     },
-    "Production Order": {
-        "before_submit": "amf.amf.utils.custom.attach_qr_code_to_document"
-    },
     "Batch": {
         "after_insert": "amf.amf.utils.barcode.after_insert_handler"
     },
@@ -83,7 +74,6 @@ doc_events = {
         "after_insert": [
             "amf.amf.utils.custom.qrcode_serial_no",
         ]
-        
     },
     "Contact": {
         "autoname": "amf.master_crm.naming.contact_autoname",
