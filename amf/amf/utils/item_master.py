@@ -329,3 +329,71 @@ def update_item_defaults():
             frappe.db.commit()
             
             print(f"Updated item: {item_code}")
+
+
+@frappe.whitelist()
+def execute_db_enqueue_delete():
+    """
+    This can be called manually to enqueue the full update of all items.
+    """
+    frappe.enqueue("amf.amf.utils.item_master.delete_disabled_items_with_bom", queue='long', timeout=15000)
+    return
+
+def delete_disabled_items_with_bom():
+    # Get a direct list of item names (strings) whose item_code starts with '45_' and are disabled
+    items_data = frappe.db.sql(
+        """
+        SELECT name
+        FROM `tabItem`
+        WHERE item_code LIKE '45_%'
+          AND disabled = 1
+        """,
+        as_list=True
+    )
+    # items_data is a list of lists (e.g. [["ITEM-001"], ["ITEM-002"], ...])
+    # so we flatten it to a list of strings:
+    items = [row[0] for row in items_data]
+
+    for item_name in items:
+        try:
+            # For each Item, get BOMs as a direct list
+            boms_data = frappe.db.sql(
+                """
+                SELECT name
+                FROM `tabBOM`
+                WHERE item = %s
+                """,
+                (item_name,),
+                as_list=True
+            )
+            boms = [row[0] for row in boms_data]
+
+            for bom_name in boms:
+                try:
+                    bom_doc = frappe.get_doc("BOM", bom_name)
+                    # If docstatus=1, cancel it before deletion
+                    if bom_doc.docstatus == 1:
+                        bom_doc.cancel()
+                    frappe.delete_doc("BOM", bom_name)
+                except Exception as e:
+                    frappe.log_error(
+                        title=f"Error processing BOM '{bom_name}'",
+                        message=f"Exception: {str(e)}"
+                    )
+
+            try:
+                frappe.delete_doc("Item", item_name)
+            except Exception as e:
+                frappe.log_error(
+                    title=f"Error deleting Item '{item_name}'",
+                    message=f"Exception: {str(e)}"
+                )
+
+        except Exception as e:
+            frappe.log_error(
+                title=f"Error during item iteration for '{item_name}'",
+                message=f"Exception: {str(e)}"
+            )
+
+    frappe.db.commit()
+    print(f"Completed processing. Attempted to delete {len(items)} items and their associated BOMs.")
