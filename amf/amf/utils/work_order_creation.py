@@ -319,6 +319,8 @@ def create_work_orders_based_on_reorder_levels():
             required_qty = reorder_level - current_stock
             if TEST_MODE: print("required_qty:",required_qty)
             process_bom_and_create_work_orders(item["name"], required_qty)
+        else:
+            delete_draft_wo(item["name"])
 
 def get_stock_balance(item_code, warehouse=("Main Stock - AMF21", "Assemblies - AMF21")):
     """Get current stock balance for an item in a specific warehouse."""
@@ -391,6 +393,28 @@ def process_bom_and_create_work_orders(item_code, required_qty, parent_work_orde
     #     has_bom = frappe.get_value("Item", sub_item_code, "has_bom")
     #     if has_bom:
     #         process_bom_and_create_work_orders(sub_item_code, sub_item_qty, work_order.name)
+    return None
+
+def delete_draft_wo(item_code):
+    """
+    Find and delete all 'Draft' Work Orders whose production_item matches the given item_code.
+    """
+    # Retrieve all draft Work Orders for the item_code
+    draft_wos = frappe.get_all(
+        "Work Order",
+        filters={
+            "production_item": item_code,
+            "docstatus": 0  # draft
+        },
+        fields=["name"]
+    )
+
+    # Delete each draft Work Order
+    for wo in draft_wos:
+        print("deleting",wo.name,"for item",item_code)
+        frappe.delete_doc("Work Order", wo.name, force=1)
+        frappe.db.commit()  # Commit after each deletion if needed
+
     return None
 
 def get_exploded_items(bom_name):
