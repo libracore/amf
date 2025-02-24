@@ -59,10 +59,10 @@ doc_events = {
         ]
     },
     "Stock Entry": {
-        "on_submit": [
-            "amf.www.fftest.update_rate_and_availability_ste",
-            "amf.amf.utils.custom.qr_code_to_document"
-        ]
+        "before_submit": "amf.www.fftest.update_rate_and_availability_ste"
+    },
+    "Stock Entry": {
+        "on_submit": "amf.amf.utils.custom.qr_code_to_document"
     },
     "Batch": {
         "after_insert": "amf.amf.utils.barcode.after_insert_handler"
