@@ -370,13 +370,28 @@ def process_bom_and_create_work_orders(item_code, required_qty, parent_work_orde
             priority = 6
         else:
             priority = 5
+            
+        # Fetch the drawing value from the drawing_item child table
+        drawing = frappe.db.get_value(
+            "Drawing Item",
+            {
+                "parent": item_code,  # Link to the Item doctype
+                "is_default": 1,
+                "is_active": 1
+            },
+            "drawing"
+        )
+        
         work_order = frappe.get_doc({
             "doctype": "Work Order",
             "production_item": item_code,
             "qty": int(required_qty * 1.2),
             "bom_no": bom,
             "parent_work_order": parent_work_order,
-            "priority": priority
+            "priority": priority,
+            "progress": "En Attente",
+            "machine": "CMZ" if item_code.startswith("20") else "EMCO" if item_code.startswith("10") else None,
+            "drawing": drawing
         })
         work_order.insert()
         frappe.db.commit()  # Commit the transaction if you're running this in a script

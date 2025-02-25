@@ -96,7 +96,7 @@ def get_last_item_code(code_body=None):
         if code_body:
             last_digits = item_code[-2:]  # Take the last two characters
         else:
-            last_digits = item_code[-3:]
+            last_digits = item_code[-4:]
         
         # Check if the last two characters are numeric
         if last_digits.isdigit():
