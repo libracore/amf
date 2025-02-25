@@ -34,13 +34,16 @@ doctype_js = {
     "Quotation": "public/js/quotation.js",
     "Sales Order": "public/js/sales_order.js",
     "Delivery Note": "public/js/delivery_note.js",
-    "Campaign": "public/js/campaign.js"
+    "Campaign": "public/js/campaign.js",
+    "Item": "public/js/item.js",
+    "Work Order": "public/js/work_order.js",
 }
 
 # Include js in doctype list views
 doctype_list_js = {
-    "Item": ["public/js/list/item_list.js"],
-    "Contact": "public/js/list/contact_list.js"
+    "Item": "public/js/list/item_list.js",
+    "Contact": "public/js/list/contact_list.js",
+    "Work Order": "public/js/list/work_order_list.js",
 }
 
 # Document Events

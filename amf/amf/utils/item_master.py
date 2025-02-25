@@ -1,5 +1,6 @@
 import re
 import time
+from amf.amf.doctype.item_creation.item_creation import get_last_item_code
 import frappe
 
 def fetch_items(item_group, disabled=False):
@@ -397,3 +398,121 @@ def delete_disabled_items_with_bom():
 
     frappe.db.commit()
     print(f"Completed processing. Attempted to delete {len(items)} items and their associated BOMs.")
+
+@frappe.whitelist()
+def get_max_six_digit_item_code(item_group, item_type):
+    """
+    Determine the next 6-digit code for the given item_group and item_type.
+
+    Logic:
+      1. If item_group is one of [Plug, Valve Seat, Valve Head], build a 6-digit code:
+         - Digit #1: '1' for Plug, '2' for Valve Seat, '3' for Valve Head
+         - Digit #2: 
+              * '0' if (Plug or Valve Seat) + item_type=component
+              * '1' if (Plug or Valve Seat) + item_type=sub-assembly
+              * '2' if (Plug or Valve Seat) + item_type=finished good
+              * '0' for Valve Head (no item_type logic)
+         - Digits #3-#6: the next 4-digit sequence, found by get_last_item_code(None) + 1
+           (zero-padded to 4 digits).
+      2. Otherwise, use the "normal" approach (see get_normal_six_digit_code), which:
+         - Derives a second digit from item_type (component→0, sub-assembly→1, finished good→2, else 0)
+         - Looks up the highest 6-digit code matching ^[0-9]{second_digit}[0-9]{4}$
+         - Returns the next code zero-padded to 6 digits.
+    """
+    # Safety check
+    if not item_group:
+        # Return a fallback if no group
+        return "000000"
+
+    # Define your "special" groups
+    special_groups = ['Plug', 'Valve Seat', 'Valve Head', 'Product']
+
+    # If not a special group => do normal logic
+    if item_group not in special_groups:
+        return get_normal_six_digit_code(item_group, item_type)
+
+    # -----------------------------------------------------
+    # Special group => gather the "last item code" baseline
+    # -----------------------------------------------------
+    # get_last_item_code(None) is assumed to return an integer
+    # representing the highest found so far; handle accordingly.
+    current_last = get_last_item_code(None) or 0  # ensure integer fallback
+    next_val = current_last + 1
+    last_four = str(next_val).zfill(4)  # e.g. '0007'
+
+    # 1) Determine the first digit (group-based)
+    group_digit_map = {
+        'Plug': '1',
+        'Valve Seat': '2',
+        'Valve Head': '3',
+        'Product': '4',
+    }
+    first_digit = group_digit_map.get(item_group, '0')
+
+    # 2) Determine the second digit
+    #    Only matters for Plug or Valve Seat. Otherwise, e.g. Valve Head => '0'.
+    if item_group in ['Plug', 'Valve Seat']:
+        item_type_lower = (item_type or '').strip().lower()
+        if item_type_lower == 'component':
+            second_digit = '0'
+        elif item_type_lower == 'sub-assembly':
+            second_digit = '1'
+        elif item_type_lower == 'finished good':
+            second_digit = '2'
+        else:
+            # Fallback if item_type is something else
+            second_digit = '0'
+    elif item_group in ['Product']:
+        second_digit = 'X'
+    else:
+        # For Valve Head => '0'
+        second_digit = '0'
+
+    # 3) Construct the final 6-digit code
+    #    Example: '10' + '0015' => '100015'
+    final_code = f"{first_digit}{second_digit}{last_four}"
+    return final_code
+
+
+def get_normal_six_digit_code(item_group, item_type):
+    """
+    Fallback logic for non-special groups:
+      - Derive second digit from item_type (component=0, sub-assembly=1, finished good=2, else 0).
+      - Find the max code matching ^[0-9]{second_digit}[0-9]{4}$ in the same item_group.
+      - Return next 6-digit code.
+    """
+    if not item_group:
+        return "000000"
+
+    # Determine second digit from item_type
+    item_type_lower = (item_type or '').strip().lower()
+    if item_type_lower == 'component':
+        second_digit = '0'
+    elif item_type_lower == 'sub-assembly':
+        second_digit = '1'
+    elif item_type_lower == 'finished good':
+        second_digit = '2'
+    else:
+        second_digit = '0'
+
+    # Create a pattern that enforces:
+    #  1st digit is [0-9], 
+    #  2nd digit is second_digit, 
+    #  next 4 digits are [0-9].
+    pattern = f'^[0-9]{second_digit}[0-9]{{4}}$'
+
+    result = frappe.db.sql(
+        """
+        SELECT MAX(CAST(item_code AS UNSIGNED)) AS max_code
+        FROM `tabItem`
+        WHERE item_group = %s
+          AND disabled = 0
+          AND item_code REGEXP %s
+        """,
+        (item_group, pattern),
+        as_dict=True
+    )
+
+    max_code = result[0]["max_code"] if result and result[0].get("max_code") else 0
+    next_code = max_code + 1
+    return str(next_code).zfill(6)
