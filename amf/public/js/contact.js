@@ -16,6 +16,10 @@ cur_frm.dashboard.add_transactions([
     {
         'label': __("Complaints"),
         'items': ["Issue"]
+    },
+    {
+        'label': __("Customer Satisfaction"),
+        'items': ["Customer Satisfaction Survey"]
     }
 ]);
 

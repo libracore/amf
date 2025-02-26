@@ -112,5 +112,17 @@ def get_data():
                         "description": _("Gravity Forms")
                     }
             ]
+        },
+        {
+            "label": _("Customer Satisfaction"),
+            "icon": "octicon octicon-git-compare",
+            "items": [
+                    {
+                        "type": "doctype",
+                        "name": "Customer Satisfaction Survey",
+                        "label": _("Customer Satisfaction Survey"),
+                        "description": _("Customer Satisfaction Survey")
+                    },
+            ]
         }
 ]

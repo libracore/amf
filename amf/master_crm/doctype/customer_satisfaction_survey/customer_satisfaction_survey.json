@@ -1,0 +1,103 @@
+{
+ "allow_import": 1,
+ "allow_rename": 1,
+ "creation": "2025-02-26 15:15:31.788586",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "date_interaction",
+  "type_interaction",
+  "type_interaction_other",
+  "customer",
+  "contact_person",
+  "owner",
+  "department",
+  "department_other",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "date_interaction",
+   "fieldtype": "Date",
+   "label": "Date Interaction"
+  },
+  {
+   "fieldname": "type_interaction",
+   "fieldtype": "Select",
+   "label": "Type Interaction",
+   "options": "\nCall\nEmail\nVisit\nCongress / Trade Show\nOther"
+  },
+  {
+   "fieldname": "type_interaction_other",
+   "fieldtype": "Data",
+   "label": "Type Interaction Other"
+  },
+  {
+   "fieldname": "owner",
+   "fieldtype": "Link",
+   "label": "Owner",
+   "options": "User"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Select",
+   "label": "Department",
+   "options": "\nSales\nMarketing\nR&D\nOperations\nAdministration\nOther"
+  },
+  {
+   "fieldname": "department_other",
+   "fieldtype": "Data",
+   "label": "Department Other"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Customer Satisfaction Survey",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "contact_person",
+   "fieldtype": "Link",
+   "label": "Contact",
+   "options": "Contact"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Organization",
+   "options": "Customer"
+  }
+ ],
+ "is_submittable": 1,
+ "modified": "2025-02-26 15:36:33.647585",
+ "modified_by": "Administrator",
+ "module": "Master CRM",
+ "name": "Customer Satisfaction Survey",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "set_user_permissions": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
