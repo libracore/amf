@@ -50,6 +50,55 @@ def get_rawmat_items(item_code):
         }
 
 @frappe.whitelist()
+def get_rawmat_items_(item_code):
+    """
+    Given an item_code, fetch its tag_raw_mat. Then find all items within
+    the 'Raw Materials' item group sharing that same tag_raw_mat and return
+    them as a list of item names.
+    """
+    if not item_code:
+        return {"items": []}
+    
+    # Fetch the tag_raw_mat from the provided item_code
+    tag_raw_mat = frappe.db.get_value("Item", item_code, "tag_raw_mat")
+    if not tag_raw_mat:
+        # If the original item does not have a tag_raw_mat, return an empty list
+        return {"items": []}
+    
+    # Find all items from the "Raw Materials" item group that share the same tag_raw_mat
+    raw_materials = frappe.get_list(
+        "Item",
+        {
+            "item_group": "Raw Material",
+            "tag_raw_mat": tag_raw_mat
+        },
+        ['name', 'item_name']
+    )
+    # Return the list of matching items
+    return {"items": raw_materials}
+
+@frappe.whitelist()
+def get_enabled_batches(item_code):
+    """
+    Return a list of batch names for the given item_code (Item.name)
+    where 'disabled' is unchecked.
+    """
+    if not item_code:
+        return {"batches": []}
+
+    # Retrieve all batches for this item where 'disabled' = 0
+    batch_list = frappe.get_list(
+        "Batch",
+        {
+            "item": item_code,  # match with 'Batch.item'
+            "disabled": 0
+        },
+        'name'
+    )
+    print(batch_list)
+    return {"batches": batch_list}
+
+@frappe.whitelist()
 def create_work_order(form_data: str, wo=None) -> dict:
     """
     Create a Work Order and manage the stock entries.
@@ -106,6 +155,7 @@ def create_work_order(form_data: str, wo=None) -> dict:
             work_order.simple_description = data['remarque_assemblage']
             work_order.label = data['suivi_usinage']
             work_order.bom_no = matched_bom_no
+            work_order.progress = 'QC'
             # ... set other fields as needed ...
 
             # 3. Optionally, pull some info directly from 'data' if relevant
@@ -187,7 +237,8 @@ def _create_work_order_doc(data: dict, bom_no: str) -> Document:
         'setup_time': data['temps_de_reglage_hr'],
         'production_comments': data['remarque_usinage'],
         'simple_description': data['remarque_assemblage'],
-        'label': data['suivi_usinage']
+        'label': data['suivi_usinage'],
+        'progress': 'QC'
     })
 
 
@@ -248,7 +299,7 @@ def _create_stock_entry(work_order, purpose, qty, scrap, from_bom, ft_stock_entr
     if purpose == "Material Transfer":
         _set_material_transfer_data(stock_entry, scrap, ft_stock_entry)
     else:
-        _set_manufacture_data(stock_entry, qty, scrap, from_bom)
+        _set_manufacture_data(stock_entry, qty, scrap, from_bom, work_order.raw_material_batch)
 
     stock_entry.set_stock_entry_type()
     stock_entry.get_stock_and_rate()
@@ -272,7 +323,7 @@ def _set_material_transfer_data(stock_entry, scrap, ft_stock_entry):
     stock_entry.append('items', item)
 
 
-def _set_manufacture_data(stock_entry, qty, scrap, from_bom):
+def _set_manufacture_data(stock_entry, qty, scrap, from_bom, batch_no=None):
     """Helper function to set data for manufacture stock entry."""
     stock_entry.fg_completed_qty = qty + scrap
     stock_entry.from_warehouse = 'Main Stock - AMF21' if qty else 'Quality Control - AMF21'
@@ -285,6 +336,10 @@ def _set_manufacture_data(stock_entry, qty, scrap, from_bom):
         item.s_warehouse = 'Main Stock - AMF21' if qty else 'Quality Control - AMF21'
         # 't_warehouse' is the warehouse into which the item is placed
         item.t_warehouse = 'Quality Control - AMF21' if qty else 'Scrap - AMF21'
+        
+        if item.item_group == "Raw Material":
+            item.auto_batch_no_generation = 0
+            item.batch_no = batch_no
 
 
 def create_batch_if_manufacture(stock_entry):

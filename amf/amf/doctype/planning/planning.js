@@ -19,6 +19,11 @@ frappe.ui.form.on('Planning', {
             frm.set_value('entreprise', 'Advanced Microfluidics SA');
             frm.set_value('stock_entry', null);
             frm.set_value('batch', null);
+            frm.set_value('item_code', '');
+            frm.set_value('work_order', '');
+            frm.set_df_property('matiere', 'read_only', 0)
+            frm.set_df_property('matiere', 'options', '');
+            frm.set_value('batch_matiere', '');
             frappe.call({
                 method: "amf.amf.doctype.planning.planning.get_next_suivi_usinage",
                 callback: function(r) {
@@ -50,6 +55,24 @@ frappe.ui.form.on('Planning', {
             });
         }
         fetchMaterials(frm);
+    },
+
+    // Trigger batch fetch when the user picks a matiere
+    matiere: function(frm) {
+        frm.set_value('batch_matiere', '')
+        frm.refresh_field('batch_matiere');
+        if (frm.doc.matiere) {
+            // frm.doc.matiere now holds the raw material's "name" (internal code),
+            // so we can fetch enabled batches
+            frm.set_query("batch_matiere", function() {
+                return {
+                    filters: {
+                        "item": frm.doc.matiere,  // or whichever field you want to match
+                        "disabled": 0
+                    }
+                };
+            });
+        }
     },
 
     suivi_usinage: function (frm) {
@@ -88,17 +111,34 @@ function set_item_queries(frm) {
 }
 
 function fetchMaterials(frm) {
+    frm.set_df_property('matiere', 'options', '');
+    frm.refresh_field('matiere');
+    frm.set_value('batch_matiere', '')
+    frm.refresh_field('batch_matiere');
     // Fetch the raw materials associated with the item_code
     frappe.call({
-        method: 'amf.amf.doctype.planning.planning.get_rawmat_items',
+        method: 'amf.amf.doctype.planning.planning.get_rawmat_items_',
         args: { 'item_code': frm.doc.item_code },
         callback: function (response) {
             if (response.message && response.message.items) {
+                console.log(response.message.items)
                 // Clear the current options of the 'matiere' field
-                frm.set_df_property('matiere', 'options', '');
-                frm.set_df_property('matiere', 'options', response.message.items.join('\n'));
+                // Build array of label/value pairs
+                const rawMaterialOptions = response.message.items.map(item => {
+                    return {
+                        label: item.item_name,  // what user sees
+                        value: item.name        // stored in frm.doc.matiere
+                    }
+                });
+
+                // Make sure 'matiere' is a Select-type field
+                frm.set_df_property('matiere', 'options', rawMaterialOptions);
                 frm.set_df_property('matiere', 'read_only', 0)
                 frm.refresh_field('matiere');
+
+                
+                // frm.set_df_property('matiere', 'options', response.message.items.join('\n'));
+                // frm.refresh_field('matiere');
             }
         }
     });
