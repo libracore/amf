@@ -249,10 +249,10 @@
    "fieldtype": "Column Break"
   },
   {
+   "depends_on": "eval:doc.item_code",
    "fieldname": "matiere",
    "fieldtype": "Select",
    "label": "Mati\u00e8re",
-   "read_only": 1,
    "reqd": 1
   },
   {
@@ -268,7 +268,7 @@
   }
  ],
  "is_submittable": 1,
- "modified": "2025-02-28 11:36:35.502169",
+ "modified": "2025-02-28 14:35:54.279440",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Planning",

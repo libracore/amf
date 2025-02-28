@@ -11,27 +11,11 @@ frappe.ui.form.on('Planning', {
         }
     },
 
-    onload: function (frm) {
-        if (frm.doc.__islocal) {
-            // Set the 'date_de_fin' field to the current date and time
-            frm.set_value('date_de_fin', frappe.datetime.now_datetime());
-            frm.set_value('responsable', frappe.session.user);
-            frm.set_value('entreprise', 'Advanced Microfluidics SA');
-            frm.set_value('stock_entry', null);
-            frm.set_value('batch', null);
-            frm.set_value('item_code', '');
-            frm.set_value('work_order', '');
-            frm.set_df_property('matiere', 'read_only', 0)
-            frm.set_df_property('matiere', 'options', '');
-            frm.set_value('batch_matiere', '');
-            frappe.call({
-                method: "amf.amf.doctype.planning.planning.get_next_suivi_usinage",
-                callback: function(r) {
-                    if (r && r.message) {
-                        frm.set_value("suivi_usinage", r.message);
-                    }
-                }
-            });
+    onload(frm) {
+        // Only set defaults if this is a brand new document (not saved yet)
+        if (frm.is_new()) {
+            set_default_values(frm);
+            fetch_suivi_usinage(frm);
         }
     },
 
@@ -81,6 +65,43 @@ frappe.ui.form.on('Planning', {
 
 });
 
+/**
+ * Sets default values for a new Planning form.
+ * @param {FrappeForm} frm - The form object.
+ */
+function set_default_values(frm) {
+    frm.set_value("date_de_fin", frappe.datetime.now_datetime());
+    frm.set_value("responsable", frappe.session.user);
+    frm.set_value("entreprise", "Advanced Microfluidics SA");
+    
+    // Set all these fields to null or empty as needed
+    const fieldsToClear = ["stock_entry", "batch", "item_code", "item_name", "work_order", "batch_matiere", "matiere", "dimension_matiere"];
+    fieldsToClear.forEach(field => frm.set_value(field, null));
+}
+
+/**
+ * Fetches the next 'suivi_usinage' from the server and sets it on the form.
+ * @param {FrappeForm} frm - The form object.
+ */
+function fetch_suivi_usinage(frm) {
+    frappe.call({
+        method: "amf.amf.doctype.planning.planning.get_next_suivi_usinage"
+    })
+    .then(r => {
+        if (r && r.message) {
+            frm.set_value("suivi_usinage", r.message);
+        }
+    })
+    .catch(err => {
+        frappe.msgprint({
+            title: __("Server Error"),
+            message: __("Unable to fetch the next 'suivi_usinage'. Please try again later."),
+            indicator: "red"
+        });
+        console.error("Error fetching suivi_usinage:", err);
+    });
+}
+
 function printSticker(frm) {
     const print_format = "Sticker_USI";
     const label_format = "Labels 62x100mm";
@@ -112,8 +133,8 @@ function set_item_queries(frm) {
 
 function fetchMaterials(frm) {
     frm.set_df_property('matiere', 'options', '');
-    frm.refresh_field('matiere');
     frm.set_value('batch_matiere', '')
+    frm.refresh_field('matiere');
     frm.refresh_field('batch_matiere');
     // Fetch the raw materials associated with the item_code
     frappe.call({
@@ -133,7 +154,6 @@ function fetchMaterials(frm) {
 
                 // Make sure 'matiere' is a Select-type field
                 frm.set_df_property('matiere', 'options', rawMaterialOptions);
-                frm.set_df_property('matiere', 'read_only', 0)
                 frm.refresh_field('matiere');
 
                 

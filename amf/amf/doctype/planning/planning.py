@@ -127,6 +127,7 @@ def create_work_order(form_data: str, wo=None) -> dict:
             work_order = _create_work_order_doc(data, matched_bom_no)
             work_order.insert()
             work_order.submit()
+            frappe.db.commit()
         else:
             # 1. Fetch the existing Work Order by name/ID
             work_order = frappe.get_doc("Work Order", wo)
@@ -166,6 +167,7 @@ def create_work_order(form_data: str, wo=None) -> dict:
             work_order.save()
             if work_order.docstatus == 0:
                 work_order.submit()
+                frappe.db.commit()
 
         # Create stock entries (manufacture and transfer if applicable)
         manufacture_entry, manufacture_batch = _create_manufacture_entry(work_order, data)
@@ -302,13 +304,18 @@ def _create_stock_entry(work_order, purpose, qty, scrap, from_bom, ft_stock_entr
         _set_manufacture_data(stock_entry, qty, scrap, from_bom, work_order.raw_material_batch)
 
     stock_entry.set_stock_entry_type()
-    stock_entry.get_stock_and_rate()
-
+    
     stock_entry.insert()
     batch_no = create_batch_if_manufacture(stock_entry) if qty else None
-
-    stock_entry.submit()
-    return stock_entry, batch_no
+    
+    stock_entry.get_stock_and_rate()
+        
+    try:
+        stock_entry.submit()
+        frappe.db.commit()
+        return stock_entry, batch_no
+    except Exception as e:
+        return {"success": False, "error": str(e)}    
 
 
 def _set_material_transfer_data(stock_entry, scrap, ft_stock_entry):
@@ -337,10 +344,10 @@ def _set_manufacture_data(stock_entry, qty, scrap, from_bom, batch_no=None):
         # 't_warehouse' is the warehouse into which the item is placed
         item.t_warehouse = 'Quality Control - AMF21' if qty else 'Scrap - AMF21'
         
-        if item.item_group == "Raw Material":
+        item_group = frappe.db.get_value("Item", item.item_code, "item_group")
+        if item_group == "Raw Material":
             item.auto_batch_no_generation = 0
             item.batch_no = batch_no
-
 
 def create_batch_if_manufacture(stock_entry):
     """
