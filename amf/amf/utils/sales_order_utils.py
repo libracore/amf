@@ -158,6 +158,8 @@ def create_work_order(item_code, qty, warehouse, sales_order=None):
     wo_doc.fg_warehouse     = warehouse                     # Where the finished goods go
     wo_doc.auto_gen         = 1
     wo_doc.assembly_specialist_start = 'CBE'
+    if item_code.startswith("4"):
+        wo_doc.wip_step = 1
 
     wo_doc.save(ignore_permissions=True)
     # Optionally submit if you require the Work Order to be in submitted state:
