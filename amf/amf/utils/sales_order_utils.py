@@ -153,16 +153,18 @@ def create_work_order(item_code, qty, warehouse, sales_order=None):
     wo_doc.production_item  = item_code
     wo_doc.qty              = qty
     wo_doc.sales_order      = sales_order
-    # wo_doc.custo_name       = customer
+    #wo_doc.custo_name       = customer
     wo_doc.wip_warehouse    = "Work In Progress - AMF21"   # Example WIP warehouse
     wo_doc.fg_warehouse     = warehouse                     # Where the finished goods go
     wo_doc.auto_gen         = 1
+    wo_doc.priority         = 0
     wo_doc.assembly_specialist_start = 'CBE'
     if item_code.startswith("4"):
         wo_doc.wip_step = 1
     if item_code.startswith("10") or item_code.startswith("20"):
-         wo_doc.wip_step = 1
-         wo_doc.assembly_specialist_start = 'MBA'
+        wo_doc.wip_step = 1
+        wo_doc.assembly_specialist_start = 'MBA'
+        wo_doc.progress = 'En Attente'
 
     wo_doc.save(ignore_permissions=True)
     # Optionally submit if you require the Work Order to be in submitted state:
