@@ -10,3 +10,11 @@ frappe.ui.form.on("Work Order", {
         }
     },
 });
+
+// extend/create dashboard
+cur_frm.dashboard.add_transactions([
+    {
+        'label': __("Planning"),
+        'items': ["Planning"]
+    },
+]);

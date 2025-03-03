@@ -136,12 +136,15 @@
    "fieldtype": "Column Break"
   },
   {
+   "depends_on": "eval:doc.matiere",
    "fieldname": "batch_matiere",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
    "label": "Batch Mati\u00e8re",
+   "options": "Batch",
    "reqd": 1
   },
   {
+   "depends_on": "eval:doc.matiere",
    "description": "Exemple: \u220516mm x 1000mm",
    "fieldname": "dimension_matiere",
    "fieldtype": "Data",
@@ -246,10 +249,10 @@
    "fieldtype": "Column Break"
   },
   {
+   "depends_on": "eval:doc.item_code",
    "fieldname": "matiere",
    "fieldtype": "Select",
    "label": "Mati\u00e8re",
-   "read_only": 1,
    "reqd": 1
   },
   {
@@ -265,7 +268,7 @@
   }
  ],
  "is_submittable": 1,
- "modified": "2025-01-30 10:38:07.110246",
+ "modified": "2025-02-28 14:35:54.279440",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Planning",

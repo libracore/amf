@@ -1,6 +1,14 @@
 /* Script extensions for customer
  * 
  */
+
+// extend/create dashboard
+cur_frm.dashboard.add_transactions([
+    {
+        'label': __("Customer Satisfaction"),
+        'items': ["Customer Satisfaction Survey"]
+    },
+]);
  
 frappe.ui.form.on('Customer', {
     refresh: function(frm) {

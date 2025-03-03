@@ -516,3 +516,93 @@ def get_normal_six_digit_code(item_group, item_type):
     max_code = result[0]["max_code"] if result and result[0].get("max_code") else 0
     next_code = max_code + 1
     return str(next_code).zfill(6)
+
+import frappe
+
+@frappe.whitelist()
+def issue_and_then_enable_batch_for_raw_materials():
+    """
+    1) Create & submit a single Material Issue for all Raw Material items in all warehouses.
+    2) After stock is issued, enable Batch No for those items. Disabled for now.
+    3) Create (draft) Material Receipt with identical lines for restocking.
+    """
+
+    # Step 1a: Get all items in "Raw Material" item group
+    raw_material_items = frappe.get_all(
+        "Item",
+        filters={"item_group": "Raw Material", "disabled": 0, "has_batch_no": 0},
+        fields=["name"]
+    )
+    if not raw_material_items:
+        frappe.msgprint("No items found in the 'Raw Material' group.")
+        return
+
+    # Step 1b: Gather line details for each item & warehouse from the Bin table
+    line_details = []
+    for rm_item in raw_material_items:
+        bins = frappe.get_all(
+            "Bin",
+            filters={"item_code": rm_item.name},
+            fields=["warehouse", "actual_qty"]
+        )
+        for bin_data in bins:
+            if bin_data.actual_qty > 0:
+                line_details.append({
+                    "item_code": rm_item.name,
+                    "warehouse": bin_data.warehouse,
+                    "qty": bin_data.actual_qty
+                })
+                print("item_code", rm_item.name,
+                      "warehouse", bin_data.warehouse,
+                      "qty", bin_data.actual_qty)
+
+    # If there's nothing to issue
+    if not line_details:
+        frappe.msgprint("No stock quantities found to issue for Raw Material items.")
+        return
+
+    # Step 1c: Create and submit Material Issue
+    issue_entry = frappe.new_doc("Stock Entry")
+    issue_entry.stock_entry_type = "Material Issue"
+
+    for line in line_details:
+        row = issue_entry.append("items", {})
+        row.item_code = line["item_code"]
+        row.s_warehouse = line["warehouse"]
+        row.qty = line["qty"]
+        row.uom = frappe.db.get_value("Item", line["item_code"], "stock_uom")
+
+    issue_entry.insert()
+    issue_entry.submit()
+    frappe.db.commit()
+
+    # Step 2: Now enable batch tracking for the raw material items
+    # for rm_item in raw_material_items:
+    #     item_doc = frappe.get_doc("Item", rm_item.name)
+    #     if not item_doc.has_batch_no:
+    #         item_doc.has_batch_no = 1
+    #         item_doc.save(ignore_permissions=True)
+
+    # Step 3: Create a draft Material Receipt with the same lines
+    receipt_entry = frappe.new_doc("Stock Entry")
+    receipt_entry.stock_entry_type = "Material Receipt"
+
+    for line in line_details:
+        row = receipt_entry.append("items", {})
+        row.item_code = line["item_code"]
+        row.t_warehouse = line["warehouse"]
+        row.qty = line["qty"]
+        row.uom = frappe.db.get_value("Item", line["item_code"], "stock_uom")
+
+    # Insert but do NOT submit
+    if receipt_entry.get("items"):
+        receipt_entry.insert()
+        frappe.msgprint(
+            "Material Receipt has been created in Draft status. "
+            "You can review and submit it when ready."
+        )
+    else:
+        frappe.msgprint("No lines found for Material Receipt.")
+
+    # Commit if running outside a request context (optional in most cases)
+    frappe.db.commit()
