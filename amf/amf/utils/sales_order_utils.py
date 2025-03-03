@@ -160,6 +160,9 @@ def create_work_order(item_code, qty, warehouse, sales_order=None):
     wo_doc.assembly_specialist_start = 'CBE'
     if item_code.startswith("4"):
         wo_doc.wip_step = 1
+    if item_code.startswith("10") or item_code.startswith("20"):
+         wo_doc.wip_step = 1
+         wo_doc.assembly_specialist_start = 'MBA'
 
     wo_doc.save(ignore_permissions=True)
     # Optionally submit if you require the Work Order to be in submitted state:
