@@ -45,6 +45,7 @@ doctype_list_js = {
     "Item": "public/js/list/item_list.js",
     "Contact": "public/js/list/contact_list.js",
     "Work Order": "public/js/list/work_order_list.js",
+    "BOM": "public/js/list/bom_list.js",
 }
 
 # Document Events
