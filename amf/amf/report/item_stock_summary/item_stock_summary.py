@@ -81,9 +81,9 @@ def get_item_qty_data(filters):
 
     # Exclusion conditions for specific warehouses
     if conditions:
-        conditions += " AND b.warehouse NOT LIKE '%%OLD%%' AND b.warehouse != 'Demo Device - AMF21' AND b.warehouse != 'Scrap - AMF21' AND i.disabled = 0"
+        conditions += " AND b.warehouse NOT LIKE '%%OLD%%' AND b.warehouse != 'Demo Device - AMF21' AND b.warehouse != 'Scrap - AMF21' AND i.disabled = 0 AND b.warehouse != 'Assemblies - AMF21'"
     else:
-        conditions = "WHERE b.warehouse NOT LIKE '%%OLD%%' AND b.warehouse != 'Demo Device - AMF21' AND b.warehouse != 'Scrap - AMF21' AND i.disabled = 0"
+        conditions = "WHERE b.warehouse NOT LIKE '%%OLD%%' AND b.warehouse != 'Demo Device - AMF21' AND b.warehouse != 'Scrap - AMF21' AND i.disabled = 0 AND b.warehouse != 'Assemblies - AMF21'"
 
     # Query modified to include reserved_qty and projected_qty
     item_results = frappe.db.sql("""

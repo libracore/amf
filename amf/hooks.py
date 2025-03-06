@@ -37,6 +37,7 @@ doctype_js = {
     "Campaign": "public/js/campaign.js",
     "Item": "public/js/item.js",
     "Work Order": "public/js/work_order.js",
+    "Quality Inspection": "public/js/quality_inspection.js",
 }
 
 # Include js in doctype list views
@@ -72,6 +73,9 @@ doc_events = {
     },
     "Delivery Note": {
         "before_save": "amf.amf.utils.delivery_note_api.before_save_dn"
+    },
+    "Delivery Note": {
+        "after_insert": "amf.amf.utils.delivery_note_api.auto_gen_qa_inspection"
     },
     "Serial No": {
         "after_insert": [
