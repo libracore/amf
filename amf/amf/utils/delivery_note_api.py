@@ -541,10 +541,10 @@ def auto_gen_qa_inspection(doc, method):
     client_name = doc.get("customer_name") or "Client Inconnu"
     
     # Create a new Quality Inspection document
-    qi = frappe.new_doc("Quality Inspection")
+    qi = frappe.new_doc("Global Quality Inspection")
     qi.inspection_type = "Outgoing"
     qi.reference_type = "Delivery Note"
-    qi.reference_name_ = doc.name  # Link the Quality Inspection to the Delivery Note
+    qi.reference_name = doc.name  # Link the Quality Inspection to the Delivery Note
     qi.inspected_by = email
     qi.status = ''
     qi.customer = client
@@ -608,7 +608,7 @@ def auto_gen_qa_inspection(doc, method):
     # Create assignment arguments using the new add method signature
     assignment_args = {
         "assign_to": email,
-        "doctype": "Quality Inspection",
+        "doctype": "Global Quality Inspection",
         "name": qi.name,
         "description": assignment_message,
         # "assignment_rule": <your_rule_here>,  # Optional if you need to specify an assignment rule.

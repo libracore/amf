@@ -117,9 +117,9 @@ scheduler_events = {
 # override_whitelisted_methods = {
 #     "frappe.desk.doctype.event.event.get_events": "amf.event.get_events"
 # }
-# override_doctype_dashboards = {
-#     "Task": "amf.task.get_dashboard_data"
-# }
+override_doctype_dashboards = {
+    "Delivery Note": "amf.amf.utils.dashboards.modify_dn_dashboard"
+}
 
 # Migration Hook
 # --------------
