@@ -11,7 +11,7 @@ from frappe.utils import date_diff
 SERVICE_LEVEL_Z = 1.64  # Z-score for 95% service level
 DEFAULT_LEAD_TIME = 15  # Default lead time in days
 DEFAULT_STD_DEV_LEAD_TIME = 10  # Default standard deviation of lead time
-TEST_MODE = False
+TEST_MODE = 0
 
 @frappe.whitelist()
 def check_stock_levels(test_mode=TEST_MODE):
@@ -22,6 +22,9 @@ def check_stock_levels(test_mode=TEST_MODE):
     Args:
         test_mode (bool): Whether to run the function in test mode.
     """
+    
+    update_item_purchase_status()
+    
     items = fetch_items(test_mode)
     items_to_email = []
 
@@ -80,7 +83,7 @@ def fetch_items(test_mode):
     """
     filters = {'is_stock_item': 1, 'disabled': 0}
     if test_mode:
-        filters["name"] = "100024"
+        filters["name"] = "RVM.3301"
     return frappe.get_all(
         "Item",
         filters=filters,
@@ -179,6 +182,9 @@ def calculate_safety_stock_and_reorder_level(monthly_outflows, avg_lead_time, st
     Returns:
         tuple: Safety stock, reorder level.
     """
+    if TEST_MODE:
+        print("monthly_outflows:", monthly_outflows, "avg_lead_time:", avg_lead_time, "std_dev_lead_time", std_dev_lead_time)
+    
     if not monthly_outflows:
         return 0, 0
 
@@ -330,3 +336,27 @@ def calculate_lead_time_statistics(lead_times):
         print("mean_lead_times:", mean, "std_lead_times:", std_dev)
 
     return mean, std_dev
+
+import frappe
+
+def update_item_purchase_status():
+    """
+    For all items that are not disabled, check if there is at least one Purchase Receipt Item
+    associated with the item (via the 'item_code' field). If none is found, update the
+    'is_purchase_item' field to 0.
+    """
+    # Retrieve all enabled items (assuming "disabled" is stored as 0 for enabled)
+    items = frappe.get_all("Item", filters={"disabled": 0}, fields=["name", "item_group"])
+
+    for item in items:
+        # Check if a Purchase Receipt Item exists for this item
+        purchase_exists = frappe.db.exists("Purchase Receipt Item", {"item_code": item.name})
+        if not purchase_exists:
+            # Update the custom field 'is_purzhcase_item' to 0 if no Purchase Receipt is found
+            frappe.db.set_value("Item", item.name, "is_purchase_item", 0)
+        elif purchase_exists or item.item_group == "Raw Material":
+            frappe.db.set_value("Item", item.name, "is_purchase_item", 1)
+
+    # Optional: commit the changes if this script runs outside of a Frappe request context.
+    frappe.db.commit()
+
