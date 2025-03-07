@@ -14,7 +14,41 @@
   "owner",
   "department",
   "department_other",
-  "amended_from"
+  "amended_from",
+  "amf_overall",
+  "recommend",
+  "pre_sale",
+  "sales_proc",
+  "rnd_custom",
+  "prod_perf",
+  "prod_quality",
+  "logistics",
+  "post_support",
+  "amf_familiar",
+  "discovery",
+  "marketing",
+  "digital",
+  "docs_help",
+  "interest",
+  "pricing",
+  "sales_comm",
+  "pricing_concerns",
+  "rnd_discuss",
+  "rnd_understand",
+  "tech_expert",
+  "custom_req",
+  "product_feedback",
+  "functionality",
+  "workflow",
+  "machined_qual",
+  "assembly_pack",
+  "shipping",
+  "support_resp",
+  "issue_resol",
+  "post_feedback",
+  "follow_up",
+  "dept_inform",
+  "comments"
  ],
  "fields": [
   {
@@ -29,6 +63,7 @@
    "options": "\nCall\nEmail\nVisit\nCongress / Trade Show\nOther"
   },
   {
+   "depends_on": "eval:doc.type_interaction=='Other'",
    "fieldname": "type_interaction_other",
    "fieldtype": "Data",
    "label": "Type Interaction Other"
@@ -46,6 +81,7 @@
    "options": "\nSales\nMarketing\nR&D\nOperations\nAdministration\nOther"
   },
   {
+   "depends_on": "eval:doc.department=='Other'",
    "fieldname": "department_other",
    "fieldtype": "Data",
    "label": "Department Other"
@@ -70,10 +106,191 @@
    "fieldtype": "Link",
    "label": "Organization",
    "options": "Customer"
+  },
+  {
+   "fieldname": "amf_overall",
+   "fieldtype": "Rating",
+   "label": "How satisfied was the customer with AMF overall?"
+  },
+  {
+   "fieldname": "recommend",
+   "fieldtype": "Rating",
+   "label": "How likely is the customer to recommend AMF to a colleague or professional in their industry?"
+  },
+  {
+   "fieldname": "pre_sale",
+   "fieldtype": "Rating",
+   "label": "How satisfied was the customer with their pre-sale experience?"
+  },
+  {
+   "fieldname": "sales_proc",
+   "fieldtype": "Rating",
+   "label": "How satisfied was the customer with the sales process?"
+  },
+  {
+   "fieldname": "rnd_custom",
+   "fieldtype": "Rating",
+   "label": "How satisfied was the customer with the R&D and customization process?"
+  },
+  {
+   "fieldname": "prod_perf",
+   "fieldtype": "Rating",
+   "label": "How satisfied was the customer with AMF products and performance?"
+  },
+  {
+   "fieldname": "prod_quality",
+   "fieldtype": "Rating",
+   "label": "How satisfied was the customer with AMF production and product quality?"
+  },
+  {
+   "fieldname": "logistics",
+   "fieldtype": "Rating",
+   "label": "How satisfied was the customer with logistics, delivery, and packaging?"
+  },
+  {
+   "fieldname": "post_support",
+   "fieldtype": "Rating",
+   "label": "How satisfied was the customer with post-sales support and communication?"
+  },
+  {
+   "fieldname": "amf_familiar",
+   "fieldtype": "Select",
+   "label": "How familiar was the customer with AMF before the interaction?",
+   "options": "\nVery familiar\nSomewhat familiar\nNot familiar at all"
+  },
+  {
+   "fieldname": "discovery",
+   "fieldtype": "Select",
+   "label": "Did the customer mention how they discovered AMF?",
+   "options": "\nOnline Search\nTrade Show\nReferral\nOther"
+  },
+  {
+   "fieldname": "marketing",
+   "fieldtype": "Rating",
+   "label": "How effectively does AMF marketing communicate its offerings?"
+  },
+  {
+   "fieldname": "digital",
+   "fieldtype": "Rating",
+   "label": "How would you rate the customer's satisfaction with AMF website or digital presence?"
+  },
+  {
+   "fieldname": "docs_help",
+   "fieldtype": "Rating",
+   "label": "Was the product documentation (datasheets, manuals) helpful and accessible?"
+  },
+  {
+   "fieldname": "interest",
+   "fieldtype": "Select",
+   "label": "Did the customer express interest in AMF standard or custom products?",
+   "options": "\nStandard Products\nCustom Solutions\nBoth"
+  },
+  {
+   "fieldname": "pricing",
+   "fieldtype": "Rating",
+   "label": "How satisfied was the customer with AMF pricing and lead times?"
+  },
+  {
+   "fieldname": "sales_comm",
+   "fieldtype": "Rating",
+   "label": "How would you rate the clarity and effectiveness of communication with the sales team?"
+  },
+  {
+   "fieldname": "pricing_concerns",
+   "fieldtype": "Select",
+   "label": "Did the customer express any concerns about pricing, contract terms, or lead times?",
+   "options": "\nYes\nNo"
+  },
+  {
+   "fieldname": "rnd_discuss",
+   "fieldtype": "Select",
+   "label": "Did the customer engage in a technical discussion with the R&D team?",
+   "options": "\nYes\nNo"
+  },
+  {
+   "fieldname": "rnd_understand",
+   "fieldtype": "Rating",
+   "label": "How well did AMF R&D team understand the customer's needs and requirements?"
+  },
+  {
+   "fieldname": "tech_expert",
+   "fieldtype": "Rating",
+   "label": "How satisfied was the customer with AMF technical expertise and customization capabilities?"
+  },
+  {
+   "fieldname": "custom_req",
+   "fieldtype": "Select",
+   "label": "Did the customer request any customizations or technical adjustments?",
+   "options": "\nYes\nNo"
+  },
+  {
+   "fieldname": "product_feedback",
+   "fieldtype": "Select",
+   "label": "Did the customer provide feedback on an existing product?",
+   "options": "\nYes\nNo"
+  },
+  {
+   "fieldname": "functionality",
+   "fieldtype": "Select",
+   "label": "Did the customer experience any issues with the product's functionality?",
+   "options": "\nYes\nNo"
+  },
+  {
+   "fieldname": "workflow",
+   "fieldtype": "Rating",
+   "label": "How well did the product integrate into the customer's workflow?"
+  },
+  {
+   "fieldname": "machined_qual",
+   "fieldtype": "Rating",
+   "label": "How satisfied was the customer with the quality of the machined product?"
+  },
+  {
+   "fieldname": "assembly_pack",
+   "fieldtype": "Rating",
+   "label": "How would you rate the quality of the assembly and packaging?"
+  },
+  {
+   "fieldname": "shipping",
+   "fieldtype": "Select",
+   "label": "Were there any concerns raised about shipping or transportation?",
+   "options": "\nYes\nNo"
+  },
+  {
+   "fieldname": "support_resp",
+   "fieldtype": "Rating",
+   "label": "If the customer contacted AMF support, how would you rate the responsiveness and clarity of the support team?"
+  },
+  {
+   "fieldname": "issue_resol",
+   "fieldtype": "Rating",
+   "label": "Did the customer express satisfaction with the resolution of their issue?"
+  },
+  {
+   "fieldname": "post_feedback",
+   "fieldtype": "Text",
+   "label": "Did the customer provide any specific feedback on post-sales support?"
+  },
+  {
+   "fieldname": "follow_up",
+   "fieldtype": "Select",
+   "label": "Is a follow-up required?",
+   "options": "\nYes, schedule a follow-up call\nYes, send additional materials\nNo follow-up needed at this time"
+  },
+  {
+   "fieldname": "dept_inform",
+   "fieldtype": "Select",
+   "label": "Internal Departments to Inform",
+   "options": "\nSales\nR&D\nCustomer Support\nMarketing\nQuality/Compliance\nManagement"
+  },
+  {
+   "fieldname": "comments",
+   "fieldtype": "Text Editor",
+   "label": "Additional Comments or Observations"
   }
  ],
  "is_submittable": 1,
- "modified": "2025-02-26 15:36:33.647585",
+ "modified": "2025-03-07 14:31:26.465864",
  "modified_by": "Administrator",
  "module": "Master CRM",
  "name": "Customer Satisfaction Survey",
@@ -90,7 +307,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "System Manager",
+   "role": "All",
    "set_user_permissions": 1,
    "share": 1,
    "submit": 1,
