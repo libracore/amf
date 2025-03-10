@@ -14,6 +14,9 @@ frappe.ui.form.on('Planning', {
     onload(frm) {
         // Only set defaults if this is a brand new document (not saved yet)
         if (frm.is_new()) {
+            if (frm.doc.amended_from) {
+                frm.trigger('item_code'); 
+            }
             set_default_values(frm);
             fetch_suivi_usinage(frm);
         }
@@ -62,7 +65,6 @@ frappe.ui.form.on('Planning', {
     suivi_usinage: function (frm) {
         frm.set_value('name_id', frm.doc.suivi_usinage);
     },
-
 });
 
 /**
@@ -75,8 +77,12 @@ function set_default_values(frm) {
     frm.set_value("entreprise", "Advanced Microfluidics SA");
     
     // Set all these fields to null or empty as needed
-    const fieldsToClear = ["stock_entry", "batch", "item_code", "item_name", "work_order", "batch_matiere", "matiere", "dimension_matiere"];
-    fieldsToClear.forEach(field => frm.set_value(field, null));
+    
+    const fieldsToClear = ["stock_entry", "batch", "item_code", "item_name", "batch_matiere", "matiere", "dimension_matiere"];
+    const fieldsToClear_ = ["work_order"];
+    if (!frm.doc.amended_from)
+        fieldsToClear.forEach(field => frm.set_value(field, null));
+    fieldsToClear_.forEach(field => frm.set_value(field, null));
 }
 
 /**

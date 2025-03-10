@@ -419,7 +419,8 @@ def delete_draft_wo(item_code):
         "Work Order",
         filters={
             "production_item": item_code,
-            "docstatus": 0  # draft
+            "docstatus": 0,  # draft,
+            "owner": "Administrator"
         },
         fields=["name"]
     )

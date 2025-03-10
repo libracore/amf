@@ -37,6 +37,7 @@ doctype_js = {
     "Campaign": "public/js/campaign.js",
     "Item": "public/js/item.js",
     "Work Order": "public/js/work_order.js",
+    "Quality Inspection": "public/js/quality_inspection.js",
 }
 
 # Include js in doctype list views
@@ -44,6 +45,7 @@ doctype_list_js = {
     "Item": "public/js/list/item_list.js",
     "Contact": "public/js/list/contact_list.js",
     "Work Order": "public/js/list/work_order_list.js",
+    "BOM": "public/js/list/bom_list.js",
 }
 
 # Document Events
@@ -72,6 +74,9 @@ doc_events = {
     },
     "Delivery Note": {
         "before_save": "amf.amf.utils.delivery_note_api.before_save_dn"
+    },
+    "Delivery Note": {
+        "after_insert": "amf.amf.utils.delivery_note_api.auto_gen_qa_inspection"
     },
     "Serial No": {
         "after_insert": [
@@ -113,9 +118,9 @@ scheduler_events = {
 # override_whitelisted_methods = {
 #     "frappe.desk.doctype.event.event.get_events": "amf.event.get_events"
 # }
-# override_doctype_dashboards = {
-#     "Task": "amf.task.get_dashboard_data"
-# }
+override_doctype_dashboards = {
+    "Delivery Note": "amf.amf.utils.dashboards.modify_dn_dashboard"
+}
 
 # Migration Hook
 # --------------

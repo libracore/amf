@@ -1,6 +1,7 @@
 import frappe
 from amf.amf.utils.qr_code_generator import generate_qr_code
 import os
+from frappe.desk.form.assign_to import add as assign_to_add
 
 
 @frappe.whitelist()
@@ -525,3 +526,91 @@ def before_save_dn(doc, method):
         except Exception as e:
             # Log the exception for troubleshooting
             frappe.log_error(f"Error processing item {item.item_code} in Delivery Note {doc.name}: {str(e)}")
+
+def auto_gen_qa_inspection(doc, method):
+    """
+    Auto-generate a Quality Inspection document after a Delivery Note is inserted.
+    
+    Args:
+        doc: The Delivery Note document
+        method: Hook method parameter (not used here)
+    """
+    # Global var
+    email = "alexandre.trachsel@amf.ch"
+    client = doc.get("customer")
+    client_name = doc.get("customer_name") or "Client Inconnu"
+    
+    # Create a new Quality Inspection document
+    qi = frappe.new_doc("Global Quality Inspection")
+    qi.inspection_type = "Outgoing"
+    qi.reference_type = "Delivery Note"
+    qi.reference_name = doc.name  # Link the Quality Inspection to the Delivery Note
+    qi.inspected_by = email
+    qi.status = ''
+    qi.customer = client
+    
+    # # Modify the meta field property to disable the mandatory check for item_code
+    # field = qi.meta.get_field("item_code")
+    # if field:
+    #     field.reqd = 0
+    
+    # Ignore mandatory validations
+    qi.flags.ignore_mandatory = True
+
+    # Optionally, fetch a default Quality Inspection Template for Outgoing inspections.
+    # Adjust the filter or field names as necessary based on your implementation.
+    template = frappe.db.get_value("Quality Inspection Template", {"name": "Delivery Note"}, "name")
+    if template:
+        qi.quality_inspection_template = template
+        template_readings = frappe.get_all(
+            "Item Quality Inspection Parameter",
+            {"parent": template},
+            ["specification", "value"]
+        )
+        # Populate the Quality Inspection's readings child table with the template data
+        for t in template_readings:
+            row = qi.append("readings", {})
+            row.specification = t.get("specification")
+            row.value         = t.get("value")    
+            row.status        = ""
+    
+    if client:
+        client_template = frappe.get_all(
+            "Quality Inspection Template",
+            {"customer": client},
+            ["name"]
+            )
+        print(client_template)
+        if client_template:
+            template_name = [tpl.get("name") for tpl in client_template]
+            print(template_name[0])
+            client_readings = frappe.get_all(
+                "Item Quality Inspection Parameter",
+                {"parent": template_name[0]},
+                ["specification", "value"]
+            )
+            print(client_readings)
+            
+            for c in client_readings:
+                row = qi.append("client_specific", {})
+                row.specification = c.get("specification")
+                row.value         = c.get("value")    
+                row.status        = ""
+
+    # Insert the new Quality Inspection document (ignoring permissions if necessary)
+    qi.insert(ignore_permissions=True)
+    
+    # Build the assignment message with Delivery Note name and client (assumed to be in 'customer')
+    
+    assignment_message = f"Inspection Qualité générée pour la Delivery Note: {doc.name} pour le client: {client_name}"
+
+    # Auto assign the Quality Inspection to atr@amf.ch with the message
+    # Create assignment arguments using the new add method signature
+    assignment_args = {
+        "assign_to": email,
+        "doctype": "Global Quality Inspection",
+        "name": qi.name,
+        "description": assignment_message,
+        # "assignment_rule": <your_rule_here>,  # Optional if you need to specify an assignment rule.
+    }
+    assign_to_add(assignment_args)

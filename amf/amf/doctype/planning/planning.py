@@ -120,7 +120,8 @@ def create_work_order(form_data: str, wo=None) -> dict:
         # Fetch active BOM number
         matched_bom_no = _get_active_bom(data['item_code'], data['matiere'][:8])
         if not matched_bom_no:
-            return _error_response(f"No active BOM matches the item code {data['item_code']}")
+            # return _error_response(f"No active BOM matches the item code {data['item_code']}")
+            matched_bom_no = _create_new_bom(data['item_code'], data['matiere'][:8])
 
         # Create and submit Work Order
         if wo is None:
@@ -208,6 +209,52 @@ def _get_active_bom(item_code: str, raw_material: str) -> str:
             return bom_no
     return None
 
+def _create_new_bom(item_code: str, raw_material: str) -> str:
+    """
+    Create a new BOM record for the given `item_code`, using `raw_material`
+    in its BOM Items list. If `item_code` starts with '10', quantity is 1;
+    otherwise, it's 0.03. The function returns the name of the new BOM.
+
+    :param item_code: The Item Code for which to create a BOM.
+    :param raw_material: The Item Code of the raw material to include in the BOM.
+    :return: The name (string) of the newly created BOM document.
+    """
+
+    # Determine quantity based on item_code prefix
+    bom_qty = 0.02 if item_code.startswith("10") else 0.03
+
+    # Construct the BOM document
+    bom_doc = frappe.get_doc({
+        "doctype": "BOM",
+        "item": item_code,
+        "quantity": 1,
+        "is_active": 1,      # The BOM will be active
+        "is_default": 0,     # Not the default BOM (you can set to 1 if needed)
+        "with_operations": 0,
+        "rm_cost_as_per": "Valuation Rate",
+        "items": [
+            {
+                "item_code": raw_material,
+                "qty": bom_qty
+            }
+        ]
+    })
+
+    # Insert and submit the new BOM
+    try:
+        bom_doc.insert()
+        bom_doc.submit()
+    except Exception as e:
+        # Log errors to the Frappe Error Log
+        frappe.log_error(
+            title=f"Failed to create/submit BOM for {item_code}",
+            message=frappe.get_traceback()
+        )
+        # Optionally, re-raise or handle differently:
+        raise
+
+    # Return the unique name of the BOM document
+    return bom_doc.name
 
 def _create_work_order_doc(data: dict, bom_no: str) -> Document:
     """Creates and returns a new Work Order document."""
