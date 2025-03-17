@@ -4,6 +4,8 @@
 
 from __future__ import unicode_literals
 import json
+from erpnext.manufacturing.doctype.bom.bom import get_bom_items_as_dict
+from erpnext.stock.utils import get_latest_stock_qty
 import frappe
 from frappe.model.document import Document
 from frappe.utils.data import now_datetime
@@ -13,19 +15,22 @@ from frappe.utils.print_format import download_pdf
 from datetime import datetime
 from frappe import ValidationError
 
+
 class Planning(Document):
     pass
+
 
 @frappe.whitelist()
 def get_rawmat_items(item_code):
     # Get all active BOMs for the given item code
-    active_boms = frappe.db.get_list('BOM', {'item': item_code, 'is_active': 1}, 'name')
-    
+    active_boms = frappe.db.get_list(
+        'BOM', {'item': item_code, 'is_active': 1}, 'name')
+
     if not active_boms:
         return {'message': frappe._('No active BOM found for item code {0}').format(item_code), 'items': []}
-    
+
     mat_items = []
-    
+
     # Iterate over each BOM to get the BOM items
     for bom in active_boms:
         bom_items = frappe.db.get_list('BOM Item',
@@ -35,10 +40,11 @@ def get_rawmat_items(item_code):
                                        },
                                        fields=['item_code', 'item_name'])
         mat_items.extend(bom_items)
-    
+
     if mat_items:
         # Create a list to hold "item_code: item_name" strings
-        items_list = ['{}: {}'.format(item['item_code'], item['item_name']) for item in mat_items]
+        items_list = ['{}: {}'.format(
+            item['item_code'], item['item_name']) for item in mat_items]
         return {
             'message': 'MAT items found',
             'items': items_list
@@ -49,6 +55,7 @@ def get_rawmat_items(item_code):
             'items': []
         }
 
+
 @frappe.whitelist()
 def get_rawmat_items_(item_code):
     """
@@ -58,13 +65,13 @@ def get_rawmat_items_(item_code):
     """
     if not item_code:
         return {"items": []}
-    
+
     # Fetch the tag_raw_mat from the provided item_code
     tag_raw_mat = frappe.db.get_value("Item", item_code, "tag_raw_mat")
     if not tag_raw_mat:
         # If the original item does not have a tag_raw_mat, return an empty list
         return {"items": []}
-    
+
     # Find all items from the "Raw Materials" item group that share the same tag_raw_mat
     raw_materials = frappe.get_list(
         "Item",
@@ -76,6 +83,7 @@ def get_rawmat_items_(item_code):
     )
     # Return the list of matching items
     return {"items": raw_materials}
+
 
 @frappe.whitelist()
 def get_enabled_batches(item_code):
@@ -98,6 +106,7 @@ def get_enabled_batches(item_code):
     print(batch_list)
     return {"batches": batch_list}
 
+
 @frappe.whitelist()
 def create_work_order(form_data: str, wo=None) -> dict:
     """
@@ -106,7 +115,7 @@ def create_work_order(form_data: str, wo=None) -> dict:
     Args:
         form_data (str): JSON-formatted string or dictionary containing work order details.
         wo: if a work_order is passed as args from the doctype or not
-    
+
     Returns:
         dict: Success or failure message along with created document references.
     """
@@ -118,10 +127,12 @@ def create_work_order(form_data: str, wo=None) -> dict:
             return _error_response('Item code not found')
 
         # Fetch active BOM number
-        matched_bom_no = _get_active_bom(data['item_code'], data['matiere'][:8])
+        matched_bom_no = _get_active_bom(
+            data['item_code'], data['matiere'][:8])
         if not matched_bom_no:
             # return _error_response(f"No active BOM matches the item code {data['item_code']}")
-            matched_bom_no = _create_new_bom(data['item_code'], data['matiere'][:8])
+            matched_bom_no = _create_new_bom(
+                data['item_code'], data['matiere'][:8])
 
         # Create and submit Work Order
         if wo is None:
@@ -132,10 +143,11 @@ def create_work_order(form_data: str, wo=None) -> dict:
         else:
             # 1. Fetch the existing Work Order by name/ID
             work_order = frappe.get_doc("Work Order", wo)
-            
+
             # 2. Update fields in the existing Work Order from the Planning doc
             #    (Examples: set the same item_code, planned_start_date, etc.)
-            work_order.qty = int(data['quantite_validee']) + int(data['quantite_scrap'])
+            work_order.qty = int(
+                data['quantite_validee']) + int(data['quantite_scrap'])
             work_order.assembly_specialist_start = data['responsable']
             work_order.start_date_time = data['date_de_debut']
             work_order.end_date_time = data['date_de_fin']
@@ -163,16 +175,20 @@ def create_work_order(form_data: str, wo=None) -> dict:
             # 3. Optionally, pull some info directly from 'data' if relevant
             #    For example:
             # work_order.some_custom_field = data.get("some_custom_value")
+            set_required_items(work_order)
 
             # 4. Save and/or submit. If the Work Order is still a Draft, you can submit it
             work_order.save()
             if work_order.docstatus == 0:
+                print("submitting...")
                 work_order.submit()
                 frappe.db.commit()
 
         # Create stock entries (manufacture and transfer if applicable)
-        manufacture_entry, manufacture_batch = _create_manufacture_entry(work_order, data)
-        transfer_entry = _create_transfer_entry_if_applicable(work_order, data, manufacture_entry)
+        manufacture_entry, manufacture_batch = _create_manufacture_entry(
+            work_order, data)
+        transfer_entry = _create_transfer_entry_if_applicable(
+            work_order, data, manufacture_entry)
 
         # Commit the transaction
         frappe.db.commit()
@@ -180,7 +196,8 @@ def create_work_order(form_data: str, wo=None) -> dict:
         return _success_response(work_order, manufacture_entry, manufacture_batch)
 
     except frappe.ValidationError as e:
-        frappe.log_error(frappe.get_traceback(), 'Validation Error in Work Order Creation')
+        frappe.log_error(frappe.get_traceback(),
+                         'Validation Error in Work Order Creation')
         return _error_response(str(e))
 
     except Exception as e:
@@ -188,26 +205,100 @@ def create_work_order(form_data: str, wo=None) -> dict:
         return _error_response(str(e))
 
 
+def set_required_items(self, reset_only_qty=False):
+
+    def set_available_qty(self):
+        print("set_available_qty")
+        for d in self.get("required_items"):
+            if d.source_warehouse:
+                d.available_qty_at_source_warehouse = get_latest_stock_qty(
+                    d.item_code, d.source_warehouse)
+
+            if self.wip_warehouse:
+                d.available_qty_at_wip_warehouse = get_latest_stock_qty(
+                    d.item_code, self.wip_warehouse)
+
+    '''set required_items for production to keep track of reserved qty'''
+    print(self.bom_no)
+    if not reset_only_qty:
+        print("reset")
+        self.required_items = []
+
+    if self.bom_no and self.qty:
+        item_dict = get_bom_items_as_dict(self.bom_no, self.company, qty=self.qty,
+                                          fetch_exploded=self.use_multi_level_bom)
+
+        if reset_only_qty:
+            for d in self.get("required_items"):
+                if item_dict.get(d.item_code):
+                    d.required_qty = item_dict.get(d.item_code).get("qty")
+        else:
+            # Attribute a big number (999) to idx for sorting putpose in case idx is NULL
+            # For instance in BOM Explosion Item child table, the items coming from sub assembly items
+            for item in sorted(item_dict.values(), key=lambda d: d['idx'] or 9999):
+                print(item)
+                self.append('required_items', {
+                    'operation': item.operation,
+                    'item_code': item.item_code,
+                    'item_name': item.item_name,
+                    'description': item.description,
+                    'allow_alternative_item': 0,
+                    'required_qty': item.qty,
+                    'source_warehouse': item.source_warehouse or item.default_warehouse,
+                    'include_item_in_manufacturing': item.include_item_in_manufacturing
+                })
+
+        set_available_qty(self)
+
+
 def _parse_form_data(form_data: str) -> dict:
     """Helper function to parse the form data."""
     return json.loads(form_data) if isinstance(form_data, str) else form_data
 
 
-def _get_active_bom(item_code: str, raw_material: str) -> str:
+def _get_active_bom_(item_code: str, raw_material: str) -> str:
     """Fetches the active BOM number based on the item code and raw material."""
     bom_no_list = frappe.db.get_all(
         'BOM Item',
-        filters={'item_code': raw_material, 'parenttype': 'BOM', 'parentfield': 'items'},
+        filters={'item_code': raw_material,
+                 'parenttype': 'BOM', 'parentfield': 'items'},
         fields=['parent']
     )
-
+    print(item_code, raw_material, bom_no_list)
     # Find the BOM that matches the item code and is active
     for bom in bom_no_list:
         bom_no = bom['parent']
-        is_active = frappe.db.get_value('BOM', {'name': bom_no, 'is_active': 1}, 'item')
+        is_active = frappe.db.get_value(
+            'BOM', {'name': bom_no, 'is_active': 1}, 'item')
         if is_active == item_code:
+            print(is_active)
             return bom_no
     return None
+
+
+def _get_active_bom(item_code: str, raw_material: str) -> str:
+    """
+    Returns the name of the first active & submitted BOM for `item_code`
+    that contains `raw_material` as one of its BOM Items.
+    Returns None if no such BOM is found.
+    """
+    bom = frappe.db.sql(
+        """
+        SELECT b.name
+        FROM `tabBOM` b
+        JOIN `tabBOM Item` bi ON b.name = bi.parent
+        WHERE b.item = %(item_code)s
+          AND bi.item_code = %(raw_material)s
+          AND b.docstatus = 1  -- only Submitted BOMs
+          AND b.is_active = 1  -- only Active BOMs
+        ORDER BY b.name
+        LIMIT 1
+        """,
+        {"item_code": item_code, "raw_material": raw_material},
+        as_list=True
+    )
+    return bom[0][0] if bom else None
+
 
 def _create_new_bom(item_code: str, raw_material: str) -> str:
     """
@@ -256,6 +347,7 @@ def _create_new_bom(item_code: str, raw_material: str) -> str:
     # Return the unique name of the BOM document
     return bom_doc.name
 
+
 def _create_work_order_doc(data: dict, bom_no: str) -> Document:
     """Creates and returns a new Work Order document."""
     return frappe.get_doc({
@@ -294,7 +386,8 @@ def _create_work_order_doc(data: dict, bom_no: str) -> Document:
 def _create_manufacture_entry(work_order: Document, data: dict) -> tuple:
     """Creates a manufacture stock entry."""
     return _make_stock_entry(
-        work_order.name, 'Manufacture', int(data['quantite_validee']), int(data['quantite_scrap'])
+        work_order.name, 'Manufacture', int(
+            data['quantite_validee']), int(data['quantite_scrap'])
     )
 
 
@@ -302,7 +395,8 @@ def _create_transfer_entry_if_applicable(work_order: Document, data: dict, manuf
     """Creates a transfer stock entry if there's scrap quantity."""
     if int(data['quantite_scrap']) > 0:
         return _make_stock_entry(
-            work_order.name, 'Material Transfer', None, int(data['quantite_scrap']), manufacture_entry
+            work_order.name, 'Material Transfer', None, int(
+                data['quantite_scrap']), manufacture_entry
         )
     return None
 
@@ -312,11 +406,13 @@ def _make_stock_entry(work_order_id, purpose, qty=None, scrap=None, ft_stock_ent
     work_order = frappe.get_doc("Work Order", work_order_id)
 
     if purpose == 'Manufacture':
-        stock_entry, batch_no = _create_stock_entry(work_order, purpose, qty, scrap, True if qty else False)
-    
+        stock_entry, batch_no = _create_stock_entry(
+            work_order, purpose, qty, scrap, True if qty else False)
+
     # Create transfer stock entry if no quantity is provided (i.e., scrap)
     if qty is None:
-        _create_stock_entry(work_order, purpose, None, scrap, False, ft_stock_entry)
+        _create_stock_entry(work_order, purpose, None,
+                            scrap, False, ft_stock_entry)
 
     if qty:
         return stock_entry.as_dict(), batch_no
@@ -344,25 +440,26 @@ def _create_stock_entry(work_order, purpose, qty, scrap, from_bom, ft_stock_entr
     stock_entry.from_bom = from_bom
     stock_entry.bom_no = work_order.bom_no if from_bom else None
     stock_entry.use_multi_level_bom = work_order.use_multi_level_bom
-    
+
     if purpose == "Material Transfer":
         _set_material_transfer_data(stock_entry, scrap, ft_stock_entry)
     else:
-        _set_manufacture_data(stock_entry, qty, scrap, from_bom, work_order.raw_material_batch)
+        _set_manufacture_data(stock_entry, qty, scrap,
+                              from_bom, work_order.raw_material_batch)
 
     stock_entry.set_stock_entry_type()
-    
+
     stock_entry.insert()
     batch_no = create_batch_if_manufacture(stock_entry) if qty else None
-    
+
     stock_entry.get_stock_and_rate()
-        
+
     try:
         stock_entry.submit()
         frappe.db.commit()
         return stock_entry, batch_no
     except Exception as e:
-        return {"success": False, "error": str(e)}    
+        return {"success": False, "error": str(e)}
 
 
 def _set_material_transfer_data(stock_entry, scrap, ft_stock_entry):
@@ -390,11 +487,12 @@ def _set_manufacture_data(stock_entry, qty, scrap, from_bom, batch_no=None):
         item.s_warehouse = 'Main Stock - AMF21' if qty else 'Quality Control - AMF21'
         # 't_warehouse' is the warehouse into which the item is placed
         item.t_warehouse = 'Quality Control - AMF21' if qty else 'Scrap - AMF21'
-        
+
         item_group = frappe.db.get_value("Item", item.item_code, "item_group")
         if item_group == "Raw Material":
             item.auto_batch_no_generation = 0
             item.batch_no = batch_no
+
 
 def create_batch_if_manufacture(stock_entry):
     """
@@ -408,7 +506,8 @@ def create_batch_if_manufacture(stock_entry):
     """
     if stock_entry.purpose == 'Manufacture' and stock_entry.items:
         last_item = stock_entry.items[-1]
-        item_has_batch_no = frappe.db.get_value('Item', last_item.item_code, 'has_batch_no')
+        item_has_batch_no = frappe.db.get_value(
+            'Item', last_item.item_code, 'has_batch_no')
 
         if item_has_batch_no:
             unique_suffix = now_datetime().strftime('%Y%m%d%H%M%S')
@@ -429,6 +528,7 @@ def create_batch_if_manufacture(stock_entry):
             last_item.batch_no = new_batch_doc.name
             return last_item.batch_no
 
+
 def _error_response(message: str) -> dict:
     """
     Helper function to format error responses.
@@ -443,7 +543,8 @@ def _error_response(message: str) -> dict:
         'success': False,
         'message': message
     }
-    
+
+
 def _success_response(work_order, manufacture_entry=None, manufacture_batch=None) -> dict:
     """
     Helper function to format success responses.
@@ -463,7 +564,8 @@ def _success_response(work_order, manufacture_entry=None, manufacture_batch=None
         'stock_entry': manufacture_entry.name if manufacture_entry else None,
         'batch': manufacture_batch if manufacture_batch else None
     }
-    
+
+
 @frappe.whitelist()
 def generate_and_attach_pdf(doctype, docname, print_format):
     try:
@@ -474,16 +576,17 @@ def generate_and_attach_pdf(doctype, docname, print_format):
         print(doc)
         # Define file name
         file_name = f'{docname}_sticker.pdf'
-        
+
         # Attach the PDF to the document
         _file = save_file(file_name, doc, doctype, docname, is_private=1)
-        
+
         # Return success message
         return {"success": True}
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "PDF Generation Failed")
         return {"success": False, "error": str(e)}
-    
+
+
 @frappe.whitelist()
 def get_next_suivi_usinage():
     """
