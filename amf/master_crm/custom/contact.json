@@ -830,7 +830,7 @@
    "modified_by": "Administrator",
    "name": "Contact-contact_function",
    "no_copy": 0,
-   "options": "\nPrimary\nPurchase\nSupply\nShipping\nInvoice\nQuality\nR&D\nOthers",
+   "options": "\nPrimary\nPurchase\nSupply\nShipping\nInvoice\nQuality / Customer Support\nR&D\nOthers",
    "owner": "Administrator",
    "parent": null,
    "parentfield": null,
@@ -1413,7 +1413,7 @@
    "modified_by": "Administrator",
    "name": "Contact-source",
    "no_copy": 0,
-   "options": "\nEvent\nDatabase\nSEA\nSEO",
+   "options": "\nEvent\nDatabase\nQuote Request\nProspection\nReferral\nSEA\nSEO",
    "owner": "Administrator",
    "parent": null,
    "parentfield": null,
@@ -1427,7 +1427,7 @@
    "report_hide": 0,
    "reqd": 0,
    "search_index": 0,
-   "translatable": 1,
+   "translatable": 0,
    "unique": 0,
    "width": null
   },
@@ -1444,7 +1444,7 @@
    "columns": 0,
    "creation": "2024-10-25 10:56:24.007134",
    "default": null,
-   "depends_on": null,
+   "depends_on": "eval:doc.source",
    "description": null,
    "docstatus": 0,
    "dt": "Contact",
@@ -2005,7 +2005,7 @@
    "parenttype": null,
    "property": "options",
    "property_type": "Text",
-   "value": "Lead\nProspect\nCustomer\nSupplier\nBack-Office\nPassive\nInactive\nDistributor\nAMF"
+   "value": "Lead\nProspect\nSuspect\nCustomer\nSupplier\nBack-Office\nPassive\nInactive\nDistributor\nAMF"
   },
   {
    "_assign": null,
