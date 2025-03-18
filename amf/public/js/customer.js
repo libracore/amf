@@ -26,6 +26,14 @@ frappe.ui.form.on('Customer', {
                 );
             });
         }
+
+        // show dashboard note
+        if ((frm.doc.is_customer)) {
+            cur_frm.dashboard.add_comment(__('This organization is a Customer.'), 'green', true);
+        }
+        if ((frm.doc.is_supplier)) {
+            cur_frm.dashboard.add_comment(__('This organization is a Supplier.'), 'red', true);
+        }
     },
     validate: function(frm) {
         if ((frm.doc.is_customer === 1) && (!frm.doc.accounting_email)) {

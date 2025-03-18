@@ -194,6 +194,8 @@ function createWorkOrder(frm) {
                 });
                 frm.save('Update');
                 frappe.show_alert( __("Fichier mis à jour") );
+
+                frappe.set_route("Form", "Work Order", frm.doc.work_order);
             } else {
                 // Error handling
                 frappe.validated = false;
