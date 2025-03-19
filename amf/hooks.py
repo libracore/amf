@@ -104,13 +104,11 @@ scheduler_events = {
         "amf.master_crm.doctype.gravity_forms.gravity_forms.daily_sync",
         "amf.amf.utils.bom_mgt.execute_scheduled",
         "amf.amf.utils.work_order_creation.create_work_orders_based_on_reorder_levels",
-    ]
+    ],
     # "hourly": ["amf.amf.utils.document_notification.update_purchase_orders"],
-    # "weekly": [
-    #     "amf.amf.utils.check_issue.fetch_open_issues",
-    #     "amf.amf.utils.safety_stock_check.check_stock_levels",
-    #     "amf.amf.utils.forecast.get_item_details_and_quantities"
-    # ]
+    "weekly": [
+        "amf.master_crm.contact.update_contact_statuses"
+    ],
 }
 
 # Override Methods
