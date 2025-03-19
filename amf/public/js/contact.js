@@ -19,7 +19,7 @@ cur_frm.dashboard.add_transactions([
     },
     {
         'label': __("Customer Satisfaction"),
-        'items': ["Customer Satisfaction Survey"]
+        'items': ["Customer Satisfaction Survey", "Referral Satisfaction Survey"]
     }
 ]);
 

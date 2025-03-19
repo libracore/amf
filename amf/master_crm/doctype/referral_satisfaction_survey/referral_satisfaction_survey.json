@@ -14,7 +14,7 @@
   "section_break_5",
   "existing_crm",
   "section_break_6",
-  "referred_contact",
+  "contact_person",
   "referred_organization",
   "names_column",
   "referred_contact_name",
@@ -55,14 +55,7 @@
   },
   {
    "depends_on": "eval:doc.existing_crm=='Yes';",
-   "fieldname": "referred_contact",
-   "fieldtype": "Link",
-   "label": "Referred Contact",
-   "options": "Contact"
-  },
-  {
-   "depends_on": "eval:doc.existing_crm=='Yes';",
-   "fetch_from": "referred_contact.full_name",
+   "fetch_from": "contact_person.full_name",
    "fieldname": "referred_contact_name",
    "fieldtype": "Data",
    "label": "Referred Contact Name",
@@ -148,10 +141,17 @@
    "fieldtype": "Select",
    "label": "How was the referral made ?",
    "options": "\nMentioned in a conversation\nEmail Introduction\nEvent"
+  },
+  {
+   "depends_on": "eval:doc.existing_crm=='Yes';",
+   "fieldname": "contact_person",
+   "fieldtype": "Link",
+   "label": "Referred Contact",
+   "options": "Contact"
   }
  ],
  "is_submittable": 1,
- "modified": "2025-03-19 16:15:47.219959",
+ "modified": "2025-03-19 17:02:45.010875",
  "modified_by": "Administrator",
  "module": "Master CRM",
  "name": "Referral Satisfaction Survey",
