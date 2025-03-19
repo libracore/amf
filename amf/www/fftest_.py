@@ -33,13 +33,9 @@ def make_stock_entry(work_order_id, serial_no_id=None):
             raise ValidationError(msg)
 
         # Determine WIP warehouse if skip_transfer is not set
-        wip_warehouse = None
-        if not work_order.skip_transfer:
-            # Only use WIP warehouse if it's not flagged as a group warehouse
-            if not frappe.db.get_value("Warehouse", work_order.wip_warehouse, "is_group"):
-                wip_warehouse = work_order.wip_warehouse
-            else:
-                logger.warning("WIP warehouse is invalid or a group warehouse. Setting wip_warehouse to None.")
+        wip_warehouse = "Main Stock - AMF21"
+        if not work_order.wip_step:
+            wip_warehouse = "Work In Progress - AMF21"
 
         # Initialize Stock Entry
         stock_entry = frappe.new_doc("Stock Entry")
@@ -48,7 +44,7 @@ def make_stock_entry(work_order_id, serial_no_id=None):
         stock_entry.company = work_order.company
         stock_entry.from_bom = 1
         stock_entry.bom_no = work_order.bom_no
-        stock_entry.use_multi_level_bom = work_order.use_multi_level_bom
+        stock_entry.use_multi_level_bom = 0
         stock_entry.fg_completed_qty = 1  # Hard-coded to force 1 by 1 testing irl; adjust as needed
 
         # Validate BOM
@@ -57,11 +53,11 @@ def make_stock_entry(work_order_id, serial_no_id=None):
             logger.error(msg)
             raise ValidationError(msg)
 
-        stock_entry.inspection_required = frappe.db.get_value('BOM', work_order.bom_no, 'inspection_required')
+        stock_entry.inspection_required = 0
 
         # Set warehouse and project fields
         stock_entry.from_warehouse = wip_warehouse
-        stock_entry.to_warehouse = work_order.fg_warehouse
+        stock_entry.to_warehouse = "Main Stock - AMF21"
         stock_entry.project = work_order.project
 
         # (Optional) Load any additional costs for manufacturing.
@@ -86,6 +82,8 @@ def make_stock_entry(work_order_id, serial_no_id=None):
             if item.item_code in bom_item_quantities:
                 item.qty = flt(bom_item_quantities[item.item_code])
                 item.transfer_qty = flt(item.qty * item.conversion_factor)
+                item.manual_source_warehouse_selection = 1
+                item.s_warehouse = "Work In Progress - AMF21"
 
         # Handle serial numbers on the last item
         if stock_entry.items:
@@ -109,8 +107,11 @@ def make_stock_entry(work_order_id, serial_no_id=None):
                     raise ValidationError(msg)
 
                 last_item.serial_no = serial_no_id
+                last_item.manual_target_warehouse_selection = 1
+                last_item.t_warehouse = "Main Stock - AMF21"
 
             # Assign or create a batch if needed
+            last_item.auto_batch_no_generation = 0
             last_item.batch_no = assign_or_create_batch_for_last_item(work_order_id, last_item)
 
         # Save and submit the Stock Entry
