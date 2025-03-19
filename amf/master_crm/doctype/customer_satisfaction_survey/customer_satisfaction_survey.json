@@ -114,8 +114,9 @@
   },
   {
    "fieldname": "recommend",
-   "fieldtype": "Rating",
-   "label": "How likely is the customer to recommend AMF to a colleague or professional in their industry?"
+   "fieldtype": "Select",
+   "label": "How likely is the customer to recommend AMF to a colleague or professional in their industry?",
+   "options": "\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10"
   },
   {
    "fieldname": "pre_sale",
@@ -290,7 +291,7 @@
   }
  ],
  "is_submittable": 1,
- "modified": "2025-03-07 14:31:26.465864",
+ "modified": "2025-03-19 16:18:13.201794",
  "modified_by": "Administrator",
  "module": "Master CRM",
  "name": "Customer Satisfaction Survey",
