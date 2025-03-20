@@ -1,16 +1,23 @@
 {
  "allow_import": 1,
  "allow_rename": 1,
+ "autoname": "CSS-.######",
  "creation": "2025-02-26 15:15:31.788586",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "title",
   "date_interaction",
   "type_interaction",
   "type_interaction_other",
+  "section_break_4",
   "customer",
   "contact_person",
+  "column_break_7",
+  "organization_name",
+  "contact_name",
+  "section_break_10",
   "owner",
   "department",
   "department_other",
@@ -288,10 +295,42 @@
    "fieldname": "comments",
    "fieldtype": "Text Editor",
    "label": "Additional Comments or Observations"
+  },
+  {
+   "fieldname": "section_break_4",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_7",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "customer.customer_name",
+   "fieldname": "organization_name",
+   "fieldtype": "Data",
+   "label": "Organization Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "contact_person.full_name",
+   "fieldname": "contact_name",
+   "fieldtype": "Data",
+   "label": "Contact Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_10",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "read_only": 1
   }
  ],
  "is_submittable": 1,
- "modified": "2025-03-19 16:18:13.201794",
+ "modified": "2025-03-20 11:15:20.302694",
  "modified_by": "Administrator",
  "module": "Master CRM",
  "name": "Customer Satisfaction Survey",
