@@ -1,9 +1,11 @@
 {
+ "autoname": "RSS-.######",
  "creation": "2025-03-19 16:00:25.675857",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "title",
   "date",
   "column_break_2",
   "owner",
@@ -125,8 +127,9 @@
   },
   {
    "fieldname": "owner",
-   "fieldtype": "Data",
-   "label": "Owner"
+   "fieldtype": "Link",
+   "label": "Owner",
+   "options": "User"
   },
   {
    "fieldname": "column_break_2",
@@ -148,16 +151,23 @@
    "fieldtype": "Link",
    "label": "Referred Contact",
    "options": "Contact"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "read_only": 1
   }
  ],
  "is_submittable": 1,
- "modified": "2025-03-19 17:02:45.010875",
+ "modified": "2025-03-20 11:19:06.105240",
  "modified_by": "Administrator",
  "module": "Master CRM",
  "name": "Referral Satisfaction Survey",
  "owner": "Administrator",
  "permissions": [
   {
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -165,8 +175,9 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "System Manager",
+   "role": "All",
    "share": 1,
+   "submit": 1,
    "write": 1
   }
  ],
