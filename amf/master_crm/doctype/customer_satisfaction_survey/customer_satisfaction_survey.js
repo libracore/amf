@@ -2,6 +2,9 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Customer Satisfaction Survey', {
+    refresh: function(frm) {
+        set_item_queries(frm)
+    },
 	before_submit: function(frm) {
         if (frm.doc.contact_name && frm.doc.organization_name) {
             frm.set_value("title", frm.doc.contact_name + " for " + frm.doc.organization_name);
@@ -18,3 +21,11 @@ frappe.ui.form.on('Customer Satisfaction Survey', {
         }
     },
 });
+
+function set_item_queries(frm) {
+    frm.set_query("contact_person", () => ({
+        filters: [
+            ['Contact', 'company_name', 'Like', frm.doc.customer],
+        ],
+    }));
+}
