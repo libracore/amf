@@ -91,6 +91,16 @@ doc_events = {
     "Item": {
         "after_insert": "amf.amf.utils.custom.qr_code_to_document"
     },
+    "Customer Satisfaction Survey": {
+        "after_insert": [
+            "amf.master_crm.doctype.customer_satisfaction_survey.customer_satisfaction_survey.update_contact_csat_nps"
+        ]  
+    },
+    "Referral Satisfaction Survey": {
+        "after_insert": [
+            "amf.master_crm.doctype.referral_satisfaction_survey.referral_satisfaction_survey.update_contact_csat_nps"
+        ]  
+    },
 }
 
 # Scheduled Tasks

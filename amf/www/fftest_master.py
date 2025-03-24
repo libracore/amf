@@ -1,9 +1,8 @@
+from amf.amf.utils.work_order_creation import get_default_bom
 import frappe
 from frappe import _, ValidationError
 from frappe.utils import flt
 from datetime import datetime
-from erpnext.stock.doctype.stock_entry.stock_entry import get_additional_costs
-
 
 @frappe.whitelist()
 def make_stock_entry(source_work_order_id, serial_no_id=None):
@@ -22,8 +21,7 @@ def make_stock_entry(source_work_order_id, serial_no_id=None):
     )
 
     # 1) Find candidate Work Orders that match items from the given source Work Order
-    matching_wos = get_serialized_items_with_existing_work_orders(
-        source_work_order_id)
+    matching_wos = get_serialized_items_with_existing_work_orders(source_work_order_id)
     logger.info(f"Found matching Work Orders: {matching_wos}")
 
     # 2) Select the first matched Work Order to proceed (if any exist)
@@ -210,6 +208,26 @@ def start_work_order(work_order_id):
     update_rate_and_availability_ste(stock_entry, None)
     stock_entry.submit()
 
+def create_new_wo(item_code='520100', sales_order="", qty=1):
+    print("creating wo for item:",item_code)
+    '''Make a single Work Order for the given item'''
+    bom_no = get_default_bom(item_code)
+
+    work_order = frappe.get_doc(dict(
+        doctype='Work Order',
+        production_item=item_code,
+        bom_no=bom_no,
+        qty=qty,
+        company='Advanced Microfluidics SA',
+        sales_order=sales_order,
+        fg_warehouse='Main Stock - AMF21',  # Replace with the appropriate warehouse
+        simple_description='Auto-generated Work Order from non-available stock via FFTest.'
+    )).insert()
+   
+    work_order.set_work_order_operations()
+    work_order.save()
+    work_order.submit()
+    return work_order
 
 @frappe.whitelist()
 def get_serialized_items_with_existing_work_orders(work_order_id):
@@ -253,21 +271,38 @@ def get_serialized_items_with_existing_work_orders(work_order_id):
     )
     
     if not existing_work_orders:
-        existing_work_orders = frappe.get_all(
+        # 1) Attempt a second lookup with different filters
+        secondary_wos = frappe.get_all(
             "Work Order",
             filters={
                 "production_item": ["in", item_codes],
                 "status": ["in", ["Not Started", "In Process"]],
-                "sales_order": "",  # Remove this if not required
-                "parent_work_order": "",
+                "sales_order": "",        # Remove if not required
+                "parent_work_order": "",  # Remove if not required
             },
             fields=["name", "production_item"]
         )
+
+        if secondary_wos:
+            existing_work_orders = secondary_wos
+        else:
+            # 2) If still empty, create new Work Orders for each item_code
+            newly_created_wos = []
+            for code in item_codes:
+                print(code)
+                wo_doc = create_new_wo(code)
+                # Convert the Work Order doc into a dict that matches get_all() structure
+                newly_created_wos.append({
+                    "name": wo_doc.name,
+                    "production_item": wo_doc.production_item
+                })
+            existing_work_orders = newly_created_wos
 
     # Step 3: Build a unique set of (name, production_item) pairs
     unique_wo_pairs = {
         (wo["name"], wo["production_item"]) for wo in existing_work_orders
     }
+
 
     # Convert tuples back into dicts for the final result
     return [

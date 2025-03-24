@@ -36,7 +36,14 @@ def get_header(contact=None):
                     if address:
                         address_display = get_address_display(address.name)
                     break
-
+        if contact_doc.csat:
+            csat = contact_doc.csat
+        else:
+            csat = "N/A"
+        if contact_doc.nps:
+            nps = contact_doc.nps
+        else:
+            nps = "N/A"
     # get status
     contact_fields = frappe.get_meta("Contact").as_dict().get('fields')
     for f in contact_fields:
@@ -50,7 +57,9 @@ def get_header(contact=None):
             'address_display': address_display,
             'customer_url': customer_url,
             'customer_name': customer_name,
-            'status': status
+            'status': status,
+            'csat': csat,
+            'nps': nps
         }
     )
     return html

@@ -13,7 +13,6 @@ def rename_serial_nos_for_522100_via_sql():
     2) Rename them to '522100-0000xxxx' format, incrementing from 775 to 1054.
     3) Use rename_doc to properly update references, then commit once.
     """
-
     old_start_num = 4230
     old_end_num   = 4509
     new_start_num = 775
@@ -37,6 +36,7 @@ def rename_serial_nos_for_522100_via_sql():
         (old_start_num, old_end_num),
         as_dict=True
     )
+    print(serial_nos)
 
     for row in serial_nos:
         old_name = row["name"]
@@ -49,9 +49,10 @@ def rename_serial_nos_for_522100_via_sql():
 
         # Build new name, e.g. '522100-00000775'
         new_name = f"522100-{new_num:08d}"
+        print(new_name)
 
         # Use rename_doc to properly update references and underlying links
-        rename_doc("Serial No", old_name, new_name, force=True, merge=False)
+        rename_doc("Serial No", old_name, new_name, force=False, merge=False)
 
-    # Commit once at the end
-    frappe.db.commit()
+        # Commit once at the end
+        frappe.db.commit()

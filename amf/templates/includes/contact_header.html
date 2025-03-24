@@ -61,8 +61,36 @@ function link_customer() {
             </div>
         </div>
 
+        <div class="col-sm-4">
+            <div class="form-column" style="padding-top: 10px;">
+                <label class="control-label" style="padding-right: 0px;">{{ _("CSAT %") }}</label>
+                <div class="input-group">
+                {% if csat %}
+                    <a class="form-control">{{ csat }}</a>
+                {% else %}
+                    <a class="form-control">{{ "" }}</a>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+    
+        <div class="col-sm-4">
+            <div class="form-column" style="padding-top: 10px;">
+                <label class="control-label" style="padding-right: 0px;">{{ _("NPS %") }}</label>
+                <div class="input-group">
+                    {% if nps %}
+                        <a class="form-control">{{ nps }}</a>
+                    {% else %}
+                        <a class="form-control">{{ "" }}</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
         
     </div>
+
+
+    
     
     <div class="col-sm-3">
         <div class="form-column" style="padding-top: 10px;">
@@ -91,7 +119,6 @@ function link_customer() {
                 {{ address_display }}
             </div>
         </div>
-        
     </div>
     
     <div class="col-sm-2">
@@ -120,7 +147,7 @@ function link_customer() {
                         {% endfor %}
                 </select>
             </div>
-
         </div>
+
     </div>
 </div>
