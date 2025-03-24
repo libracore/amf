@@ -61,9 +61,9 @@ function link_customer() {
             </div>
         </div>
 
-        <div class="col-sm-2">
+        <div class="col-sm-4">
             <div class="form-column" style="padding-top: 10px;">
-                <label class="control-label" style="padding-right: 0px;">{{ _("CSAT") }}</label>
+                <label class="control-label" style="padding-right: 0px;">{{ _("CSAT %") }}</label>
                 <div class="input-group">
                 {% if csat %}
                     <a class="form-control">{{ csat }}</a>
@@ -74,9 +74,9 @@ function link_customer() {
             </div>
         </div>
     
-        <div class="col-sm-2">
+        <div class="col-sm-4">
             <div class="form-column" style="padding-top: 10px;">
-                <label class="control-label" style="padding-right: 0px;">{{ _("NPS") }}</label>
+                <label class="control-label" style="padding-right: 0px;">{{ _("NPS %") }}</label>
                 <div class="input-group">
                     {% if nps %}
                         <a class="form-control">{{ nps }}</a>
