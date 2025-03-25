@@ -1413,7 +1413,7 @@
    "modified_by": "Administrator",
    "name": "Contact-source",
    "no_copy": 0,
-   "options": "\nEvent\nDatabase\nQuote Request\nProspection\nReferral\nSEA\nSEO",
+   "options": "\nEvent\nDatabase\nQuote Request\nProspection\nReferral",
    "owner": "Administrator",
    "parent": null,
    "parentfield": null,
@@ -2005,7 +2005,7 @@
    "parenttype": null,
    "property": "options",
    "property_type": "Text",
-   "value": "Lead\nProspect\nSuspect\nCustomer\nSupplier\nBack-Office\nPassive\nInactive\nDistributor\nAMF"
+   "value": "\nSuspect\nLead\nProspect\nCustomer\nBack-Office\nDistributor\nSupplier\nAMF\nPassive\nInactive"
   },
   {
    "_assign": null,
