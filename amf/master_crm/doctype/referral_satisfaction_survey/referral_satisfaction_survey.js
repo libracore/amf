@@ -2,6 +2,9 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Referral Satisfaction Survey', {
+    refresh: function(frm) {
+        set_item_queries(frm)
+    },
     before_submit: function (frm) {
         if (frm.doc.referred_contact_name && frm.doc.referred_organization_name) {
             frm.set_value("title", frm.doc.referred_contact_name + " for " + frm.doc.referred_organization_name);
@@ -21,3 +24,11 @@ frappe.ui.form.on('Referral Satisfaction Survey', {
         }
     },
 });
+
+function set_item_queries(frm) {
+    frm.set_query("referring_contact", () => ({
+        filters: [
+            ['Contact', 'company_name', 'Like', frm.doc.referring_organization],
+        ],
+    }));
+}

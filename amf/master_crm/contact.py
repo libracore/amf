@@ -251,11 +251,11 @@ def update_contact_statuses():
     print("Prospect:", len(contacts_in_quotation))
     set_contact_status(contacts_in_quotation, "Prospect")
 
-    print("Customer:", len(contacts_in_sales_order))
-    set_contact_status(contacts_in_sales_order, "Customer")
-
     print("Supplier:", len(contacts_in_purchase_order))
     set_contact_status(contacts_in_purchase_order, "Supplier")
+    
+    print("Customer:", len(contacts_in_sales_order))
+    set_contact_status(contacts_in_sales_order, "Customer")
 
     # Commit changes if you’re not in a transaction
     frappe.db.commit()
