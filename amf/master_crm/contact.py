@@ -14,6 +14,8 @@ def get_header(contact=None):
     address_display = ""
     customer_url = ""
     customer_name = ""
+    csat = 0
+    nps = 0
     status = {
         'value': 'Lead',
         'options': 'Lead'
@@ -38,12 +40,8 @@ def get_header(contact=None):
                     break
         if contact_doc.csat:
             csat = contact_doc.csat
-        else:
-            csat = "N/A"
         if contact_doc.nps:
             nps = contact_doc.nps
-        else:
-            nps = "N/A"
     # get status
     contact_fields = frappe.get_meta("Contact").as_dict().get('fields')
     for f in contact_fields:
