@@ -25,7 +25,7 @@ frappe.ui.form.on('Customer Satisfaction Survey', {
 function set_item_queries(frm) {
     frm.set_query("contact_person", () => ({
         filters: [
-            ['Contact', 'company_name', 'Like', frm.doc.customer],
+            ['Contact', 'company_name', 'Like', frm.doc.organization_name],
         ],
     }));
 }
