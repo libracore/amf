@@ -244,8 +244,14 @@ def update_item_from_default_bom(item_name):
     )
     if not bom_name:
         # No default BOM => just save cleared fields
-        item_doc.save()
-        frappe.db.commit()
+        try:
+            item_doc.save()
+            frappe.db.commit()
+        except frappe.ValidationError as e:
+            frappe.log_error(
+                title="Item Not Saved",
+                message=f"Unable to save Item {item_name}: {e}"
+            )
         return
 
     # Load the BOM document
@@ -256,13 +262,19 @@ def update_item_from_default_bom(item_name):
             title="BOM Not Found",
             message=f"Unable to find BOM {bom_name} for Item {item_name}"
         )
-        item_doc.save()
-        frappe.db.commit()
+        try:
+            item_doc.save()
+            frappe.db.commit()
+        except frappe.ValidationError as e:
+            frappe.log_error(
+                title="Item Not Saved",
+                message=f"Unable to save Item {item_name}: {e}"
+            )
         return
 
     # Assign default BOM link
     item_doc.item_default_bom = bom_doc.name
-
+    print("Set up", bom_doc.name, "for item:", item_name)
     # For each BOM item, copy relevant fields to the item’s bom_table
     for bom_item in bom_doc.items:
         if frappe.db.get_value("Item", bom_item.item_code, "disabled"):  
@@ -301,6 +313,7 @@ def update_item_from_default_bom(item_name):
     try:
         item_doc.save()
         frappe.db.commit()
+        print("*db commit done*")
     except frappe.ValidationError as e:
         frappe.log_error(
             title="BOM Not Saved",
