@@ -101,7 +101,7 @@ def make_stock_entry(source_work_order_id, serial_no_id=None):
                 se_item.transfer_qty = flt(
                     se_item.qty * se_item.conversion_factor)
                 se_item.manual_source_warehouse_selection = 1
-                if work_order_doc.wip_step:
+                if not work_order_doc.wip_step:
                     se_item.s_warehouse = "Work In Progress - AMF21"
                 else:
                     se_item.s_warehouse = "Main Stock - AMF21"
