@@ -244,8 +244,14 @@ def update_item_from_default_bom(item_name):
     )
     if not bom_name:
         # No default BOM => just save cleared fields
-        item_doc.save()
-        frappe.db.commit()
+        try:
+            item_doc.save()
+            frappe.db.commit()
+        except frappe.ValidationError as e:
+            frappe.log_error(
+                title="Item Not Saved",
+                message=f"Unable to save Item {item_name}: {e}"
+            )
         return
 
     # Load the BOM document
@@ -256,8 +262,14 @@ def update_item_from_default_bom(item_name):
             title="BOM Not Found",
             message=f"Unable to find BOM {bom_name} for Item {item_name}"
         )
-        item_doc.save()
-        frappe.db.commit()
+        try:
+            item_doc.save()
+            frappe.db.commit()
+        except frappe.ValidationError as e:
+            frappe.log_error(
+                title="Item Not Saved",
+                message=f"Unable to save Item {item_name}: {e}"
+            )
         return
 
     # Assign default BOM link
@@ -307,3 +319,93 @@ def update_item_from_default_bom(item_name):
             message=f"Unable to save BOM {bom_name} for Item {item_name}: {e}"
         )
         return
+    
+@frappe.whitelist()
+def execute_db_update_enqueue():
+    frappe.enqueue("amf.amf.utils.bom_mgt.duplicate_default_bom_for_47xxxx_items", queue='long', timeout=15000)
+    return None
+
+def duplicate_default_bom_for_47xxxx_items():
+    """
+    1) Finds all items with item_code matching the pattern ^47\\d{4}$ (6 digits total).
+    2) Gets the default BOM for each item, if any.
+    3) Duplicates that BOM, adds two references C100 and C101 with qty=1 each.
+    4) Submits the newly created BOM.
+    """
+
+    # Step 1: Get all item codes that match regex ^47\d{4}$ (i.e. 47 + 4 digits = 6 total digits).
+    items = frappe.get_all(
+        "Item",
+        filters={
+            "item_code": ["like", "47%"],
+            "disabled": 0
+        },
+        fields=["name"]
+    )
+
+    for item_code in items:
+        # Step 2: Get the default BOM for this item
+        default_bom = frappe.db.get_value(
+            "BOM",
+            {
+                "item": item_code['name'],
+                "is_default": 1,
+                "docstatus": 1
+            },
+            "name"
+        )
+        if not default_bom:
+            continue  # Skip if there's no default BOM set
+
+        # Retrieve the existing BOM document
+        old_bom = frappe.get_doc("BOM", default_bom)
+        
+        # Step 4: Add the two new references as BOM Items
+        # Gather item codes that already exist in the old BOM
+        existing_item_codes = [row.item_code for row in old_bom.items]
+        # If *both* C100 AND C101 are already present, skip this item
+        if "C100" in existing_item_codes and "C101" in existing_item_codes:
+            continue
+
+        # Step 3: Duplicate the BOM using frappe.copy_doc
+        new_bom = frappe.copy_doc(old_bom)
+
+        # Clear out fields that should not be carried over
+        new_bom.name = None
+        new_bom.amended_from = None
+        # We want a clean, draft (docstatus=0) copy
+        new_bom.docstatus = 0  
+        new_bom.is_default = 1
+        
+        # Only add C100 if not already in the old BOM
+        if "C100" not in existing_item_codes:
+            new_bom.append("items", {
+                "item_code": "C100",
+                "qty": 1
+            })
+
+        # Only add C101 if not already in the old BOM
+        if "C101" not in existing_item_codes:
+            new_bom.append("items", {
+                "item_code": "C101",
+                "qty": 1
+            })
+        
+        for item_row in new_bom.items:
+            default_bom = frappe.db.get_value(
+                "BOM",
+                {
+                    "item": item_row.item_code,
+                    "is_default": 1,
+                    "docstatus": 1
+                },
+                "name"
+            )
+            if default_bom:
+                item_row.bom_no = default_bom
+
+        # Step 5: Insert and Submit
+        new_bom.insert()
+        new_bom.submit()
+
+    frappe.db.commit()  # Ensure changes are committed to the database
