@@ -420,7 +420,7 @@ def start_work_order_final(work_order_id, serial_no_id=None, batch_no_id=None):
                 JOIN `tabBin` AS bin
                     ON bin.item_code   = sle.item_code
                     AND bin.warehouse  = sle.warehouse
-                    AND bin.actual_qty = sle.qty_after_transaction
+                    AND bin.actual_qty >= sle.actual_qty
                 WHERE sle.batch_no = %(batch_no)s
                   AND sle.item_code = %(item_code)s
                   AND sle.qty_after_transaction != 0
