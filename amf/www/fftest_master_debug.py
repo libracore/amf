@@ -37,13 +37,19 @@ def make_stock_entry(source_work_order_id, serial_no_id=None, batch_no_id=None):
 
     # 2) Select the first matched Work Order to proceed (if any exist)
     if not matching_wos:
-        update_log_entry(
-            log_id, "DEBUG: No suitable Work Order found. Returning error dict.")
-        msg = _("DEBUG: No suitable Work Order found. Returning error dict.")
-        logger.error(msg)
-        return {"error": f"No suitable Work Order found from {source_work_order_id}."}
-
-    target_wo_id = matching_wos[0]["work_order_name"]
+        spare_prod = frappe.db.get_value("Work Order", source_work_order_id, "spare_part_production")
+        if not spare_prod:
+            update_log_entry(
+                log_id, "DEBUG: No suitable Work Order found. Returning error dict.")
+            msg = _("DEBUG: No suitable Work Order found. Returning error dict.")
+            logger.error(msg)
+            return {"error": f"No suitable Work Order found from {source_work_order_id}."}
+    
+    if spare_prod:
+        target_wo_id = source_work_order_id
+        spare_batch_no = frappe.db.get_value("Work Order", source_work_order_id, "spare_batch_no")
+    else:
+        target_wo_id = matching_wos[0]["work_order_name"]
     update_log_entry(log_id, f"DEBUG: Chosen target_wo_id: {target_wo_id}")
 
     # 3) If needed, start the Work Order (moves materials to WIP) if status is 'Not Started'
@@ -186,10 +192,18 @@ def make_stock_entry(source_work_order_id, serial_no_id=None, batch_no_id=None):
             update_log_entry(
                 log_id, "DEBUG: Checking if last_item has batch-tracking...")
             last_item.auto_batch_no_generation = 0
-            last_item.batch_no = assign_or_create_batch_for_last_item(
-                target_wo_id, last_item)
-            update_log_entry(
-                log_id, f"DEBUG: last_item.batch_no set to {last_item.batch_no}")
+            if not spare_prod:
+                last_item.batch_no = assign_or_create_batch_for_last_item(
+                    target_wo_id, last_item)
+                update_log_entry(
+                    log_id, f"DEBUG: last_item.batch_no set to {last_item.batch_no}")
+            else:
+                if frappe.db.get_value("Item", last_item.item_code, "has_batch_no") == 1:
+                    update_log_entry(log_id, "DEBUG: Item is batchable with auto WO batch no.")
+                    print("spare_batch_no:", spare_batch_no)
+                    last_item.batch_no = spare_batch_no
+                    update_log_entry(
+                        log_id, f"DEBUG: last_item.batch_no set to {last_item.batch_no}")
 
         # 10) Save and submit the Stock Entry
         update_log_entry(
@@ -209,7 +223,8 @@ def make_stock_entry(source_work_order_id, serial_no_id=None, batch_no_id=None):
         update_log_entry(
             log_id, f"DEBUG: Stock Entry submitted successfully: {stock_entry.name}")
 
-        start_work_order_final(source_work_order_id, serial_no_id, batch_no_id)
+        if not spare_prod:
+            start_work_order_final(source_work_order_id, serial_no_id, batch_no_id)
 
         return stock_entry
 
@@ -811,3 +826,34 @@ def create_log_entry(message, category=None):
     # Replace print(...) with an update_log_entry about the newly created log entry
     update_log_entry(log_id, f"DEBUG: Created new log entry with ID: {log_id}")
     return None
+
+@frappe.whitelist()
+def fetch_sn(product_id):
+    """
+    1) Finds the highest serial number for the given product_id.
+    2) Increments that serial by 1.
+    3) Returns the new serial.
+    """
+    # Example: Suppose your doctype is "Item Serial"
+    # and it stores a field called "serial_no" (as an int) plus "product_id".
+    # 
+    # Step A: Query for the maximum serial_no belonging to product_id:
+    print("product_id:",product_id)
+    highest_sn = frappe.db.sql("""
+        SELECT MAX(serial_no)
+        FROM `tabSerial No`
+        WHERE item_code = %s
+    """, (product_id,), as_list=True)
+    print("highest_sn:",highest_sn)
+    # highest_sn is a list of lists, e.g. [[123]] or [[None]] if no rows
+    if highest_sn and highest_sn[0][0] is not None:
+        last_sn = int(highest_sn[0][0])
+    else:
+        # If not found, define a default. E.g. 999 or 1000
+        last_sn = 0
+
+    # Step B: increment
+    new_sn = last_sn + 1
+    print("new_sn:",new_sn)
+    # Return the new_sn in a JSON-friendly format:
+    return {"sn": str(new_sn)}
