@@ -195,65 +195,211 @@ def set_contact_status(contact_names, status_label):
     """)
 
 
+# def update_contact_statuses():
+#     """
+#     Once a week, update every Contact's status based on whether they appear in:
+#       - Quotation => 'Prospect'
+#       - Sales Order => 'Customer'
+#       - Purchase Order => 'Supplier'
+#     """
+
+#     # 1. Gather distinct contacts referenced in Quotations
+#     contacts_in_quotation = frappe.db.sql(
+#         """
+#         SELECT DISTINCT contact_person
+#         FROM `tabQuotation`
+#         WHERE contact_person IS NOT NULL
+#           AND contact_person != ''
+#         """,
+#         as_list=True
+#     )
+#     contacts_in_quotation = {row[0] for row in contacts_in_quotation}
+
+#     # 2a. Gather distinct contacts referenced in Sales Orders
+#     contacts_in_sales_order = frappe.db.sql(
+#         """
+#         SELECT DISTINCT contact_person
+#         FROM `tabSales Order`
+#         WHERE contact_person IS NOT NULL
+#           AND contact_person != ''
+#         """,
+#         as_list=True
+#     )
+#     contacts_in_sales_order = {row[0] for row in contacts_in_sales_order}
+
+#     # 2b. Gather distinct contacts referenced in Purchase Orders
+#     contacts_in_purchase_order = frappe.db.sql(
+#         """
+#         SELECT DISTINCT contact_person
+#         FROM `tabPurchase Order`
+#         WHERE contact_person IS NOT NULL
+#           AND contact_person != ''
+#         """,
+#         as_list=True
+#     )
+#     contacts_in_purchase_order = {row[0] for row in contacts_in_purchase_order}
+
+#     # (Optional) Default ALL contacts to 'Lead' or 'Suspect' – uncomment if needed
+#     # frappe.db.sql("""
+#     #     UPDATE `tabContact`
+#     #     SET status = 'Lead'
+#     # """)
+
+#     # Bulk-update statuses in a logical sequence:
+#     print("Prospect:", len(contacts_in_quotation))
+#     set_contact_status(contacts_in_quotation, "Prospect")
+
+#     print("Supplier:", len(contacts_in_purchase_order))
+#     set_contact_status(contacts_in_purchase_order, "Supplier")
+    
+#     print("Customer:", len(contacts_in_sales_order))
+#     set_contact_status(contacts_in_sales_order, "Customer")
+
+#     # Commit changes if you’re not in a transaction
+#     frappe.db.commit()
+
 def update_contact_statuses():
     """
-    Once a week, update every Contact's status based on whether they appear in:
-      - Quotation => 'Prospect'
-      - Sales Order => 'Customer'
-      - Purchase Order => 'Supplier'
+    Weekly job that bumps a Contact’s status according to its presence in
+    business documents.
+
+      • Quotation      → Prospect   (only if status ∈ {Suspect, Lead, Prospect})
+      • Sales Order    → Customer   (only if status ∈ {Suspect, Lead, Prospect})
+      • Purchase Order → Supplier   (always)
+    """
+    # ------------------------------------------------------------------
+    # 0.  Common helper
+    # ------------------------------------------------------------------
+    def get_distinct_contacts(sql: str, params: tuple = ()) -> set[str]:
+        """Run *sql* and return a set of single-column strings."""
+        rows = frappe.db.sql(sql, params, as_list=True)
+        return {row[0] for row in rows}
+
+    # ------------------------------------------------------------------
+    # 1.  Collect contacts in Quotations   ▸ Upgrade to Prospect
+    # ------------------------------------------------------------------
+    status_filter = ("Suspect", "Lead", "Prospect")          # keep sync with docstring!
+    placeholders   = ", ".join(["%s"] * len(status_filter))  # → “%s, %s, %s”
+
+    contacts_in_quotation = get_distinct_contacts(
+        f"""
+        SELECT DISTINCT q.contact_person
+          FROM `tabQuotation` AS q
+          JOIN `tabContact`  AS c ON c.name = q.contact_person
+         WHERE q.contact_person IS NOT NULL            -- sanity
+           AND q.contact_person != ''
+           AND c.status IN ({placeholders})            -- ← new filter
+        """,
+        status_filter,
+    )
+
+    # ------------------------------------------------------------------
+    # 2.  Collect contacts in Sales Orders ▸ Upgrade to Customer
+    # ------------------------------------------------------------------
+    contacts_in_sales_order = get_distinct_contacts(
+        f"""
+        SELECT DISTINCT so.contact_person
+          FROM `tabSales Order` AS so
+          JOIN `tabContact`     AS c  ON c.name = so.contact_person
+         WHERE so.contact_person IS NOT NULL
+           AND so.contact_person != ''
+           AND c.status IN ({placeholders})
+        """,
+        status_filter,
+    )
+
+    # ------------------------------------------------------------------
+    # 3.  Collect contacts in Purchase Orders ▸ Upgrade to Supplier
+    #     (no status filter here)
+    # ------------------------------------------------------------------
+    contacts_in_purchase_order = get_distinct_contacts(
+        """
+        SELECT DISTINCT contact_person
+          FROM `tabPurchase Order`
+         WHERE contact_person IS NOT NULL
+           AND contact_person != ''
+        """
+    )
+
+    # ------------------------------------------------------------------
+    # 4.  Bulk-update in order: Prospect → Supplier → Customer
+    # ------------------------------------------------------------------
+    print(f"Prospect  ◂ {len(contacts_in_quotation)} contacts")
+    set_contact_status(contacts_in_quotation,      "Prospect")
+
+    print(f"Supplier  ◂ {len(contacts_in_purchase_order)} contacts")
+    set_contact_status(contacts_in_purchase_order, "Supplier")
+
+    print(f"Customer  ◂ {len(contacts_in_sales_order)} contacts")
+    set_contact_status(contacts_in_sales_order,    "Customer")
+
+    frappe.db.commit()      # commit if not already inside a transaction
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+def set_organization_flag(org_names: set[str], fieldname: str):
+    """
+    Bulk-update a boolean flag (`is_supplier` or `is_customer`) for a set of
+    Organization names.
+    """
+    if not org_names:
+        return
+    orgs_str = "', '".join(org_names)
+    frappe.db.sql(
+        f"""
+        UPDATE `tabCustomer`
+           SET {fieldname} = 1
+         WHERE name IN ('{orgs_str}')
+        """
+    )
+
+# ---------------------------------------------------------------------------
+# Scheduler job
+# ---------------------------------------------------------------------------
+def update_organization_flags():
+    """
+    Weekly job that marks Organizations as suppliers / customers based on the
+    documents in which they appear.
+
+      • Purchase Order → is_supplier
+      • Sales Order    → is_customer
     """
 
-    # 1. Gather distinct contacts referenced in Quotations
-    contacts_in_quotation = frappe.db.sql(
+    def _get_distinct_orgs(sql: str, params: tuple = ()) -> set[str]:
+        """Utility: execute *sql* and return a set with the first column."""
+        rows = frappe.db.sql(sql, params, as_list=True)
+        return {row[0] for row in rows}
+
+    # 1.  Organizations in Purchase Orders  ──────────────────────────────
+    orgs_in_po = _get_distinct_orgs(
         """
-        SELECT DISTINCT contact_person
-        FROM `tabQuotation`
-        WHERE contact_person IS NOT NULL
-          AND contact_person != ''
-        """,
-        as_list=True
-    )
-    contacts_in_quotation = {row[0] for row in contacts_in_quotation}
-
-    # 2a. Gather distinct contacts referenced in Sales Orders
-    contacts_in_sales_order = frappe.db.sql(
+        SELECT DISTINCT po.supplier
+            FROM `tabPurchase Order` AS po
+            JOIN `tabCustomer`      AS sup ON sup.name = po.supplier   -- ← ensure it exists
+        WHERE po.supplier IS NOT NULL
+            AND po.supplier != ''
+            AND po.status NOT IN ('Cancelled', 'Draft')
         """
-        SELECT DISTINCT contact_person
-        FROM `tabSales Order`
-        WHERE contact_person IS NOT NULL
-          AND contact_person != ''
-        """,
-        as_list=True
     )
-    contacts_in_sales_order = {row[0] for row in contacts_in_sales_order}
 
-    # 2b. Gather distinct contacts referenced in Purchase Orders
-    contacts_in_purchase_order = frappe.db.sql(
+    # 2. Organisations that are customers  ─────────────────────────────────
+    orgs_in_so = _get_distinct_orgs(
         """
-        SELECT DISTINCT contact_person
-        FROM `tabPurchase Order`
-        WHERE contact_person IS NOT NULL
-          AND contact_person != ''
-        """,
-        as_list=True
+        SELECT DISTINCT so.customer
+            FROM `tabSales Order` AS so
+            JOIN `tabCustomer`    AS cust ON cust.name = so.customer   -- ← ensure it exists
+        WHERE so.customer IS NOT NULL
+            AND so.customer != ''
+            AND so.status NOT IN ('Cancelled', 'Draft')
+        """
     )
-    contacts_in_purchase_order = {row[0] for row in contacts_in_purchase_order}
 
-    # (Optional) Default ALL contacts to 'Lead' or 'Suspect' – uncomment if needed
-    # frappe.db.sql("""
-    #     UPDATE `tabContact`
-    #     SET status = 'Lead'
-    # """)
+    # 3.  Bulk-update (supplier first, then customer)  ───────────────────
+    print(f"is_supplier  ◂ {len(orgs_in_po)} organizations")
+    set_organization_flag(orgs_in_po, "is_supplier")
 
-    # Bulk-update statuses in a logical sequence:
-    print("Prospect:", len(contacts_in_quotation))
-    set_contact_status(contacts_in_quotation, "Prospect")
+    print(f"is_customer  ◂ {len(orgs_in_so)} organizations")
+    set_organization_flag(orgs_in_so, "is_customer")
 
-    print("Supplier:", len(contacts_in_purchase_order))
-    set_contact_status(contacts_in_purchase_order, "Supplier")
-    
-    print("Customer:", len(contacts_in_sales_order))
-    set_contact_status(contacts_in_sales_order, "Customer")
-
-    # Commit changes if you’re not in a transaction
-    frappe.db.commit()
+    frappe.db.commit()          # commit if outside an explicit transaction
