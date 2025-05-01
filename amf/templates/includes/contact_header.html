@@ -17,11 +17,21 @@ function link_customer() {
         }  
     ],
     function(values) {
-        let child = cur_frm.add_child("links");
-        frappe.model.set_value(child.doctype, child.name, "link_doctype", "Customer");
-        frappe.model.set_value(child.doctype, child.name, "link_name", values.customer);
-        cur_frm.set_value("company_name", values.customer);
-        cur_frm.refresh_field("links");
+        frappe.call({
+            "method": "frappe.client.get",
+            "args": {
+                "doctype": "Customer",
+                "name": values.customer
+            },
+            "callback": function(response) {
+                let customer = response.message;
+                let child = cur_frm.add_child("links");
+                frappe.model.set_value(child.doctype, child.name, "link_doctype", "Customer");
+                frappe.model.set_value(child.doctype, child.name, "link_name", customer.name);
+                cur_frm.set_value("company_name", customer.customer_name);
+                cur_frm.refresh_field("links");
+            }
+        });
     },
     __("Link customer"),
     __("Link")

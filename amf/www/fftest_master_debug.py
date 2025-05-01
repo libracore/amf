@@ -35,9 +35,10 @@ def make_stock_entry(source_work_order_id, serial_no_id=None, batch_no_id=None):
     logger.info(f"Found matching Work Orders: {matching_wos}")
     update_log_entry(log_id, f"DEBUG: matching_wos returned: {matching_wos}")
 
+    spare_prod = frappe.db.get_value("Work Order", source_work_order_id, "spare_part_production")
+    
     # 2) Select the first matched Work Order to proceed (if any exist)
     if not matching_wos:
-        spare_prod = frappe.db.get_value("Work Order", source_work_order_id, "spare_part_production")
         if not spare_prod:
             update_log_entry(
                 log_id, "DEBUG: No suitable Work Order found. Returning error dict.")
@@ -436,6 +437,7 @@ def start_work_order_final(work_order_id, serial_no_id=None, batch_no_id=None):
                     ON bin.item_code   = sle.item_code
                     AND bin.warehouse  = sle.warehouse
                     AND bin.actual_qty >= sle.actual_qty
+                    AND bin.actual_qty > 0
                 WHERE sle.batch_no = %(batch_no)s
                   AND sle.item_code = %(item_code)s
                   AND sle.qty_after_transaction != 0

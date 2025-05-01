@@ -49,9 +49,23 @@ frappe.ui.form.on('Contact', {
         check_duplicates(frm);
         
         // action buttons
-        frm.add_custom_button(__("Quotation"), function() {
-            create_quotation(frm);
-        }, __("Create"));
+        if (!frm.doc.__islocal) {
+            frm.add_custom_button(__("Quotation"), function() {
+                create_quotation(frm);
+            }, __("Create"));
+            
+            if ((frm.doc.links) && (frm.doc.links.length > 0)) {
+                frm.add_custom_button(__("Change Company"), function() {
+                    change_company(frm);
+                });
+            }
+            
+            if (frm.doc.email_id) {
+                frm.add_custom_button(__("Brevo Stats"), function() {
+                    brevo_stats(frm);
+                });
+            }
+        }
     },
     before_save: function(frm) {
         if (frm.doc.contact_function === "Primary") {
@@ -231,7 +245,7 @@ function make_quotation(frm) {
             'contact_name': frm.doc.name
         },
         'frm': frm
-    })
+    });
 }
 
 function upload_to_brevo(frm) {
@@ -249,4 +263,48 @@ function upload_to_brevo(frm) {
 
 function update_full_name(frm) {
     cur_frm.set_value("full_name", (frm.doc.first_name || "") + " " + (frm.doc.last_name || ""));
+}
+
+function change_company(frm) {
+    let customer = null;
+    let row_name = null;
+    if (frm.doc.links) {
+        for (let i = 0; i < frm.doc.links.length; i++) {
+            if (frm.doc.links[i].link_doctype === "Customer") {
+                customer = frm.doc.links[i].link_name;
+                row_name = frm.doc.links[i].name;
+            }
+        }
+    }
+    frappe.prompt([
+        {
+            'fieldname': 'customer', 
+            'fieldtype': 'Link', 
+            'label': __('Company'), 
+            'options': 'Customer', 
+            'default': customer,
+            'reqd': 1
+        }  
+    ],
+    function(values){
+        frappe.model.set_value(frm.doc.links[0].doctype, row_name, 'link_name', values.customer);
+        cur_frm.save();
+    },
+    __("Change linked Company"),
+    __('Change')
+    );
+}
+
+function brevo_stats(frm) {
+    frappe.call({
+        'method': 'amf.master_crm.doctype.brevo.brevo.fetch_contact_stats',
+        'args': {
+            'contact_email': frm.doc.email_id
+        },
+        'freeze': true,
+        'freeze_message': __("Retrieving contact stats from Brevo.."),
+        'callback': function(response) {
+            frappe.msgprint(response.message.html);
+        }
+    });
 }
