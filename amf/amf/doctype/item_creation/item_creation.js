@@ -3,11 +3,20 @@
 
 frappe.ui.form.on('Item Creation', {
 
+    before_submit: function (frm) {
+        if (frm.doc.plug_check)
+            createPlug(frm)
+        if (frm.doc.seat_check)
+            createSeat(frm)
+        if (frm.doc.head_check)
+            createHead(frm)
+    },
+
     refresh: function (frm) {
         frm.set_query("body", () => ({
             filters: [
                 ['Item', 'item_group', '=', 'Body'],
-                ['Item', 'has_serial_no', '=', 'Yes'],
+                ['Item', 'has_serial_no', '=', '1'],
                 ['Item', 'disabled', '=', 'No'],
             ],
         }));
@@ -42,7 +51,7 @@ frappe.ui.form.on('Item Creation', {
     head_name: function (frm) {
         if (frm.doc.head_name) {
             frappe.call({
-                method: 'amf.amf.doctype.item_creation.item_creation.populate_fields',  // Replace with the correct path to your Python method
+                method: 'amf.amf.doctype.item_creation.item_creation.populate_fields',
                 args: {
                     head_name: frm.doc.head_name  // Pass the entire document (form) to the method
                 },
@@ -143,22 +152,61 @@ function createPlug(frm) {
             'item_type': 'plug'
         },
         freeze: true,
-        freeze_message: __("Item <strong>PLUG</strong> creation in process...<br>Mise à jour des entrées de stock...<br>Merci de patienter..."),
+        freeze_message: __("Item <strong>PLUG</strong> en cours de création...<br>Mise à jour des entrées de stock...<br>Merci de patienter..."),
         callback: function (response) {
             console.log(response);
-            if (response && response.message.success) {
-                // Set the values returned from the response
-                
-                // Display a popup
-                frappe.msgprint({
-                    title: __('New Item Creation'),
-                    indicator: 'green',
-                    message: __('New Plug successfully created.')
-                });
-                frm.save('Update');
+            if (response) {
+                frappe.show_alert(__("New Plug successfully created.", [response]));
+                // frm.save('Update');
             } else {
                 frappe.validated = false;
                 console.error('Failed to create Plug');
+                alert('Error: ' + (response.message ? response.message : 'Unknown error'));
+            }
+        }
+    });
+}
+
+function createSeat(frm) {
+    frappe.call({
+        method: 'amf.amf.doctype.item_creation.item_creation.create_item',
+        args: {
+            'doc': frm.doc,
+            'item_type': 'seat'
+        },
+        freeze: true,
+        freeze_message: __("Item <strong>SEAT</strong> en cours de création...<br>Mise à jour des entrées de stock...<br>Merci de patienter..."),
+        callback: function (response) {
+            console.log(response);
+            if (response) {
+                frappe.show_alert(__("New Seat successfully created.", [response]));
+                // frm.save('Update');
+            } else {
+                frappe.validated = false;
+                console.error('Failed to create Seat');
+                alert('Error: ' + (response.message ? response.message : 'Unknown error'));
+            }
+        }
+    });
+}
+
+function createHead(frm) {
+    frappe.call({
+        method: 'amf.amf.doctype.item_creation.item_creation.create_item',
+        args: {
+            'doc': frm.doc,
+            'item_type': 'valve_head'
+        },
+        freeze: true,
+        freeze_message: __("Item <strong>HEAD</strong> en cours de création...<br>Mise à jour des entrées de stock...<br>Merci de patienter..."),
+        callback: function (response) {
+            console.log(response);
+            if (response) {
+                frappe.show_alert(__("New Head successfully created.", [response]));
+                // frm.save('Update');
+            } else {
+                frappe.validated = false;
+                console.error('Failed to create Head');
                 alert('Error: ' + (response.message ? response.message : 'Unknown error'));
             }
         }

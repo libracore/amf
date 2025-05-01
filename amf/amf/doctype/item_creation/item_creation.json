@@ -4,6 +4,7 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "title",
   "section_break_1",
   "1_item_definition",
   "item_group",
@@ -19,11 +20,11 @@
   "section_break_5",
   "3_valve_head_definition",
   "head_check",
-  "read_only_6",
+  "head_item",
+  "section_break_18",
   "head_name",
   "head_code",
   "head_rnd",
-  "head_item",
   "column_break_10",
   "head_group",
   "section_break_9",
@@ -86,7 +87,6 @@
   },
   {
    "default": "VALVE HEAD-",
-   "depends_on": "eval:doc.head_check=='Yes'",
    "fieldname": "head_name",
    "fieldtype": "Data",
    "label": "Item Name"
@@ -101,14 +101,12 @@
    "read_only": 1
   },
   {
-   "depends_on": "eval:doc.head_check=='Yes'",
    "fieldname": "head_code",
    "fieldtype": "Data",
    "label": "Item Code"
   },
   {
    "default": "V-",
-   "depends_on": "eval:doc.head_check=='Yes'",
    "fieldname": "head_rnd",
    "fieldtype": "Data",
    "label": "R&D Code"
@@ -204,20 +202,11 @@
    "read_only": 1
   },
   {
-   "default": "VALVE HEAD CREATION",
-   "depends_on": "eval:doc.head_check=='Yes'",
-   "fieldname": "read_only_6",
-   "fieldtype": "Data",
-   "read_only": 1
-  },
-  {
-   "depends_on": "eval:doc.head_check=='Yes'",
    "fieldname": "column_break_10",
    "fieldtype": "Column Break"
   },
   {
    "default": "Valve Head",
-   "depends_on": "eval:doc.head_check=='Yes'",
    "fieldname": "head_group",
    "fieldtype": "Link",
    "label": "Item Group",
@@ -258,6 +247,7 @@
    "fieldtype": "Column Break"
   },
   {
+   "depends_on": "eval:doc.screw_type",
    "fieldname": "screw_quantity",
    "fieldtype": "Int",
    "label": "Screw Quantity"
@@ -358,10 +348,23 @@
    "fieldname": "4b_plug_definition",
    "fieldtype": "Heading",
    "label": "4b. Plug Definition"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.head_check=='Yes'",
+   "fieldname": "section_break_18",
+   "fieldtype": "Section Break",
+   "label": "Valve Head Creation"
   }
  ],
+ "hide_toolbar": 1,
  "is_submittable": 1,
- "modified": "2024-10-18 14:00:12.800792",
+ "modified": "2025-03-26 09:51:02.321922",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Item Creation",
