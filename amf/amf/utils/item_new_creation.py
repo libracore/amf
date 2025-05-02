@@ -138,7 +138,21 @@ def import_items_and_generate_boms(file_url: str = "/private/files/auto_creation
                 "item_code": item_code,
                 "item_name": item_name,
                 "item_type": item_type,
-                "reference_code": reference_code
+                "reference_code": reference_code,
+                "reference_name": f"{item_code}: {reference_code}",
+                "description": f"Group: Valve Head<br>Code: {item_code}<br>Reference: {reference_code}",
+                "default_material_request_type": "Manufacture",
+                "is_purchase_item": 0,
+                "is_sales_item": 1,
+                "has_batch_no": 1,
+                "country_of_origin": "Switzerland",
+                "customs_tariff_number": "8487.9000",
+                "item_defaults": [
+                    {   "company": "Advanced Microfluidics SA",
+                        "default_warehouse": "Main Stock - AMF21",
+                        "expense_account": "4003 - Cost of material: RVM rotary valve - AMF21",
+                        "income_account":  "3003 - RVM sales revenue - AMF21"}
+                ]
             }
             if not insert_item(item_data):
                 skipped.append((item_code, "Insert failed"))
