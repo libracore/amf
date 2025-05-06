@@ -824,6 +824,7 @@ def import_composite_items_and_boms(
                     "item_code":     item_code,
                     "item_name":     item_name,
                     "reference_code": new_ref_code,
+                    "reference_name": f"{item_code}: {item_name}",
                     "item_group":    "Product",
                     "item_type":     "Finished Good",
                     "stock_uom":     "Nos",
