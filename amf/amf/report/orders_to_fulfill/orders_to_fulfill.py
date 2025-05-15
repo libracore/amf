@@ -23,7 +23,7 @@ def get_columns():
         {'fieldname': 'customer', 'fieldtype': 'Link', 'label': _('Customer'), 'options': 'Customer', 'width': 80},
         {'fieldname': 'customer_name', 'fieldtype': 'Data', 'label': _('Customer Name'), 'width': 165},
         {'fieldname': 'ship_date', 'fieldtype': 'Data', 'label': _('Ship date'), 'width': 80},
-        {'fieldname': 'of', 'fieldtype': 'Check', 'label': _('OF'), 'width': 20},
+        {'fieldname': 'of', 'fieldtype': 'Data',   'label': _('OF'), 'width': 20},
         {'fieldname': 'dn', 'fieldtype': 'Check', 'label': _('DN'), 'width': 20},
         # {'fieldname': 'qty', 'fieldtype': 'Int', 'label': _('Qty Ordered'), 'width': 100}, 
         {'fieldname': 'remaining_qty', 'fieldtype': 'Int', 'label': _('Qty to Deliver'), 'width': 100}, 
@@ -54,14 +54,87 @@ def get_data(filters):
         filters={"docstatus": ("<=", 1)},  # Include submitted and draft items
         fields=["name", "parent", "item_code"]
     )
+    # prepare lists for filtering Work Orders
+    
+    # 2) Build maps for quick lookup
+    soi_parent_map = {soi["name"]: soi["parent"]      for soi in sales_order_items}
+    soi_code_map   = {soi["name"]: soi["item_code"]   for soi in sales_order_items}
+    soi_names      = list(soi_parent_map.keys())
+    soi_parents    = list(set(soi_parent_map.values()))
+    item_codes     = list(set(soi_code_map.values()))
+    
+    # soi_parent_map = {soi["name"]: soi["parent"] for soi in sales_order_items}
+    # print(soi_parent_map)
+    # sales_order_names = list({
+    #     soi_parent_map[soi_name]
+    #     for soi_name in soi_names
+    #     if soi_name in soi_parent_map
+    # })
+    # print(sales_order_names)
 
     # Collect Work Orders
+    # work_orders = frappe.get_all(
+    #     "Work Order",
+    #     filters={"production_item": ("in", [soi["item_code"] for soi in sales_order_items]),
+    #              "sales_order_item": ("in", [soi["parent"] for soi in sales_order_items]),
+    #              "docstatus": 1},
+    #     fields=["sales_order_item"]
+    # )
+    # work_order_map = {wo["sales_order_item"]: True for wo in work_orders}
     work_orders = frappe.get_all(
         "Work Order",
-        filters={"sales_order_item": ("in", [soi["parent"] for soi in sales_order_items]), "docstatus": 1},
-        fields=["sales_order_item"]
+        filters={
+            "production_item":    ("in", item_codes),
+            "sales_order":        ("in", soi_parents),
+            "docstatus":          ("<=", 1)
+        },
+        fields=["name", "sales_order", "production_item", "docstatus", "status"]
     )
-    work_order_map = {wo["sales_order_item"]: True for wo in work_orders}
+    # sales_orders = frappe.get_all(
+    #     "Sales Order",
+    #     filters={
+    #         "sales_order_item":        ("in", soi_names),
+    #         "docstatus":          1
+    #     },
+    #     fields=["name", "work_order", sales_order_items]
+    # )
+    
+    # here is the correlation between the sales_order and the work_orders
+
+    wo_label_map = {}
+    
+    # define precedence for labels
+    precedence = {"D": 1, "P": 2, "T": 3}
+    
+    for wo in work_orders:
+        wo_name   = wo["name"]
+        so_name   = wo["sales_order"]
+        prod_item = wo["production_item"]
+        
+        # key = (wo["sales_order"], wo["production_item"])
+        # find all SOI names on that SO, with that item_code
+        for soi_name, parent in soi_parent_map.items():
+            if parent == so_name and soi_code_map[soi_name] == prod_item:
+                # pick the label
+                if wo["status"] == "Completed":
+                    label = "T"           # Terminated
+                elif wo["docstatus"] == 0:
+                    label = "D"           # Draft
+                else:
+                    label = "P"           # Submitted (in progress)
+
+                # if we already have an entry, only overwrite if this WO has higher precedence
+                existing = wo_label_map.get(soi_name)
+                if existing and precedence[label] <= precedence[existing["label"]]:
+                    continue
+
+                # store SO name, item code, WO name, and label
+                wo_label_map[soi_name] = {
+                    "so_name":   so_name,
+                    "prod_item": prod_item,
+                    "wo_name":   wo_name,
+                    "label":     label
+                }
 
     # Collect Delivery Notes
     delivery_notes = frappe.get_all(
@@ -84,67 +157,67 @@ def get_data(filters):
     }
 
     sql_query = """
-SELECT * FROM ((
-    SELECT
-        soi.name,
-        WEEK(soi.delivery_date) as weeknum,
-        soi.parent as parent,
-        so.customer as customer,
-        so.customer_name as customer_name,
-        soi.qty as qty,
-        (soi.qty - soi.delivered_qty) AS remaining_qty,
-        soi.delivery_date as delivery_date,
-        soi.item_code as item_code,
-        it.item_name as item_name,
-        it.item_group as item_group,
-        soi.rate as unit_price,
-        FALSE as is_packed_item,
-        soi.idx as idx,
-        so.docstatus as docstatus
-    FROM `tabSales Order Item` as soi
-    JOIN `tabSales Order` as so ON soi.parent = so.name
-    JOIN `tabItem` as it ON soi.item_code = it.name
-    WHERE
-        {status_filter}
-        so.per_delivered < 100 AND
-        soi.qty > soi.delivered_qty AND
-        so.status != 'Closed' AND
-        (so._user_tags NOT LIKE "%template%" OR so._user_tags IS NULL)
-        {extra_filters}
-) UNION (
-    SELECT
-        soi.name,
-        WEEK(soi.delivery_date) as weeknum,
-        NULL as parent,
-        NULL as customer,
-        NULL as customer_name,
-        pi.qty as qty,
-        (soi.qty - soi.delivered_qty) * (pi.qty / soi.qty) AS remaining_qty,
-        soi.delivery_date as delivery_date,
-        pi.item_code as item_code,
-        pi.item_name as item_name,
-        NULL as item_group,
-        soi.rate as unit_price,
-        TRUE as is_packed_item,
-        pi.idx as idx,
-        so.docstatus as docstatus
-    FROM `tabSales Order Item` as soi
-    JOIN `tabSales Order` as so ON soi.parent = so.name
-    JOIN `tabItem` as it on soi.item_code = it.name
-    JOIN `tabPacked Item` as pi ON soi.name = pi.parent_detail_docname
-    WHERE
-        {status_filter}
-        so.per_delivered < 100 AND
-        soi.qty > soi.delivered_qty AND
-        so.status != 'Closed' AND
-        (so._user_tags NOT LIKE "%template%" OR so._user_tags IS NULL)
-        {extra_filters}
-)) as united
-ORDER BY 
-	delivery_date ASC,
-    parent,
-    is_packed_item,
-    idx;
+    SELECT * FROM ((
+        SELECT
+            soi.name,
+            WEEK(soi.delivery_date) as weeknum,
+            soi.parent as parent,
+            so.customer as customer,
+            so.customer_name as customer_name,
+            soi.qty as qty,
+            (soi.qty - soi.delivered_qty) AS remaining_qty,
+            soi.delivery_date as delivery_date,
+            soi.item_code as item_code,
+            it.item_name as item_name,
+            it.item_group as item_group,
+            soi.rate as unit_price,
+            FALSE as is_packed_item,
+            soi.idx as idx,
+            so.docstatus as docstatus
+        FROM `tabSales Order Item` as soi
+        JOIN `tabSales Order` as so ON soi.parent = so.name
+        JOIN `tabItem` as it ON soi.item_code = it.name
+        WHERE
+            {status_filter}
+            so.per_delivered < 100 AND
+            soi.qty > soi.delivered_qty AND
+            so.status != 'Closed' AND
+            (so._user_tags NOT LIKE "%template%" OR so._user_tags IS NULL)
+            {extra_filters}
+    ) UNION (
+        SELECT
+            soi.name,
+            WEEK(soi.delivery_date) as weeknum,
+            NULL as parent,
+            NULL as customer,
+            NULL as customer_name,
+            pi.qty as qty,
+            (soi.qty - soi.delivered_qty) * (pi.qty / soi.qty) AS remaining_qty,
+            soi.delivery_date as delivery_date,
+            pi.item_code as item_code,
+            pi.item_name as item_name,
+            NULL as item_group,
+            soi.rate as unit_price,
+            TRUE as is_packed_item,
+            pi.idx as idx,
+            so.docstatus as docstatus
+        FROM `tabSales Order Item` as soi
+        JOIN `tabSales Order` as so ON soi.parent = so.name
+        JOIN `tabItem` as it on soi.item_code = it.name
+        JOIN `tabPacked Item` as pi ON soi.name = pi.parent_detail_docname
+        WHERE
+            {status_filter}
+            so.per_delivered < 100 AND
+            soi.qty > soi.delivered_qty AND
+            so.status != 'Closed' AND
+            (so._user_tags NOT LIKE "%template%" OR so._user_tags IS NULL)
+            {extra_filters}
+    )) as united
+    ORDER BY 
+        delivery_date ASC,
+        parent,
+        is_packed_item,
+        idx;
     """.format(status_filter=status_filter, extra_filters=extra_filters)
 
     data = frappe.db.sql(sql_query, as_dict=True)
@@ -170,7 +243,17 @@ ORDER BY
     
     for row in data:
         # Assign Work Order (of) and Delivery Note (dn) flags
-        row["of"] = 1 if work_order_map.get(row["parent"], False) else 0
+        # OF = 0 (draft) / 1 (submitted) / 2 (completed), default 0 if no WO    
+        # key = (row.get("parent"), row.get("item_code"))
+        soi_name = row.get("name")
+
+        # look up by that exact SOI name
+        info = wo_label_map.get(soi_name)
+
+        if info:
+            row["of"] = info["label"]
+        else:
+            row["of"] = ""
         row["dn"] = 1 if delivery_note_map.get(row["name"], False) else 0
            
         if row['weeknum'] != last_week_num:
