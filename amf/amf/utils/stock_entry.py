@@ -361,19 +361,19 @@ def _set_warehouse_defaults(doc, log_id):
             if idx < last_idx:
                 if not row.manual_source_warehouse_selection:
                     row.s_warehouse = src
-                    update_log_entry(log_id, f"{now_datetime()}: Row {idx+1} - s_warehouse set to {src}<br>")
+                    update_log_entry(log_id, f"[{now_datetime()}] Row {idx+1} - s_warehouse set to {src}<br>")
             else:
                 if not row.manual_target_warehouse_selection:
                     row.t_warehouse = tgt
-                    update_log_entry(log_id, f"{now_datetime()}: Last row - t_warehouse set to {tgt}<br>")
+                    update_log_entry(log_id, f"[{now_datetime()}] Last row - t_warehouse set to {tgt}<br>")
         else:
             # Other purposes: apply whichever is set
             if src and not row.manual_source_warehouse_selection:
                 row.s_warehouse = src
-                update_log_entry(log_id, f"{now_datetime()}: Row {idx+1} - s_warehouse set to {src}<br>")
+                update_log_entry(log_id, f"[{now_datetime()}] Row {idx+1} - s_warehouse set to {src}<br>")
             if tgt and not row.manual_target_warehouse_selection:
                 row.t_warehouse = tgt
-                update_log_entry(log_id, f"{now_datetime()}: Row {idx+1} - t_warehouse set to {tgt}<br>")
+                update_log_entry(log_id, f"[{now_datetime()}] Row {idx+1} - t_warehouse set to {tgt}<br>")
 
 
 def _handle_manufacture_batch(doc, log_id):
