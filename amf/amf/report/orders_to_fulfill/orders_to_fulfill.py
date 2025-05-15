@@ -58,7 +58,7 @@ def get_data(filters):
     # Collect Work Orders
     work_orders = frappe.get_all(
         "Work Order",
-        filters={"sales_order_item": ("in", [soi["name"] for soi in sales_order_items]), "docstatus": 1},
+        filters={"sales_order_item": ("in", [soi["parent"] for soi in sales_order_items]), "docstatus": 1},
         fields=["sales_order_item"]
     )
     work_order_map = {wo["sales_order_item"]: True for wo in work_orders}
@@ -82,7 +82,7 @@ def get_data(filters):
     delivery_note_map = {
         dnote_item["so_detail"]: True for dnote_item in delivery_notes if dnote_item["parent"] in {dnote["name"] for dnote in draft_delivery_notes}
     }
-    
+
     sql_query = """
 SELECT * FROM ((
     SELECT
@@ -170,7 +170,7 @@ ORDER BY
     
     for row in data:
         # Assign Work Order (of) and Delivery Note (dn) flags
-        row["of"] = 1 if work_order_map.get(row["name"], False) else 0
+        row["of"] = 1 if work_order_map.get(row["parent"], False) else 0
         row["dn"] = 1 if delivery_note_map.get(row["name"], False) else 0
            
         if row['weeknum'] != last_week_num:
