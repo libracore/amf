@@ -323,52 +323,57 @@ def _set_warehouse_defaults(doc, log_id):
     if not doc.work_order:
         return
     prod = frappe.db.get_value("Work Order", doc.work_order, "production_item") or ""
+    wip_step = frappe.db.get_value("Work Order", doc.work_order, "wip_step") or ""
     if not prod or prod.startswith(("10", "20")):
         return
     
     src = tgt = None
-    last_index = len(doc.items) - 1
 
-    if doc.purpose == "Manufacture":
-        if not prod.startswith("4"):
-            doc.from_warehouse, doc.to_warehouse = WH_MANUFACTURE, WH_TRANSFER
-            src, tgt = WH_TRANSFER, WH_MANUFACTURE
-        else:
-            doc.from_warehouse = doc.to_warehouse = WH_MANUFACTURE
-            src = tgt = WH_MANUFACTURE
-        update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: manufacture src={src}, tgt={tgt}<br>")
-    elif doc.purpose == "Material Transfer for Manufacture":
+    if doc.purpose == "Manufacture" and not wip_step:
         doc.from_warehouse, doc.to_warehouse = WH_TRANSFER, WH_MANUFACTURE
+        src, tgt = WH_TRANSFER, WH_MANUFACTURE
+        update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: 'manufacture' src={src}, tgt={tgt}<br>")
+    elif doc.purpose == "Manufacture" and wip_step:
+        doc.from_warehouse = doc.to_warehouse = WH_MANUFACTURE
+        src = tgt = WH_MANUFACTURE
+        update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: 'manufacture skip wip' src={src}, tgt={tgt}<br>")
+    elif doc.purpose == "Material Transfer for Manufacture":
+        doc.from_warehouse, doc.to_warehouse = WH_MANUFACTURE, WH_TRANSFER
         src, tgt = WH_MANUFACTURE, WH_TRANSFER
-        update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: transfer src={src}, tgt={tgt}<br>")
+        update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: 'transfer' src={src}, tgt={tgt}<br>")
     elif doc.purpose == "Material Issue":
         doc.from_warehouse = WH_MANUFACTURE
         src = WH_MANUFACTURE
-        update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: issue src={src}<br>")
+        update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: 'issue' src={src}<br>")
     elif doc.purpose == "Material Receipt":
         doc.to_warehouse = WH_MANUFACTURE
         tgt = WH_MANUFACTURE
-        update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: receipt tgt={tgt}<br>")
+        update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: 'receipt' tgt={tgt}<br>")
     else:
         update_log_entry(log_id, f"[{now_datetime()}] No Warehouse Defaults: return<br>")
         return
 
     # Apply to each row, skipping last row for Manufacture purpose
+    last_idx = len(doc.items) - 1
     for idx, row in enumerate(doc.items):
-        # Skip setting warehouses on last row for Manufacture
-        if doc.purpose == "Manufacture" and idx == last_index:
-            row.t_warehouse = tgt
-            update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: skipped row {idx+1} for src warehouse <br>")
-            continue
-        elif doc.purpose == "Manufacture" and not idx == last_index:
-            row.s_warehouse = src
-            update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: row {idx+1} only src warehouse <br>")
-            continue
-
-        if not row.manual_source_warehouse_selection and src:
-            row.s_warehouse = src
-        if not row.manual_target_warehouse_selection and tgt:
-            row.t_warehouse = tgt
+        # Manufacture: split source/target across rows
+        if doc.purpose == "Manufacture":
+            if idx < last_idx:
+                if not row.manual_source_warehouse_selection:
+                    row.s_warehouse = src
+                    update_log_entry(log_id, f"{now_datetime()}: Row {idx+1} - s_warehouse set to {src}<br>")
+            else:
+                if not row.manual_target_warehouse_selection:
+                    row.t_warehouse = tgt
+                    update_log_entry(log_id, f"{now_datetime()}: Last row - t_warehouse set to {tgt}<br>")
+        else:
+            # Other purposes: apply whichever is set
+            if src and not row.manual_source_warehouse_selection:
+                row.s_warehouse = src
+                update_log_entry(log_id, f"{now_datetime()}: Row {idx+1} - s_warehouse set to {src}<br>")
+            if tgt and not row.manual_target_warehouse_selection:
+                row.t_warehouse = tgt
+                update_log_entry(log_id, f"{now_datetime()}: Row {idx+1} - t_warehouse set to {tgt}<br>")
 
 
 def _handle_manufacture_batch(doc, log_id):
