@@ -64,10 +64,13 @@ doc_events = {
         ]
     },
     "Stock Entry": {
-        "before_submit": "amf.www.fftest.update_rate_and_availability_ste"
-    },
-    "Stock Entry": {
-        "on_submit": "amf.amf.utils.custom.qr_code_to_document"
+        "onload": "amf.amf.utils.stock_entry.stock_entry_onload",
+        "validate": "amf.amf.utils.stock_entry.stock_entry_validate",
+        "before_submit": "amf.amf.utils.stock_entry.stock_entry_before_submit",
+        "before_save": "amf.amf.utils.stock_entry.stock_entry_before_save",
+        "on_submit": [
+            "amf.amf.utils.custom.qr_code_to_document",
+        ]
     },
     "Batch": {
         "after_insert": "amf.amf.utils.barcode.after_insert_handler"
