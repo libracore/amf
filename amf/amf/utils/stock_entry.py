@@ -227,7 +227,7 @@ def stock_entry_validate(doc, method):
     if not doc.set_warehouse_defaults_method:
         update_log_entry(log_id, f"[{now_datetime()}] Validate: warehouse defaults flag not set<br>")
     else:
-        _set_warehouse_defaults(doc)
+        _set_warehouse_defaults(doc, log_id)
         update_log_entry(log_id, f"[{now_datetime()}] Validate: applied expense, cost center, warehouse defaults<br>")
 
 def stock_entry_before_save(doc, method):
@@ -319,32 +319,51 @@ def _set_expense_and_cost_center(doc):
             row.cost_center = COST_CENTER
 
 
-def _set_warehouse_defaults(doc):
+def _set_warehouse_defaults(doc, log_id):
     if not doc.work_order:
         return
     prod = frappe.db.get_value("Work Order", doc.work_order, "production_item") or ""
     if not prod or prod.startswith(("10", "20")):
         return
+    
+    src = tgt = None
+    last_index = len(doc.items) - 1
 
     if doc.purpose == "Manufacture":
-        doc.from_warehouse, doc.to_warehouse = WH_MANUFACTURE, WH_TRANSFER
-        src, tgt = WH_TRANSFER, WH_MANUFACTURE
+        if not prod.startswith("4"):
+            doc.from_warehouse, doc.to_warehouse = WH_MANUFACTURE, WH_TRANSFER
+            src, tgt = WH_TRANSFER, WH_MANUFACTURE
+        else:
+            doc.from_warehouse = doc.to_warehouse = WH_MANUFACTURE
+            src = tgt = WH_MANUFACTURE
+        update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: manufacture src={src}, tgt={tgt}<br>")
     elif doc.purpose == "Material Transfer for Manufacture":
         doc.from_warehouse, doc.to_warehouse = WH_TRANSFER, WH_MANUFACTURE
         src, tgt = WH_MANUFACTURE, WH_TRANSFER
+        update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: transfer src={src}, tgt={tgt}<br>")
     elif doc.purpose == "Material Issue":
         doc.from_warehouse = WH_MANUFACTURE
         src = WH_MANUFACTURE
+        update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: issue src={src}<br>")
     elif doc.purpose == "Material Receipt":
         doc.to_warehouse = WH_MANUFACTURE
         tgt = WH_MANUFACTURE
+        update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: receipt tgt={tgt}<br>")
     else:
+        update_log_entry(log_id, f"[{now_datetime()}] No Warehouse Defaults: return<br>")
         return
 
-    for row in doc.items:
-        if not row.manual_source_warehouse_selection:
+    # Apply to each row, skipping last row for Manufacture purpose
+    for idx, row in enumerate(doc.items):
+        # Skip setting warehouses on last row for Manufacture
+        if doc.purpose == "Manufacture" and idx == last_index:
+            row.t_warehouse = tgt
+            update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: skipped row {idx+1} for src warehouse <br>")
+            continue
+
+        if not row.manual_source_warehouse_selection and src:
             row.s_warehouse = src
-        if not row.manual_target_warehouse_selection:
+        if not row.manual_target_warehouse_selection and tgt:
             row.t_warehouse = tgt
 
 
