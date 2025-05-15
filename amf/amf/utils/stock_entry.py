@@ -360,6 +360,10 @@ def _set_warehouse_defaults(doc, log_id):
             row.t_warehouse = tgt
             update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: skipped row {idx+1} for src warehouse <br>")
             continue
+        elif doc.purpose == "Manufacture" and not idx == last_index:
+            row.s_warehouse = src
+            update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: row {idx+1} only src warehouse <br>")
+            continue
 
         if not row.manual_source_warehouse_selection and src:
             row.s_warehouse = src
