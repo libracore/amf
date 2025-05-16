@@ -866,7 +866,6 @@ def import_composite_items_and_boms(
                         {"item_code": head,    "qty": 1, "uom": "Nos"},
                         {"item_code": screw_code, "qty": screw_qty, "uom": "Nos"},
                         {"item_code": "RVM.1204", "qty": 1, "uom": "Nos", "conversion_factor": -1},
-                        {"item_code": "RVM.1204-HV", "qty": 1, "uom": "Nos"},
                 ]
                 
                 # if 2nd digit X is '8' or 'C', tack on C100 and C101
