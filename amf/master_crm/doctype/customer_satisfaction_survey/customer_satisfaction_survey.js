@@ -3,7 +3,6 @@
 
 frappe.ui.form.on('Customer Satisfaction Survey', {
     refresh: function (frm) {
-        set_item_queries(frm)
         _reset_ratings(frm)
     },
     before_submit: function (frm) {
@@ -21,15 +20,17 @@ frappe.ui.form.on('Customer Satisfaction Survey', {
             frm.set_value("organization_name", "");
         }
     },
-});
 
-function set_item_queries(frm) {
-    frm.set_query("contact_person", () => ({
-        filters: [
-            ['Contact', 'company_name', 'Like', frm.doc.organization_name],
-        ],
-    }));
-}
+    customer: (frm) => {
+        _handleOrgChange({
+            frm,
+            orgField: 'customer',
+            nameField: 'organization_name',
+            contactField: 'contact_person'
+        });
+    },
+
+});
 
 function _reset_ratings(frm) {
     // add our reset button
@@ -118,5 +119,50 @@ function _reset_ratings(frm) {
                 mode === 'All'
             );
         });
+    });
+}
+
+/**
+ * Shared helper to:
+ * 1. Clear the display-name field if the org-link is empty
+ * 2. Fetch contacts linked to that org via our whitelisted Python method
+ * 3. Apply a set_query filter on the target contact field
+ *
+ * @param {object}         params
+ * @param {frappe.ui.form} params.frm
+ * @param {string}         params.orgField      - e.g. 'referred_organization'
+ * @param {string}         params.nameField     - e.g. 'referred_organization_name'
+ * @param {string}         params.contactField  - e.g. 'contact_person' or 'referring_contact'
+ */
+function _handleOrgChange({ frm, orgField, nameField, contactField }) {
+    const customer = frm.doc[orgField];
+
+    // 1) Clear the display-name if the link is removed
+    if (!customer) {
+        frm.set_value(nameField, '');
+        // also clear any previous contact selection or filter
+        frm.set_value(contactField, Array.isArray(frm.doc[contactField]) ? [] : '');
+        frm.set_query(contactField, null);
+        return;
+    }
+
+    // 2) Call server to get an array of contact names
+    frappe.call({
+        method: 'amf.master_crm.utils.get_referring_contacts',
+        args: { customer },
+        callback: ({ message: contacts = [] }) => {
+            if (contacts.length) {
+                // 3a) Restrict the contact-field picklist to only those names
+                frm.set_query(contactField, () => ({
+                    filters: [
+                        ['Contact', 'name', 'in', contacts]
+                    ]
+                }));
+
+            } else {
+                // 3b) No contacts → remove any custom filter so user sees all
+                frm.set_query(contactField, null);
+            }
+        }
     });
 }
