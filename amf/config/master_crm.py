@@ -67,6 +67,13 @@ def get_data():
                         "label": _("Sales Analytics"),
                         "doctype": "Sales Invoice",
                         "is_query_report": True
+                    },
+                    {
+                        "type": "report",
+                        "name": "Customer Satisfaction",
+                        "label": _("Customer Satisfaction"),
+                        "doctype": "Customer Satisfaction Survey",
+                        "is_query_report": True
                     }
             ]
         },
