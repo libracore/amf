@@ -417,3 +417,54 @@ def compare_internal_vs_external_manufacturing():
     tabulated_output = tabulate(table, headers=headers, tablefmt="grid", numalign="right", stralign="left")
 
     return tabulated_output
+
+import frappe
+
+@frappe.whitelist()
+def get_manufactured_counts():
+    """
+    Returns the cumulative manufactured quantities for:
+      - plugs         (last item_code starts with '10')
+      - valve seats   (last item_code starts with '20')
+      - valve heads   (last item_code starts with '30')
+    from all submitted Stock Entries with purpose='Manufacture',
+    where only the last item in each entry (highest idx) is considered.
+    """
+    prefix_map = {
+        '10': 'plugs',
+        '20': 'valve_seats',
+        '30': 'valve_heads'
+    }
+    # initialize result
+    result = {v: 0.0 for v in prefix_map.values()}
+
+    # SQL: join each Stock Entry Item to the subquery that finds
+    # the max(idx) per Stock Entry, then filter purpose/docstatus,
+    # filter prefixes, and sum qty per prefix.
+    rows = frappe.db.sql("""
+        SELECT
+            LEFT(sei.item_code, 2) AS prefix,
+            SUM(sei.qty) AS total_qty
+        FROM `tabStock Entry` AS se
+        JOIN (
+            SELECT parent, MAX(idx) AS max_idx
+            FROM `tabStock Entry Detail`
+            GROUP BY parent
+        ) AS last_it
+          ON last_it.parent = se.name
+        JOIN `tabStock Entry Detail` AS sei
+          ON sei.parent = se.name
+         AND sei.idx    = last_it.max_idx
+        WHERE se.purpose   = %s
+          AND se.docstatus = 1
+          AND LEFT(sei.item_code, 2) IN %s
+        GROUP BY prefix
+    """, ("Manufacture", tuple(prefix_map.keys())), as_dict=1)
+
+    # map into our output dict
+    for r in rows:
+        key = prefix_map.get(r.prefix)
+        if key:
+            result[key] = r.total_qty or 0.0
+
+    return result

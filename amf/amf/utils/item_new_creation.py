@@ -10,7 +10,8 @@ def main():
     rename_item_codes_from_csv()
     import_items_with_motor_bom()
     rename_item_codes_from_csv_product()
-    import_composite_items_and_boms()
+    import_composite_items_and_boms(file_url="/private/files/new_config.csv")
+    import_composite_items_and_boms(file_url="/private/files/new_item_to_create.csv")
     return
 
 def resolve_file_path(file_url):
@@ -729,7 +730,8 @@ from itertools import chain
 from frappe.utils.file_manager import get_file_path
 
 def import_composite_items_and_boms(
-    file_url="/private/files/new_config.csv",
+    #file_url="/private/files/new_config.csv",
+    file_url="/private/files/new_item_to_create.csv",
     screw_item_code="SPL.3052",
     screw_item_spec="SPL.3078",
     screw_qty=2
@@ -864,11 +866,16 @@ def import_composite_items_and_boms(
                         {"item_code": head,    "qty": 1, "uom": "Nos"},
                         {"item_code": screw_code, "qty": screw_qty, "uom": "Nos"},
                         {"item_code": "RVM.1204", "qty": 1, "uom": "Nos", "conversion_factor": -1},
-                        {"item_code": "RVM.1204-HV", "qty": 1, "uom": "Nos"},
                 ]
+                
+                # if 2nd digit X is '8' or 'C', tack on C100 and C101
+                if X in ('6', '8', 'A', 'C'):
+                    bom_items.extend([
+                        {"item_code": "RVM.1204-HV", "qty": 1, "uom": "Nos"},
+                    ])
 
                 # if 2nd digit X is '8' or 'C', tack on C100 and C101
-                if X in ('8', 'C'):
+                if X in ('8', 'B', 'C'):
                     bom_items.extend([
                         {"item_code": "C100", "qty": 1, "uom": "Nos"},
                         {"item_code": "C101", "qty": 1, "uom": "Nos"},

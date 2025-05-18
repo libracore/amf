@@ -95,3 +95,30 @@ def link_contact_to_customer(contact, customer):
     contact_doc.save()
     frappe.db.commit()
     return
+
+@frappe.whitelist()
+def get_referring_contacts(customer):
+    """
+    Return a list of Contact names linked via the Dynamic Link table
+    to the given Customer (customer = referring_organization).
+    """
+    if not customer:
+        return []
+
+    contacts = frappe.db.sql(
+        """
+        SELECT c.name
+        FROM `tabContact` AS c
+        INNER JOIN `tabDynamic Link` AS dl
+          ON dl.parent       = c.name
+         AND dl.parenttype   = 'Contact'
+         AND dl.parentfield  = 'links'
+        WHERE dl.link_doctype = 'Customer'
+          AND dl.link_name    = %s
+        """,
+        (customer,),
+        as_dict=True,
+    )
+
+    # return list of names
+    return [r.name for r in contacts]
