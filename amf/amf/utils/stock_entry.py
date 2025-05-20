@@ -211,7 +211,7 @@ def stock_entry_onload(doc, method):
     else:    
         for row in doc.items:
             row.auto_batch_no_generation = 1
-        update_log_entry(log_id, f"[{now_datetime()}] Onload: auto_batch flag set for {len(doc.items)} rows<br>")
+        update_log_entry(log_id, f"[{now_datetime()}] Onload: auto_batch flag set for {len(doc.items)} row(s)<br>")
 
 
 def stock_entry_validate(doc, method):
