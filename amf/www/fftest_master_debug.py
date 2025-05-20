@@ -1,7 +1,7 @@
 import json
 import frappe
 from frappe import _, ValidationError
-from frappe.utils import flt
+from frappe.utils import flt, now_datetime
 from datetime import datetime
 from amf.amf.utils.work_order_creation import get_default_bom
 from amf.amf.utils.utilities import update_log_entry
@@ -816,7 +816,8 @@ def create_log_entry(message, category=None):
         "doctype": "Log Entry",
         "timestamp": datetime.datetime.now(),
         "category": category,
-        "message": message
+        "message": message,
+        "reference_name": f"FFTest Stock Entry: {now_datetime()}"
     })
     log_doc.insert(ignore_permissions=True)
     frappe.db.commit()
