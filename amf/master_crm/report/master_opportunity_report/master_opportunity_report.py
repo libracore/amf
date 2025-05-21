@@ -19,7 +19,7 @@ def execute(filters=None):
         {"label": _("Currency"),      "fieldname": "doc_currency", "fieldtype": "Data",                                  "width":  80},
         {"label": _("Contact"),       "fieldname": "doc_contact",  "fieldtype": "Link",         "options": "Contact",    "width": 150},
         {"label": _("Name"),       "fieldname": "doc_contactname",  "fieldtype": "Data",                              "width": 200},
-        # New columns for linked parent documents
+        {"label": _("Prob (%)"),     "fieldname": "doc_probability",      "fieldtype": "Percent",  "width": 100},
         {"label": _("Opportunity"),         "fieldname": "linked_opportunity",   "fieldtype": "Link",     "options": "Opportunity", "width": 120},
         {"label": _("Quotation"),           "fieldname": "linked_quotation",     "fieldtype": "Link",     "options": "Quotation",   "width": 120},
         {"label": _("Sales Order"),         "fieldname": "linked_sales_order",   "fieldtype": "Link",     "options": "Sales Order", "width": 120},
@@ -95,9 +95,16 @@ def execute(filters=None):
         row['linked_opportunity'] = None
         row['linked_quotation'] = None
         row['linked_sales_order'] = None
+        row['doc_probability'] = None
 
     # Map for quick lookup
     rows_map = {(r['doc_type'], r['doc_name']): r for r in data}
+    
+        # Helper: fetch and assign probability
+    def assign_probability(row, quo_name):
+        prob = frappe.db.get_value('Quotation', quo_name, 'probability')
+        if prob is not None:
+            row['doc_probability'] = prob
 
     # 1) Attach Sales Orders to Sales Invoices, and remove SO rows
     for row in list(data):
@@ -158,9 +165,11 @@ def execute(filters=None):
     for row in list(data):
         if row['doc_type'] == 'Quotation':
             quo_name = row['doc_name']
+            assign_probability(row, quo_name)
             opp_name = frappe.db.get_value('Quotation', quo_name, 'opportunity')
             if opp_name:
                 row['linked_opportunity'] = opp_name
+                
                 opp_key = ('Opportunity', opp_name)
                 opp_row = rows_map.get(opp_key)
                 if opp_row:
