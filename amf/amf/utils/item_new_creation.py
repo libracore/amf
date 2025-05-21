@@ -907,3 +907,57 @@ def import_composite_items_and_boms(
         "items_created": created_items,
         "boms_created":  created_boms
     }
+
+
+def rename_disabled_items(batch_size: int = 50):
+    """
+    Rename all disabled Item docs from old name → '/{item_code}'.
+
+    :param batch_size: how many renames to commit at once.
+    """
+    # 1. Fetch all disabled Items
+    disabled_item_names = frappe.db.get_list('Item', {'disabled': 1}, 'name')
+
+    count = 0
+    for old_name in disabled_item_names:
+        try:
+            #item = frappe.get_cached_doc("Item", old_name)
+            new_name = f"/{old_name.name}"
+
+            # 2. Skip if no change
+            if old_name.name == new_name:
+                continue
+
+            # 3. Skip if target name already exists
+            if frappe.db.exists("Item", new_name):
+                frappe.log_error(
+                    message=_("Cannot rename {0} → {1}: target already exists").format(old_name, new_name),
+                    title="rename_disabled_items"
+                )
+                continue
+
+            # 4. Perform the rename
+            frappe.rename_doc(
+                "Item",
+                old_name.name,
+                new_name
+            )
+
+            count += 1
+
+            # 5. Batch commit
+            if count % batch_size == 0:
+                frappe.db.commit()
+
+        except Exception as e:
+            # Log any unexpected errors
+            frappe.log_error(
+                message=frappe.get_traceback(),
+                title=f"Error renaming Item {old_name}"
+            )
+
+    # Final commit if anything remains
+    if count % batch_size != 0:
+        frappe.db.commit()
+
+    frappe.msgprint(_("Renamed {0} disabled items").format(count))
