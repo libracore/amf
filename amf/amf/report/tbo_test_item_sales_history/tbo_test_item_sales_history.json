@@ -1,0 +1,46 @@
+{
+ "add_total_row": 0,
+ "creation": "2025-05-22 08:14:13.122217",
+ "disable_prepared_report": 0,
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "idx": 0,
+ "is_standard": "Yes",
+ "json": "[{\"fieldname\":\"contact_email\",\"fieldtype\":\"Data\",\"label\":\"Contact Email\",\"link_field\":\"Sales Order\",\"doctype\":\"Sales Order\",\"width\":100,\"id\":\"contact_email\",\"name\":\"Contact Email\",\"editable\":false,\"compareValue\":null},{\"fieldname\":\"contact_display\",\"fieldtype\":\"Small Text\",\"label\":\"Contact\",\"link_field\":\"Sales Order\",\"doctype\":\"Sales Order\",\"width\":100,\"id\":\"contact_display\",\"name\":\"Contact\",\"editable\":false,\"compareValue\":null},{\"label\":\"Item Code\",\"fieldname\":\"Item Code\",\"fieldtype\":\"Link\",\"width\":120,\"options\":\"Item\",\"id\":\"Item Code\",\"name\":\"Item Code\",\"editable\":false,\"compareValue\":null},{\"label\":\"Item Name\",\"fieldname\":\"Item Name\",\"fieldtype\":\"\",\"width\":120,\"id\":\"Item Name\",\"name\":\"Item Name\",\"editable\":false,\"compareValue\":null},{\"label\":\"Item Group\",\"fieldname\":\"Item Group\",\"fieldtype\":\"Link\",\"width\":120,\"options\":\"Item Group\",\"id\":\"Item Group\",\"name\":\"Item Group\",\"editable\":false,\"compareValue\":null},{\"label\":\"Description\",\"fieldname\":\"Description\",\"fieldtype\":\"\",\"width\":150,\"id\":\"Description\",\"name\":\"Description\",\"editable\":false,\"compareValue\":null},{\"label\":\"Qty\",\"fieldname\":\"Qty\",\"fieldtype\":\"Data\",\"width\":100,\"id\":\"Qty\",\"name\":\"Qty\",\"editable\":false,\"compareValue\":null},{\"label\":\"UOM\",\"fieldname\":\"UOM\",\"fieldtype\":\"Link\",\"width\":80,\"options\":\"UOM\",\"id\":\"UOM\",\"name\":\"UOM\",\"editable\":false,\"compareValue\":null},{\"label\":\"Rate\",\"fieldname\":\"Rate\",\"fieldtype\":\"Currency\",\"width\":120,\"id\":\"Rate\",\"name\":\"Rate\",\"editable\":false,\"compareValue\":null},{\"label\":\"Amount\",\"fieldname\":\"Amount\",\"fieldtype\":\"Currency\",\"width\":120,\"id\":\"Amount\",\"name\":\"Amount\",\"editable\":false,\"compareValue\":null},{\"label\":\"Sales Order\",\"fieldname\":\"Sales Order\",\"fieldtype\":\"Link\",\"width\":120,\"options\":\"Sales Order\",\"id\":\"Sales Order\",\"name\":\"Sales Order\",\"editable\":false,\"compareValue\":null},{\"label\":\"Transaction Date\",\"fieldname\":\"Transaction Date\",\"fieldtype\":\"Date\",\"width\":140,\"id\":\"Transaction Date\",\"name\":\"Transaction Date\",\"editable\":false},{\"label\":\"Customer\",\"fieldname\":\"Customer\",\"fieldtype\":\"Link\",\"width\":130,\"options\":\"Customer\",\"id\":\"Customer\",\"name\":\"Organization\",\"editable\":false,\"compareValue\":null},{\"label\":\"Customer Name\",\"fieldname\":\"Customer Name\",\"fieldtype\":\"\",\"width\":150,\"id\":\"Customer Name\",\"name\":\"Customer Name\",\"editable\":false,\"compareValue\":null},{\"label\":\"Customer Group\",\"fieldname\":\"Customer Group\",\"fieldtype\":\"Link\",\"width\":130,\"options\":\"Customer Group\",\"id\":\"Customer Group\",\"name\":\"Customer Group\",\"editable\":false,\"compareValue\":null},{\"label\":\"Territory\",\"fieldname\":\"Territory\",\"fieldtype\":\"Link\",\"width\":130,\"options\":\"Territory\",\"id\":\"Territory\",\"name\":\"Territory\",\"editable\":false,\"compareValue\":null},{\"label\":\"Project\",\"fieldname\":\"Project\",\"fieldtype\":\"Link\",\"width\":130,\"options\":\"Project\",\"id\":\"Project\",\"name\":\"Project\",\"editable\":false,\"compareValue\":null},{\"label\":\"Delivered Qty\",\"fieldname\":\"Delivered Qty\",\"fieldtype\":\"Float\",\"width\":120,\"id\":\"Delivered Qty\",\"name\":\"Delivered Qty\",\"editable\":false,\"compareValue\":null},{\"label\":\"Billed Amount\",\"fieldname\":\"Billed Amount\",\"fieldtype\":\"Currency\",\"width\":120,\"id\":\"Billed Amount\",\"name\":\"Billed Amount\",\"editable\":false,\"compareValue\":null},{\"label\":\"Company\",\"fieldname\":\"Company\",\"fieldtype\":\"Link\",\"width\":null,\"options\":\"Company\",\"id\":\"Company\",\"name\":\"Company\",\"editable\":false,\"compareValue\":null}]",
+ "letter_head": "Standard",
+ "modified": "2025-05-22 08:35:39.597875",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "TBO Test Item Sales History",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "query": "SELECT\nso.contact_person       AS \"Contact:Link/Contact:120\",\nso.contact_email AS \"Email:Data::120\",\nso.contact_display AS \"Name:Data::120\",\n    soi.item_code           AS \"Item Code:Link/Item:120\",\n    soi.item_name           AS \"Item Name::120\",\n    soi.item_group          AS \"Item Group:Link/Item Group:120\",\n    soi.description         AS \"Description::150\",\n    soi.qty                 AS \"Qty:Data:100\",\n    soi.uom                 AS \"UOM:Link/UOM:80\",\n    soi.base_rate           AS \"Rate:Currency:120\",\n    soi.base_amount         AS \"Amount:Currency:120\",\n    so.name                 AS \"Sales Order:Link/Sales Order:120\",\n    so.transaction_date     AS \"Transaction Date:Date:140\",\n    so.customer             AS \"Customer:Link/Customer:130\",\n    cu.customer_name        AS \"Customer Name::150\",\n    cu.customer_group       AS \"Customer Group:Link/Customer Group:130\",\n    so.territory            AS \"Territory:Link/Territory:130\",\n    so.project              AS \"Project:Link/Project:130\",\n    COALESCE(soi.delivered_qty, 0)\n                            AS \"Delivered Qty:Float:120\",\n    COALESCE(soi.billed_amt,   0)\n                            AS \"Billed Amount:Currency:120\",\n    so.company              AS \"Company:Link/Company:\"\nFROM\n    `tabSales Order`        AS so\n    JOIN `tabSales Order Item` AS soi\n      ON so.name       = soi.parent\n    JOIN `tabCustomer`      AS cu\n      ON so.customer   = cu.name\nWHERE\n    so.docstatus = 1\nORDER BY\n    so.name DESC;",
+ "ref_doctype": "Sales Order",
+ "reference_report": "Item-wise Sales History",
+ "report_name": "TBO Test Item Sales History",
+ "report_type": "Query Report",
+ "roles": [
+  {
+   "role": "Maintenance User"
+  },
+  {
+   "role": "Sales Manager"
+  },
+  {
+   "role": "Stock User"
+  },
+  {
+   "role": "Accounts User"
+  },
+  {
+   "role": "Sales User"
+  },
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "Stock Manager"
+  }
+ ]
+}
