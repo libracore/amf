@@ -211,7 +211,7 @@ def stock_entry_onload(doc, method):
     else:    
         for row in doc.items:
             row.auto_batch_no_generation = 1
-        update_log_entry(log_id, f"[{now_datetime()}] Onload: auto_batch flag set for {len(doc.items)} rows<br>")
+        update_log_entry(log_id, f"[{now_datetime()}] Onload: auto_batch flag set for {len(doc.items)} row(s)<br>")
 
 
 def stock_entry_validate(doc, method):
@@ -546,7 +546,7 @@ def _get_or_create_log(doc):
     if existing:
         return existing[0].name
     # not found → create
-    msg = f"[{now_datetime()}] Stock Entry {doc.name} initiated<br>"
+    msg = f"[{now_datetime()}] {doc.doctype} {doc.name} initiated"
     return create_log_entry(msg, doc.doctype, reference)
 
 def create_log_entry(message, category, name):

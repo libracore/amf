@@ -1,7 +1,17 @@
 import frappe
-from frappe import _
+from frappe import _, _dict
 from frappe import ValidationError
 from frappe.utils import flt, now_datetime, add_days
+
+from amf.amf.utils.stock_entry import (
+    _get_or_create_log,
+    update_log_entry,
+    custom_try
+)
+
+# Constants
+DEFAULT_WAREHOUSE = "Main Stock - AMF21"
+LOG_CATEGORY = "BOM Sync"
 
 @frappe.whitelist()
 def execute_db_update_enqueue():
@@ -172,10 +182,10 @@ def execute_all_items():
     items = frappe.get_all("Item", filters={"disabled": 0}, fields=["name"])
     for item_data in items:
         item_name = item_data["name"]
-        update_item_from_default_bom(item_name)
+        update_item_from_default_bom_old(item_name)
 
 @frappe.whitelist()
-def execute_scheduled():
+def execute_scheduled_old():
     """
     This is called by the daily scheduler event to update only Items
     whose default BOMs have changed in the last 24 hours.
@@ -204,10 +214,10 @@ def execute_scheduled():
         if frappe.db.get_value("Item", item_name, "disabled") == 1:
             continue
 
-        update_item_from_default_bom(item_name)
+        update_item_from_default_bom_old(item_name)
 
 
-def update_item_from_default_bom(item_name):
+def update_item_from_default_bom_old(item_name):
     """
     Core logic:
       1. Clears the item_default_bom, bom_table, and bom_cost fields.
@@ -409,3 +419,159 @@ def duplicate_default_bom_for_47xxxx_items():
         new_bom.submit()
 
     frappe.db.commit()  # Ensure changes are committed to the database
+
+
+@frappe.whitelist()
+def execute_scheduled():
+    """
+    Daily scheduler: update Items whose default BOM changed in the last 24h.
+    """
+    # 1) Initialize log
+    context = _dict(doctype="BOM", name="Scheduled BOM Update")
+    log_id = _get_or_create_log(context)  # assume doc context not needed here
+    update_log_entry(log_id, f"[{now_datetime()}] Starting execute_scheduled")
+
+    # 2) Compute cutoff
+    cutoff = add_days(now_datetime(), -1)
+    update_log_entry(log_id, f"[{now_datetime()}] Cutoff timestamp: {cutoff}")
+
+    # 3) Fetch active, submitted BOMs modified since cutoff
+    boms = frappe.get_all(
+        "BOM",
+        filters={
+            "is_active": 1,
+            "docstatus": 1,
+            "modified": [">=", cutoff],
+        },
+        fields=["name", "item"],
+    )
+    count = len(boms)
+    update_log_entry(log_id, f"[{now_datetime()}] Found {count} modified BOM(s) since cutoff")
+
+    if not boms:
+        update_log_entry(log_id, f"[{now_datetime()}] No BOMs to process. Exiting.")
+        return
+
+    # 4) Preload disabled Items
+    items = list({r["item"] for r in boms})
+    disabled_map = frappe.get_all(
+        "Item",
+        filters={"name": ["in", items]},
+        fields=["name", "disabled"],
+        as_list=False,
+    )
+    disabled_items = {row.name for row in disabled_map if row.disabled}
+
+    # 5) Process each BOM → Item
+    for idx, row in enumerate(boms, start=1):
+        bom_name = row["name"]
+        item_name = row["item"]
+        update_log_entry(log_id, f"[{now_datetime()}] [{idx}/{count}] BOM: {bom_name}, Item: {item_name}")
+
+        if item_name in disabled_items:
+            update_log_entry(log_id, f"[{now_datetime()}] Skipping disabled Item: {item_name}")
+            continue
+
+        # Delegate to updater
+        _update_item_from_default_bom(item_name, bom_name, log_id)
+
+    update_log_entry(log_id, f"[{now_datetime()}] execute_scheduled complete\n")
+    frappe.db.commit()
+
+
+def _update_item_from_default_bom(item_name, triggered_bom, log_id):
+    """
+    Applies default BOM to the Item record.
+    Accepts the name of the BOM that triggered the update
+    so it can be logged (even if not actually the default).
+    """
+    ts = now_datetime()
+    update_log_entry(log_id, f"[{now_datetime()}] {ts} → Processing Item '{item_name}' (triggered by BOM '{triggered_bom}')")
+
+    # 1. Load Item
+    item = custom_try(frappe.get_doc, "Item", item_name)
+    if not item:
+        update_log_entry(log_id, f"[{now_datetime()}] ❌ Item '{item_name}' not found, skipping.")
+        return
+
+    # 2. Clear old BOM fields
+    item.set("item_default_bom", None)
+    item.set("bom_table", [])
+    item.set("bom_cost", 0.0)
+    update_log_entry(log_id, f"[{now_datetime()}] Cleared item_default_bom, bom_table & bom_cost")
+
+    # 3. Find true default BOM
+    default_bom = frappe.db.get_value(
+        "BOM",
+        {"item": item_name, "is_default": 1, "docstatus": 1},
+        "name"
+    )
+    if not default_bom:
+        update_log_entry(log_id, f"[{now_datetime()}] No default BOM for Item '{item_name}'. Saving cleared state.")
+        _safe_save(item, item_name, log_id, "Item cleared")
+        return
+
+    update_log_entry(log_id, f"[{now_datetime()}] Default BOM identified: '{default_bom}'")
+
+    # 4. Load BOM document
+    bom = custom_try(frappe.get_doc, "BOM", default_bom)
+    if not bom:
+        update_log_entry(log_id, f"[{now_datetime()}] ❌ Default BOM '{default_bom}' not found. Saving cleared Item.")
+        _safe_save(item, item_name, log_id, "Item after missing BOM")
+        return
+
+    # 5. Assign and copy table
+    item.item_default_bom = bom.name
+    update_log_entry(log_id, f"[{now_datetime()}] Linked Item to BOM '{bom.name}'")
+
+    # Preload bin quantities for all codes in one go
+    codes = [d.item_code for d in bom.items]
+    bins = frappe.get_all(
+        "Bin",
+        filters={"item_code": ["in", codes], "warehouse": DEFAULT_WAREHOUSE},
+        fields=["item_code", "actual_qty"],
+        as_list=False,
+    )
+    bin_map = {b.item_code: flt(b.actual_qty) for b in bins}
+
+    for bi in bom.items:
+        code = bi.item_code
+        if frappe.db.get_value("Item", code, "disabled"):
+            update_log_entry(log_id, f"[{now_datetime()}] Skipping disabled BOM line item '{code}'")
+            continue
+
+        row = item.append("bom_table", {})
+        row.update({
+            "item_code": code,
+            "item_name": bi.item_name,
+            "source_warehouse": DEFAULT_WAREHOUSE,
+            "qty": bi.qty,
+            "uom": bi.uom,
+            "description": bi.description,
+            "rate": flt(bi.rate),
+            "stock_qty": bin_map.get(code, 0.0),
+            "bom_no": frappe.db.get_value(
+                "BOM", {"item": code, "is_default": 1}, "name"
+            ) or ""
+        })
+        update_log_entry(log_id, f"[{now_datetime()}] → Added line for '{code}': qty={bi.qty}, stock={row.stock_qty}")
+
+    # 6. Set cost and save
+    item.bom_cost = flt(bom.total_cost) or 0.0
+    update_log_entry(log_id, f"[{now_datetime()}] Set bom_cost to {item.bom_cost}")
+
+    _safe_save(item, item_name, log_id, f"Item updated with BOM '{bom.name}'")
+
+
+def _safe_save(doc, name, log_id, context):
+    """
+    Attempt to save + commit a doc; on error, log and rollback.
+    """
+    try:
+        doc.save(ignore_permissions=True)
+        frappe.db.commit()
+        update_log_entry(log_id, f"[{now_datetime()}] ✔ {context} for '{name}' saved successfully")
+    except Exception as e:
+        frappe.log_error(message=str(e), title=f"Error saving {doc.doctype} '{name}'")
+        frappe.db.rollback()
+        update_log_entry(log_id, f"[{now_datetime()}] ❌ Failed saving '{name}': {e}")

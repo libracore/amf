@@ -383,7 +383,7 @@ def generate_data_matrix(data, size='26x26'):
 def qrcode_serial_no(doc, method=None):
     data = doc.name
     
-    if doc.item_code == "522100":
+    if doc.item_code == "541000":
         data = "BA" + data[-6:]
     
     # Generate the Data Matrix image as a base64 string with a higher resolution Data Matrix
