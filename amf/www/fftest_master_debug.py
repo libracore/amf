@@ -647,8 +647,16 @@ def get_serialized_items_with_existing_work_orders(work_order_id):
     # If no serialized items found, return early
     if not item_codes:
         update_log_entry(
-            log_id, "DEBUG: No serialized items found. Returning empty list.")
-        return []
+            log_id, "DEBUG: No serialized items found. Checking current WO.")
+        item_to_manuf = frappe.db.get_value("Work Order", work_order_id, 'production_item')
+        if item_to_manuf.startswith('5'):
+            update_log_entry(
+            log_id, "DEBUG: Current WO is already a 5XXXXX production item WO. Returning current WO.")
+            return [{"work_order_name": work_order_id, "production_item": item_to_manuf}]
+        else:
+            update_log_entry(
+            log_id, "DEBUG: After check, no wo found. Something is wrong. Call assistance.")
+            return []
 
     # Step 2: Get existing Work Orders that produce these item codes,
     #         are 'Not Started' or 'In Process',
