@@ -1,6 +1,8 @@
 import frappe
 import datetime
 
+from frappe.utils import now_datetime
+
 # Global Variables
 
 # Global Methods
@@ -110,3 +112,59 @@ def custom_try(command, *args, **kwargs):
     except Exception as e:
         update_error_log(f"An unexpected error occurred: {e}")
     return None
+
+# ——— Log Handling Utilities —————————————————
+def _get_or_create_log(doc):
+    """
+    Retrieve existing Log Entry for this Stock Entry or create a new one.
+    """
+    reference = f"{doc.doctype}: {doc.name}"
+    existing = frappe.get_all(
+        "Log Entry",
+        filters={"reference_name": reference},
+        order_by="creation desc",
+        limit_page_length=1,
+        fields=["name"]
+    )
+    if existing:
+        return existing[0].name
+    # not found → create
+    msg = f"[{now_datetime()}] {doc.doctype} {doc.name} initiated"
+    return create_log_entry(msg, doc.doctype, reference)
+
+def _create_log_entry(message, category, name):
+    """
+    Create a new Log Entry and return its ID.
+    """
+    log = frappe.get_doc({
+        "doctype": "Log Entry",
+        "timestamp": datetime.datetime.now(),
+        "category": category,
+        "message": message,
+        "reference_name": name,
+    }).insert(ignore_permissions=True)
+    frappe.db.commit()
+    return log.name
+
+
+def _update_log_entry(log_id, message):
+    """
+    Append a message to an existing Log Entry.
+    """
+    log = custom_try(frappe.get_doc, "Log Entry", log_id)
+    if not log:
+        return
+    log.message = (log.message or "") + "\n" + (message or "")
+    custom_try(log.save, ignore_permissions=True)
+
+
+def _custom_try(func, *args, **kwargs):
+    """
+    Execute func safely, logging exceptions.
+    """
+    try:
+        return func(*args, **kwargs)
+    except Exception as e:
+        frappe.log_error(message=str(e), title=f"Error in {func.__name__}")
+        frappe.db.rollback()
+        return None
