@@ -88,6 +88,7 @@ def execute(filters=None):
             so.status AS doc_status
         FROM `tabSales Order` so
         WHERE so.docstatus = 1
+        AND so.status != 'Completed'
 
         UNION ALL
 
@@ -106,6 +107,7 @@ def execute(filters=None):
             si.status AS doc_status
         FROM `tabSales Invoice` si
         WHERE si.docstatus = 1
+        AND si.status != 'Paid'
 
         ORDER BY doc_date DESC, doc_type, doc_name
     """, as_dict=True)
