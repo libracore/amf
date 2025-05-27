@@ -26,8 +26,10 @@ def update_contact_csat_nps(doc, method):
         csat_value = amf_overall * 100 / 5  # e.g., if amf_overall is from 1 to 5
         nps_value = recommend * 10         # e.g., if recommend is from 0 to 10
 
-        frappe.db.set_value("Contact", doc.contact_person, "csat", csat_value)
-        frappe.db.set_value("Contact", doc.contact_person, "nps", int(nps_value))
+        # frappe.db.set_value("Contact", doc.contact_person, "csat", csat_value)
+        # frappe.db.set_value("Contact", doc.contact_person, "nps", int(nps_value))
+        frappe.db.set_value("Contact", doc.contact_person, "customer_satisfaction_survey", csat_value)
+        frappe.db.set_value("Contact", doc.contact_person, "referral_satisfaction_survey", int(nps_value))
         # Optionally, if you need triggers or validations from the Contact doctype to run,
         # you could load and save:
         #
