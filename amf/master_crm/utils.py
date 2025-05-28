@@ -122,3 +122,43 @@ def get_referring_contacts(customer):
 
     # return list of names
     return [r.name for r in contacts]
+
+@frappe.whitelist()
+def calculate_csat_average():
+    """
+    For each Customer, find all linked Contacts, average their 'csat' scores,
+    and store the result in Customer.csat_average.
+    """
+    # 1. Get all customer names
+    customers = frappe.get_all("Customer", fields=["name"])
+
+    for cust in customers:
+        # 2. Pull average CSAT for this customer via SQL join with Dynamic Link
+        avg = frappe.db.sql("""
+            SELECT
+                    AVG(c.customer_satisfaction_survey) AS avg_csat            
+                FROM
+                    `tabDynamic Link` dl
+                JOIN
+                    `tabContact` c ON c.name = dl.parent
+                WHERE
+                    dl.parenttype = 'Contact'
+                    AND dl.link_name = %s
+                    AND c.customer_satisfaction_survey IS NOT NULL
+                    AND c.customer_satisfaction_survey > 0
+        """, (cust.name,), as_dict=1)
+
+        # 3. Extract the computed average (or default to 0 if none)
+        avg_csat = avg[0].avg_csat if avg and avg[0].avg_csat is not None else 0.0
+
+        # 4. Update the customer record
+        frappe.db.set_value(
+            "Customer",
+            cust.name,
+            "csat_average",
+            avg_csat
+        )
+        print("value set for",cust.name)
+
+    # Persist all updates in one go
+    frappe.db.commit()
