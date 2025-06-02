@@ -1,17 +1,55 @@
 import os
 import csv
 import frappe
-from frappe import _
+from frappe import _, _dict
 from itertools import chain
+from frappe.utils import now_datetime
 from frappe.utils.file_manager import get_file_path
 
+from amf.amf.utils.stock_entry import (
+    _get_or_create_log,
+    update_log_entry,
+    custom_try
+)
+
 def main():
+    context = _dict(doctype="Item", name="Item Main Creation")
+    log_id = _get_or_create_log(context)  # assume doc context not needed here
+    update_log_entry(log_id, f"[{now_datetime()}] Starting execute main method")
+    
+    update_log_entry(log_id, f"[{now_datetime()}] Starting execute import_items_and_generate_boms method")
     import_items_and_generate_boms()
+    update_log_entry(log_id, f"[{now_datetime()}] Finish execute import_items_and_generate_boms method")
+    
+    update_log_entry(log_id, f"[{now_datetime()}] Starting execute rename_item_codes_from_csv method")
     rename_item_codes_from_csv()
+    update_log_entry(log_id, f"[{now_datetime()}] Finish execute rename_item_codes_from_csv method")
+    
+    update_log_entry(log_id, f"[{now_datetime()}] Starting execute import_items_with_motor_bom method")
     import_items_with_motor_bom()
+    update_log_entry(log_id, f"[{now_datetime()}] Finish execute import_items_with_motor_bom method")
+    
+    update_log_entry(log_id, f"[{now_datetime()}] Starting execute rename_item_codes_from_csv_product method")
     rename_item_codes_from_csv_product()
+    update_log_entry(log_id, f"[{now_datetime()}] Finish execute rename_item_codes_from_csv_product method")
+    
+    update_log_entry(log_id, f"[{now_datetime()}] Starting execute import_composite_items_and_boms method")
     import_composite_items_and_boms(file_url="/private/files/new_config.csv")
+    update_log_entry(log_id, f"[{now_datetime()}] Finish execute import_composite_items_and_boms method")
+    
+    update_log_entry(log_id, f"[{now_datetime()}] Starting execute import_composite_items_and_boms method")
     import_composite_items_and_boms(file_url="/private/files/new_item_to_create.csv")
+    update_log_entry(log_id, f"[{now_datetime()}] Finish execute import_composite_items_and_boms method")
+    
+    update_log_entry(log_id, f"[{now_datetime()}] Starting execute item_to_dis_cpr method")
+    item_to_dis_cpr()
+    update_log_entry(log_id, f"[{now_datetime()}] Finish execute item_to_dis_cpr method")
+    
+    update_log_entry(log_id, f"[{now_datetime()}] Starting execute rename_disabled_items method")
+    rename_disabled_items()
+    update_log_entry(log_id, f"[{now_datetime()}] Finish execute rename_disabled_items method")
+    
+    update_log_entry(log_id, f"[{now_datetime()}] Finish execute main method")
     return
 
 def resolve_file_path(file_url):
@@ -961,3 +999,94 @@ def rename_disabled_items(batch_size: int = 50):
         frappe.db.commit()
 
     frappe.msgprint(_("Renamed {0} disabled items").format(count))
+    
+def item_to_dis_cpr():
+    file_url="/private/files/item_to_dis_cpr.csv"
+    # 1) Resolve filesystem path
+    try:
+        file_doc = frappe.get_doc("File", {"file_url": file_url})
+        file_path = file_doc.get_full_path()
+    except frappe.DoesNotExistError:
+        file_path = get_file_path(file_url)
+
+    if not os.path.exists(file_path):
+        frappe.throw(_("File not found at: {0}").format(file_path))
+
+    frappe.log_error(message=_("Disabling items via CSV at {0}").format(file_path),
+                     title="rename_item_codes_from_csv [DEBUG]")
+
+    
+    disabled, skipped = [], []
+    # 2) Open and parse
+    with open(file_path, newline='', encoding='utf-8-sig') as f:
+        reader = csv.reader(f)
+
+        # grab first row for optional header
+        try:
+            first = next(reader)
+        except StopIteration:
+            frappe.throw(_("CSV is empty: {0}").format(file_path))
+
+        header = [c.strip().lower().replace(' ', '_') for c in first]
+        expected_header = ["code"]
+        has_header = header == expected_header
+
+        if has_header:
+            frappe.log_error(message="Header detected, skipping first row",
+                             title="item_to_dis_cpr [DEBUG]")
+            data_rows = reader
+            start_idx = 2
+        else:
+            frappe.log_error(message="No header detected, including first row",
+                             title="item_to_dis_cpr [DEBUG]")
+            data_rows = chain([first], reader)
+            start_idx = 1
+            
+        for idx, row in enumerate(data_rows, start=start_idx):
+            # Validate row length
+            if len(row) != 1:
+                skipped.append((None, f"Malformed row {idx}"))
+                continue
+
+            code = row[0].strip()
+            if not code:
+                skipped.append((None, f"Empty code at row {idx}"))
+                continue
+
+            # Attempt to fetch the Item
+            try:
+                item = frappe.get_doc("Item", code)
+            except frappe.DoesNotExistError:
+                skipped.append((code, f"Item not found at row {idx}"))
+                continue
+
+            # Check if already disabled
+            if item.disabled:
+                skipped.append((code, f"Item already disabled (row {idx})"))
+                continue
+
+            # Disable and save
+            try:
+                item.disabled = 1
+                item.save(ignore_permissions=True)
+                frappe.db.commit()
+                disabled.append(code)
+            except Exception as e:
+                skipped.append((code, f"Error disabling at row {idx}: {str(e)}"))
+                frappe.log_error(message=_("Failed to disable item {0}: {1}").format(code, str(e)),
+                                 title="item_to_dis_cpr [ERROR]")
+                continue
+
+    # 3) Log summary
+    frappe.log_error(
+        message=_("Disabled items: {0}").format(", ".join(disabled)) 
+                + "\n" + _("Skipped items: {0}").format(
+                    "; ".join([f"{c or 'N/A'} ({reason})" for c, reason in skipped])
+                ),
+        title="item_to_dis_cpr [SUMMARY]"
+    )
+
+    return {
+        "disabled": disabled,
+        "skipped": skipped
+    }
