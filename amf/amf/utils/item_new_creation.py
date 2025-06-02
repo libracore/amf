@@ -12,6 +12,7 @@ def main():
     rename_item_codes_from_csv_product()
     import_composite_items_and_boms(file_url="/private/files/new_config.csv")
     import_composite_items_and_boms(file_url="/private/files/new_item_to_create.csv")
+    rename_disabled_items()
     return
 
 def resolve_file_path(file_url):
