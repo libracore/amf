@@ -26,6 +26,6 @@ def update_contact_csat_nps(doc, method):
         frappe.db.set_value("Contact", doc.contact_person, "customer_satisfaction_survey", int(nps_value))
     elif doc.doctype == 'Referral Satisfaction Survey':
         frappe.db.set_value("Contact", doc.referring_contact, "customer_satisfaction_survey", csat_value)
-        frappe.db.set_value("Contact", doc.referring_contact, "customer_satisfaction_survey", int(nps_value))
+        frappe.db.set_value("Contact", doc.referring_contact, "referral_satisfaction_survey", int(nps_value))
 
     return None

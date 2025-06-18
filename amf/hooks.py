@@ -123,6 +123,7 @@ scheduler_events = {
         "amf.master_crm.contact.update_contact_statuses",
         "amf.master_crm.contact.update_organization_flags",
         "amf.amf.utils.bom_mgt.execute_db_enqueue",
+        "amf.master_crm.doctype.global_satisfaction_score.global_satisfaction_score.calculate_global_scores"
     ],
 }
 

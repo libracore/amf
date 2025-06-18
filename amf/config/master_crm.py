@@ -135,6 +135,12 @@ def get_data():
                         "name": "Referral Satisfaction Survey",
                         "label": _("Referral Satisfaction Survey"),
                         "description": _("Referral Satisfaction Survey")
+                    },
+                    {
+                        "type": "doctype",
+                        "name": "Global Satisfaction Score",
+                        "label": _("Global Satisfaction Score"),
+                        "description": _("Global Satisfaction Score")
                     }
             ]
         }

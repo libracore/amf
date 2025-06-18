@@ -1090,3 +1090,174 @@ def item_to_dis_cpr():
         "disabled": disabled,
         "skipped": skipped
     }
+
+# -*- coding: utf-8 -*-
+import os
+import csv
+from itertools import chain
+
+import frappe
+from frappe import _
+from frappe.utils.file_manager import get_file_path
+
+
+def item_to_dis_ena():
+    """
+    Read a CSV at /private/files/item_to_dis_cpr.csv, where each row has:
+      1) item_code
+      2) flag ( "1" to disable, "0" to enable )
+    Disable or enable each Item accordingly, collecting successes and skips.
+
+    Returns a dict with three keys:
+      - "disabled":   list of item codes that were successfully disabled
+      - "enabled":    list of item codes that were successfully enabled
+      - "skipped":    list of (code_or_None, reason) for any row not processed
+    """
+
+    FILE_URL = "/private/files/Item_to_disable_final.csv"
+
+    # 1) Resolve filesystem path
+    try:
+        file_doc = frappe.get_doc("File", {"file_url": FILE_URL})
+        file_path = file_doc.get_full_path()
+    except frappe.DoesNotExistError:
+        file_path = get_file_path(FILE_URL)
+
+    if not os.path.exists(file_path):
+        frappe.throw(_("File not found at: {0}").format(file_path))
+
+    frappe.log_error(
+        message=_("Processing item enable/disable via CSV at {0}").format(file_path),
+        title="item_to_dis_cpr [DEBUG]"
+    )
+
+    disabled_items = []
+    enabled_items = []
+    skipped = []
+
+    # 2) Open and parse CSV
+    with open(file_path, newline='', encoding='utf-8-sig') as f:
+        reader = csv.reader(f)
+
+        # 2a) Attempt to read the first row (could be header)
+        try:
+            first_row = next(reader)
+        except StopIteration:
+            frappe.throw(_("CSV is empty: {0}").format(file_path))
+
+        # Normalize cells for header detection
+        normalized_first = [cell.strip().lower() for cell in first_row]
+
+        # We’ll treat this as a header if:
+        #   - first cell lowercased == "code"
+        #   - second cell is NOT "0" or "1"
+        if (
+            len(normalized_first) >= 2
+            and normalized_first[0] == "code"
+            and normalized_first[1] not in ("0", "1")
+        ):
+            frappe.log_error(
+                message="Header detected, skipping first row",
+                title="item_to_dis_cpr [DEBUG]"
+            )
+            data_rows = reader
+            start_idx = 2
+        else:
+            # No header: put first_row back into the data stream
+            frappe.log_error(
+                message="No header detected, treating first row as data",
+                title="item_to_dis_cpr [DEBUG]"
+            )
+            data_rows = chain([first_row], reader)
+            start_idx = 1
+
+        # 2b) Iterate over each data row
+        for idx, row in enumerate(data_rows, start=start_idx):
+            # ---- Validate row length ----
+            if len(row) != 2:
+                skipped.append((None, _("Malformed row {0}").format(idx)))
+                continue
+
+            raw_code = row[0].strip()
+            raw_flag = row[1].strip()
+
+            # ---- Validate code ----
+            if not raw_code:
+                skipped.append((None, _("Empty code at row {0}").format(idx)))
+                continue
+
+            # ---- Validate flag ----
+            if raw_flag not in ("0", "1"):
+                skipped.append(
+                    (raw_code, _("Invalid flag '{0}' at row {1}").format(raw_flag, idx))
+                )
+                continue
+
+            # Desired state: flag == "1" → disable; flag == "0" → enable
+            should_disable = (raw_flag == "1")
+
+            # ---- Fetch the Item document ----
+            try:
+                item = frappe.get_doc("Item", raw_code)
+            except frappe.DoesNotExistError:
+                skipped.append((raw_code, _("Item not found at row {0}").format(idx)))
+                continue
+
+            # ---- Check if already in desired state ----
+            already_disabled = bool(item.disabled)
+            if should_disable and already_disabled:
+                skipped.append((raw_code, _("Item already disabled (row {0})").format(idx)))
+                continue
+
+            already_enabled = not bool(item.disabled)
+            if not should_disable and already_enabled:
+                skipped.append((raw_code, _("Item already enabled (row {0})").format(idx)))
+                continue
+
+            # ---- Perform the enable/disable operation ----
+            try:
+                # Set disabled = 1 to disable, 0 to enable
+                item.disabled = 1 if should_disable else 0
+                item.save(ignore_permissions=True)
+                frappe.db.commit()
+
+                if should_disable:
+                    disabled_items.append(raw_code)
+                else:
+                    enabled_items.append(raw_code)
+
+            except Exception as e:
+                skipped.append((
+                    raw_code,
+                    _("Error updating item at row {0}: {1}").format(idx, str(e))
+                ))
+                frappe.log_error(
+                    message=_("Failed to update item {0}: {1}").format(raw_code, str(e)),
+                    title="item_to_dis_cpr [ERROR]"
+                )
+                continue
+
+    # 3) Log summary
+    summary_lines = []
+    if disabled_items:
+        summary_lines.append(_("Disabled items: {0}").format(", ".join(disabled_items)))
+    if enabled_items:
+        summary_lines.append(_("Enabled items: {0}").format(", ".join(enabled_items)))
+
+    if skipped:
+        skipped_str = "; ".join([
+            _("{0} ({1})").format(code or _("N/A"), reason)
+            for code, reason in skipped
+        ])
+        summary_lines.append(_("Skipped items: {0}").format(skipped_str))
+
+    frappe.log_error(
+        message="\n".join(summary_lines),
+        title="item_to_dis_cpr [SUMMARY]"
+    )
+
+    return {
+        "disabled": disabled_items,
+        "enabled": enabled_items,
+        "skipped": skipped
+    }
