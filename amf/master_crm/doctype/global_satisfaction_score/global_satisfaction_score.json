@@ -1,0 +1,46 @@
+{
+ "autoname": "format:{YYYY}-{MM}-{DD}",
+ "creation": "2025-06-18 15:30:28.839661",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "global_csat_score",
+  "global_nps_score"
+ ],
+ "fields": [
+  {
+   "fieldname": "global_csat_score",
+   "fieldtype": "Data",
+   "label": "Global CSAT Score"
+  },
+  {
+   "fieldname": "global_nps_score",
+   "fieldtype": "Data",
+   "label": "Global NPS Score"
+  }
+ ],
+ "modified": "2025-06-18 15:50:53.099637",
+ "modified_by": "Administrator",
+ "module": "Master CRM",
+ "name": "Global Satisfaction Score",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_seen": 1,
+ "track_views": 1
+}
