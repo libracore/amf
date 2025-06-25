@@ -84,6 +84,38 @@ def get_data():
             ]
         },
         {
+            "label": _("HR"),
+            "icon": "octicon octicon-git-compare",
+            "items": [
+                    {
+                        "type": "doctype",
+                        "name": "Employee",
+                        "label": _("Employee"),
+                        "description": _("Employee")
+                    },
+                    {
+                        "type": "doctype",
+                        "name": "Leave Application",
+                        "label": _("Leave Application"),
+                        "description": _("Leave Application")
+                    },
+                    {
+                        "type": "report",
+                        "name": "Leave Balance Overview",
+                        "label": _("Leave Balance Overview"),
+                        "doctype": "Leave Application",
+                        "is_query_report": True
+                    },
+                    {
+                        "type": "doctype",
+                        "name": "Leave Allocation",
+                        "label": _("Leave Allocation"),
+                        "description": _("Leave Allocation")
+                    }
+                   
+            ]
+        },
+        {
             "label": _("Switzerland"),
             "icon": "fa fa-money",
             "items": [
