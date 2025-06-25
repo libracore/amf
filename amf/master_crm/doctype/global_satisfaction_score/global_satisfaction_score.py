@@ -51,7 +51,7 @@ def calculate_global_scores():
                 )
 
     # 2) Compute averages
-    avg_csat = (sum(csat_values) / len(csat_values)) if csat_values else 0.0
+    avg_csat = ((sum(csat_values) / len(csat_values)) / 5) if csat_values else 0.0
     avg_nps  = (sum(nps_values)  / len(nps_values))  if nps_values  else 0.0
 
     # 3) Create a new Global Satisfaction Score doc
