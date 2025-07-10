@@ -15,11 +15,11 @@ def get_columns():
     return [
         {'fieldname': 'employee', 'label': _("Employee"), 'fieldtype': 'Link', 'options': 'Employee', 'width': 120},
         {'fieldname': 'employee_name', 'label': _("Employee name"), 'fieldtype': 'Data', 'width': 150},
-        {'fieldname': 'allocated_leaves', 'label': _("Allocated days"), 'fieldtype': 'Float', 'width': 120},
-        {'fieldname': 'approved_leaves', 'label': _("Approved days"), 'fieldtype': 'Float', 'width': 120},
-        {'fieldname': 'pending_leaves', 'label': _("Pending days"), 'fieldtype': 'Float', 'width': 120},
-        {'fieldname': 'remaining_leaves', 'label': _("Remaining days"), 'fieldtype': 'Float', 'width': 120},
-        {'fieldname': 'sick_leaves', 'label': _("Sick days"), 'fieldtype': 'Float', 'width': 120},
+        {'fieldname': 'allocated_leaves', 'label': _("Allocated leaves"), 'fieldtype': 'Float', 'width': 120},
+        {'fieldname': 'approved_leaves', 'label': _("Approved leaves"), 'fieldtype': 'Float', 'width': 120},
+        {'fieldname': 'pending_leaves', 'label': _("Pending leaves"), 'fieldtype': 'Float', 'width': 120},
+        {'fieldname': 'remaining_leaves', 'label': _("Remaining leaves"), 'fieldtype': 'Float', 'width': 120},
+        {'fieldname': 'sick_leaves', 'label': _("Sick leaves"), 'fieldtype': 'Float', 'width': 120},
     ]
     
 def get_data(filters):
@@ -43,7 +43,7 @@ def get_data(filters):
              FROM `tabLeave Application` AS `tA1`
              WHERE 
                 `tA1`.`employee` = `tabEmployee`.`name`
-                AND `tA1`.`docstatus` = 0
+                AND `tA1`.`docstatus` = 1
                 AND `tA1`.`from_date` >= %(from_date)s
                 AND `tA1`.`to_date` <= %(to_date)s
                 AND `tA1`.`leave_type` IN ({regular_leave_types})
@@ -52,7 +52,7 @@ def get_data(filters):
              FROM `tabLeave Application` AS `tA2`
              WHERE 
                 `tA2`.`employee` = `tabEmployee`.`name`
-                AND `tA2`.`docstatus` = 1
+                AND `tA2`.`docstatus` = 0
                 AND `tA2`.`from_date` >= %(from_date)s
                 AND `tA2`.`to_date` <= %(to_date)s
                 AND `tA2`.`leave_type` IN ({regular_leave_types})
