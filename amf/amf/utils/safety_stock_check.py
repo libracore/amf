@@ -378,7 +378,8 @@ doc = frappe._dict({
         "name": f"[{now_datetime()}] Auto Stock Level"
     })
 log_id = _get_or_create_log(doc)
-    
+
+@frappe.whitelist()   
 def check_stock_levels(test_mode=0):
     """
     Main entry: calculate safety stocks, reorder levels and flag items for reorder.
