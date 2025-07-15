@@ -224,7 +224,8 @@ def make_stock_entry(source_work_order_id, serial_no_id=None, batch_no_id=None):
         update_log_entry(
             log_id, f"DEBUG: Stock Entry submitted successfully: {stock_entry.name}")
 
-        if not spare_prod:
+        item_to_manuf = frappe.db.get_value("Work Order", source_work_order_id, 'production_item')
+        if not spare_prod and not item_to_manuf.startswith('5'):
             start_work_order_final(source_work_order_id, serial_no_id, batch_no_id)
 
         return stock_entry
