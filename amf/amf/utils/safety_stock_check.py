@@ -446,13 +446,35 @@ def check_stock_levels(test_mode=0):
 
 
 # --- Data Fetching Helpers ---
-
 def _get_items(test_mode: bool):
     """
     Fetch stock items, excluding those with 'GX' in their name.
     In test mode, only return the specific test item.
     """
     fields = ["name", "item_name", "is_purchase_item"]
+    
+    # 1. Simple equals filters
+    base_filters = [
+        ["is_stock_item", "=", 1],
+        ["disabled",      "=", 0],
+    ]
+
+    # 2. Fixed-list exclusion
+    group_exclusions = ["Product", "Body"]
+    group_filter      = ["item_group", "not in", group_exclusions]
+
+    # 3. Wildcard exclusions via NOT LIKE
+    #    (underscore here is the SQL single‑char wildcard; if you really want
+    #     a literal “_” then escape it as "\\_" in Python)
+    name_exclude_patterns = ["11_%", "21_%", "%GX%"]
+    name_filters = [
+        ["name", "not like", pattern]
+        for pattern in name_exclude_patterns
+    ]
+
+    # 4. Combine them into one filters list
+    filters = base_filters + [group_filter] + name_filters
+    
     if test_mode:
         return frappe.get_all(
             "Item",
@@ -460,18 +482,11 @@ def _get_items(test_mode: bool):
             fields=fields
         )
 
-    # Exclude disabled, non-stock, and any item containing 'GX'
-    filters = {
-        "is_stock_item": 1,
-        "disabled": 0,
-        "name": ["not like", "%GX%"]
-    }
     return frappe.get_all(
         "Item",
         filters=filters,
         fields=fields
     )
-
 
 def _calc_lead_time(item_code: str) -> tuple[float, float]:
     """
