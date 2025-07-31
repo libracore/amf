@@ -117,6 +117,7 @@ scheduler_events = {
         "amf.master_crm.doctype.gravity_forms.gravity_forms.daily_sync",
         "amf.amf.utils.bom_mgt.execute_scheduled",
         "amf.amf.utils.work_order_creation.create_work_orders_based_on_reorder_levels",
+        "amf.master_crm.organization.update_global_csat"
     ],
     # "hourly": ["amf.amf.utils.document_notification.update_purchase_orders"],
     "weekly": [
