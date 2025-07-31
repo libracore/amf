@@ -387,7 +387,7 @@ def update_organization_flags():
     orgs_in_so = _get_distinct_orgs(
         """
         SELECT DISTINCT so.customer
-            FROM `tabSales Order` AS so
+            FROM `tabSales Invoice` AS so
             JOIN `tabCustomer`    AS cust ON cust.name = so.customer   -- ← ensure it exists
         WHERE so.customer IS NOT NULL
             AND so.customer != ''
