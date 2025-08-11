@@ -104,6 +104,9 @@ doc_events = {
             "amf.master_crm.doctype.referral_satisfaction_survey.referral_satisfaction_survey.update_contact_csat_nps"
         ]  
     },
+    "BOM": {
+        "before_save": "amf.amf.utils.bom_updating.bom_before_save"
+    }
 }
 
 # Scheduled Tasks
