@@ -165,3 +165,49 @@ def deactivate_non_default_boms_():
             )
             frappe.logger().warning(f"Skipping BOM {bom_doc.name} - linked to another document.")
             continue
+            
+            
+"""
+This is hooked in the BOM : before_save trigger (hooky.py)
+"""
+def bom_before_save(doc, event):
+    if doc.is_default:
+        update_depending_boms(doc.name, doc.item)
+    
+    return
+    
+    
+"""
+In case a default BOM is saved, update links to this BOM in all upper BOMs
+"""
+def update_depending_boms(bom, item):
+    # find all BOMs depending on this item
+    depending_boms = frappe.db.sql("""
+        SELECT `tabBom`.`name`
+        FROM `tabBOM Item`
+        LEFT JOIN `tabBOM` ON `tabBOM`.`name` = `tabBOM Item`.`parent`
+        WHERE 
+            `tabBOM Item`.`item_code` = %(item)s
+            AND `tabBOM`.`docstatus` < 2;
+        """,
+        {'item': item},
+        as_dict=True
+    )
+    for d in depending_boms:
+        try:
+            frappe.db.sql("""
+                    UPDATE `tabBOM Item`
+                    SET `bom_no` = %(bom)s
+                    WHERE `parent` = %(depending)s;
+                """,
+                {
+                    'bom': bom,
+                    'depending': d.get("name")
+                }
+            )
+        except Exception as err:
+            frappe.log_error( "Unable to update depending BOM in {0}: {1}".format(d.get("name"), err), "Error updating depending bom")
+        frappe.db.commit()
+        
+    return
+    

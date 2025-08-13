@@ -6,6 +6,7 @@ import frappe
 from frappe.utils import get_url_to_form
 from erpnextswiss.scripts.crm_tools import get_primary_customer_address
 from frappe import _
+from frappe.utils import nowdate  # for Date fields
 
 
 @frappe.whitelist()
@@ -166,7 +167,14 @@ def create_update_contact(first_name=None, last_name=None, phone=None, email=Non
             'last_name': last_name or "",
             'full_name': "{0} {1}".format(first_name or "", last_name or ""),
             'position': position or "",
-            'status': 'Lead'
+            'status': 'Lead',
+            "country": "",
+            "subscribed_to_newsletter": 1,
+            "gdpr_compliant": 1,
+            "deliverability": "OK",
+            "deliverability_type": "OK",
+            "subscription_date": nowdate(),
+            "filled_in_on": nowdate(),
         })
         if email:
             new_contact.append("email_ids", {
