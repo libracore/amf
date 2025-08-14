@@ -183,7 +183,7 @@ In case a default BOM is saved, update links to this BOM in all upper BOMs
 def update_depending_boms(bom, item):
     # find all BOMs depending on this item
     depending_boms = frappe.db.sql("""
-        SELECT `tabBom`.`name`
+        SELECT `tabBOM`.`name`
         FROM `tabBOM Item`
         LEFT JOIN `tabBOM` ON `tabBOM`.`name` = `tabBOM Item`.`parent`
         WHERE 

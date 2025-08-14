@@ -306,7 +306,8 @@ def _prepare_component_data(doc, item_category):
         "item_group": item_group,
         "reference_code": base_rnd, # e.g., doc.get('plug_rnd')
         "item_type": "Component",
-        "tag_raw_mat": base_raw_mat   # e.g., doc.get('plug_mat')
+        "tag_raw_mat": base_raw_mat,   # e.g., doc.get('plug_mat')
+        "valuation_rate": 0,
     }
 
     # Data for the Sub-Assembly
@@ -317,6 +318,7 @@ def _prepare_component_data(doc, item_category):
         "item_group": item_group,
         "reference_code": f"{base_rnd}.ASM",
         "item_type": "Sub-Assembly",
+        "valuation_rate": 0,
     }
 
     return component_data, asm_data, bom_materials
@@ -347,6 +349,7 @@ def _create_item_if_not_exists(item_data):
             "has_batch_no": 1,
         })
         item_doc.insert(ignore_permissions=True)
+        frappe.db.commit()
         return item_doc.name
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), f"Item Creation Failed for {item_code}")
@@ -368,6 +371,7 @@ def _create_bom_for_assembly(assembly_code, materials):
             "quantity": 1,
             "items": materials
         })
+        print(bom_doc.doctype, bom_doc.name)
         bom_doc.insert(ignore_permissions=True)
         bom_doc.submit()
         frappe.db.commit() # Commit after BOM creation as it's the last step.
