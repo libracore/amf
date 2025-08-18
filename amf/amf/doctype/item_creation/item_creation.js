@@ -9,13 +9,22 @@ frappe.ui.form.on('Item Creation', {
         }
     },
 
-    before_submit: function (frm) {
-        if (frm.doc.plug_check)
-            createPlug(frm)
-        // if (frm.doc.seat_check)
-            // createSeat(frm)
-        // if (frm.doc.head_check)
-            // createHead(frm)
+    before_submit: async function (frm) {
+        frappe.dom.freeze("Processing item creation, please wait...");
+        try {
+            if (frm.doc.plug_check)
+                createPlug(frm)
+            if (frm.doc.seat_check)
+                createSeat(frm)
+            if (frm.doc.head_check)
+                createHead(frm)
+        } catch (error) {
+            // If any server call fails, the process stops and logs the error.
+            console.error("Item creation failed:", error);
+            frappe.throw("An error occurred during item creation. See console for details.");
+        } finally {
+            frappe.dom.unfreeze();
+        }
     },
 
     refresh: function (frm) {
@@ -95,6 +104,8 @@ frappe.ui.form.on('Item Creation', {
                     if (!r.exc) {
                         console.log("Last 6-digit item code: " + r.message);
                         frm.set_value('head_code', '300' + r.message);
+                        frm.set_value('seat_code', '200' + r.message);
+                        frm.set_value('plug_code', '100' + r.message);
                     }
                 }
             });
@@ -157,9 +168,6 @@ frappe.ui.form.on('Item Creation', {
         //send the code as args
         frappe.call({
             method: 'amf.amf.doctype.item_creation.item_creation.get_last_item_code',
-            args: {
-                'code_body': 1
-            },
             callback: function(r) {
                 if (!r.exc) {
                     console.log("Last 6-digit item code: " + r.message);
@@ -169,14 +177,13 @@ frappe.ui.form.on('Item Creation', {
     }
 });
 
-function createPlug(frm) {
-    frappe.call({
-        method: 'amf.amf.doctype.item_creation.item_creation.create_plug_from_doc',
+async function createPlug(frm) {
+    await frappe.call({
+        method: 'amf.amf.doctype.item_creation.item_creation.create_item_from_doc',
         args: {
             'doc': frm.doc,
+            'group': 'plug'
         },
-        freeze: true,
-        freeze_message: __("Item <strong>PLUG</strong> en cours de création...<br>Mise à jour des entrées de stock...<br>Merci de patienter..."),
         callback: function (response) {
             console.log(response);
             if (response) {
@@ -191,14 +198,13 @@ function createPlug(frm) {
     });
 }
 
-function createSeat(frm) {
-    frappe.call({
-        method: 'amf.amf.doctype.item_creation.item_creation.create_seat_from_doc',
+async function createSeat(frm) {
+    await frappe.call({
+        method: 'amf.amf.doctype.item_creation.item_creation.create_item_from_doc',
         args: {
             'doc': frm.doc,
+            'group': 'seat'
         },
-        freeze: true,
-        freeze_message: __("Item <strong>SEAT</strong> en cours de création...<br>Mise à jour des entrées de stock...<br>Merci de patienter..."),
         callback: function (response) {
             console.log(response);
             if (response) {
@@ -213,15 +219,13 @@ function createSeat(frm) {
     });
 }
 
-function createHead(frm) {
-    frappe.call({
-        method: 'amf.amf.doctype.item_creation.item_creation.create_item',
+async function createHead(frm) {
+    await frappe.call({
+        method: 'amf.amf.doctype.item_creation.item_creation.create_item_from_doc',
         args: {
             'doc': frm.doc,
-            'item_type': 'valve_head'
+            'group': 'head'
         },
-        freeze: true,
-        freeze_message: __("Item <strong>HEAD</strong> en cours de création...<br>Mise à jour des entrées de stock...<br>Merci de patienter..."),
         callback: function (response) {
             console.log(response);
             if (response) {
