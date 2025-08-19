@@ -168,3 +168,66 @@ def _custom_try(func, *args, **kwargs):
         frappe.log_error(message=str(e), title=f"Error in {func.__name__}")
         frappe.db.rollback()
         return None
+
+@frappe.whitelist()
+def update_item_defaults_for_syringes():
+    """
+    This function updates the default expense and income accounts for items
+    that belong to the 'Syringe' item group and have an item code starting with 'C'.
+
+    Note: Please replace 'Your New Expense Account' and 'Your New Income Account'
+    with the actual account names you want to set.
+    """
+    
+    # Define the new account heads
+    new_expense_account = "4006 - Cost of general and accessory materials - AMF21"  # e.g., "Cost of Goods Sold - My Company"
+    new_income_account = "3005 - Accessory sales revenue - AMF21"    # e.g., "Sales - My Company"
+
+    # Fetch the names of all items matching the criteria
+    try:
+        sql_query = """
+            SELECT name
+            FROM `tabItem`
+            WHERE item_group = 'Syringe' OR item_code LIKE 'C%'
+        """
+        # frappe.db.sql returns a list of tuples, e.g., [('ITEM-001',), ('ITEM-002',)]
+        # We need to flatten this into a simple list of names.
+        query_result = frappe.db.sql(sql_query)
+        items_to_update = [item[0] for item in query_result]
+
+        if not items_to_update:
+            print("No items found matching the criteria.")
+            return
+
+        print(f"Found {len(items_to_update)} items to update.")
+
+        # Loop through each item found
+        for item_name in items_to_update:
+            try:
+                # Load the full item document
+                item_doc = frappe.get_doc("Item", item_name)
+                
+                # The 'item_defaults' field holds the child table data
+                if item_doc.get("item_defaults"):
+                    # Loop through each row in the 'Item Defaults' child table
+                    for item_default in item_doc.get("item_defaults"):
+                        # You might want to add a condition here if you have multiple companies,
+                        # for example: if item_default.company == "Your Company Name":
+                        item_default.expense_account = new_expense_account
+                        item_default.income_account = new_income_account
+                        print(f"Updating accounts for {item_name} in company {item_default.company}")
+
+                    # Save the document to persist the changes
+                    item_doc.save(ignore_permissions=True) # Use ignore_permissions if running from console
+                    print(f"Successfully saved changes for {item_name}.")
+
+            except Exception as e:
+                print(f"Error processing item {item_name}: {e}")
+
+        # Commit the changes to the database
+        frappe.db.commit()
+        print("\nUpdate process completed and changes have been committed.")
+
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        frappe.db.rollback() # Rollback in case of a major error
