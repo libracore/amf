@@ -1,0 +1,35 @@
+{
+ "add_total_row": 0,
+ "creation": "2025-08-19 15:33:21.035964",
+ "disable_prepared_report": 0,
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "idx": 0,
+ "is_standard": "Yes",
+ "letter_head": "Standard",
+ "modified": "2025-08-19 15:44:29.278441",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "Item Wise Margin",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "query": "SELECT\n    si.name AS invoice_id,\n    si.posting_date,\n    si.customer,\n    si.customer_name,\n    sd.item_code,\n    sd.qty AS quantity,\n    sd.base_rate AS selling_rate,\n    sd.calculated_cost_per_unit AS cost_per_unit,\n    \n    -- Calculate margin amount PER UNIT\n    (sd.base_rate - sd.calculated_cost_per_unit) AS margin_per_unit,\n    \n    -- Margin percentage is based on the per-unit rate\n    CASE\n        WHEN sd.base_rate > 0\n        THEN ((sd.base_rate - sd.calculated_cost_per_unit) / sd.base_rate) * 100\n        ELSE 0\n    END AS margin_percent\n\nFROM\n    `tabSales Invoice` AS si\nJOIN \n    -- This subquery acts as a temporary table to calculate the cost first\n    (\n        SELECT\n            sii.parent,\n            sii.item_code,\n            sii.qty,\n            sii.base_rate,\n            \n            -- This is the core logic for determining the cost\n            COALESCE(\n                NULLIF(item.real_cost, 0), -- First, try real_cost from Item master\n                ( -- If NULL, run this subquery to get the last purchase rate\n                    SELECT \n                        pri.rate\n                    FROM \n                        `tabPurchase Receipt Item` pri\n                    JOIN \n                        `tabPurchase Receipt` pr ON pr.name = pri.parent\n                    WHERE \n                        pri.item_code = sii.item_code\n                        AND pr.docstatus = 1\n                    ORDER BY \n                        pr.posting_date DESC, pr.creation DESC\n                    LIMIT 1\n                ),\n                0 -- Default to 0 if no cost is found\n            ) AS calculated_cost_per_unit\n            \n        FROM \n            `tabSales Invoice Item` AS sii\n        JOIN \n            `tabItem` AS item ON sii.item_code = item.name\n    ) AS sd ON si.name = sd.parent -- Join the main invoice table with our subquery results\n\nWHERE\n    si.docstatus = 1 -- Only include submitted Sales Invoices\nORDER BY\n    si.posting_date DESC;",
+ "ref_doctype": "Sales Invoice",
+ "report_name": "Item Wise Margin",
+ "report_type": "Query Report",
+ "roles": [
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "Accounts User"
+  },
+  {
+   "role": "Sales User"
+  },
+  {
+   "role": "Sales Manager"
+  }
+ ]
+}
