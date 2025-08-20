@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2024, [Your Company Name] and contributors
+# Copyright (c) 2024-2025, AMF and contributors
 # For license information, please see license.txt
 
 import frappe
