@@ -38,6 +38,7 @@
   "seat_rnd",
   "seat_acc",
   "seat_mat",
+  "seat_drawing",
   "seat_item",
   "column_break_14",
   "4b_plug_definition",
@@ -48,6 +49,7 @@
   "plug_rnd",
   "plug_acc",
   "plug_mat",
+  "plug_drawing",
   "plug_item",
   "section_break_28",
   "5_parts_definition",
@@ -384,11 +386,23 @@
    "fieldname": "head_description_check",
    "fieldtype": "Check",
    "label": "Modify Valve Head Description"
+  },
+  {
+   "depends_on": "eval:doc.seat_check=='Yes'",
+   "fieldname": "seat_drawing",
+   "fieldtype": "Attach",
+   "label": "Seat Drawing"
+  },
+  {
+   "depends_on": "eval:doc.plug_check=='Yes'",
+   "fieldname": "plug_drawing",
+   "fieldtype": "Attach",
+   "label": "Plug Drawing"
   }
  ],
  "hide_toolbar": 1,
  "is_submittable": 1,
- "modified": "2025-08-13 14:55:10.803962",
+ "modified": "2025-08-19 12:38:25.137570",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Item Creation",
