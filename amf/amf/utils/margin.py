@@ -42,7 +42,7 @@ OVERHEADS_IN_MINUTES = {
     }
 }
 # --- End of Configuration ---
-
+@frappe.whitelist()
 def update_item_real_cost():
     """
     Main function to iterate through items, calculate, and update the real cost.
@@ -94,7 +94,6 @@ def update_item_real_cost():
                 ["name", "total_cost"],
                 as_dict=True
             )
-
             if default_bom_data:
                 bom_cost = default_bom_data.get("total_cost", 0.0)
             else:
@@ -105,29 +104,37 @@ def update_item_real_cost():
             item_group_config = OVERHEADS_IN_MINUTES.get(item.item_group)
 
             if item_group_config:
+                # Make a copy to modify for special conditions
+                config = item_group_config.copy()
+                # Conditional logic for 'Product' item group based on item code
+                if item.item_group == "Product":
+                    if item.name.startswith(('41', '42', '43', '44')):
+                        config["assembly_time"] = 30
+                    else:
+                        config["assembly_time"] = 240 # Explicitly set the default
                 # Calculate cost for each component based on its specific rate
-                machining_cost = item_group_config.get("machining_time", 0) * machining_cost_per_minute
-                assembly_cost = item_group_config.get("assembly_time", 0) * assembly_cost_per_minute
-                qa_cost = item_group_config.get("qa_time", 0) * qa_cost_per_minute
-                # Admin cost is calculated using the assembly rate
-                admin_cost = item_group_config.get("admin_time", 0) * assembly_cost_per_minute
+                machining_cost = config.get("machining_time", 0) * machining_cost_per_minute
+                assembly_cost = config.get("assembly_time", 0) * assembly_cost_per_minute
+                qa_cost = config.get("qa_time", 0) * qa_cost_per_minute
+                admin_cost = config.get("admin_time", 0) * assembly_cost_per_minute
                 
                 overhead_cost = machining_cost + assembly_cost + qa_cost + admin_cost
             
             # --- Step 3: Calculate Final Real Cost and Update Item ---
             final_real_cost = (bom_cost + overhead_cost)*1.25
-
-            if item.real_cost is None or not frappe.utils.flt_equal(item.real_cost, final_real_cost, precision=2):
-                frappe.db.set_value(
+            if item.name == '420081':
+                print(final_real_cost)
+            frappe.db.set_value(
                     "Item",
                     item.name,
                     "real_cost", # The name of your custom field
                     final_real_cost,
-                    update_modified=False
-                )
-                frappe.log(f"({idx+1}/{total_items}) Updated Item '{item.name}': BOM Cost={bom_cost:.2f}, Overhead={overhead_cost:.2f}, Real Cost={final_real_cost:.2f}")
-            else:
-                frappe.log(f"({idx+1}/{total_items}) No change for Item '{item.name}': Real Cost is already {final_real_cost:.2f}")
+                    update_modified=True
+            )
+            if item.name == '420081':
+                print("set")
+            frappe.db.commit()
+            frappe.log(f"({idx+1}/{total_items}) Updated Item '{item.name}': BOM Cost={bom_cost:.2f}, Overhead={overhead_cost:.2f}, Real Cost={final_real_cost:.2f}")
 
         except Exception as e:
             frappe.log_error(
