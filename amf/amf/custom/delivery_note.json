@@ -194,7 +194,7 @@
    "modified_by": "emilie.collot@amf.ch",
    "name": "Delivery Note-object",
    "no_copy": 0,
-   "options": "\nDocuments\nMerchandise\nCommercial Sample\nGift\nReturned Goods\nReturn after Repair",
+   "options": "\nMerchandise\nCommercial Sample\nReturn after Repair\nLoan (temporary export)\nMaterial for manufacture (no sale)\nReturn to seller",
    "owner": "emilie.collot@amf.ch",
    "parent": null,
    "parentfield": null,
