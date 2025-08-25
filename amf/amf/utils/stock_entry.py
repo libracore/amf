@@ -594,7 +594,7 @@ def custom_try(func, *args, **kwargs):
 ########################################################################################################
 
 @frappe.whitelist()
-def check_rates_and_assign_on_submit(doc_dict):
+def check_rates_and_assign_on_submit(doc, method):
     """
     This function is called on the 'on_submit' event for Stock Entries.
 
@@ -606,8 +606,10 @@ def check_rates_and_assign_on_submit(doc_dict):
     If both conditions are met, it assigns the document to the user who submitted it
     and creates a ToDo with a message to review the entry.
     """
+    if not doc.valuation_rate_assignee:
+        print("doc.valuation_rate_assignee checked. Return.")
+        return
     
-    doc = frappe.get_doc(doc_dict)
     # This hook runs on submit, so docstatus will be 1. This is a safeguard.
     if doc.docstatus != 1:
         return

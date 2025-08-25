@@ -70,6 +70,7 @@ doc_events = {
         "before_save": "amf.amf.utils.stock_entry.stock_entry_before_save",
         "on_submit": [
             "amf.amf.utils.custom.qr_code_to_document",
+            "amf.amf.utils.stock_entry.check_rates_and_assign_on_submit",
         ]
     },
     "Batch": {
