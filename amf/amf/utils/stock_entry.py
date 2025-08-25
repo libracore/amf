@@ -1,6 +1,7 @@
 import frappe
 from erpnext.stock.doctype.stock_entry.stock_entry import StockEntry
-
+import frappe
+from frappe import _
 
 def batch_to_stock_entry(doc, method=None):
     print("Entering batch_to_stock_entry.")
@@ -585,3 +586,112 @@ def custom_try(func, *args, **kwargs):
         frappe.log_error(message=str(e), title=f"Error in {func.__name__}")
         frappe.db.rollback()
         return None
+
+
+########################################################################################################
+########################################################################################################
+########################################################################################################
+########################################################################################################
+
+@frappe.whitelist()
+def check_rates_and_assign_on_submit(doc_dict):
+    """
+    This function is called on the 'on_submit' event for Stock Entries.
+
+    It performs two checks:
+    1. If the 'value_difference' of the Stock Entry is not zero.
+    2. If the 'basic_rate' of any item in the entry is more than 10% higher
+       than its current valuation rate in the source warehouse.
+
+    If both conditions are met, it assigns the document to the user who submitted it
+    and creates a ToDo with a message to review the entry.
+    """
+    
+    doc = frappe.get_doc(doc_dict)
+    # This hook runs on submit, so docstatus will be 1. This is a safeguard.
+    if doc.docstatus != 1:
+        return
+
+    # --- Condition 1: Check if 'value_difference' is non-zero ---
+    # If there's no value difference, no need to proceed.
+    if not doc.value_difference:
+        return
+
+    rate_exceeded = False
+    rate_check_details = [] # To store details for the assignment message
+
+    # --- Condition 2: Check item rates against their valuation rate ---
+    for item_detail in doc.items:
+
+        try:
+            # Get the last valuation rate for the item from its source warehouse.
+            # This is the most accurate representation of the item's cost before this transaction.
+            valuation_rate = frappe.db.get_value(
+                "Bin",
+                {"item_code": item_detail.item_code, "warehouse": item_detail.s_warehouse},
+                "valuation_rate"
+            )
+            
+            # If valuation_rate is 0, fetch the cost from the item's default BOM as a fallback.
+            if not valuation_rate:
+                default_bom = frappe.db.get_value("BOM", {"item": item_detail.item_code, "is_default": 1}, "name")
+                if default_bom:
+                    # Get the total cost from the BOM document
+                    bom_cost = frappe.db.get_value("BOM", default_bom, "total_cost")
+                    if bom_cost:
+                        valuation_rate = bom_cost
+
+            # If valuation_rate is 0 or None, we can't do a percentage comparison.
+            # We'll skip the check for this item.
+            if not valuation_rate:
+                continue
+
+            # Calculate the threshold (Valuation Rate + 10%)
+            threshold_rate = valuation_rate * 1.10
+
+            # Compare the item's rate in the Stock Entry with the threshold.
+            print(item_detail.basic_rate, threshold_rate)
+            if item_detail.basic_rate > threshold_rate:
+                rate_exceeded = True
+                
+                # Store info for a more detailed ToDo message
+                rate_check_details.append(
+                    f"Item: {item_detail.item_code}, "
+                    f"Rate: {item_detail.basic_rate}, "
+                    f"Valuation: {valuation_rate}"
+                )
+                
+                # Optimization: If we find one item that exceeds the rate,
+                # we don't need to check the rest. We can break the loop.
+                break
+
+        except Exception as e:
+            # Log any potential errors during valuation rate fetching
+            frappe.log_error(
+                message=f"Error fetching valuation rate for {item_detail.item_code} in Stock Entry {doc.name}: {e}",
+                title="Stock Entry Rate Check Failed"
+            )
+            continue
+
+    # --- Action: Assign and create ToDo if both conditions are met ---
+    if rate_exceeded:
+        # The user who submitted the document is frappe.session.user
+        assignee = "alexandre.ringwald@amf.ch"
+        
+        # Create a clear description for the ToDo
+        description = _(
+            "Please review this Stock Entry. "
+            "It has a Value Difference of {0} and at least one item's rate is over 10% of its cost. Details: {1}"
+        ).format(doc.get_formatted("value_difference"), "; ".join(rate_check_details))
+
+        # Create a new ToDo document, which handles the assignment
+        frappe.get_doc({
+            "doctype": "ToDo",
+            "owner": assignee,
+            "assigned_by": frappe.session.user,
+            "reference_type": doc.doctype,
+            "reference_name": doc.name,
+            "description": description,
+            "status": "Open",
+            "priority": "High"
+        }).insert(ignore_permissions=True) # ignore_permissions to ensure it's created by the system
