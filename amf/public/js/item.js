@@ -6,6 +6,9 @@ function suggest_item_code(frm) {
             callback: function(r) {
                 if (!r.exc && r.message) {
                     switch (frm.doc.item_group) {
+                        case "Product":
+                            frm.set_value('item_code', '4XY' + r.message);
+                            break;
                         case "Valve Head":
                             frm.set_value('item_code', '300' + r.message);
                             break;
