@@ -695,5 +695,6 @@ def check_rates_and_assign_on_submit(doc, method):
             "reference_name": doc.name,
             "description": description,
             "status": "Open",
-            "priority": "High"
+            "priority": "High",
+            "color": "#ff4d4d"
         }).insert(ignore_permissions=True) # ignore_permissions to ensure it's created by the system
