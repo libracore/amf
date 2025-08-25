@@ -1,9 +1,11 @@
 function suggest_item_code(frm) {
     // Only do this if the document is new and we have both item_group + item_type
     if (frm.is_new() && frm.doc.item_group && frm.doc.item_type) {
+        // frm.dashboard.show_progress('Generating Item Code', 'Please wait...');
         frappe.call({
             method: 'amf.amf.doctype.item_creation.item_creation.get_last_item_code',
             callback: function(r) {
+                // frm.dashboard.hide_progress();
                 if (!r.exc && r.message) {
                     switch (frm.doc.item_group) {
                         case "Product":
