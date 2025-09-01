@@ -130,6 +130,7 @@ scheduler_events = {
         "amf.amf.utils.bom_mgt.execute_db_enqueue",
         "amf.master_crm.doctype.global_satisfaction_score.global_satisfaction_score.calculate_global_scores",
         "amf.amf.utils.item_mgt.update_all_item_valuation_rates_enq",
+        "amf.amf.utils.cleaning.enqueue_log_cleanup",
     ],
 }
 
