@@ -575,14 +575,6 @@ def _safe_save(doc, name, log_id, context):
         frappe.log_error(message=str(e), title=f"Error saving {doc.doctype} '{name}'")
         frappe.db.rollback()
         update_log_entry(log_id, f"[{now_datetime()}] ❌ Failed saving '{name}': {e}")
-        
-# -*- coding: utf-8 -*-
-# Copyright (c) 2025, Frappe Technologies Pvt. Ltd. and contributors
-# For license information, please see license.txt
-
-import frappe
-from frappe import _
-from frappe.utils import flt
 
 def duplicate_boms_with_rate_update():
     """
