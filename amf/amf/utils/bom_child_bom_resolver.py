@@ -1,4 +1,4 @@
-# app_name/app_name/utils/set_child_default_boms.py
+# amf/amf/utils/set_child_default_boms.py
 import frappe
 
 def apply_item_default_boms_to_rows(doc, method=None):
