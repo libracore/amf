@@ -106,7 +106,8 @@ doc_events = {
         ]  
     },
     "BOM": {
-        "before_save": "amf.amf.utils.bom_updating.bom_before_save"
+        "before_save": "amf.amf.utils.bom_updating.bom_before_save",
+        "validate": "amf.amf.utils.bom_child_bom_resolver.apply_item_default_boms_to_rows"
     }
 }
 
