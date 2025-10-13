@@ -3,21 +3,32 @@
 
 frappe.ui.form.on('Item Creation', {
 
+    /*
     onload: function(frm) {
         if (frm.is_new()) {
             frm.set_value('item_group', 'Product');
         }
     },
+    */
 
     before_submit: async function (frm) {
         frappe.dom.freeze("Processing item creation, please wait...");
         try {
             if (frm.doc.plug_check)
-                createPlug(frm)
+                await createPlug(frm)
             if (frm.doc.seat_check)
-                createSeat(frm)
-            if (frm.doc.head_check)
-                createHead(frm)
+                await createSeat(frm)
+
+            await createHead(frm)
+
+            if (frm.doc.rvm_check)
+                await createRVM(frm)
+            if (frm.doc.pump_check)
+                await createPump(frm)
+            if (frm.doc.pump_hv_check)
+                await createPumpHV(frm)
+
+            
         } catch (error) {
             // If any server call fails, the process stops and logs the error.
             console.error("Item creation failed:", error);
@@ -61,6 +72,13 @@ frappe.ui.form.on('Item Creation', {
                 ['Item', 'item_code', 'in', ['RVM.3038', 'RVM.3039', 'RVM.3040']]
             ],
         }));
+        frm.set_query("screw_type", () => ({
+            filters: [
+                ['Item', 'item_group', '=', 'Part'],
+                ['Item', 'item_name', 'like', 'Screw_%'],
+                ['Item', 'disabled', '=', 'No'],
+            ],
+        }));
     },
 
     head_name: function (frm) {
@@ -80,9 +98,22 @@ frappe.ui.form.on('Item Creation', {
                     }
                 }
             });
+
+            //no more head_check
+            frappe.call({
+            method: 'amf.amf.doctype.item_creation.item_creation.get_last_item_code',
+            callback: function(r) {
+                if (!r.exc) {
+                    console.log("Last 6-digit item code: " + r.message);
+                    frm.set_value('head_code', '300' + r.message);
+                    frm.set_value('seat_code', '200' + r.message);
+                    frm.set_value('plug_code', '100' + r.message);
+                }
+            }
+            });
         }
     },
-
+    
     head_description_check: function(frm) {
         // Use frm.doc.head_description_check to get the value of the checkbox (0 or 1)
         if (frm.doc.head_description_check) {
@@ -96,21 +127,21 @@ frappe.ui.form.on('Item Creation', {
         frm.refresh_field('head_description');
     },
 
-    head_check: function(frm) {
-        if (frm.doc.head_check === 'Yes') {
-            frappe.call({
-                method: 'amf.amf.doctype.item_creation.item_creation.get_last_item_code',
-                callback: function(r) {
-                    if (!r.exc) {
-                        console.log("Last 6-digit item code: " + r.message);
-                        frm.set_value('head_code', '300' + r.message);
-                        frm.set_value('seat_code', '200' + r.message);
-                        frm.set_value('plug_code', '100' + r.message);
-                    }
+    /*
+    head_check: function(frm) {   
+        frappe.call({
+            method: 'amf.amf.doctype.item_creation.item_creation.get_last_item_code',
+            callback: function(r) {
+                if (!r.exc) {
+                    console.log("Last 6-digit item code: " + r.message);
+                    frm.set_value('head_code', '300' + r.message);
+                    frm.set_value('seat_code', '200' + r.message);
+                    frm.set_value('plug_code', '100' + r.message);
                 }
-            });
-        }
+            }
+        });
     },
+    */
 
     seat_check: function(frm) {
         if (frm.doc.seat_check === 'Yes') {
@@ -126,7 +157,7 @@ frappe.ui.form.on('Item Creation', {
                     // Set the result into a target field, assuming 'seat_code' is the target field
                     frm.set_value('seat_code', result);
                 } else {
-                    frappe.msgprint("Invalid head_code format. Last two characters should be digits.");
+                    frappe.msgprint("Invalid head_code format. Last three characters should be digits.");
                 }
             }
         }
@@ -146,12 +177,94 @@ frappe.ui.form.on('Item Creation', {
                     // Set the result into a target field, assuming 'seat_code' is the target field
                     frm.set_value('plug_code', result);
                 } else {
-                    frappe.msgprint("Invalid head_code format. Last two characters should be digits.");
+                    frappe.msgprint("Invalid head_code format. Last three characters should be digits.");
                 }
             }
         }
     },
 
+    rvm_check: function(frm) {
+        if (frm.doc.rvm_check && frm.doc.head_code) {
+            frappe.call({
+                method: 'amf.amf.doctype.item_creation.item_creation.get_data_for_preview',
+                args: {
+                    'doc': frm.doc,
+                    'group': 'rvm'
+                },
+                callback: function(r) {
+                    if (r.message) {
+                        // Construire une liste HTML avec item_name + item_code
+                        let html = "<ul>";
+                        r.message.forEach(it => {
+                            html += `<li>${it.item_name} (${it.item_code})</li>`;
+                        });
+                        html += "</ul>";
+                        frm.set_df_property("rvm_preview", "options", html);
+                    } else {
+                        frm.set_value("rvm_preview", "No preview available");
+                        }
+                    }
+            });
+        } else {
+            frm.set_value("rvm_preview", "Invalid format");
+        }
+    },
+
+    pump_check: function(frm) {
+        if (frm.doc.pump_check && frm.doc.head_code) {
+            frappe.call({
+                method: 'amf.amf.doctype.item_creation.item_creation.get_data_for_preview',
+                args: {
+                    'doc': frm.doc,
+                    'group': 'pump'
+                },
+                callback: function(r) {
+                    if (r.message) {
+                        // Construire une liste HTML avec item_name + item_code
+                        let html = "<ul>";
+                        r.message.forEach(it => {
+                            html += `<li>${it.item_name} (${it.item_code})</li>`;
+                        });
+                        html += "</ul>";
+                        frm.set_df_property("pump_preview", "options", html);
+                    } else {
+                        frm.set_value("pump_preview", "No preview available");
+                        }
+                    }
+            });
+        } else {
+            frm.set_value("pump_preview", "Invalid format");
+        }
+    },
+
+    pump_hv_check: function(frm) {
+        if (frm.doc.pump_check && frm.doc.head_code) {
+            frappe.call({
+                method: 'amf.amf.doctype.item_creation.item_creation.get_data_for_preview',
+                args: {
+                    'doc': frm.doc,
+                    'group': 'pump_hv'
+                },
+                callback: function(r) {
+                    if (r.message) {
+                        // Construire une liste HTML avec item_name + item_code
+                        let html = "<ul>";
+                        r.message.forEach(it => {
+                            html += `<li>${it.item_name} (${it.item_code})</li>`;
+                        });
+                        html += "</ul>";
+                        frm.set_df_property("pump_hv_preview", "options", html);
+                    } else {
+                        frm.set_value("pump_hv_preview", "No preview available");
+                        }
+                    }
+            });
+        } else {
+            frm.set_value("pump_hv_preview", "Invalid format");
+        }
+    },
+
+    /*
     item_group: function(frm) {
         if (frm.doc.item_group === 'Product') {
             frm.set_value('item_type', 'Finished Good');
@@ -162,7 +275,8 @@ frappe.ui.form.on('Item Creation', {
             frm.set_value('body_check', '');
         }
     },
-
+    */
+    /*
     body: function(frm) {
         //get value of body and map it
         //send the code as args
@@ -174,7 +288,7 @@ frappe.ui.form.on('Item Creation', {
                 }
             }
         });
-    }
+    }*/
 });
 
 async function createPlug(frm) {
@@ -239,3 +353,70 @@ async function createHead(frm) {
         }
     });
 }
+
+
+async function createRVM(frm) {
+    await frappe.call({
+        method: 'amf.amf.doctype.item_creation.item_creation.create_item_from_doc',
+        args: {
+            'doc': frm.doc,
+            'group': 'rvm'
+        },
+        callback: function (response) {
+            console.log(response);
+            if (response) {
+                frappe.show_alert(__("New RVM successfully created.", [response]));
+                // frm.save('Update');
+            } else {
+                frappe.validated = false;
+                console.error('Failed to create RVM');
+                alert('Error: ' + (response.message ? response.message : 'Unknown error'));
+            }
+        }
+    });
+}
+
+
+async function createPump(frm) {
+    await frappe.call({
+        method: 'amf.amf.doctype.item_creation.item_creation.create_item_from_doc',
+        args: {
+            'doc': frm.doc,
+            'group': 'pump'
+        },
+        callback: function (response) {
+            console.log(response);
+            if (response) {
+                frappe.show_alert(__("New Pump successfully created.", [response]));
+                // frm.save('Update');
+            } else {
+                frappe.validated = false;
+                console.error('Failed to create Pump');
+                alert('Error: ' + (response.message ? response.message : 'Unknown error'));
+            }
+        }
+    });
+}
+
+
+async function createPumpHV(frm) {
+    await frappe.call({
+        method: 'amf.amf.doctype.item_creation.item_creation.create_item_from_doc',
+        args: {
+            'doc': frm.doc,
+            'group': 'pump_hv'
+        },
+        callback: function (response) {
+            console.log(response);
+            if (response) {
+                frappe.show_alert(__("New Pump HV successfully created.", [response]));
+                // frm.save('Update');
+            } else {
+                frappe.validated = false;
+                console.error('Failed to create Pump HV');
+                alert('Error: ' + (response.message ? response.message : 'Unknown error'));
+            }
+        }
+    });
+}
+

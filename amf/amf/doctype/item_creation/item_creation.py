@@ -12,6 +12,17 @@ from frappe.model.document import Document
 class ItemCreation(Document):
 	pass
 
+SYRINGE_MAP = {
+    "2": {"code": "702000", "rnd"  : "S-50-P",    "qty" : 50  },
+    "3": {"code": "703000", "rnd"  : "S-100-P",   "qty" : 100 },
+    "4": {"code": "704000", "rnd"  : "S-100-U",   "qty" : 100 },
+    "5": {"code": "705000", "rnd"  : "S-250-P",   "qty" : 250 },
+    "8": {"code": "708000", "rnd"  : "S-500-P",   "qty" : 500 },
+    "9": {"code": "709000", "rnd"  : "S-500-U",   "qty" : 500 },
+    "D": {"code": "70D000", "rnd"  : "S-1000-P",  "qty" : 1000},
+    "E": {"code": "70E000", "rnd"  : "S-2500-P",  "qty" : 2500},   # pour Pump HV
+    "F": {"code": "70F000", "rnd"  : "S-5000P",   "qty" : 5000},   # pour Pump HV
+}
 
 @frappe.whitelist()
 def populate_fields(head_name):
@@ -30,7 +41,7 @@ def populate_fields(head_name):
         'D': 'Distribution',      'DS': 'Distribution/Switch',
         'B': 'Bypass',            'DA': 'Distribution/Angled',
         'O': 'On/Off',            'OS': 'On/Off-Switch',
-        'SA': 'Switch/Angled',     'SL': 'Sample Loop',
+        'SA': 'Switch/Angled',    'SL': 'Sample Loop',
         'T': 'Triangle',          'M': 'Multiplexing',
         'C': 'Check'
     }
@@ -134,7 +145,7 @@ def populate_fields(head_name):
 def get_last_item_code():
     """
     Fetch the last three digits from items in the 'Valve Seat', 'Valve Head', and 'Plug' item groups
-    and return the highest three-digit number.
+    and return the highest two-digit number.
     """
     # Define the relevant item groups
 
@@ -152,12 +163,12 @@ def get_last_item_code():
     # Variable to store the highest two-digit number
     highest_digit_number = None
 
-    # Process each item and extract the last two digits
+    # Process each item and extract the last three digits
     for item in items:
         item_code = item[0]  # Assuming 'name' is the item code
 
-        # Extract the last three digits from the item code (assumes the format allows this)
-        last_digits = item_code[-3:]  # Take the last three characters
+        # Extract the last two digits from the item code (assumes the format allows this)
+        last_digits = item_code[-3:]  # Take the last two characters
 
         # Check if the last two characters are numeric
         if last_digits.isdigit():
@@ -174,6 +185,48 @@ def get_last_item_code():
     else:
         frappe.throw(
             "No valid two-digit item codes found in the specified groups.")
+        
+
+@frappe.whitelist()
+def get_data_for_preview(doc, group=None):
+    #get data for the preview in the doctype .
+    if isinstance(doc, str):
+        doc = frappe.parse_json(doc)
+    #stock finished goods data for a given head.
+    fg_data = []
+    #creation for P200-O and P201-O
+    if group == 'rvm':
+        for motor_info in [0, 1]:
+            item_data, _ = _prepare_rvm_data(doc, motor_info)
+            fg_data.append({
+                "item_code": item_data["item_code"],
+                "item_name": item_data["item_name"]
+                })
+    elif group == 'pump':
+        #for motor possible code in item_code
+        for motor_code in ["5", "7", "9", "B"]:
+            #for syringe possible code in item_code
+            for syringe_code in ["2","3","4","5","8","9","D"]:
+                item_data, _ = _prepare_pump_data(doc,  motor_code, syringe_code)
+                fg_data.append({
+                    "item_code": item_data["item_code"],
+                    "item_name": item_data["item_name"]
+                    })
+    elif group == 'pump_hv':
+        #for motor possible code in item_code
+        for motor_code in ["6", "8", "A", "C"]:
+            #for syringe possible code in item_code
+            for syringe_code in ["E", "F"]:
+                item_data, _ = _prepare_pump_hv_data(doc, motor_code, syringe_code)
+                fg_data.append({
+                    "item_code": item_data["item_code"],
+                    "item_name": item_data["item_name"]
+                    })
+    else :
+        print("invalid group")
+    
+    return fg_data
+
 
 # ==============================================================================
 # 1. MAIN ENTRY POINT (ROUTER)
@@ -198,6 +251,14 @@ def create_item_from_doc(doc, group=None):
     elif group == 'head':
         # Special workflow for creating the final Valve Head assembly from other sub-assemblies.
         return _create_final_valve_head_assembly(doc)
+    elif group == 'rvm':
+        # Special workflow for creating the final RVM items.
+        return _create_rvm_finished_goods(doc)
+    elif group == 'pump':
+        # Special workflow for creating the final pump items.
+        return _create_pump_finished_goods(doc)
+    elif group == 'pump_hv':
+         return _create_pump_hv_finished_goods(doc)
     else:
         frappe.throw(_("Invalid item group specified: {0}").format(group))
 
@@ -210,7 +271,7 @@ def create_item_from_doc(doc, group=None):
 def _create_simple_component_and_assembly(doc, group):
     """
     Orchestrator for simple parts:
-    1. Prepares data for a component (e.g., Plug) and its sub-assembly.
+    1. Prepares data for a component (e.g., Plug, Seat) and its sub-assembly.
     2. Creates the component Item.
     3. Creates the sub-assembly Item.
     4. Creates a BOM for the sub-assembly.
@@ -247,6 +308,52 @@ def _create_final_valve_head_assembly(doc):
 
     frappe.msgprint(_("Successfully created Final Assembly {0}.").format(final_assembly_code))
     return final_assembly_code
+
+
+def _create_rvm_finished_goods(doc):
+    """Create RVM finished goods for a given head."""
+    created_items = []
+    
+    #creation for P200-O and P201-O
+    for motor_info in [0, 1]:
+        item_data, bom_materials = _prepare_rvm_data(doc, motor_info)
+        
+        #create the finished goods item
+        fg_code = _create_item_if_not_exists(item_data)
+
+        #create the BOM for the new item
+        _create_bom_for_assembly(fg_code, bom_materials)
+        created_items.append(fg_code)
+    
+    frappe.msgprint("Successfully created RVM items {0}.")
+    return created_items
+
+
+def _create_pump_finished_goods(doc):
+    """Create Pump finished goods for a given head and syringe."""
+    created_items = []
+    #for motor possible code in item_code
+    for motor_code in ["5", "7", "9", "B"]:
+        #for syringe possible code in item_code
+        for syringe_code in ["2","3","4","5","8","9","D"]:
+            item_data, bom_materials = _prepare_pump_data(doc,  motor_code, 
+                                                                syringe_code)
+            fg_code = _create_item_if_not_exists(item_data)
+            _create_bom_for_assembly(fg_code, bom_materials)
+            created_items.append(fg_code)
+    return created_items
+
+def _create_pump_hv_finished_goods(doc):
+    """Create Pump HV finished goods for a given head and syringe."""
+    created_items = []
+    #for motor possible code in item_code
+    for motor_code in ["6", "8", "A", "C"]:
+        for syringe_code in ["E", "F"]:
+            item_data, bom_materials = _prepare_pump_hv_data(doc, motor_code, syringe_code)
+            fg_code = _create_item_if_not_exists(item_data)
+            _create_bom_for_assembly(fg_code, bom_materials)
+            created_items.append(fg_code)
+    return created_items
 
 
 # ==============================================================================
@@ -319,7 +426,7 @@ def _prepare_valve_head_data(doc):
         "item_code": head_code,
         "item_name": head_name,
         "item_group": "Valve Head",
-        "item_type": "Finished Good", # Or "Assembly", depending on your setup
+        "item_type": "Sub-Assembly", 
         "reference_code": doc.get('head_rnd'),
         "description": doc.get('head_description'),
     }
@@ -330,6 +437,198 @@ def _prepare_valve_head_data(doc):
     ]
 
     return final_assembly_data, bom_materials
+
+
+def _prepare_rvm_data(doc, motor_info):
+    #Prepare data and BOM materials for RVM finished good.
+    head_code = doc.get('head_code')
+    head_rnd = doc.get("head_rnd")
+    head_desc = doc.get("head_description")
+    screw_type = doc.get("screw_type")
+    cap_type = doc.get("cap_type")
+    screw_quantity = doc.get("screw_quantity")
+    X = motor_info
+
+    #name creation
+    item_code = f"4{X + 1}0{head_code[-3:]}"
+    item_name = f"P20{X}-O/{head_rnd}"
+    reference_code = f"P20{X}O{head_code}"
+
+    bom_materials = [
+        {"item_code": f"5{X + 1}1000", "qty": 1},
+        {"item_code": head_code, "qty": 1},
+        {"item_code": screw_type, "qty": screw_quantity},
+        {"item_code": cap_type, "qty": 1}
+    ]
+
+    item_data = {
+        "item_code": item_code,
+        "item_name": item_name,
+        "item_group": "Product",
+        "item_type": "Finished Good",
+        "reference_code": reference_code,
+        #"valuation_rate": 100,
+        "description": (
+            f"RVM series – Industrial Microfluidic Rotary Valve<br>"
+            f"<b>Version</b>: Fast<br>"
+            f"______________________________________________________<br>"
+            f"<b>Body</b>: P201-O<br>"
+            f"{head_desc}<br>"
+            f"______________________________________________________"
+        )
+    }
+    return item_data, bom_materials
+
+
+def _prepare_pump_data(doc, motor_code, syringe_code):
+    """Prepare data and BOM materials for Pump finished good."""
+    head_code = doc.get("head_code")
+    head_rnd = doc.get("head_rnd")
+    head_desc = doc.get("head_description")
+    screw_type = doc.get("screw_type")
+    screw_qty = doc.get("screw_quantity")
+    X = motor_code
+    if X == "5":
+        M = 0
+        N = "O"
+    elif X == "7":
+        M = 0 
+        N = "L"
+    elif X == "9":
+        M = 1
+        N = "O"
+    else : 
+        M = 1
+        N = "L"
+        
+    syringe = SYRINGE_MAP.get(syringe_code)
+
+    item_code = f"4{X}{syringe_code}{head_code[-3:]}"
+    item_name = f"P1{M}0-{N}/{head_rnd}/{syringe['rnd']}"
+    reference_code = f"P1{M}0{N}{head_code}{syringe['rnd'].replace('-', '')}"
+    if N == "O":
+        bom_materials = [
+            {"item_code": f"5{X}1000", "qty": 1},
+            {"item_code": syringe['code'], "qty": 1},
+            {"item_code": head_code, "qty": 1},
+            {"item_code": screw_type, "qty": screw_qty},
+            {"item_code": "RVM.1204", "qty": -1},
+        ]
+        desc = (
+            f"SPM series – Industrial Programmable Syringe Pump<br>"
+            f"<b>Version</b>: SPM<br>"
+            f"______________________________________________________<br>"
+            f"<b>Body</b>: P1{M}0-O<br>"
+            f"<b>Syringe</b>: {syringe['qty']} µl ({syringe['rnd']})<br>"
+            f"{head_desc}<br>"
+            f"______________________________________________________"
+        )
+    else:
+        bom_materials = [
+            {"item_code": f"5{X}1000", "qty": 1},
+            {"item_code": syringe['code'], "qty": 1},
+            {"item_code": head_code, "qty": 1},
+            {"item_code": screw_type, "qty": screw_qty},
+            {"item_code": "RVM.1204", "qty": -1},
+            {"item_code": "C100", "qty": 1},
+            {"item_code": "C101", "qty": 1},
+        ]
+        desc = (
+            f"LSPone series – Laboratory Microfluidic Programmable Syringe Pump<br>"
+            f"<b>Version</b>: LSPone<br>"
+            f"______________________________________________________<br>"
+            f"<b>Body</b>: P1{M}O-L<br>"
+            f"<b>Syringe</b>: {syringe['qty']} µl ({syringe['rnd']})<br>"
+            f"{head_desc}<br>"
+            f"______________________________________________________"
+        )
+
+    item_data = {
+        "item_code": item_code,
+        "item_name": item_name,
+        "item_group": "Product",
+        "item_type": "Finished Good",
+        "reference_code": reference_code,
+        #"valuation_rate": 500,
+        "description": desc
+    }
+    print(item_data["reference_code"])
+    return item_data, bom_materials
+
+
+def _prepare_pump_hv_data(doc, motor_code, syringe_code):
+    """Prepare data and BOM materials for Pump HV finished good."""
+    head_code = doc.get("head_code")
+    head_rnd = doc.get("head_rnd")
+    head_desc = doc.get("head_description")
+    screw_type = doc.get("screw_type")
+    screw_qty = doc.get("screw_qty")
+    X = motor_code
+    if X == "6":
+        M = 0
+        N = "O"
+    elif X == "8":
+        M = 0 
+        N = "L"
+    elif X == "A":
+        M = 1
+        N = "O"
+    else : 
+        M = 1
+        N = "L"
+    syringe = SYRINGE_MAP.get(syringe_code)
+
+    item_code = f"4{X}{syringe_code}{head_code[-3:]}"
+    item_name = f"P1{M}1-{N}/{head_rnd}/{syringe['rnd']}"
+    reference_code = f"P1{M}1{N}{head_code}{syringe['rnd'].replace('-', '')}"
+
+    if N == "O":
+        bom_materials = [
+            {"item_code": f"5{X}1000", "qty": 1},
+            {"item_code": syringe["code"], "qty": 1},
+            {"item_code": head_code, "qty": 1},
+            {"item_code": screw_type, "qty": screw_qty},
+            {"item_code": "RVM.1204", "qty": -1},
+        ]
+        desc = (
+            f"SPM series – Industrial Programmable Syringe Pump<br>"
+            f"<b>Version</b>: SPM<br>"
+            f"______________________________________________________<br>"
+            f"<b>Body</b>: P1{M}1-O<br>"
+            f"<b>Syringe</b>: {syringe['qty']} ml ({syringe['rnd']})<br>"
+            f"{head_desc}<br>"
+            f"______________________________________________________"
+        )
+    else:
+        bom_materials = [
+            {"item_code": f"5{X}1000", "qty": 1},
+            {"item_code": syringe['code'], "qty": 1},
+            {"item_code": head_code, "qty": 1},
+            {"item_code": screw_type, "qty": screw_qty},
+            {"item_code": "RVM.1204", "qty": -1},
+            {"item_code": "C100", "qty": 1},
+            {"item_code": "C101", "qty": 1},
+        ]
+        desc = (
+            f"LSPone series – Laboratory Microfluidic Programmable Syringe Pump<br>"
+            f"<b>Version</b>: LSPone<br>"
+            f"______________________________________________________<br>"
+            f"<b>Body</b>: P1{M}1-L<br>"
+            f"S<b>Syringe</b>: {syringe['qty']} ml ({syringe['rnd']})<br>"
+            f"{head_desc}<br>"
+            f"______________________________________________________"
+        )
+
+    item_data = {
+        "item_code": item_code,
+        "item_name": item_name,
+        "item_group": "Product",
+        "item_type": "Finished Good",
+        "reference_code": reference_code,
+        "valuation_rate": 500,
+        "description": desc
+    }
+    return item_data, bom_materials
 
 
 # ==============================================================================
