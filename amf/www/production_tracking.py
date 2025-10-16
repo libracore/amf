@@ -4,18 +4,23 @@ from frappe import _
 @frappe.whitelist()
 def get_work_orders():
 # fetch the work_orders in two list ongoing and upcoming
+    # fetch work orders with status "In Process" or "Not Started" and not like %1000 (521000,591000,...)
     ongoing = frappe.get_all(
         "Work Order",
-        filters={"status": "In Process"},
+        filters={"status": "In Process",
+                 "production_item": ["not like", "%1000"] },
         fields=["name", "production_item","item_name","assembly_specialist_start"]
     )
 
+    # fetch work orders with status "Not Started" but submitted and not like %1000 (521000,591000,...)
     upcoming = frappe.get_all(
         "Work Order",
-        filters={"docstatus": 1, "status": "Not Started"},
+        filters={"docstatus": 1, "status": "Not Started",
+                 "production_item": ["not like", "%1000"] },
         fields=["name", "production_item","item_name","assembly_specialist_start"]
     )
 
+    # fetch work orders with status "Draft" and priority <= 5 (for usinage)
     draft = frappe.get_all(
         "Work Order",
         filters={"docstatus": 0, "status": "Draft", "priority": ["<=",5]},
@@ -32,8 +37,9 @@ def get_work_orders():
     for wo in draft:
         wo["item_group"] = frappe.get_value("Item", wo.production_item, "item_group")
         wo["operation_type"] = find_operation_type(wo)
+        # keeping only usinage work orders in draft 
         if wo["operation_type"] == "Usinage" :
-            print(wo["name"])
+            #  checking the progress to put in ongoing or upcoming
             if wo["progress"] in ["Fabrication", "QC"] :
                 ongoing.append(wo)
             else :
@@ -44,6 +50,7 @@ def get_work_orders():
         "upcoming": upcoming
     }
 
+# Determine operation type based on production item code and item group (assemblage or usinage)
 def find_operation_type(work_order):
     code = str(work_order.production_item or "")
 
@@ -60,6 +67,7 @@ def find_operation_type(work_order):
         return "Assemblage"
     
 
+# Get shipments for the current week (Monday to Sunday)
 @frappe.whitelist()
 def get_shipments():
     from datetime import date, timedelta
@@ -68,13 +76,14 @@ def get_shipments():
     monday = today - timedelta(days=today.weekday())
     sunday = monday + timedelta(days=6)
 
+    # get all sales orders with delivery date in the current week and docstatus = 1 (submitted)
     shipments = frappe.get_all(
         "Sales Order",
         filters={
             "delivery_date": ["between", [monday, sunday]],
             "docstatus": 1  # validées
         },
-        fields=["name", "customer_address", "delivery_date"],
+        fields=["name", "customer_name", "delivery_date"],
         order_by="delivery_date asc"
     )
 
@@ -95,6 +104,29 @@ def get_shipments():
 
     return shipments
 
+
+# Gestion de la zone de note pour le suivi de production
+@frappe.whitelist()
+def get_note():
+    """Retourne la note globale depuis le Doctype Production Notes."""
+    note_doc = frappe.get_all("Production Notes", fields=["prod_tracking_note"], limit=1)
+    if note_doc:
+        return note_doc[0].prod_tracking_note
+    return ""
+
+@frappe.whitelist()
+def save_note(note_text):
+    """Sauvegarde ou crée la note globale dans le Doctype Production Notes."""
+    note_doc = frappe.get_all("Production Notes", fields=["name"], limit=1)
+    if note_doc:
+        frappe.db.set_value("Production Notes", note_doc[0].name, "prod_tracking_note", note_text)
+    else:
+        frappe.get_doc({
+            "doctype": "Production Notes",
+            "prod_tracking_note": note_text
+        }).insert(ignore_permissions=True)
+    frappe.db.commit()
+    return "saved"
 
 
 
