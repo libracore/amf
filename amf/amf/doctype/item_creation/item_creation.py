@@ -33,7 +33,7 @@ def populate_fields(head_name):
         head_name (str): The input string, e.g., "V-DS-1-10-100-C-P".
 
     Returns:
-        dict: A dictionary containing 'seat_name', 'plug_name', 'head_rnd', and 'head_description'.
+        dict: A dictionary containing 'seat_name', 'plug_name', 'head_group', 'head_rnd', and 'head_description'.
     """
     # --- Mappings for Description Generation ---
     # These dictionaries map codes from head_name to human-readable descriptions.
@@ -57,6 +57,7 @@ def populate_fields(head_name):
     plug_name = ""
     head_rnd = ""
     head_description = ""
+    head_group = "Valve Head"
 
     if not head_name:
         return {
@@ -64,6 +65,7 @@ def populate_fields(head_name):
             "plug_name": plug_name,
             "head_rnd": head_rnd,
             "head_description": head_description,
+            "head_group": head_group,
         }
 
     try:
@@ -138,14 +140,149 @@ def populate_fields(head_name):
         "plug_name": plug_name,
         "head_rnd": head_rnd,
         "head_description": head_description,
+        "head_group": head_group,
     }
+
+
+@frappe.whitelist()
+def populate_fields_from_existing_item(item_code):
+    """
+    Fetches item details from an existing Item document based on the provided item_code.
+
+    Args:
+        item_code (str): The code of the item to fetch.
+    
+    Returns:
+        dict: A dictionary containing 'item_name', 'Seat_name', Plug_name', Seat_code', 'Plug_code',
+             'item_group', 'reference_code', and 'description'.                                     
+    """
+    head_code = ""
+    head_name = ""
+    seat_name = ""
+    plug_name = ""
+    seat_code = ""
+    plug_code = ""
+    head_group = ""
+    head_rnd = ""
+    head_desc = ""
+
+    try:
+        #get the main head values
+        item = frappe.get_doc('Item', item_code)
+        head_code = item_code
+        head_name = item.item_name
+        head_group = item.item_group
+        head_rnd = item.reference_code
+        head_desc = item.description
+
+        #print all head details
+        print(f"Head Details - Code: {head_code}, Name: {head_name}, Group: {head_group}, RND: {head_rnd}")
+
+
+        #derive expected seat and plug names
+        parts = head_rnd.split('-')
+        if (parts[7] ==  'HV'):
+            expected_seat_name = 'SEAT-' + '-' .join(parts[1:6]) + '-HV'
+        else:
+            expected_seat_name = 'SEAT-' + '-' .join(parts[1:6])
+        expected_plug_name = 'PLUG-' + '-' .join(parts[1:5]) + '-' + parts[6] 
+        incorrect_seat  = False
+        incorrect_plug  = False
+
+
+        bom = frappe.get_all(
+            "BOM",
+            filters={
+                "item": item_code,
+                "is_active": 1,
+                "is_default": 1
+            },
+            fields=["name"]
+        )
+        if not bom:
+            frappe.msgprint(_("No active BOM found for Item: {0}").format(item_code))
+            frappe.msgprint(_("Creating new BOM for Item: {0}, with expected Seat and Plug components.").format(item_code))
+            incorrect_seat  = True
+            incorrect_plug  = True
+            seat_code = get_item_from_name(expected_seat_name)
+            plug_code = get_item_from_name(expected_plug_name)
+
+        else:
+            bom_doc = frappe.get_doc("BOM", bom[0].name)
+
+            #check head components in BOM if correct
+            for item in bom_doc.items: 
+                if item.item_code.startswith('210'):
+                    if item.item_name == expected_seat_name:
+                        seat_name = item.item_name
+                        seat_code = item.item_code
+                        incorrect_seat = False
+                    else:
+                        seat_code = get_item_from_name(expected_seat_name)
+                        incorrect_seat = True
+
+                elif item.item_code.startswith('110'):
+                    if item.item_name == expected_plug_name:
+                        plug_name = item.item_name
+                        plug_code = item.item_code
+                        incorrect_plug = False
+                    else:
+                        plug_code = get_item_from_name(expected_plug_name)
+                        incorrect_plug = True
+                else: 
+                    incorrect_seat = True
+                    incorrect_plug = True
+                    seat_code = get_item_from_name(expected_seat_name)
+                    plug_code = get_item_from_name(expected_plug_name)
+        
+        #create BOM if incorrect
+        if incorrect_seat or incorrect_plug:
+            frappe.msgprint(_("The BOM for Item: {0} does not contain the expected Seat and Plug components. Creating new BOM").format(item_code))
+            bom_materials = [   {"item_code": seat_code, "qty": 1},
+                                {"item_code": plug_code, "qty": 1}]
+            _create_bom_for_assembly(item_code, bom_materials, check_existence = False)
+
+        seat_name = expected_seat_name
+        plug_name = expected_plug_name
+
+        
+        return {    "head_code": head_code,
+                    "head_name": head_name,
+                    "seat_name": seat_name,
+                    "plug_name": plug_name,
+                    "seat_code": seat_code,
+                    "plug_code": plug_code,
+                    "head_group": head_group,
+                    "head_rnd": head_rnd,
+                    "head_description": head_desc
+    }
+    except Exception as e:
+        frappe.throw(f"Error fetching item details: {str(e)}")
+
+
+def get_item_from_name(item_name):
+    """Helper function to get item_code from item_name."""
+    try:
+        item_code = frappe.db.get_value(
+            "Item",
+            filters=[
+                ["Item", "item_name", "=", item_name],
+                ["Item", "disabled", "=", 0],
+                ["Item", "item_code", "like", "_10%"],
+            ],
+            fieldname="item_code",
+        )
+        return item_code
+    except Exception as e:
+        frappe.throw(f"Failed to retrieve item code for item name {item_name}: {e}")
+        return None
 
 
 @frappe.whitelist()
 def get_last_item_code():
     """
     Fetch the last three digits from items in the 'Valve Seat', 'Valve Head', and 'Plug' item groups
-    and return the highest two-digit number.
+    and return the highest three-digit number.
     """
     # Define the relevant item groups
 
@@ -160,31 +297,31 @@ def get_last_item_code():
             AND item_code REGEXP '^[0-9]{6}$'
         """, tuple(item_groups))
 
-    # Variable to store the highest two-digit number
+    # Variable to store the highest three-digit number
     highest_digit_number = None
 
     # Process each item and extract the last three digits
     for item in items:
         item_code = item[0]  # Assuming 'name' is the item code
 
-        # Extract the last two digits from the item code (assumes the format allows this)
-        last_digits = item_code[-3:]  # Take the last two characters
+        # Extract the last three digits from the item code (assumes the format allows this)
+        last_digits = item_code[-3:]  # Take the last three characters
 
-        # Check if the last two characters are numeric
+        # Check if the last three characters are numeric
         if last_digits.isdigit():
             last_digits = int(last_digits)
 
-            # Compare to find the highest two-digit number
+            # Compare to find the highest three-digit number
             if highest_digit_number is None or last_digits > highest_digit_number:
                 print(last_digits)
                 highest_digit_number = last_digits
 
-    # Return the highest two-digit number found, or throw an error if none found
+    # Return the highest three-digit number found, or throw an error if none found
     if highest_digit_number is not None:
         return highest_digit_number+1
     else:
         frappe.throw(
-            "No valid two-digit item codes found in the specified groups.")
+            "No valid three-digit item codes found in the specified groups.")
         
 
 @frappe.whitelist()
@@ -660,11 +797,11 @@ def _create_item_if_not_exists(item_data):
         frappe.throw(_("Error creating item {0}: {1}").format(item_code, e))
 
 
-def _create_bom_for_assembly(assembly_code, materials):
+def _create_bom_for_assembly(assembly_code, materials, check_existence=True):
     """Creates a BOM in Draft state. Does not submit."""
     for material in materials:
         while not frappe.db.exists("Item", {"name": material.get("item_code")}):
-            frappe.db.commit()
+            frappe.db.throw(_("Material item {0} does not exist. Cannot create BOM for {1}.").format(assembly_code))
     
     if frappe.db.exists("BOM", {"item": assembly_code}):
         return

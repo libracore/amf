@@ -18,8 +18,9 @@ frappe.ui.form.on('Item Creation', {
                 await createPlug(frm)
             if (frm.doc.seat_check)
                 await createSeat(frm)
-
-            await createHead(frm)
+            
+            if (frm.doc.head_check)
+                await createHead(frm)
 
             if (frm.doc.rvm_check)
                 await createRVM(frm)
@@ -82,7 +83,7 @@ frappe.ui.form.on('Item Creation', {
     },
 
     head_name: function (frm) {
-        if (frm.doc.head_name) {
+        if (frm.doc.head_name && frm.doc.head_check == 'Yes' && frm.doc.head_name != 'VALVE HEAD-') {
             frappe.call({
                 method: 'amf.amf.doctype.item_creation.item_creation.populate_fields',
                 args: {
@@ -94,25 +95,60 @@ frappe.ui.form.on('Item Creation', {
                         frm.set_value('seat_name', r.message.seat_name);
                         frm.set_value('plug_name', r.message.plug_name);
                         frm.set_value('head_rnd', r.message.head_rnd);
+                        frm.set_value('head_group', r.message.head_group);
                         frm.set_value('head_description', r.message.head_description);
                     }
                 }
             });
 
-            //no more head_check
             frappe.call({
             method: 'amf.amf.doctype.item_creation.item_creation.get_last_item_code',
             callback: function(r) {
                 if (!r.exc) {
                     console.log("Last 6-digit item code: " + r.message);
                     frm.set_value('head_code', '300' + r.message);
-                    frm.set_value('seat_code', '200' + r.message);
-                    frm.set_value('plug_code', '100' + r.message);
+                    /*frm.set_value('seat_code', '200' + r.message);
+                    frm.set_value('plug_code', '100' + r.message);*/
                 }
             }
             });
         }
     },
+
+
+    head_item: function (frm) {
+        if (frm.doc.head_item && frm.doc.head_check == 'No') {
+            frappe.call({method: 'amf.amf.doctype.item_creation.item_creation.populate_fields_from_existing_item',
+                args: { item_code: frm.doc.head_item },
+                callback: function (r) {
+                    if (!r.exc) {
+                        // Update the head fields 
+                        frm.set_value('head_code', r.message.head_code);
+                        frm.set_value('head_name', r.message.head_name);
+                        frm.set_df_property('head_name', 'read_only', 1);
+                        frm.set_value('head_rnd', r.message.head_rnd);
+                        frm.set_value('head_group', r.message.head_group);
+                        frm.set_value('head_description', r.message.head_description);
+                        
+                        // Update the seat and plug fields
+                        frm.set_value('seat_check', 'No');
+                        frm.set_value('plug_check', 'No');
+                        frm.set_df_property('seat_check', 'read_only', 1);
+                        frm.set_df_property('plug_check', 'read_only', 1);
+                        frm.set_value('seat_name', r.message.seat_name);
+                        frm.set_value('plug_name', r.message.plug_name);
+                        frm.set_value('seat_code', r.message.seat_code);
+                        frm.set_value('plug_code', r.message.plug_code);
+                        frm.set_value('seat_item', r.message.seat_code);
+                        frm.set_value('plug_item', r.message.plug_code);
+                        frm.set_df_property('seat_item', 'read_only', 1);
+                        frm.set_df_property('plug_item', 'read_only', 1);
+                    }
+                }
+            });
+        }
+    },
+
     
     head_description_check: function(frm) {
         // Use frm.doc.head_description_check to get the value of the checkbox (0 or 1)
@@ -127,58 +163,65 @@ frappe.ui.form.on('Item Creation', {
         frm.refresh_field('head_description');
     },
 
-    /*
+    
     head_check: function(frm) {   
-        frappe.call({
-            method: 'amf.amf.doctype.item_creation.item_creation.get_last_item_code',
-            callback: function(r) {
-                if (!r.exc) {
-                    console.log("Last 6-digit item code: " + r.message);
-                    frm.set_value('head_code', '300' + r.message);
-                    frm.set_value('seat_code', '200' + r.message);
-                    frm.set_value('plug_code', '100' + r.message);
-                }
-            }
-        });
+       // Update the head fields 
+        frm.set_value('head_code', "");
+        frm.set_value('head_name', "VALVE HEAD-");
+        frm.set_df_property('head_name', 'read_only', 0);
+        frm.set_value('head_rnd', "");
+        frm.set_value('head_group', "");
+        frm.set_value('head_description', "");
+        frm.set_value('head_item', "");
+
+        // Update the seat and plug fields
+        frm.set_value('seat_check', '');
+        frm.set_value('plug_check', '');
+        frm.set_df_property('seat_check', 'read_only', 0);
+        frm.set_df_property('plug_check', 'read_only', 0);
+        frm.set_value('seat_name', "");
+        frm.set_value('plug_name', "");
+        frm.set_value('seat_code', "");
+        frm.set_value('plug_code', "");
+        frm.set_value('seat_item', "");
+        frm.set_value('plug_item', "");
+        frm.set_df_property('seat_item', 'read_only', 0);
+        frm.set_df_property('plug_item', 'read_only', 0);
     },
-    */
+    
 
     seat_check: function(frm) {
-        if (frm.doc.seat_check === 'Yes') {
-            if (frm.doc.seat_check === 'Yes' && frm.doc.head_code) {
-                // Extract the last two digits from head_code
-                let head_code = frm.doc.head_code;
-                let last_two_digits = head_code.slice(-3);  // Get the last two characters
+        if (frm.doc.seat_check === 'Yes' && frm.doc.head_code) {
+            // Extract the last three digits from head_code
+            let head_code = frm.doc.head_code;
+            let last_three_digits = head_code.slice(-3);  // Get the last three characters
                 
-                if (!isNaN(last_two_digits)) {
-                    // Convert last two digits to a number and add 2100
-                    let result = '200' + parseInt(last_two_digits, 10);
-                    
-                    // Set the result into a target field, assuming 'seat_code' is the target field
-                    frm.set_value('seat_code', result);
-                } else {
-                    frappe.msgprint("Invalid head_code format. Last three characters should be digits.");
-                }
+            if (!isNaN(last_three_digits)) {
+                // Convert last three digits to a number and add 2100
+                let result = '200' + parseInt(last_three_digits, 10);
+                
+                // Set the result into a target field, assuming 'seat_code' is the target field
+                frm.set_value('seat_code', result);
+            } else {
+                frappe.msgprint("Invalid head_code format. Last three characters should be digits.");
             }
         }
     },
 
     plug_check: function(frm) {
-        if (frm.doc.plug_check === 'Yes') {
-            if (frm.doc.plug_check === 'Yes' && frm.doc.head_code) {
-                // Extract the last two digits from head_code
-                let head_code = frm.doc.head_code;
-                let last_two_digits = head_code.slice(-3);  // Get the last two characters
+        if (frm.doc.plug_check === 'Yes' && frm.doc.head_code) {
+            // Extract the last three digits from head_code
+            let head_code = frm.doc.head_code;
+            let last_three_digits = head_code.slice(-3);  // Get the last three characters
+            
+            if (!isNaN(last_three_digits)) {
+                // Convert last three digits to a number and add 2100
+                let result = '100' + parseInt(last_three_digits, 10);
                 
-                if (!isNaN(last_two_digits)) {
-                    // Convert last two digits to a number and add 2100
-                    let result = '100' + parseInt(last_two_digits, 10);
-                    
-                    // Set the result into a target field, assuming 'seat_code' is the target field
-                    frm.set_value('plug_code', result);
-                } else {
-                    frappe.msgprint("Invalid head_code format. Last three characters should be digits.");
-                }
+                // Set the result into a target field, assuming 'seat_code' is the target field
+                frm.set_value('plug_code', result);
+            } else {
+                frappe.msgprint("Invalid head_code format. Last three characters should be digits.");
             }
         }
     },
