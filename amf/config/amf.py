@@ -34,53 +34,60 @@ def get_data():
             "label": _("Production Tracking"),
             "icon": "octicon octicon-git-compare",
             "items": [
-                   {
-                        "type": "report",
-                        "name": "Projected Stock",
-                        "label": _("Projected Stock"),
-                        "doctype": "Item",
-                        "is_query_report": True
-                   },        
-                   {
-                        "type": "report",
-                        "name": "Late Purchases",
-                        "label": _("Late Purchases"),
-                        "doctype": "Purchase Order",
-                        "is_query_report": True
-                   },
-                   {
-                        "type": "report",
-                        "name": "Production Master Planner Updated",
-                        "label": _("Production Master Planner"),
-                        "doctype": "Sales Order",
-                        "is_query_report": True
-                   },
-                   {
-                        "type": "report",
-                        "name": "Inventory Turnover",
-                        "label": _("Inventory Turnover Ratio"),
-                        "doctype": "Stock Ledger Entry",
-                        "is_query_report": True
-                   },
-                   {
-                        "type": "report",
-                        "name": "Purchased vs Manufactured Items",
-                        "label": _("Purchased vs. Manufactured Items"),
-                        "doctype": "Item",
-                        "is_query_report": True
-                   }
+                {
+                    "type": "report",
+                    "name": "Projected Stock",
+                    "label": _("Projected Stock"),
+                    "doctype": "Item",
+                    "is_query_report": True
+                },        
+                {
+                    "type": "report",
+                    "name": "Late Purchases",
+                    "label": _("Late Purchases"),
+                    "doctype": "Purchase Order",
+                    "is_query_report": True
+                },
+                {
+                    "type": "report",
+                    "name": "Production Master Planner Updated",
+                    "label": _("Production Master Planner"),
+                    "doctype": "Sales Order",
+                    "is_query_report": True
+                },
+                {
+                    "type": "report",
+                    "name": "Inventory Turnover",
+                    "label": _("Inventory Turnover Ratio"),
+                    "doctype": "Stock Ledger Entry",
+                    "is_query_report": True
+                },
+                {
+                    "type": "report",
+                    "name": "Purchased vs Manufactured Items",
+                    "label": _("Purchased vs. Manufactured Items"),
+                    "doctype": "Item",
+                    "is_query_report": True
+                }
             ]
         },
         {
             "label": _("Accounting"),
             "icon": "octicon octicon-git-compare",
             "items": [
-                   {
-                        "type": "page",
-                        "name": "file_uploader",
-                        "label": _("PINV uploader"),
-                        "description": _("Bulk upload scanned purchase invoices")           
-                   }
+                {
+                    "type": "page",
+                    "name": "file_uploader",
+                    "label": _("PINV uploader"),
+                    "description": _("Bulk upload scanned purchase invoices")           
+                },
+                {
+                    "type": "report",
+                    "name": "General Ledger AMF",
+                    "label": _("General Ledger AMF"),
+                    "doctype": "GL Entry",
+                    "is_query_report": True
+                }
             ]
         },
         {

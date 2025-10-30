@@ -6,29 +6,16 @@
  "field_order": [
   "title",
   "section_break_1",
-  "1_item_definition",
-  "item_group",
-  "item_type",
-  "column_break_3",
-  "new_code",
-  "section_break_3",
-  "2_body_definition",
-  "body_check",
-  "body",
-  "column_break_8",
-  "syringe",
-  "section_break_5",
   "3_valve_head_definition",
-  "head_check",
-  "head_item",
-  "section_break_18",
   "head_name",
   "head_code",
   "head_rnd",
-  "column_break_10",
+  "column_break_11",
   "head_group",
-  "section_break_9",
-  "4_seat_plug_definition",
+  "head_description",
+  "head_description_check",
+  "section_break_2",
+  "2a_seat_definition",
   "seat_check",
   "seat_information",
   "seat_name",
@@ -36,8 +23,9 @@
   "seat_rnd",
   "seat_acc",
   "seat_mat",
+  "seat_drawing",
   "seat_item",
-  "column_break_14",
+  "column_break_21",
   "4b_plug_definition",
   "plug_check",
   "plug_information",
@@ -46,45 +34,27 @@
   "plug_rnd",
   "plug_acc",
   "plug_mat",
+  "plug_drawing",
   "plug_item",
-  "section_break_28",
+  "section_break_3",
   "5_parts_definition",
-  "screw_type",
   "cap_type",
   "column_break_31",
+  "screw_type",
   "screw_quantity",
-  "section_break_49",
-  "6_accessories_definition",
+  "section_break_4",
+  "4_compatible_bodies",
+  "rvm_check",
+  "rvm_preview",
+  "column_break_41",
+  "pump_check",
+  "pump_preview",
+  "column_break_42",
+  "pump_hv_check",
+  "pump_hv_preview",
   "amended_from"
  ],
  "fields": [
-  {
-   "fieldname": "item_group",
-   "fieldtype": "Link",
-   "label": "Item Group",
-   "options": "Item Group"
-  },
-  {
-   "fieldname": "item_type",
-   "fieldtype": "Select",
-   "label": "Item Type",
-   "options": "\nComponent\nSub-Assembly\nFinished Good"
-  },
-  {
-   "fieldname": "section_break_3",
-   "fieldtype": "Section Break"
-  },
-  {
-   "depends_on": "eval:doc.body_check=='Yes'",
-   "fieldname": "body",
-   "fieldtype": "Link",
-   "label": "Body",
-   "options": "Item"
-  },
-  {
-   "fieldname": "section_break_5",
-   "fieldtype": "Section Break"
-  },
   {
    "default": "VALVE HEAD-",
    "fieldname": "head_name",
@@ -94,7 +64,6 @@
   {
    "fieldname": "amended_from",
    "fieldtype": "Link",
-   "label": "Amended From",
    "no_copy": 1,
    "options": "Item Creation",
    "print_hide": 1,
@@ -103,26 +72,30 @@
   {
    "fieldname": "head_code",
    "fieldtype": "Data",
-   "label": "Item Code"
+   "label": "Item Code",
+   "read_only": 1
   },
   {
    "default": "V-",
    "fieldname": "head_rnd",
    "fieldtype": "Data",
-   "label": "R&D Code"
+   "label": "R&D Code",
+   "read_only": 1
   },
   {
    "default": "SEAT-",
    "depends_on": "eval:doc.seat_check=='Yes'",
    "fieldname": "seat_name",
    "fieldtype": "Data",
-   "label": "Item Name"
+   "label": "Item Name",
+   "read_only": 1
   },
   {
    "depends_on": "eval:doc.seat_check=='Yes'",
    "fieldname": "seat_code",
    "fieldtype": "Data",
-   "label": "Item Code"
+   "label": "Item Code",
+   "read_only": 1
   },
   {
    "depends_on": "eval:doc.seat_check=='Yes'",
@@ -135,7 +108,8 @@
    "depends_on": "eval:doc.seat_check=='Yes'",
    "fieldname": "seat_acc",
    "fieldtype": "Int",
-   "label": "No. of Pins"
+   "label": "No. of Pins",
+   "read_only": 1
   },
   {
    "default": "PCTFE",
@@ -143,20 +117,23 @@
    "fieldname": "seat_mat",
    "fieldtype": "Select",
    "label": "Raw Material",
-   "options": "PCTFE\nPEEK\nPTFE\nPMMA"
+   "options": "PCTFE\nPEEK\nPTFE\nPMMA",
+   "read_only": 1
   },
   {
    "default": "PLUG-",
    "depends_on": "eval:doc.plug_check=='Yes'",
    "fieldname": "plug_name",
    "fieldtype": "Data",
-   "label": "Item Name"
+   "label": "Item Name",
+   "read_only": 1
   },
   {
    "depends_on": "eval:doc.plug_check=='Yes'",
    "fieldname": "plug_code",
    "fieldtype": "Data",
-   "label": "Item Code"
+   "label": "Item Code",
+   "read_only": 1
   },
   {
    "depends_on": "eval:doc.plug_check=='Yes'",
@@ -176,16 +153,8 @@
    "fieldname": "plug_mat",
    "fieldtype": "Select",
    "label": "Raw Material",
-   "options": "PTFE\nPE-UHMW"
-  },
-  {
-   "fieldname": "column_break_14",
-   "fieldtype": "Column Break"
-  },
-  {
-   "depends_on": "eval:doc.head_check=='Yes'",
-   "fieldname": "section_break_9",
-   "fieldtype": "Section Break"
+   "options": "PTFE\nPE-UHMW",
+   "read_only": 1
   },
   {
    "default": "SEAT CREATION",
@@ -200,10 +169,6 @@
    "fieldname": "plug_information",
    "fieldtype": "Data",
    "read_only": 1
-  },
-  {
-   "fieldname": "column_break_10",
-   "fieldtype": "Column Break"
   },
   {
    "default": "Valve Head",
@@ -224,11 +189,6 @@
    "fieldtype": "Select",
    "label": "Do you need to create the <strong>Plug</strong> ?",
    "options": "\nYes\nNo"
-  },
-  {
-   "depends_on": "eval:doc.head_check",
-   "fieldname": "section_break_28",
-   "fieldtype": "Section Break"
   },
   {
    "fieldname": "screw_type",
@@ -253,25 +213,6 @@
    "label": "Screw Quantity"
   },
   {
-   "fieldname": "body_check",
-   "fieldtype": "Select",
-   "label": "Do you need to use a <strong>Body</strong> ?",
-   "options": "\nYes\nNo"
-  },
-  {
-   "fieldname": "head_check",
-   "fieldtype": "Select",
-   "label": "Do you need to create a <strong>Valve Head</strong> ?",
-   "options": "\nYes\nNo"
-  },
-  {
-   "depends_on": "eval:doc.head_check=='No'",
-   "fieldname": "head_item",
-   "fieldtype": "Link",
-   "label": "Which <strong>Valve Head</strong> would you like to use ?",
-   "options": "Item"
-  },
-  {
    "depends_on": "eval:doc.seat_check=='No'",
    "fieldname": "seat_item",
    "fieldtype": "Link",
@@ -286,68 +227,23 @@
    "options": "Item"
   },
   {
-   "fieldname": "column_break_3",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "new_code",
-   "fieldtype": "Data",
-   "label": "Potential New Product Code",
-   "read_only": 1
-  },
-  {
-   "fieldname": "column_break_8",
-   "fieldtype": "Column Break"
-  },
-  {
-   "depends_on": "eval:doc.body == 'P100-O' || doc.body == 'P101-O' || doc.body == 'P100-L';",
-   "fieldname": "syringe",
-   "fieldtype": "Link",
-   "label": "Syringe",
-   "options": "Item"
-  },
-  {
    "fieldname": "section_break_1",
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "1_item_definition",
-   "fieldtype": "Heading",
-   "label": "1. Item Definition"
-  },
-  {
-   "fieldname": "2_body_definition",
-   "fieldtype": "Heading",
-   "label": "2. Body Definition"
-  },
-  {
    "fieldname": "3_valve_head_definition",
    "fieldtype": "Heading",
-   "label": "3. Valve Head Definition"
-  },
-  {
-   "fieldname": "4_seat_plug_definition",
-   "fieldtype": "Heading",
-   "label": "4a. Seat Definition"
+   "label": "1. Valve Head Definition"
   },
   {
    "fieldname": "5_parts_definition",
    "fieldtype": "Heading",
-   "label": "5. Parts Definition"
-  },
-  {
-   "fieldname": "section_break_49",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "6_accessories_definition",
-   "fieldtype": "Heading",
-   "label": "6. Accessories Definition"
+   "label": "3. Parts Definition"
   },
   {
    "fieldname": "4b_plug_definition",
    "fieldtype": "Heading",
-   "label": "4b. Plug Definition"
+   "label": "2b. Plug Definition"
   },
   {
    "fieldname": "title",
@@ -356,15 +252,111 @@
    "read_only": 1
   },
   {
-   "depends_on": "eval:doc.head_check=='Yes'",
-   "fieldname": "section_break_18",
-   "fieldtype": "Section Break",
-   "label": "Valve Head Creation"
+   "fieldname": "head_description",
+   "fieldtype": "Text Editor",
+   "label": "Valve Head Description",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "depends_on": "eval: doc.head_description",
+   "fieldname": "head_description_check",
+   "fieldtype": "Check",
+   "label": "Modify Valve Head Description"
+  },
+  {
+   "depends_on": "eval:doc.seat_check=='Yes'",
+   "fieldname": "seat_drawing",
+   "fieldtype": "Attach",
+   "label": "Seat Drawing"
+  },
+  {
+   "depends_on": "eval:doc.plug_check=='Yes'",
+   "fieldname": "plug_drawing",
+   "fieldtype": "Attach",
+   "label": "Plug Drawing"
+  },
+  {
+   "fieldname": "2a_seat_definition",
+   "fieldtype": "Heading",
+   "label": "2a. Seat Definition"
+  },
+  {
+   "fieldname": "section_break_3",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_11",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_21",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_4",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "4_compatible_bodies",
+   "fieldtype": "Heading",
+   "label": "4. Compatible Bodies"
+  },
+  {
+   "default": "0",
+   "fieldname": "rvm_check",
+   "fieldtype": "Check",
+   "label": "RVM"
+  },
+  {
+   "default": "0",
+   "fieldname": "pump_check",
+   "fieldtype": "Check",
+   "label": "PUMP"
+  },
+  {
+   "default": "0",
+   "fieldname": "pump_hv_check",
+   "fieldtype": "Check",
+   "label": "PUMP HV"
+  },
+  {
+   "depends_on": "eval:doc.rvm_check",
+   "fieldname": "rvm_preview",
+   "fieldtype": "HTML",
+   "label": "RVM Preview",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_41",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.pump_check",
+   "fieldname": "pump_preview",
+   "fieldtype": "HTML",
+   "label": "PUMP Preview",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_42",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.pump_hv_check",
+   "fieldname": "pump_hv_preview",
+   "fieldtype": "HTML",
+   "label": "PUMP HV Preview",
+   "read_only": 1
   }
  ],
  "hide_toolbar": 1,
  "is_submittable": 1,
- "modified": "2025-03-26 09:51:02.321922",
+ "modified": "2025-10-09 15:48:05.475589",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Item Creation",

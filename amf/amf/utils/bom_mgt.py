@@ -575,3 +575,62 @@ def _safe_save(doc, name, log_id, context):
         frappe.log_error(message=str(e), title=f"Error saving {doc.doctype} '{name}'")
         frappe.db.rollback()
         update_log_entry(log_id, f"[{now_datetime()}] ❌ Failed saving '{name}': {e}")
+
+def duplicate_boms_with_rate_update():
+    """
+    Fetches all default and active BOMs for items matching specific patterns,
+    duplicates them, makes the new BOM the default, and updates item rates.
+    """
+    # Define the LIKE patterns for the item codes.
+    # The '%' is a wildcard character for SQL queries.
+    item_patterns = ['4A%', '4B%', '4C%']
+    
+    # Create a list of filter conditions for each pattern.
+    filters = [["item", "like", pattern] for pattern in item_patterns]
+    try:
+        # --- Step 1: Fetch all relevant BOMs in a single, optimized query ---
+        # This is more efficient than running multiple queries in a loop.
+        # We fetch only the 'name' of the BOMs that are active and default.
+        bom_names_to_process = frappe.get_all(
+            "BOM",
+            filters={
+                'is_active': 1,
+                'is_default': 1
+            },
+            # The 'or_filters' will combine the item pattern conditions with OR.
+            or_filters=filters,
+            fields='name' # Pluck returns a simple list of names, which is faster.
+        )
+        if not bom_names_to_process:
+            frappe.log_message("No default and active BOMs found for the specified item patterns.", "Duplicate BOM Script")
+            return
+
+        processed_count = 0
+        
+        # --- Step 2: Process each identified BOM ---
+        for bom_name in bom_names_to_process:
+            print(bom_name)
+            # Load the full original BOM document
+            original_bom = frappe.get_doc("BOM", bom_name)
+            
+            # --- Step 3: Duplicate the BOM ---
+            # Using doc.copy() is the standard and most reliable way to duplicate a document.
+            new_bom = frappe.copy_doc(original_bom)
+            new_bom.is_default = 1 # The new BOM will be the default one.
+            for item in new_bom.items:
+                item.rate = frappe.db.get_value("Item", {"name": item}, "valuation_rate")
+
+            # --- Step 5: Save the new BOM document ---
+            new_bom.insert(ignore_permissions=True)
+            new_bom.save(ignore_permissions=True)
+            # new_bom.submit()
+            
+            processed_count += 1
+            print(f"Successfully duplicated BOM {bom_name} to {new_bom.name} and set as default.", "Duplicate BOM Script")
+
+            # --- Step 7: Commit changes and provide feedback ---
+            frappe.db.commit()
+
+    except Exception as e:
+        print(_("An error occurred. Please check the Error Log. Error: {0}").format(str(e)))
+

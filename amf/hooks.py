@@ -70,6 +70,7 @@ doc_events = {
         "before_save": "amf.amf.utils.stock_entry.stock_entry_before_save",
         "on_submit": [
             "amf.amf.utils.custom.qr_code_to_document",
+            "amf.amf.utils.stock_entry.check_rates_and_assign_on_submit",
         ]
     },
     "Batch": {
@@ -104,6 +105,12 @@ doc_events = {
             "amf.master_crm.doctype.referral_satisfaction_survey.referral_satisfaction_survey.update_contact_csat_nps"
         ]  
     },
+    "BOM": {
+        "before_save": [
+            "amf.amf.utils.bom_updating.bom_before_save",
+            "amf.amf.utils.bom_child_bom_resolver.apply_item_default_boms_to_rows"
+        ]
+    }
 }
 
 # Scheduled Tasks
@@ -123,8 +130,10 @@ scheduler_events = {
     "weekly": [
         "amf.master_crm.contact.update_contact_statuses",
         "amf.master_crm.contact.update_organization_flags",
-        "amf.amf.utils.bom_mgt.execute_db_enqueue",
-        "amf.master_crm.doctype.global_satisfaction_score.global_satisfaction_score.calculate_global_scores"
+        #"amf.amf.utils.bom_mgt.execute_db_enqueue",
+        "amf.master_crm.doctype.global_satisfaction_score.global_satisfaction_score.calculate_global_scores",
+        "amf.amf.utils.item_mgt.update_all_item_valuation_rates_enq",
+        "amf.amf.utils.cleaning.enqueue_log_cleanup",
     ],
 }
 
