@@ -81,8 +81,12 @@ def execute(filters=None):
     # 5) Columns
     columns = _get_columns()
 
+    # NEW: monthly issue counts for "Customer Issue"
+    issue_counts = _get_issue_monthly_counts(from_date, to_date)
+    print(issue_counts)
+
     # 6) Chart: monthly average of days_to_first_dn (last 12 months)
-    chart = _build_monthly_chart(monthly_buckets, from_date, to_date)
+    chart = _build_monthly_chart(monthly_buckets, from_date, to_date, issue_counts)
 
     # 7) Report summary (overall avg, p90, trend last 3 months vs prior 3)
     report_summary = _build_report_summary(rows, chart)
@@ -240,24 +244,24 @@ def _get_dn_aggregates(so_names):
     return result
 
 
-def _build_monthly_chart(buckets, from_date, to_date):
+def _build_monthly_chart(buckets, from_date, to_date, issue_counts=None):
     """
-    Build a 12-month line chart of monthly average lead time.
-    Labels are months from from_date..to_date (inclusive) in YYYY-MM.
+    Build a 12-month line chart:
+      - dataset #1: monthly avg of days_to_first_dn
+      - dataset #2: monthly count of Issues with input_selection='Customer Issue'
     """
-    # Normalize to YYYY-MM list for the interval
+    issue_counts = issue_counts or {}
     months = _month_range(from_date, to_date)
+
     labels = []
-    data = []
+    avg_values = []
+    issue_values = []
 
     for m in months:
         labels.append(m)
         vals = buckets.get(m, [])
-        if vals:
-            avg = sum(vals) / float(len(vals))
-            data.append(round(avg, 2))
-        else:
-            data.append(None)  # gaps render cleanly in Frappe charts
+        avg_values.append(round(sum(vals) / float(len(vals)), 2) if vals else None)
+        issue_values.append(issue_counts.get(m, 0))  # zero if none
 
     chart = {
         "data": {
@@ -265,13 +269,18 @@ def _build_monthly_chart(buckets, from_date, to_date):
             "datasets": [
                 {
                     "name": "Avg days to first DN",
-                    "values": data
+                    "values": avg_values
+                },
+                {
+                    "name": "# Issues (Customer Issue)",
+                    "values": issue_values
                 }
             ]
         },
         "type": "line"
     }
     return chart
+
 
 
 def _build_report_summary(rows, chart):
@@ -365,3 +374,20 @@ def _month_range(from_date, to_date):
 
 def _empty_result():
     return _get_columns(), [], None, {"data": {"labels": [], "datasets": []}, "type": "line"}, []
+
+def _get_issue_monthly_counts(from_date, to_date):
+    """
+    Return dict: {"YYYY-MM": count} for Issues created within range
+    filtered by input_selection = 'Customer Issue'.
+    """
+    sql = """
+        SELECT DATE_FORMAT(creation, '%%Y-%%m') AS ym, COUNT(*) AS cnt
+        FROM `tabIssue`
+        WHERE creation >= %s
+          AND creation < DATE_ADD(%s, INTERVAL 1 DAY)
+          AND IFNULL(input_selection, '') = 'Customer Issue'
+        GROUP BY DATE_FORMAT(creation, '%%Y-%%m')
+    """
+    rows = frappe.db.sql(sql, (from_date, to_date), as_dict=True)
+    return {r["ym"]: int(r["cnt"] or 0) for r in rows}
+

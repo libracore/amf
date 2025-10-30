@@ -8,19 +8,20 @@ frappe.query_reports["so_to_dn_lead_time"] = {
       "fieldname": "from_date",
       "label": "From Date",
       "fieldtype": "Date",
-      "default": "Today - 365 days"
+      "default": "2024-10-01"
     },
     {
       "fieldname": "to_date",
       "label": "To Date",
       "fieldtype": "Date",
-      "default": "Today"
+      "default": "2025-10-01"
     },
     {
       "fieldname": "company",
       "label": "Company",
       "fieldtype": "Link",
-      "options": "Company"
+      "options": "Company",
+	  "default": "Advanced Microfluidics SA"
     },
     {
       "fieldname": "customer",
