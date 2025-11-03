@@ -473,23 +473,30 @@ def execute_scheduled():
             continue
 
         # Delegate to updater
-        _update_item_from_default_bom(item_name, bom_name, log_id)
+        update_item_from_default_bom(item_name, bom_name, log_id)
 
     update_log_entry(log_id, f"[{now_datetime()}] execute_scheduled complete\n")
     frappe.db.commit()
 
-
-def _update_item_from_default_bom(item_name, triggered_bom, log_id):
+@frappe.whitelist()
+def update_item_from_default_bom(doc, method=None, log_id=None):
     """
     Applies default BOM to the Item record.
     Accepts the name of the BOM that triggered the update
     so it can be logged (even if not actually the default).
     """
+    item_name = frappe.db.get_value("BOM", doc.name, "item_name")
+    if not log_id:
+        # 1) Initialize log
+        context = _dict(doctype="BOM", name="Item Default_BOM Update")
+        log_id = _get_or_create_log(context)  # assume doc context not needed here
+
     ts = now_datetime()
-    update_log_entry(log_id, f"[{now_datetime()}] {ts} → Processing Item '{item_name}' (triggered by BOM '{triggered_bom}')")
+    update_log_entry(log_id, f"[{now_datetime()}] {ts} → Processing Item '{item_name}' (triggered by BOM '{doc.name}' and method : '{method}')")
 
     # 1. Load Item
-    item = custom_try(frappe.get_doc, "Item", item_name)
+    item_code = frappe.db.get_value("BOM", doc.name, "item")
+    item = frappe.get_doc("Item", item_code)
     if not item:
         update_log_entry(log_id, f"[{now_datetime()}] ❌ Item '{item_name}' not found, skipping.")
         return
@@ -500,7 +507,7 @@ def _update_item_from_default_bom(item_name, triggered_bom, log_id):
     item.set("bom_cost", 0.0)
     update_log_entry(log_id, f"[{now_datetime()}] Cleared item_default_bom, bom_table & bom_cost")
 
-    # 3. Find true default BOM
+    """# 3. Find true default BOM
     default_bom = frappe.db.get_value(
         "BOM",
         {"item": item_name, "is_default": 1, "docstatus": 1},
@@ -518,14 +525,21 @@ def _update_item_from_default_bom(item_name, triggered_bom, log_id):
     if not bom:
         update_log_entry(log_id, f"[{now_datetime()}] ❌ Default BOM '{default_bom}' not found. Saving cleared Item.")
         _safe_save(item, item_name, log_id, "Item after missing BOM")
+        return"""
+
+    # 4. checking if bom is default and active
+    is_active, is_default = frappe.db.get_value("BOM", doc.name, ["is_active", "is_default"])
+    if not is_active or not is_default:
+        update_log_entry(log_id, f"[{now_datetime()}] ⚠️ BOM '{doc.name}' ignorée car is_active={is_active}, is_default={is_default}.")
+        _safe_save(item, item_name, log_id, "Item left cleared (inactive or non-default BOM)")
         return
 
     # 5. Assign and copy table
-    item.item_default_bom = bom.name
-    update_log_entry(log_id, f"[{now_datetime()}] Linked Item to BOM '{bom.name}'")
+    item.item_default_bom = doc.name
+    update_log_entry(log_id, f"[{now_datetime()}] Linked Item to BOM '{doc.name}'")
 
     # Preload bin quantities for all codes in one go
-    codes = [d.item_code for d in bom.items]
+    codes = [d.item_code for d in doc.items]
     bins = frappe.get_all(
         "Bin",
         filters={"item_code": ["in", codes], "warehouse": DEFAULT_WAREHOUSE},
@@ -534,7 +548,7 @@ def _update_item_from_default_bom(item_name, triggered_bom, log_id):
     )
     bin_map = {b.item_code: flt(b.actual_qty) for b in bins}
 
-    for bi in bom.items:
+    for bi in doc.items:
         code = bi.item_code
         if frappe.db.get_value("Item", code, "disabled"):
             update_log_entry(log_id, f"[{now_datetime()}] Skipping disabled BOM line item '{code}'")
@@ -557,10 +571,10 @@ def _update_item_from_default_bom(item_name, triggered_bom, log_id):
         update_log_entry(log_id, f"[{now_datetime()}] → Added line for '{code}': qty={bi.qty}, stock={row.stock_qty}")
 
     # 6. Set cost and save
-    item.bom_cost = flt(bom.total_cost) or 0.0
+    item.bom_cost = round(flt(doc.total_cost or 0.0),2) 
     update_log_entry(log_id, f"[{now_datetime()}] Set bom_cost to {item.bom_cost}")
 
-    _safe_save(item, item_name, log_id, f"Item updated with BOM '{bom.name}'")
+    _safe_save(item, item_name, log_id, f"Item updated with BOM '{doc.name}'")
 
 
 def _safe_save(doc, name, log_id, context):

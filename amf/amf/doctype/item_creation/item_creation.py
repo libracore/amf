@@ -5,6 +5,7 @@
 from __future__ import unicode_literals
 import time
 import frappe
+from amf.amf.utils.bom_creation import create_bom_for_assembly
 from frappe import _
 from frappe.model.document import Document
 
@@ -12,17 +13,6 @@ from frappe.model.document import Document
 class ItemCreation(Document):
 	pass
 
-SYRINGE_MAP = {
-    "2": {"code": "702000", "rnd"  : "S-50-P",    "qty" : 50  },
-    "3": {"code": "703000", "rnd"  : "S-100-P",   "qty" : 100 },
-    "4": {"code": "704000", "rnd"  : "S-100-U",   "qty" : 100 },
-    "5": {"code": "705000", "rnd"  : "S-250-P",   "qty" : 250 },
-    "8": {"code": "708000", "rnd"  : "S-500-P",   "qty" : 500 },
-    "9": {"code": "709000", "rnd"  : "S-500-U",   "qty" : 500 },
-    "D": {"code": "70D000", "rnd"  : "S-1000-P",  "qty" : 1000},
-    "E": {"code": "70E000", "rnd"  : "S-2500-P",  "qty" : 2500},   # pour Pump HV
-    "F": {"code": "70F000", "rnd"  : "S-5000P",   "qty" : 5000},   # pour Pump HV
-}
 
 @frappe.whitelist()
 def populate_fields(head_name):
@@ -71,34 +61,29 @@ def populate_fields(head_name):
     try:
         # Check if the hyphen exists before trying to split
         if '-' in head_name:
-            # Extract the part after the first hyphen
-            extracted_part = head_name.split('-', 1)[1]
-            head_rnd = 'V-' + extracted_part
-
-            sub_parts = extracted_part.split('-')
+            # divide the head_name into parts based on hyphens
+            parts = head_name.split('-')
+            head_rnd = 'V-' + '-'.join(parts[1:])
 
             # --- seat_name Logic ---
-            # 'SEAT-' followed by all parts except the last one.
-            seat_name = 'SEAT-' + '-'.join(sub_parts[:-1])
+            # 'SEAT-' followed by all parts except the last one and HV if exist.
+            if len(parts) > 7:
+                seat_name = 'SEAT-' + '-' .join(parts[1:6]) + '-' + parts[7]
+            else:
+                seat_name = 'SEAT-' + '-' .join(parts[1:6])
 
             # --- plug_name Logic ---
-            # 'PLUG-' followed by all parts except the second-to-last one.
-            if len(sub_parts) > 2:
-                # Combine all parts except the second-to-last
-                plug_name = 'PLUG-' + '-'.join(sub_parts[:-2] + sub_parts[-1:])
-            else:
-                # Fallback if there aren't enough parts to exclude the second-to-last.
-                plug_name = 'PLUG-' + '-'.join(sub_parts)
-
+            plug_name = 'PLUG-' + '-' .join(parts[1:5]) + '-' + parts[6]
+           
             # --- head_description Generation ---
             # Generate the multi-line description if the pattern is matched (at least 6 parts).
-            if len(sub_parts) >= 6:
-                valve_type_code = sub_parts[0]
-                stages = sub_parts[1]
-                ports = sub_parts[2]
-                channel_code = sub_parts[3]
-                valve_material_code = sub_parts[4]
-                plug_material_code = sub_parts[5]
+            if len(parts) >= 7:
+                valve_type_code = parts[1]
+                stages = parts[2]
+                ports = parts[3]
+                channel_code = parts[4]
+                valve_material_code = parts[5]
+                plug_material_code = parts[6]
 
                 # Look up values from maps, with a fallback for unknown codes.
                 valve_type = valve_type_map.get(valve_type_code, 'Unknown')
@@ -181,8 +166,8 @@ def populate_fields_from_existing_item(item_code):
 
         #derive expected seat and plug names
         parts = head_rnd.split('-')
-        if (parts[7] ==  'HV'):
-            expected_seat_name = 'SEAT-' + '-' .join(parts[1:6]) + '-HV'
+        if len(parts) > 7:
+            expected_seat_name = 'SEAT-' + '-' .join(parts[1:6]) + '-' + parts[7]
         else:
             expected_seat_name = 'SEAT-' + '-' .join(parts[1:6])
         expected_plug_name = 'PLUG-' + '-' .join(parts[1:5]) + '-' + parts[6] 
@@ -201,7 +186,6 @@ def populate_fields_from_existing_item(item_code):
         )
         if not bom:
             frappe.msgprint(_("No active BOM found for Item: {0}").format(item_code))
-            frappe.msgprint(_("Creating new BOM for Item: {0}, with expected Seat and Plug components.").format(item_code))
             incorrect_seat  = True
             incorrect_plug  = True
             seat_code = get_item_from_name(expected_seat_name)
@@ -210,37 +194,44 @@ def populate_fields_from_existing_item(item_code):
         else:
             bom_doc = frappe.get_doc("BOM", bom[0].name)
 
-            #check head components in BOM if correct
-            for item in bom_doc.items: 
-                if item.item_code.startswith('210'):
-                    if item.item_name == expected_seat_name:
-                        seat_name = item.item_name
-                        seat_code = item.item_code
-                        incorrect_seat = False
-                    else:
-                        seat_code = get_item_from_name(expected_seat_name)
-                        incorrect_seat = True
+            if len(bom_doc.items) == 2:
+                #check head components in BOM if correct
+                for item in bom_doc.items: 
+                    if item.item_code.startswith('210'):
+                        if item.item_name == expected_seat_name:
+                            seat_name = item.item_name
+                            seat_code = item.item_code
+                            incorrect_seat = False
+                        else:
+                            seat_code = get_item_from_name(expected_seat_name)
+                            incorrect_seat = True
 
-                elif item.item_code.startswith('110'):
-                    if item.item_name == expected_plug_name:
-                        plug_name = item.item_name
-                        plug_code = item.item_code
-                        incorrect_plug = False
-                    else:
-                        plug_code = get_item_from_name(expected_plug_name)
+                    elif item.item_code.startswith('110'):
+                        if item.item_name == expected_plug_name:
+                            plug_name = item.item_name
+                            plug_code = item.item_code
+                            incorrect_plug = False
+                        else:
+                            plug_code = get_item_from_name(expected_plug_name)
+                            incorrect_plug = True
+                    else: 
+                        incorrect_seat = True
                         incorrect_plug = True
-                else: 
-                    incorrect_seat = True
-                    incorrect_plug = True
-                    seat_code = get_item_from_name(expected_seat_name)
-                    plug_code = get_item_from_name(expected_plug_name)
+                        seat_code = get_item_from_name(expected_seat_name)
+                        plug_code = get_item_from_name(expected_plug_name)
+            else:
+                frappe.msgprint(_("BOM for Item: {0} does not have exactly 2 items.").format(item_code))
+                incorrect_seat  = True
+                incorrect_plug  = True
+                seat_code = get_item_from_name(expected_seat_name)
+                plug_code = get_item_from_name(expected_plug_name)
         
         #create BOM if incorrect
         if incorrect_seat or incorrect_plug:
             frappe.msgprint(_("The BOM for Item: {0} does not contain the expected Seat and Plug components. Creating new BOM").format(item_code))
             bom_materials = [   {"item_code": seat_code, "qty": 1},
                                 {"item_code": plug_code, "qty": 1}]
-            _create_bom_for_assembly(item_code, bom_materials, check_existence = False)
+            create_bom_for_assembly(item_code, bom_materials)
 
         seat_name = expected_seat_name
         plug_name = expected_plug_name
@@ -265,14 +256,18 @@ def get_item_from_name(item_name):
     try:
         item_code = frappe.db.get_value(
             "Item",
-            filters=[
-                ["Item", "item_name", "=", item_name],
-                ["Item", "disabled", "=", 0],
-                ["Item", "item_code", "like", "_10%"],
-            ],
-            fieldname="item_code",
+            filters={
+                "item_name": item_name,
+                "disabled": 0,
+                "item_code": ["like", "_10%"],
+            },
+            fieldname="item_code",           
         )
+
+        if not item_code:
+            frappe.throw(f"No active item found for name '{item_name}' with matching code pattern.")
         return item_code
+    
     except Exception as e:
         frappe.throw(f"Failed to retrieve item code for item name {item_name}: {e}")
         return None
@@ -420,7 +415,7 @@ def _create_simple_component_and_assembly(doc, group):
     asm_item_code = _create_item_if_not_exists(asm_data)
 
     # Create the BOM for the sub-assembly.
-    _create_bom_for_assembly(asm_item_code, bom_materials)
+    create_bom_for_assembly(asm_item_code, bom_materials)
 
     frappe.msgprint(_("Successfully created {0} and Sub-Assembly {1}.").format(component_item_code, asm_item_code))
     return asm_item_code
@@ -441,7 +436,7 @@ def _create_final_valve_head_assembly(doc):
     final_assembly_code = _create_item_if_not_exists(final_assembly_data)
 
     # Create the BOM for the final assembly.
-    _create_bom_for_assembly(final_assembly_code, bom_materials)
+    create_bom_for_assembly(final_assembly_code, bom_materials)
 
     frappe.msgprint(_("Successfully created Final Assembly {0}.").format(final_assembly_code))
     return final_assembly_code
@@ -459,7 +454,7 @@ def _create_rvm_finished_goods(doc):
         fg_code = _create_item_if_not_exists(item_data)
 
         #create the BOM for the new item
-        _create_bom_for_assembly(fg_code, bom_materials)
+        create_bom_for_assembly(fg_code, bom_materials)
         created_items.append(fg_code)
     
     frappe.msgprint("Successfully created RVM items {0}.")
@@ -473,10 +468,10 @@ def _create_pump_finished_goods(doc):
     for motor_code in ["5", "7", "9", "B"]:
         #for syringe possible code in item_code
         for syringe_code in ["2","3","4","5","8","9","D"]:
-            item_data, bom_materials = _prepare_pump_data(doc,  motor_code, 
+            item_data, bom_materials, scraps = _prepare_pump_data(doc,  motor_code, 
                                                                 syringe_code)
             fg_code = _create_item_if_not_exists(item_data)
-            _create_bom_for_assembly(fg_code, bom_materials)
+            create_bom_for_assembly(fg_code, bom_materials, scraps)
             created_items.append(fg_code)
     return created_items
 
@@ -488,7 +483,7 @@ def _create_pump_hv_finished_goods(doc):
         for syringe_code in ["E", "F"]:
             item_data, bom_materials = _prepare_pump_hv_data(doc, motor_code, syringe_code)
             fg_code = _create_item_if_not_exists(item_data)
-            _create_bom_for_assembly(fg_code, bom_materials)
+            create_bom_for_assembly(fg_code, bom_materials)
             created_items.append(fg_code)
     return created_items
 
@@ -504,7 +499,7 @@ def _prepare_simple_component_data(doc, group):
         base_name = doc.get('plug_name')
         base_code = doc.get('plug_code')
         item_group = "Plug"
-        valuation_rate = 20
+        valuation_rate = 20 
         bom_materials = [
             {"item_code": base_code, "qty": 1},
             {"item_code": "SPL.3013", "qty": doc.get('plug_acc', 0)}
@@ -604,7 +599,6 @@ def _prepare_rvm_data(doc, motor_info):
         "item_group": "Product",
         "item_type": "Finished Good",
         "reference_code": reference_code,
-        #"valuation_rate": 100,
         "description": (
             f"RVM series – Industrial Microfluidic Rotary Valve<br>"
             f"<b>Version</b>: Fast<br>"
@@ -638,44 +632,44 @@ def _prepare_pump_data(doc, motor_code, syringe_code):
         M = 1
         N = "L"
         
-    syringe = SYRINGE_MAP.get(syringe_code)
+    syringe_item_code = f"70{syringe_code}000"
+    syringe_rnd = frappe.db.get_value("Item", syringe_item_code, "reference_code")
+    syringe_qty = syringe_rnd.split('-')[1]
 
     item_code = f"4{X}{syringe_code}{head_code[-3:]}"
-    item_name = f"P1{M}0-{N}/{head_rnd}/{syringe['rnd']}"
-    reference_code = f"P1{M}0{N}{head_code}{syringe['rnd'].replace('-', '')}"
+    item_name = f"P1{M}0-{N}/{head_rnd}/{syringe_rnd}"
+    reference_code = f"P1{M}0{N}{head_code}{syringe_rnd.replace('-', '')}"
     if N == "O":
         bom_materials = [
             {"item_code": f"5{X}1000", "qty": 1},
-            {"item_code": syringe['code'], "qty": 1},
+            {"item_code": syringe_item_code, "qty": 1},
             {"item_code": head_code, "qty": 1},
-            {"item_code": screw_type, "qty": screw_qty},
-            {"item_code": "RVM.1204", "qty": -1},
+            {"item_code": screw_type, "qty": screw_qty}
         ]
         desc = (
             f"SPM series – Industrial Programmable Syringe Pump<br>"
             f"<b>Version</b>: SPM<br>"
             f"______________________________________________________<br>"
             f"<b>Body</b>: P1{M}0-O<br>"
-            f"<b>Syringe</b>: {syringe['qty']} µl ({syringe['rnd']})<br>"
+            f"<b>Syringe</b>: {syringe_qty} µl ({syringe_rnd})<br>"
             f"{head_desc}<br>"
             f"______________________________________________________"
         )
     else:
         bom_materials = [
             {"item_code": f"5{X}1000", "qty": 1},
-            {"item_code": syringe['code'], "qty": 1},
+            {"item_code": syringe_item_code, "qty": 1},
             {"item_code": head_code, "qty": 1},
             {"item_code": screw_type, "qty": screw_qty},
-            {"item_code": "RVM.1204", "qty": -1},
             {"item_code": "C100", "qty": 1},
-            {"item_code": "C101", "qty": 1},
+            {"item_code": "C101", "qty": 1}
         ]
         desc = (
             f"LSPone series – Laboratory Microfluidic Programmable Syringe Pump<br>"
             f"<b>Version</b>: LSPone<br>"
             f"______________________________________________________<br>"
             f"<b>Body</b>: P1{M}O-L<br>"
-            f"<b>Syringe</b>: {syringe['qty']} µl ({syringe['rnd']})<br>"
+            f"<b>Syringe</b>: {syringe_qty} µl ({syringe_rnd})<br>"
             f"{head_desc}<br>"
             f"______________________________________________________"
         )
@@ -686,11 +680,13 @@ def _prepare_pump_data(doc, motor_code, syringe_code):
         "item_group": "Product",
         "item_type": "Finished Good",
         "reference_code": reference_code,
-        #"valuation_rate": 500,
         "description": desc
     }
+    scraps = [
+            {"item_code": "RVM.1204", "qty": 1}
+        ]
     print(item_data["reference_code"])
-    return item_data, bom_materials
+    return item_data, bom_materials, scraps
 
 
 def _prepare_pump_hv_data(doc, motor_code, syringe_code):
@@ -713,11 +709,14 @@ def _prepare_pump_hv_data(doc, motor_code, syringe_code):
     else : 
         M = 1
         N = "L"
-    syringe = SYRINGE_MAP.get(syringe_code)
+    
+    syringe_item_code = f"70{syringe_code}000"
+    syringe_rnd = frappe.db.get_value("Item", syringe_item_code, "reference_code")
+    syringe_qty = syringe_rnd.split('-')[1]
 
     item_code = f"4{X}{syringe_code}{head_code[-3:]}"
-    item_name = f"P1{M}1-{N}/{head_rnd}/{syringe['rnd']}"
-    reference_code = f"P1{M}1{N}{head_code}{syringe['rnd'].replace('-', '')}"
+    item_name = f"P1{M}1-{N}/{head_rnd}/{syringe_rnd}"
+    reference_code = f"P1{M}1{N}{head_code}{syringe_rnd.replace('-', '')}"
 
     if N == "O":
         bom_materials = [
@@ -732,14 +731,14 @@ def _prepare_pump_hv_data(doc, motor_code, syringe_code):
             f"<b>Version</b>: SPM<br>"
             f"______________________________________________________<br>"
             f"<b>Body</b>: P1{M}1-O<br>"
-            f"<b>Syringe</b>: {syringe['qty']} ml ({syringe['rnd']})<br>"
+            f"<b>Syringe</b>: {syringe_qty} ml ({syringe_rnd})<br>"
             f"{head_desc}<br>"
             f"______________________________________________________"
         )
     else:
         bom_materials = [
             {"item_code": f"5{X}1000", "qty": 1},
-            {"item_code": syringe['code'], "qty": 1},
+            {"item_code": syringe_item_code, "qty": 1},
             {"item_code": head_code, "qty": 1},
             {"item_code": screw_type, "qty": screw_qty},
             {"item_code": "RVM.1204", "qty": -1},
@@ -751,7 +750,7 @@ def _prepare_pump_hv_data(doc, motor_code, syringe_code):
             f"<b>Version</b>: LSPone<br>"
             f"______________________________________________________<br>"
             f"<b>Body</b>: P1{M}1-L<br>"
-            f"S<b>Syringe</b>: {syringe['qty']} ml ({syringe['rnd']})<br>"
+            f"S<b>Syringe</b>: {syringe_qty} ml ({syringe_rnd})<br>"
             f"{head_desc}<br>"
             f"______________________________________________________"
         )
@@ -762,7 +761,6 @@ def _prepare_pump_hv_data(doc, motor_code, syringe_code):
         "item_group": "Product",
         "item_type": "Finished Good",
         "reference_code": reference_code,
-        "valuation_rate": 500,
         "description": desc
     }
     return item_data, bom_materials
@@ -797,35 +795,5 @@ def _create_item_if_not_exists(item_data):
         frappe.throw(_("Error creating item {0}: {1}").format(item_code, e))
 
 
-def _create_bom_for_assembly(assembly_code, materials, check_existence=True):
-    """Creates a BOM in Draft state. Does not submit."""
-    for material in materials:
-        while not frappe.db.exists("Item", {"name": material.get("item_code")}):
-            frappe.db.throw(_("Material item {0} does not exist. Cannot create BOM for {1}.").format(assembly_code))
-    
-    if frappe.db.exists("BOM", {"item": assembly_code}):
-        return
 
-    try:
-        bom_doc = frappe.new_doc("BOM")
-        bom_doc.item = assembly_code
-        bom_doc.is_active = 1
-        bom_doc.is_default = 1
-        bom_doc.quantity = 1
-        bom_doc.company = frappe.get_cached_value('User', frappe.session.user, 'company')
-
-        for material in materials:
-            if material.get('qty'): # Only add materials with a quantity > 0
-                bom_doc.append("items", {
-                    "item_code": material.get("item_code"),
-                    "qty": material.get("qty")
-                })
-
-        bom_doc.insert(ignore_permissions=True)
-        bom_doc.save()
-        bom_doc.submit()
-        frappe.db.commit() # Commit the transaction after the final step.
-    except Exception as e:
-        frappe.log_error(frappe.get_traceback(), f"BOM Creation Failed for {assembly_code}")
-        frappe.throw(_("Error creating BOM for {0}: {1}").format(assembly_code, e))
         

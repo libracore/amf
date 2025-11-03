@@ -422,11 +422,13 @@ def start_work_order_final(work_order_id, serial_no_id=None, batch_no_id=None):
                 update_log_entry(log_id, "DEBUG: Skipping row missing 'batch_no'.")
                 continue
 
-            # fetch item_code from 'Batch'
+            # fetch item_code from 'Batch' and the quantity needed for this item in the required_qty_map
             item_code = frappe.db.get_value("Batch", bn, "item")
             if not item_code:
                 update_log_entry(log_id, f"DEBUG: No item_code found for Batch {bn}, skipping.")
                 continue
+            item_qty = cint(required_qty_map[item_code])
+            
 
             # run the SQL query to get warehouse + qty_after_transaction
             # (making sure it's != 0)
@@ -444,11 +446,17 @@ def start_work_order_final(work_order_id, serial_no_id=None, batch_no_id=None):
                     AND bin.actual_qty > 0
                 WHERE sle.batch_no = %(batch_no)s
                   AND sle.item_code = %(item_code)s
+                  AND sle.warehouse NOT LIKE Scrap%%
                   AND sle.qty_after_transaction != 0
                 GROUP BY sle.item_code, sle.warehouse
             """
             query_vals = {"batch_no": bn, "item_code": item_code}
             results = frappe.db.sql(query, query_vals, as_dict=True)
+            results = frappe.db.sql(query, query_vals, as_dict=True)
+            #adapt results to have the right number of rows. 
+            if results and item_qty and len(results) > item_qty:
+                update_log_entry(log_id, f"DEBUG: Limiting SLE rows to first {item_qty} entries (got {len(results)}).")
+                results = results[:item_qty]
 
             if not results:
                 # no matching stock ledger records for this batch
