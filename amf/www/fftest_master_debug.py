@@ -27,6 +27,15 @@ def make_stock_entry(source_work_order_id, serial_no_id=None, batch_no_id=None):
     logger.info(
         f"make_stock_entry called with Work Order: {source_work_order_id}, Serial No: {serial_no_id}, and Batch No: {batch_no_id}")
 
+    if serial_no_id:
+        update_log_entry(log_id, "DEBUG: First sanity check on serial_no existence...")
+    
+    if frappe.db.exists("Serial No", serial_no_id):
+        purchase_doc = frappe.db.get_value("Serial No", serial_no_id, "purchase_document_no")
+        update_log_entry(log_id, f"DEBUG: Serial No already exists: {purchase_doc}")
+        return {"error": f"Serial No already exists: {purchase_doc}."}
+
+
     # 1) Find candidate Work Orders that match items from the given source Work Order
     update_log_entry(
         log_id, "DEBUG: Calling get_serialized_items_with_existing_work_orders() ...")
@@ -57,7 +66,7 @@ def make_stock_entry(source_work_order_id, serial_no_id=None, batch_no_id=None):
     current_status = frappe.db.get_value("Work Order", target_wo_id, "status")
     update_log_entry(
         log_id, f"DEBUG: Current Work Order status: {current_status}")
-    if current_status == 'Not Started':
+    if current_status == 'Not Started' or (frappe.db.get_value("Work Order", target_wo_id, "material_transferred_for_manufacturing") != frappe.db.get_value("Work Order", target_wo_id, "qty")):
         update_log_entry(
             log_id, "DEBUG: Work Order is 'Not Started'. Calling start_work_order() ...")
         start_work_order(target_wo_id)
