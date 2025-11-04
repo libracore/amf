@@ -7,10 +7,12 @@
   "title",
   "section_break_1",
   "3_valve_head_definition",
+  "head_check",
   "head_name",
   "head_code",
   "head_rnd",
   "column_break_11",
+  "head_item",
   "head_group",
   "head_description",
   "head_description_check",
@@ -57,6 +59,7 @@
  "fields": [
   {
    "default": "VALVE HEAD-",
+   "depends_on": "eval:doc.head_check == 'Yes' || doc.head_item",
    "fieldname": "head_name",
    "fieldtype": "Data",
    "label": "Item Name"
@@ -70,13 +73,14 @@
    "read_only": 1
   },
   {
+   "depends_on": "eval:doc.head_check == 'Yes'",
    "fieldname": "head_code",
    "fieldtype": "Data",
    "label": "Item Code",
    "read_only": 1
   },
   {
-   "default": "V-",
+   "depends_on": "eval:doc.head_check",
    "fieldname": "head_rnd",
    "fieldtype": "Data",
    "label": "R&D Code",
@@ -171,7 +175,7 @@
    "read_only": 1
   },
   {
-   "default": "Valve Head",
+   "depends_on": "eval:doc.head_check",
    "fieldname": "head_group",
    "fieldtype": "Link",
    "label": "Item Group",
@@ -252,6 +256,7 @@
    "read_only": 1
   },
   {
+   "depends_on": "eval:doc.head_check",
    "fieldname": "head_description",
    "fieldtype": "Text Editor",
    "label": "Valve Head Description",
@@ -352,11 +357,24 @@
    "fieldtype": "HTML",
    "label": "PUMP HV Preview",
    "read_only": 1
+  },
+  {
+   "fieldname": "head_check",
+   "fieldtype": "Select",
+   "label": "Do you need to create the <strong>Valve Head</strong> ?",
+   "options": "\nYes\nNo"
+  },
+  {
+   "depends_on": "eval:doc.head_check=='No'",
+   "fieldname": "head_item",
+   "fieldtype": "Link",
+   "label": "Which <strong>Valve Head</strong> would you like to use ?",
+   "options": "Item"
   }
  ],
  "hide_toolbar": 1,
  "is_submittable": 1,
- "modified": "2025-10-09 15:48:05.475589",
+ "modified": "2025-10-20 15:23:04.152939",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Item Creation",

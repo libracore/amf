@@ -216,9 +216,11 @@ def make_stock_entry(source_work_order_id, serial_no_id=None, batch_no_id=None):
                         log_id, f"DEBUG: last_item.batch_no set to {last_item.batch_no}")
 
         # 10) Save and submit the Stock Entry
+        stock_entry.save()
         update_log_entry(
             log_id, f"DEBUG: Saving Stock Entry doc {stock_entry.name}...")
-        stock_entry.save()
+        
+        
 
         # Update rate and availability
         update_log_entry(
@@ -410,7 +412,7 @@ def start_work_order_final(work_order_id, serial_no_id=None, batch_no_id=None):
     #    We'll accumulate a list of dict like:
     #    {"item_code": ..., "warehouse": ..., "batch_no": ..., "qty": ...}
     #    If batch_no_id is not given, no special batch logic is done.
-    batch_info_results = []  # will hold the final combined info
+    batch_map = {}  # will hold the final combined info
 
     if batch_no_id:
         # parse JSON if needed
@@ -431,15 +433,13 @@ def start_work_order_final(work_order_id, serial_no_id=None, batch_no_id=None):
                 update_log_entry(log_id, "DEBUG: Skipping row missing 'batch_no'.")
                 continue
 
-            # fetch item_code from 'Batch'
+            # --- 1) Fetch item_code for that batch ---
             item_code = frappe.db.get_value("Batch", bn, "item")
             if not item_code:
                 update_log_entry(log_id, f"DEBUG: No item_code found for Batch {bn}, skipping.")
                 continue
 
-            # run the SQL query to get warehouse + qty_after_transaction
-            # (making sure it's != 0)
-            # we assume only one or multiple rows might come back
+            # --- 2) Query current quantity and warehouse from tabBin ---
             query = """
                 SELECT
                     sle.item_code,
@@ -453,50 +453,36 @@ def start_work_order_final(work_order_id, serial_no_id=None, batch_no_id=None):
                     AND bin.actual_qty > 0
                 WHERE sle.batch_no = %(batch_no)s
                   AND sle.item_code = %(item_code)s
+                  AND sle.warehouse = "Main Stock - AMF21"
                   AND sle.qty_after_transaction != 0
                 GROUP BY sle.item_code, sle.warehouse
+                LIMIT 1
             """
-            query_vals = {"batch_no": bn, "item_code": item_code}
-            results = frappe.db.sql(query, query_vals, as_dict=True)
+            query_vals = {"item_code": item_code, "batch_no": bn}
+            result = frappe.db.sql(query, query_vals, as_dict=True)
 
-            if not results:
-                # no matching stock ledger records for this batch
-                update_log_entry(log_id,
-                    f"DEBUG: No SLE rows found for batch={bn}, item_code={item_code}."
-                )
+            if not result:
+                update_log_entry(log_id, f"DEBUG: No valid stock found for batch={bn}, item={item_code}")
                 continue
 
-            for r in results:
-                # We'll store the combined info
-                batch_info_results.append({
-                    "item_code": r["item_code"],
-                    "warehouse": r["warehouse"],
-                    "batch_no": bn,
-                    "qty": r["qty"]
-                })
-                update_log_entry(log_id,
-                    f"DEBUG: Found warehouse={r['warehouse']} qty={r['qty']} for item_code={r['item_code']} batch={bn}"
-                )
+            r = result[0]
 
-    # 5) Update auto-created BOM lines. 
-    #    - set the BOM-based qty
-    #    - if we have batch_info_results for the same item_code, 
-    #      we can either update this line or create new ones. 
-    #      We'll do the simplest approach: if there's exactly one row 
-    #      from batch_info for that item_code, we update the existing line. 
-    #      If there's multiple, we'll show how to create additional lines.
+            # --- 3) Append this batch info for later use ---
+            batch_map[item_code] = {
+                "item_code": r["item_code"],
+                "warehouse": r["warehouse"],
+                "batch_no": bn,
+                "qty": flt(r["qty"])
+            }
 
-    # We'll track item_codes -> a list of batch rows
-    from collections import defaultdict
-    batch_map = defaultdict(list)
-    for row in batch_info_results:
-        batch_map[row["item_code"]].append(row)
-
-    stock_items_to_add = []  # if we need additional lines
+            update_log_entry(
+                log_id,
+                f"DEBUG: Found warehouse={r['warehouse']} qty={r['qty']} for item_code={r['item_code']} batch={bn}"
+            )
 
     for idx, se_item in enumerate(stock_entry.items):
         item_code = se_item.item_code
-
+        print (item_code)
         # 5a) If BOM says we need X quantity for this item, set it
         if item_code in required_qty_map:
             se_item.qty = flt(required_qty_map[item_code])
@@ -532,59 +518,52 @@ def start_work_order_final(work_order_id, serial_no_id=None, batch_no_id=None):
                 f"DEBUG: Set product_serial_no={serial_no_id} on last row {se_item.item_code} (serialized)."
             )
 
-        # 5d) If we have batch rows for this item_code, let's handle them
-        batch_rows = batch_map.get(item_code, [])
-        if len(batch_rows) == 1:
-            # If exactly one row, let's just update the existing line
-            row = batch_rows[0]
-            # Possibly override the warehouse from SLE
-            se_item.s_warehouse = row["warehouse"]
-            se_item.batch_no = row["batch_no"]
-            # If you want to override the quantity from the SLE:
-            # se_item.qty = flt(row["qty"])
-            # se_item.transfer_qty = flt(se_item.qty * se_item.conversion_factor)
-
+        # 5d) If we have a batch row for this item_code, let's handle them
+        batch_row = batch_map.get(item_code)
+        if batch_row:
+            #se_item.manual_source_warehouse_selection = 1
+            se_item.s_warehouse = batch_row["warehouse"]
+            #se_item.auto_batch_no_generation = 0
+            se_item.batch_no = batch_row["batch_no"]
             update_log_entry(
                 log_id,
-                f"DEBUG: Updated existing line {item_code} with batch_no={row['batch_no']} warehouse={row['warehouse']} qty={row['qty']}"
+                f"DEBUG: Linked batch {batch_row['batch_no']} from {batch_row['warehouse']} for item {item_code}"
             )
-        elif len(batch_rows) > 1:
-            # If multiple rows, we can update the first line with the first row
-            # and create new lines for the others
-            first = batch_rows[0]
-            se_item.s_warehouse = first["warehouse"]
-            se_item.batch_no = first["batch_no"]
-            # If you want to override the quantity from the SLE:
-            # se_item.qty = flt(first["qty"])
-            # se_item.transfer_qty = flt(se_item.qty * se_item.conversion_factor)
-
-            update_log_entry(
-                log_id,
-                f"DEBUG: Updated existing line {item_code} with the first batch row batch_no={first['batch_no']} warehouse={first['warehouse']} qty={first['qty']}"
-            )
-
-            # For the rest, create new lines
-            for extra_row in batch_rows[1:]:
-                new_line = stock_entry.append("items", {})
-                new_line.item_code = item_code
-                new_line.qty = se_item.qty  # or flt(extra_row["qty"]) if you prefer
-                new_line.transfer_qty = flt(new_line.qty * (new_line.conversion_factor or 1.0))
-                new_line.manual_source_warehouse_selection = 1
-                new_line.s_warehouse = extra_row["warehouse"]
-                new_line.manual_target_warehouse_selection = 1
-                new_line.t_warehouse = se_item.t_warehouse
-                new_line.auto_batch_no_generation = 0
-                new_line.batch_no = extra_row["batch_no"]
-
-                # If item is serialized, possibly set new_line.serial_no = serial_no_id
-                # but typically you only have one serial_no per line
-                if has_serial == 1:
-                    new_line.serial_no = serial_no_id
-
-                update_log_entry(
-                    log_id,
-                    f"DEBUG: Added new line for item_code={item_code} batch_no={extra_row['batch_no']} warehouse={extra_row['warehouse']} qty={extra_row['qty']}"
-                )
+        
+        # 5e) If target warehouse is a Scrap warehouse → handle batch dynamically
+        elif se_item.t_warehouse and "Scrap" in se_item.t_warehouse:
+            se_item.manual_target_warehouse_selection = 1
+            se_item.t_warehouse = "Main Stock - AMF21"
+            has_batch = frappe.db.get_value("Item", item_code, "has_batch_no")
+            if has_batch == 1:
+                query = """
+                    SELECT
+                        sle.batch_no,
+                        sle.warehouse,
+                        SUM(sle.actual_qty) AS qty
+                    FROM `tabStock Ledger Entry` AS sle
+                    WHERE sle.item_code = %(item_code)s
+                    AND sle.warehouse = "Main Stock - AMF21"
+                    AND sle.is_cancelled = 0
+                    AND sle.batch_no IS NOT NULL
+                    GROUP BY sle.batch_no, sle.warehouse
+                    HAVING qty > 0
+                    ORDER BY qty DESC
+                    LIMIT 1
+                """
+                res = frappe.db.sql(query, {"item_code": item_code}, as_dict=True)
+                if res:
+                    r = res[0]
+                    se_item.s_warehouse = r["warehouse"]
+                    se_item.batch_no = r["batch_no"]
+                    update_log_entry(
+                        log_id,
+                        f"DEBUG: Scrap item {item_code} → using batch {r['batch_no']} ({r['qty']} units in {r['warehouse']})"
+                    )
+                else:
+                    update_log_entry(log_id, f"DEBUG: Scrap item {item_code} has no available batch in Main Stock.")
+        else:
+            update_log_entry(log_id, f"DEBUG: No batch info found for item {item_code}, defaulting warehouses if needed.")
 
     # 6) Save, update rate/availability, and submit
     stock_entry.save()

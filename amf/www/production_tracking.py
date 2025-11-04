@@ -4,15 +4,15 @@ from frappe import _
 @frappe.whitelist()
 def get_work_orders():
 # fetch the work_orders in two list ongoing and upcoming
-    # fetch work orders with status "In Process" or "Not Started" and not like %1000 (521000,591000,...)
+    # fetch work orders with status "In Process" or "Not Started" and not like %100_ (521000,591000,521003,...)
     ongoing = frappe.get_all(
         "Work Order",
         filters={"status": "In Process",
-                 "production_item": ["not like", "%1000"] },
+                 "production_item": ["not like", "%100_"] },
         fields=["name", "production_item","item_name","assembly_specialist_start"]
     )
 
-    # fetch work orders with status "Not Started" but submitted and not like %1000 (521000,591000,...)
+    # fetch work orders with status "Not Started" but submitted and not like %100_ (521000,591000, 52100_,...)
     upcoming = frappe.get_all(
         "Work Order",
         filters={"docstatus": 1, "status": "Not Started",

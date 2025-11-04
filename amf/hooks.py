@@ -77,11 +77,11 @@ doc_events = {
         "after_insert": "amf.amf.utils.barcode.after_insert_handler"
     },
     "Delivery Note": {
-        "before_save": "amf.amf.utils.delivery_note_api.before_save_dn"
-    },
-    "Delivery Note": {
+        "before_save": "amf.amf.utils.delivery_note_api.before_save_dn",
         "after_insert": "amf.amf.utils.delivery_note_api.auto_gen_qa_inspection"
     },
+
+        
     "Serial No": {
         "after_insert": [
             "amf.amf.utils.custom.qrcode_serial_no",
@@ -109,7 +109,9 @@ doc_events = {
         "before_save": [
             "amf.amf.utils.bom_updating.bom_before_save",
             "amf.amf.utils.bom_child_bom_resolver.apply_item_default_boms_to_rows"
-        ]
+        ],
+        "before_submit": "amf.amf.utils.bom_mgt.update_item_from_default_bom",
+        "on_update_after_submit": "amf.amf.utils.bom_mgt.update_item_from_default_bom"
     }
 }
 
@@ -122,7 +124,6 @@ scheduler_events = {
         "amf.amf.utils.capacity.update_capacity_utilization_rate",
         "amf.www.tracking.fetch_and_display_tracking_info_enqueue",
         "amf.master_crm.doctype.gravity_forms.gravity_forms.daily_sync",
-        "amf.amf.utils.bom_mgt.execute_scheduled",
         "amf.amf.utils.work_order_creation.create_work_orders_based_on_reorder_levels",
         "amf.master_crm.organization.update_global_csat"
     ],
