@@ -33,7 +33,7 @@
    "unique": 1
   }
  ],
- "modified": "2025-05-14 16:45:37.353282",
+ "modified": "2025-10-14 14:37:37.353282",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Log Entry",
@@ -54,5 +54,5 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "track_changes": 1
+ "track_changes": 0
 }
