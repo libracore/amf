@@ -456,6 +456,7 @@ def before_save_dn(doc, method):
     This function checks each delivery note item, fetches related work orders, and gathers serial numbers
     from the stock entries of the 'Manufacture' type, storing them in the 'product_serial_no' field.
     """
+    print ("===================AAAAAAAA==================")
     for item in doc.items:
         sales_order = item.against_sales_order
         
@@ -518,9 +519,12 @@ def before_save_dn(doc, method):
 
             # After processing all stock entries, update the delivery note item field
             if serial_nos:
-                limited_serials = serial_nos[:int(item.qty)]
+                all_serials = [s.strip() for s in "\n".join(serial_nos).split("\n") if s.strip()]
+                limited_serials = all_serials[:int(item.qty)]
+                limited_serials = sorted(limited_serials, key=lambda s: int(s.split("-")[1].lstrip("O")))
                 if not item.product_serial_no:
                     item.product_serial_no = '\n'.join(limited_serials)  # Join serial numbers with a newline
+                    print(f"{item.item_code}: \n{item.product_serial_no}")
             else:
                 item.product_serial_no = None  # Set to None if no serial numbers found
                 frappe.log_error(f"No serial numbers found for item {item.item_code} in Delivery Note {doc.name}")
