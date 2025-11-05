@@ -472,6 +472,7 @@ def before_save_dn(doc, method):
                     'sales_order': sales_order,
                     'production_item': item.item_code
                 }, 
+                order_by = 'creation desc',
                 fields=['name']
             )
 
@@ -490,7 +491,7 @@ def before_save_dn(doc, method):
                         'purpose': 'Manufacture',  # Only get stock entries with 'Manufacture' purpose
                         'docstatus': 1
                     },
-                    order_by='creation desc',
+                    order_by='creation asc', 
                     fields=['name']
                 )
 
@@ -517,8 +518,9 @@ def before_save_dn(doc, method):
 
             # After processing all stock entries, update the delivery note item field
             if serial_nos:
+                limited_serials = serial_nos[:int(item.qty)]
                 if not item.product_serial_no:
-                    item.product_serial_no = '\n'.join(serial_nos)  # Join serial numbers with a newline
+                    item.product_serial_no = '\n'.join(limited_serials)  # Join serial numbers with a newline
             else:
                 item.product_serial_no = None  # Set to None if no serial numbers found
                 frappe.log_error(f"No serial numbers found for item {item.item_code} in Delivery Note {doc.name}")
