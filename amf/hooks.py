@@ -55,7 +55,8 @@ doc_events = {
     "Work Order": {
         "on_submit": [
             "amf.amf.utils.custom.qr_code_to_document",
-        ]
+        ],
+        "after_insert": "amf.amf.utils.custom.qr_code_to_document"
     },
     "Lead": {
         "after_insert": [
