@@ -452,6 +452,7 @@ def check_serial_nos(doc, method):
 
 def before_save_dn(doc, method):
     print("Coucou")
+    print("Coucou")
     """
     Pre-save hook for Delivery Note to fetch and populate serial numbers from related Work Orders.
     This function checks each delivery note item, fetches related work orders, and gathers serial numbers
@@ -521,8 +522,11 @@ def before_save_dn(doc, method):
             if serial_nos:
                 print("hey")
                 print(serial_nos)
+                print("hey")
+                print(serial_nos)
                 limited_serials = serial_nos[:int(item.qty)]
                 if not item.product_serial_no:
+                    print("on set")
                     print("on set")
                     item.product_serial_no = '\n'.join(limited_serials)  # Join serial numbers with a newline
             else:
