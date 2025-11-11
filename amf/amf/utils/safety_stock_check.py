@@ -387,7 +387,7 @@ def check_stock_levels(test_mode=0):
     # Update purchase status - no doc context for top-level, so omitted logging
     
     
-    update_item_purchase_status(test_mode, log_id)
+    # update_item_purchase_status(test_mode, log_id)
 
     items = _get_items(test_mode)
     to_notify = []
