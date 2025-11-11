@@ -648,3 +648,86 @@ def duplicate_boms_with_rate_update():
     except Exception as e:
         print(_("An error occurred. Please check the Error Log. Error: {0}").format(str(e)))
 
+# # my_app/utils/bom_cost_jobs.py
+
+# import frappe
+# from frappe import _
+
+# @frappe.whitelist()
+# def enqueue_update_default_active_bom_costs():
+#     """
+#     Whitelisted trigger to enqueue a long-running background job.
+#     Returns immediately with a short status string.
+#     """
+#     print("enqueuing...")
+#     job = frappe.enqueue(
+#         "amf.amf.utils.bom_mgt.update_default_active_bom_costs",
+#         queue="long",
+#         timeout=15000
+#     )
+#     print("out enqueuing...")
+
+# def update_default_active_bom_costs():
+#     print("update_default_active_bom_costs...")
+#     """
+#     Worker: goes through every BOM where is_active = 1 and is_default = 1
+#     and calls BOM.update_cost().
+
+#     Notes (Frappe/ERPNext v12):
+#     - update_cost() is defined on the BOM DocType class in
+#       erpnext.manufacturing.doctype.bom.bom
+#     - We load each BOM as a Doc and invoke doc.update_cost()
+#     - We save and commit after each to reduce the risk of losing work on long runs
+#     """
+#     # Import here so the worker can start even if ERPNext isn't loaded at import time
+#     # from erpnext.manufacturing.doctype.bom.bom import BOM  # noqa: F401  (ensures module is loaded)
+#     print("update_default_active_bom_costs...")
+#     bom_names = frappe.db.get_all(
+#         "BOM",
+#         filters={"is_active": 1},
+#         fields=["name"],
+#         order_by="name desc"
+#     )
+
+#     total = len(bom_names)
+#     done = 0
+#     failures = []
+
+#     # Optional: announce start in the job log (no heavy logging per your style)
+#     print(f"[BOM Cost Update] Starting for {total} BOM(s).")
+
+#     for name in bom_names:
+#         try:
+#             doc = frappe.get_doc("BOM", name)
+#             # Recompute costs
+#             doc.update_cost()
+#             # Persist changes; ignore perms since this is a system job
+#             doc.save(ignore_permissions=True)
+#             # Commit after each to make progress durable on long runs
+#             frappe.db.commit()
+#             done += 1
+
+#             # Lightweight console progress (visible in worker logs)
+#             if done % 10 == 0 or done == total:
+#                 print(f"[BOM Cost Update] {done}/{total} processed...")
+
+#             # If you want realtime progress in Desk for the enqueuing user, uncomment:
+#             # frappe.publish_realtime(
+#             #     event="bom_cost_update_progress",
+#             #     message={"done": done, "total": total, "current": name},
+#             #     user=frappe.session.user
+#             # )
+
+#         except Exception as exc:
+#             # Rollback just this iteration and keep going
+#             frappe.db.rollback()
+#             failures.append(f"{name}: {exc}")
+
+#     summary = f"[BOM Cost Update] Completed: {done}/{total}. Failures: {len(failures)}."
+#     print(summary)
+
+#     # If any failures, surface a compact trace in the job’s return value
+#     if failures:
+#         # Keep it simple; avoid noisy log files unless you want them
+#         return summary + " Failed BOMs -> " + "; ".join(failures[:20])
+#     return summary
