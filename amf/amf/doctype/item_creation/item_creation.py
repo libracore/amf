@@ -339,7 +339,7 @@ def get_data_for_preview(doc, group=None):
         for motor_code in ["5", "7", "9", "B"]:
             #for syringe possible code in item_code
             for syringe_code in ["2","3","4","5","8","9","D"]:
-                item_data, _ = _prepare_pump_data(doc,  motor_code, syringe_code)
+                item_data, *_ = _prepare_pump_data(doc,  motor_code, syringe_code)
                 fg_data.append({
                     "item_code": item_data["item_code"],
                     "item_name": item_data["item_name"]
@@ -358,7 +358,6 @@ def get_data_for_preview(doc, group=None):
         print("invalid group")
     
     return fg_data
-
 
 # ==============================================================================
 # 1. MAIN ENTRY POINT (ROUTER)
@@ -417,6 +416,14 @@ def _create_simple_component_and_assembly(doc, group):
     # Create the BOM for the sub-assembly.
     create_bom_for_assembly(asm_item_code, bom_materials)
 
+    # Fetch BOM to update item valuation_rate with BOM cost
+    bom = frappe.get_doc("BOM", {"item": asm_item_code, "is_default": 1})
+    bom_cost = frappe.get_value("BOM", bom.name, "total_cost")
+    item = frappe.get_doc("Item", asm_item_code)
+    item.valuation_rate = bom_cost
+    item.save()
+    frappe.db.commit()
+
     frappe.msgprint(_("Successfully created {0} and Sub-Assembly {1}.").format(component_item_code, asm_item_code))
     return asm_item_code
 
@@ -438,6 +445,14 @@ def _create_final_valve_head_assembly(doc):
     # Create the BOM for the final assembly.
     create_bom_for_assembly(final_assembly_code, bom_materials)
 
+    # Fetch BOM to update item valuation_rate with BOM cost
+    bom = frappe.get_doc("BOM", {"item": final_assembly_code, "is_default": 1})
+    bom_cost = frappe.get_value("BOM", bom.name, "total_cost")
+    item = frappe.get_doc("Item", final_assembly_code)
+    item.valuation_rate = bom_cost
+    item.save()
+    frappe.db.commit()
+
     frappe.msgprint(_("Successfully created Final Assembly {0}.").format(final_assembly_code))
     return final_assembly_code
 
@@ -456,6 +471,14 @@ def _create_rvm_finished_goods(doc):
         #create the BOM for the new item
         create_bom_for_assembly(fg_code, bom_materials)
         created_items.append(fg_code)
+
+        # Fetch BOM to update item valuation_rate with BOM cost
+        bom = frappe.get_doc("BOM", {"item": fg_code, "is_default": 1})
+        bom_cost = frappe.get_value("BOM", bom.name, "total_cost")
+        item = frappe.get_doc("Item", fg_code)
+        item.valuation_rate = bom_cost
+        item.save()
+        frappe.db.commit()
     
     frappe.msgprint("Successfully created RVM items {0}.")
     return created_items
@@ -473,6 +496,15 @@ def _create_pump_finished_goods(doc):
             fg_code = _create_item_if_not_exists(item_data)
             create_bom_for_assembly(fg_code, bom_materials, scraps)
             created_items.append(fg_code)
+
+            # Fetch BOM to update item valuation_rate with BOM cost
+            bom = frappe.get_doc("BOM", {"item": fg_code, "is_default": 1})
+            bom_cost = frappe.get_value("BOM", bom.name, "total_cost")
+            item = frappe.get_doc("Item", fg_code)
+            item.valuation_rate = bom_cost
+            item.save()
+            frappe.db.commit()
+
     return created_items
 
 def _create_pump_hv_finished_goods(doc):
@@ -485,6 +517,15 @@ def _create_pump_hv_finished_goods(doc):
             fg_code = _create_item_if_not_exists(item_data)
             create_bom_for_assembly(fg_code, bom_materials)
             created_items.append(fg_code)
+
+            # Fetch BOM to update item valuation_rate with BOM cost
+            bom = frappe.get_doc("BOM", {"item": fg_code, "is_default": 1})
+            bom_cost = frappe.get_value("BOM", bom.name, "total_cost")
+            item = frappe.get_doc("Item", fg_code)
+            item.valuation_rate = bom_cost
+            item.save()
+            frappe.db.commit()
+
     return created_items
 
 
@@ -499,7 +540,7 @@ def _prepare_simple_component_data(doc, group):
         base_name = doc.get('plug_name')
         base_code = doc.get('plug_code')
         item_group = "Plug"
-        valuation_rate = 20 
+        valuation_rate = 0.20 
         bom_materials = [
             {"item_code": base_code, "qty": 1},
             {"item_code": "SPL.3013", "qty": doc.get('plug_acc', 0)}
@@ -508,7 +549,7 @@ def _prepare_simple_component_data(doc, group):
         base_name = doc.get('seat_name')
         base_code = doc.get('seat_code')
         item_group = "Valve Seat"
-        valuation_rate = 60
+        valuation_rate = 30
         bom_materials = [
             {"item_code": base_code, "qty": 1},
             {"item_code": "SPL.3039", "qty": doc.get('seat_acc', 0)}
@@ -524,6 +565,7 @@ def _prepare_simple_component_data(doc, group):
         "item_type": "Component",
         "valuation_rate": valuation_rate,
         "reference_code": doc.get(f'{group}_rnd'),
+        "reference_name":f"{base_code}: {base_name}",
         "tag_raw_mat": doc.get(f'{group}_mat'),
     }
 
@@ -535,6 +577,7 @@ def _prepare_simple_component_data(doc, group):
         "item_group": item_group,
         "item_type": "Sub-Assembly",
         "reference_code": f"{doc.get(f'{group}_rnd')}.ASM",
+        "reference_name": f"{assembly_item_code}: {base_name}",
     }
 
     return component_data, asm_data, bom_materials
@@ -560,6 +603,7 @@ def _prepare_valve_head_data(doc):
         "item_group": "Valve Head",
         "item_type": "Sub-Assembly", 
         "reference_code": doc.get('head_rnd'),
+        "reference_name": f"{head_code}: {head_name}",
         "description": doc.get('head_description'),
     }
 
@@ -599,6 +643,7 @@ def _prepare_rvm_data(doc, motor_info):
         "item_group": "Product",
         "item_type": "Finished Good",
         "reference_code": reference_code,
+        "reference_name": f"{item_code}: {item_name}",
         "description": (
             f"RVM series – Industrial Microfluidic Rotary Valve<br>"
             f"<b>Version</b>: Fast<br>"
@@ -680,6 +725,7 @@ def _prepare_pump_data(doc, motor_code, syringe_code):
         "item_group": "Product",
         "item_type": "Finished Good",
         "reference_code": reference_code,
+        "reference_name": f"{item_code}: {item_name}",
         "description": desc
     }
     scraps = [
@@ -724,7 +770,6 @@ def _prepare_pump_hv_data(doc, motor_code, syringe_code):
             {"item_code": syringe_item_code, "qty": 1},
             {"item_code": head_code, "qty": 1},
             {"item_code": screw_type, "qty": screw_qty},
-            {"item_code": "RVM.1204", "qty": -1},
         ]
         desc = (
             f"SPM series – Industrial Programmable Syringe Pump<br>"
@@ -741,7 +786,6 @@ def _prepare_pump_hv_data(doc, motor_code, syringe_code):
             {"item_code": syringe_item_code, "qty": 1},
             {"item_code": head_code, "qty": 1},
             {"item_code": screw_type, "qty": screw_qty},
-            {"item_code": "RVM.1204", "qty": -1},
             {"item_code": "C100", "qty": 1},
             {"item_code": "C101", "qty": 1},
         ]
@@ -761,6 +805,7 @@ def _prepare_pump_hv_data(doc, motor_code, syringe_code):
         "item_group": "Product",
         "item_type": "Finished Good",
         "reference_code": reference_code,
+        "reference_name": f"{item_code}: {item_name}",
         "description": desc
     }
     return item_data, bom_materials
@@ -793,7 +838,6 @@ def _create_item_if_not_exists(item_data):
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), f"Item Creation Failed for {item_code}")
         frappe.throw(_("Error creating item {0}: {1}").format(item_code, e))
-
 
 
         
