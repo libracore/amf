@@ -520,10 +520,14 @@ def before_save_dn(doc, method):
 
             # After processing all stock entries, update the delivery note item field
             if serial_nos:
-                all_serials = [s.strip() for s in "\n".join(serial_nos).split("\n") if s.strip()]
-                limited_serials = all_serials[:int(item.qty)]
-                limited_serials = sorted(limited_serials, key=lambda s: int(s.split("-")[1].lstrip("O")))
+                print("hey")
+                print(serial_nos)
+                print("hey")
+                print(serial_nos)
+                limited_serials = serial_nos[:int(item.qty)]
                 if not item.product_serial_no:
+                    print("on set")
+                    print("on set")
                     item.product_serial_no = '\n'.join(limited_serials)  # Join serial numbers with a newline
             else:
                 item.product_serial_no = None  # Set to None if no serial numbers found
