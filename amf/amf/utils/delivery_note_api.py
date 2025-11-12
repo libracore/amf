@@ -2,6 +2,8 @@ import frappe
 from amf.amf.utils.qr_code_generator import generate_qr_code
 import os
 from frappe.desk.form.assign_to import add as assign_to_add
+from erpnext.stock.doctype.quality_inspection_template.quality_inspection_template \
+	import get_template_details
 
 
 @frappe.whitelist()
@@ -456,7 +458,6 @@ def before_save_dn(doc, method):
     This function checks each delivery note item, fetches related work orders, and gathers serial numbers
     from the stock entries of the 'Manufacture' type, storing them in the 'product_serial_no' field.
     """
-    print ("===================AAAAAAAA==================")
     for item in doc.items:
         sales_order = item.against_sales_order
         
@@ -524,7 +525,6 @@ def before_save_dn(doc, method):
                 limited_serials = sorted(limited_serials, key=lambda s: int(s.split("-")[1].lstrip("O")))
                 if not item.product_serial_no:
                     item.product_serial_no = '\n'.join(limited_serials)  # Join serial numbers with a newline
-                    print(f"{item.item_code}: \n{item.product_serial_no}")
             else:
                 item.product_serial_no = None  # Set to None if no serial numbers found
                 frappe.log_error(f"No serial numbers found for item {item.item_code} in Delivery Note {doc.name}")
@@ -541,6 +541,35 @@ def auto_gen_qa_inspection(doc, method):
         doc: The Delivery Note document
         method: Hook method parameter (not used here)
     """
+    # check if DN have a suffix (e.g., DN-01473-1) if it has, remove the suffix for searching existing QI
+    dn_base = doc.name
+    suffix = ""
+    if '-' in doc.name[6:]:
+        idx = doc.name.index('-', 6)
+        dn_base = doc.name[:idx]
+        suffix = doc.name[idx:]
+
+    # Find any existing QI whose reference_name starts with the base DN (handles DN-01473, DN-01473-1, DN-01473-2, ...)
+    existing_qi_list = frappe.get_all(
+        "Global Quality Inspection",
+        filters=[
+            ['reference_type', '=', 'Delivery Note'],
+            ['reference_name', 'like', f'{dn_base}%']
+        ],
+        fields=['name'],
+        order_by='creation desc',
+        limit=1
+    )
+
+    if existing_qi_list:
+        existing_qi = existing_qi_list[0]['name']
+        existing_qi_doc = frappe.get_doc("Global Quality Inspection", existing_qi)
+        # Update the reference_name to the current full DN name if needed
+        if existing_qi_doc.reference_name != doc.name:
+            existing_qi_doc.db_set("reference_name", doc.name)
+        return  # Exit if a Quality Inspection already exists for this Delivery Note
+
+
     # Global var
     email = "alexandre.trachsel@amf.ch"
     client = doc.get("customer")
@@ -562,17 +591,63 @@ def auto_gen_qa_inspection(doc, method):
     
     # Ignore mandatory validations
     qi.flags.ignore_mandatory = True
+    
+    #checking for fg item in delivery note to add specific template for each fg item type
+    fg_items = [item for item in doc.items if item.item_code.startswith('4')]
+    
+    if fg_items:
+        # To avoid adding the same template multiple times for different items of the same motor code
+        processed_templates = set()
+        for fg_item in fg_items:
+            # taking second digit of item code to indentify the motor code
+            motor_code = f"5{fg_item.item_code[1]}1000"
+            
+            #checking if a template exists with a name starting with motor_code
+            fg_template = frappe.db.get_value("Quality Inspection Template", {"name": ["like", f"%{motor_code}%"]}, "name") 
+            
+            if fg_template:
+                if fg_template in processed_templates:
+                    continue  # Skip if this template has already been processed
+                processed_templates.add(fg_template)
+                fg_readings = get_template_details(fg_template)
+                
+                # Add a title row
+                title_row = qi.append("motor_specific", {})
+                title_row.is_title = 1
+                title_row.specification = fg_template
+                title_row.value = ""
+                title_row.status = ""
+                
+                for reading in fg_readings:
+                    row = qi.append("motor_specific", {})
+                    row.specification = reading.get("specification")
+                    row.value         = reading.get("value")
+                    row.status        = ""
+
+    if client:
+        client_template = frappe.db.get_value(
+            "Quality Inspection Template",
+            {"customer": client},
+            "name"
+        )
+        if client_template:
+            client_readings = get_template_details(client_template)
+
+            for c in client_readings:
+                row = qi.append("client_specific", {})
+                row.specification = c.get("specification")
+                row.value         = c.get("value")    
+                row.status        = ""
+
+
 
     # Optionally, fetch a default Quality Inspection Template for Outgoing inspections.
     # Adjust the filter or field names as necessary based on your implementation.
-    template = frappe.db.get_value("Quality Inspection Template", {"name": "Delivery Note"}, "name")
+    template = frappe.db.get_value("Quality Inspection Template", {"name": "Delivery Note"}, "name")    
+
     if template:
         qi.quality_inspection_template = template
-        template_readings = frappe.get_all(
-            "Item Quality Inspection Parameter",
-            {"parent": template},
-            ["specification", "value"]
-        )
+        template_readings = get_template_details(template)
         # Populate the Quality Inspection's readings child table with the template data
         for t in template_readings:
             row = qi.append("readings", {})
@@ -580,36 +655,25 @@ def auto_gen_qa_inspection(doc, method):
             row.value         = t.get("value")    
             row.status        = ""
     
-    if client:
-        client_template = frappe.get_all(
-            "Quality Inspection Template",
-            {"customer": client},
-            ["name"]
-            )
-        print(client_template)
-        if client_template:
-            template_name = [tpl.get("name") for tpl in client_template]
-            print(template_name[0])
-            client_readings = frappe.get_all(
-                "Item Quality Inspection Parameter",
-                {"parent": template_name[0]},
-                ["specification", "value"]
-            )
-            print(client_readings)
-            
-            for c in client_readings:
-                row = qi.append("client_specific", {})
-                row.specification = c.get("specification")
-                row.value         = c.get("value")    
-                row.status        = ""
 
+    # adding one line in items table for each item in delivery note
+    for item in doc.items:
+        item_row = qi.append("items", {})
+        item_row.item_code = item.item_code
+        item_row.item_name = item.item_name
+        item_row.item_qty  = item.qty
+        item_row.status    = ""
+        # if item has product_serial_no, add it to the item_row
+        if item.product_serial_no:
+            item_row.product_serial_no = item.product_serial_no
+        
+    
     # Insert the new Quality Inspection document (ignoring permissions if necessary)
     qi.insert(ignore_permissions=True)
     
     # Build the assignment message with Delivery Note name and client (assumed to be in 'customer')
-    
     assignment_message = f"Inspection Qualité générée pour la Delivery Note: {doc.name} pour le client: {client_name}"
-
+    
     # Auto assign the Quality Inspection to atr@amf.ch with the message
     # Create assignment arguments using the new add method signature
     assignment_args = {
@@ -620,3 +684,42 @@ def auto_gen_qa_inspection(doc, method):
         # "assignment_rule": <your_rule_here>,  # Optional if you need to specify an assignment rule.
     }
     assign_to_add(assignment_args)
+    
+    # Notify the user about the created Quality Inspection with a clickable link
+    frappe.msgprint(
+        f"""Quality Inspection: 
+          <b><a href="/desk#Form/Global Quality Inspection/{qi.name}" target="_blank">{qi.name}</a></b>
+            has been created and assigned to {email}.""",
+        title="Quality Inspection Created",
+        indicator="green"
+
+    )
+
+def check_qa_inspections_status(doc, method):
+    """
+    Check the status of all Quality Inspections linked to the Delivery Note before submission.
+    If any linked Quality Inspection is not 'Accepted', raise an exception to prevent submission.
+    """
+    # Fetch all Quality Inspections linked to this Delivery Note
+    qa_inspections = frappe.get_all(
+        "Global Quality Inspection",
+        filters={
+            "reference_type": "Delivery Note",
+            "reference_name": doc.name
+        },
+        fields=["name", "status"]
+    )
+    if not qa_inspections and doc.skip_quality_inspection != 1:
+        # No linked Quality Inspections found; nothing to check
+        frappe.throw(
+            f"No Quality Inspections found linked to Delivery Note {doc.name}. Cannot submit without Quality Inspection."
+        )
+
+    # Check the status of each Quality Inspection
+    for inspection in qa_inspections:
+        if inspection.status != "Accepted" and doc.skip_quality_inspection != 1:
+            frappe.throw(
+                f"""Cannot submit Delivery Note {doc.name} because Quality Inspection:
+                 <b><a href="/desk#Form/Global Quality Inspection/{inspection.name}" target="_blank">{inspection.name}
+                 </a></b> is not Accepted (current status: {inspection.status})."""
+            )

@@ -721,7 +721,7 @@ def _prepare_pump_hv_data(doc, motor_code, syringe_code):
     if N == "O":
         bom_materials = [
             {"item_code": f"5{X}1000", "qty": 1},
-            {"item_code": syringe["code"], "qty": 1},
+            {"item_code": syringe_item_code, "qty": 1},
             {"item_code": head_code, "qty": 1},
             {"item_code": screw_type, "qty": screw_qty},
             {"item_code": "RVM.1204", "qty": -1},
