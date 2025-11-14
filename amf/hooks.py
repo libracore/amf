@@ -53,9 +53,6 @@ doctype_list_js = {
 
 doc_events = {
     "Work Order": {
-        "on_submit": [
-            "amf.amf.utils.custom.qr_code_to_document",
-        ],
         "after_insert": "amf.amf.utils.custom.qr_code_to_document"
     },
     "Lead": {
@@ -68,7 +65,11 @@ doc_events = {
         "onload": "amf.amf.utils.stock_entry.stock_entry_onload",
         "validate": "amf.amf.utils.stock_entry.stock_entry_validate",
         "before_submit": "amf.amf.utils.stock_entry.stock_entry_before_submit",
-        "before_save": "amf.amf.utils.stock_entry.stock_entry_before_save",
+        "before_save":[ 
+            "amf.amf.utils.stock_entry.stock_entry_before_save",
+            "amf.amf.utils.stock_entry.get_stock_and_rate_override"
+            ],
+
         "on_submit": [
             "amf.amf.utils.custom.qr_code_to_document",
             "amf.amf.utils.stock_entry.check_rates_and_assign_on_submit",
@@ -79,7 +80,8 @@ doc_events = {
     },
     "Delivery Note": {
         "before_save": "amf.amf.utils.delivery_note_api.before_save_dn",
-        "after_insert": "amf.amf.utils.delivery_note_api.auto_gen_qa_inspection"
+        "after_insert": "amf.amf.utils.delivery_note_api.auto_gen_qa_inspection",
+        "before_submit": "amf.amf.utils.delivery_note_api.check_qa_inspections_status"
     },
 
         

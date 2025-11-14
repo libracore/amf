@@ -5,6 +5,7 @@ from frappe.utils import flt, now_datetime
 from datetime import datetime
 from amf.amf.utils.work_order_creation import get_default_bom
 from amf.amf.utils.utilities import update_log_entry
+from amf.amf.utils.stock_entry import get_stock_and_rate_override
 
 
 @frappe.whitelist()
@@ -221,11 +222,11 @@ def make_stock_entry(source_work_order_id, serial_no_id=None, batch_no_id=None):
             log_id, f"DEBUG: Saving Stock Entry doc {stock_entry.name}...")
         
         
-
-        # Update rate and availability
-        update_log_entry(
-            log_id, "DEBUG: Calling update_rate_and_availability_ste()...")
-        update_rate_and_availability_ste(stock_entry, None)
+        # already called in before_save hook
+        # # Update rate and availability
+        # update_log_entry(
+        #     log_id, "DEBUG: Calling update_rate_and_availability_ste()...")
+        # update_rate_and_availability_ste(stock_entry, None)
 
         update_log_entry(log_id, "DEBUG: Submitting the Stock Entry...")
         stock_entry.submit()
@@ -330,10 +331,11 @@ def start_work_order(work_order_id):
     update_log_entry(
         log_id, f"DEBUG: Saving and submitting start_work_order Stock Entry: {stock_entry.name}")
 
-    # Update valuation and availability
-    update_log_entry(
-        log_id, "DEBUG: Calling update_rate_and_availability_ste() from start_work_order()...")
-    update_rate_and_availability_ste(stock_entry, None)
+    #already called in before_save hook
+    # # Update valuation and availability
+    # update_log_entry(
+    #     log_id, "DEBUG: Calling update_rate_and_availability_ste() from start_work_order()...")
+    # update_rate_and_availability_ste(stock_entry, None)
     stock_entry.submit()
     update_log_entry(log_id, "DEBUG: Material Transfer Stock Entry submitted.")
 
@@ -566,11 +568,13 @@ def start_work_order_final(work_order_id, serial_no_id=None, batch_no_id=None):
             update_log_entry(log_id, f"DEBUG: No batch info found for item {item_code}, defaulting warehouses if needed.")
 
     # 6) Save, update rate/availability, and submit
+    print("stock_entry")
     stock_entry.save()
     update_log_entry(log_id, f"DEBUG: Saving Stock Entry {stock_entry.name} ...")
 
-    update_log_entry(log_id, "DEBUG: Calling update_rate_and_availability_ste() from start_work_order_final()...")
-    update_rate_and_availability_ste(stock_entry, None)
+    #already called in before_save hook
+    # update_log_entry(log_id, "DEBUG: Calling update_rate_and_availability_ste() from start_work_order_final()...")
+    # update_rate_and_availability_ste(stock_entry, None)
 
     update_log_entry(log_id, "DEBUG: Submitting Stock Entry...")
     stock_entry.submit()
@@ -803,7 +807,7 @@ def update_rate_and_availability_ste(stock_entry_doc, method):
 
     update_log_entry(
         log_id, f"DEBUG: Calling get_stock_and_rate() on {stock_entry_doc.name} ...")
-    stock_entry_doc.get_stock_and_rate()
+    get_stock_and_rate_override(stock_entry_doc, log_id=log_id)
     update_log_entry(log_id, "DEBUG: Completed get_stock_and_rate().")
 
 

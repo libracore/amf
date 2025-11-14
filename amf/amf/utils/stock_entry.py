@@ -1,7 +1,9 @@
 import frappe
 from erpnext.stock.doctype.stock_entry.stock_entry import StockEntry
+from erpnext.stock.utils import get_incoming_rate
 import frappe
-from frappe import _
+from frappe import _, _dict
+from frappe.utils import flt
 
 def batch_to_stock_entry(doc, method=None):
     print("Entering batch_to_stock_entry.")
@@ -652,7 +654,7 @@ def check_rates_and_assign_on_submit(doc, method):
             threshold_rate = valuation_rate * 1.10
 
             # Compare the item's rate in the Stock Entry with the threshold.
-            print(item_detail.basic_rate, threshold_rate)
+            #print(item_detail.basic_rate, threshold_rate)
             if item_detail.basic_rate > threshold_rate:
                 rate_exceeded = True
                 
@@ -698,3 +700,126 @@ def check_rates_and_assign_on_submit(doc, method):
             "priority": "High",
             "color": "#ff4d4d"
         }).insert(ignore_permissions=True) # ignore_permissions to ensure it's created by the system
+
+
+########################################################################################################
+
+@frappe.whitelist()
+def get_stock_and_rate_override(doc, method = None, log_id = None):
+    """ 
+    override of get_stock_and_rate() function for a better gestion of scraps item in stock entry
+
+    """
+    print("Entering get_stock_and_rate_override.")
+    if isinstance(doc, str):
+        doc = frappe.parse_json(doc)
+    if isinstance(doc, dict):
+        doc = frappe.get_doc(doc)  
+    
+    if not log_id:
+        # creating a new log entry doc
+        context = _dict(doctype="Stock Entry", name = f"get_stock_and_rate_override for  {doc.name}")
+        log_id = _get_or_create_log(context)
+    update_log_entry(log_id, f"[{now_datetime()}] get_stock_and_rate_override started for {doc.name}<br>")
+
+    #classic function call
+    doc.set_work_order_details()
+    update_log_entry(log_id, f"[{now_datetime()}] Set work order details for {doc.name}<br>")
+    doc.set_transfer_qty()
+    update_log_entry(log_id, f"[{now_datetime()}] Set transfer qty for {doc.name}<br>")
+    doc.set_actual_qty()
+    update_log_entry(log_id, f"[{now_datetime()}] Set actual qty for {doc.name}<br>")
+
+    
+    update_log_entry(log_id, f"[{now_datetime()}] Finished setting work order details for {doc.name}<br>")
+    #calculate_rate_and_amount_override
+    set_basic_rate_override(doc, log_id=log_id)
+    #classic function call
+    doc.distribute_additional_costs()
+    doc.update_valuation_rate()
+    doc.set_total_incoming_outgoing_value()
+    doc.set_total_amount()
+
+    if method is None:
+        doc.save()
+
+def set_basic_rate_override(doc, force=False, update_finished_item_rate=True, raise_error_if_no_rate=True, log_id=None):
+    """
+    Corrected version of ERPNext set_basic_rate()
+    Fixes scrap valuation: scrap items no longer inherit FG rate,
+    and always use BOM Scrap Item rate.
+    """
+    if not log_id:
+        # creating a new log entry doc
+        context = _dict(doctype="Stock Entry", name = f"set_basic_rate_override for  {doc.name}")
+        log_id = _get_or_create_log(context)
+    update_log_entry(
+        log_id, f"[{now_datetime()}] set_basic_rate_override started for {doc.name}<br>")
+
+    raw_material_cost = 0.0
+    scrap_material_cost = 0.0
+    fg_basic_rate = 0.0
+
+    for d in doc.get("items"):
+
+        # Detect scrap item from BOM Scrap table
+        is_scrap = frappe.db.exists(
+            "BOM Scrap Item",
+            {"parent": doc.bom_no, "item_code": d.item_code}
+        )
+
+        # DO NOT propagate FG rate to scrap
+        if d.t_warehouse and not is_scrap:
+            fg_basic_rate = flt(d.basic_rate)
+
+        args = doc.get_args_for_incoming_rate(d)
+
+        # NORMAL MATERIALS (outgoing raw materials)
+        if not d.bom_no and not is_scrap:
+            if (not flt(d.basic_rate) and not d.allow_zero_valuation_rate) or d.s_warehouse or force:
+                basic_rate = flt(get_incoming_rate(args, raise_error_if_no_rate),
+                                 doc.precision("basic_rate", d))
+                if basic_rate > 0:
+                    d.basic_rate = basic_rate
+
+            d.basic_amount = flt(flt(d.transfer_qty) * flt(d.basic_rate), d.precision("basic_amount"))
+            update_log_entry(
+                log_id, f"[{now_datetime()}] Item {d.item_code}: basic_rate set to {d.basic_rate}, basic_amount set to {d.basic_amount}<br>")
+            if not d.t_warehouse:
+                raw_material_cost += flt(d.basic_amount)
+
+        # SCRAP ITEMS (patched)
+        if is_scrap:
+            scrap_rate = flt(get_incoming_rate(args, raise_error_if_no_rate), ...)
+
+            if not scrap_rate:
+                scrap_rate = frappe.db.get_value("BOM Scrap Item", {...}, "rate") or 0
+
+            # d.allow_zero_valuation_rate = 1
+            d.basic_rate = scrap_rate
+            d.valuation_rate = scrap_rate
+            
+            d.basic_amount = flt(d.transfer_qty * scrap_rate, ...)
+            update_log_entry(
+                log_id, f"[{now_datetime()}] Scrap Item {d.item_code}: basic_rate set to {d.basic_rate}, basic_amount set to {d.basic_amount}<br>")   
+            scrap_material_cost += d.basic_amount
+
+    # FINISHED GOOD RATE CALCULATION
+    number_of_fg_items = len([t.t_warehouse for t in doc.get("items") if t.t_warehouse])
+    if (fg_basic_rate == 0.0 and number_of_fg_items == 1) or update_finished_item_rate:
+        if doc.purpose in ["Manufacture", "Repack"]:
+            for d in doc.get("items"):
+                 # Detect scrap item from BOM Scrap table
+                is_scrap = frappe.db.exists(
+                    "BOM Scrap Item",
+                    {"parent": doc.bom_no, "item_code": d.item_code}
+                )
+                
+                if d.transfer_qty and (d.bom_no or d.t_warehouse) and not is_scrap:
+                    d.basic_rate = flt((raw_material_cost - scrap_material_cost) / flt(d.transfer_qty), d.precision("basic_rate"))
+                    d.basic_amount = flt((raw_material_cost - scrap_material_cost), d.precision("basic_amount"))
+                    update_log_entry(
+                        log_id, f"[{now_datetime()}] FG Item {d.item_code}: basic_rate set to {d.basic_rate}, basic_amount set to {d.basic_amount}<br>")
+
+
+

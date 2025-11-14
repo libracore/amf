@@ -1,0 +1,45 @@
+{
+ "creation": "2025-11-12 10:31:02.304537",
+ "description": "Create a new BOM for all finished goods containing a pump (excluding HV models), with the RVM.1204 item moved to the scraps section.",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "function_description",
+  "update_pumps_bom_button"
+ ],
+ "fields": [
+  {
+   "fieldname": "function_description",
+   "fieldtype": "HTML",
+   "label": "Function Description",
+   "options": "<div style=\"font-family: Inter, sans-serif; font-size: 13px; color: #333;\">\n\n  <div style=\"border: 1px solid #e0e0e0; border-radius: 6px; padding: 12px 16px; background: #fafafa;\">\n\n    <h4 style=\"margin: 0 0 6px 0; font-size: 14px; font-weight: 600; color: #222;\">\n      Function Description\n    </h4>\n\n    <p style=\"margin: 0 0 10px 0; line-height: 1.5;\">\n      Create a new BOM for all finished goods containing a pump (excluding HV models),\n      with the <b>RVM.1204</b> item moved to the scraps section.\n    </p>\n\n    <div style=\"background: #fff; border: 1px solid #e6e6e6; border-radius: 5px; padding: 10px 12px;\">\n      <div style=\"font-size: 13px; font-weight: 600; margin-bottom: 6px;\">Example</div>\n      <div style=\"margin-bottom: 10px;\">\n        <span style=\"font-weight: 500;\">Finished Good Item:</span>\n        <b>453041: P100-O/V-D-1-12-050-C-U/S-100-P</b>\n      </div>\n\n      <!-- MATERIALS SECTION -->\n      <div style=\"border: 1px solid #ddd; border-radius: 4px; padding: 8px 10px; margin-bottom: 10px;\">\n        <div style=\"margin-bottom: 6px; font-weight: 600; color: #444;\">MATERIALS</div>\n        <ul style=\"list-style: none; padding: 0; margin: 0;\">\n          <li>551000: <span style=\"color: #555;\">OEM SPM</span></li>\n          <li>703000: <span style=\"color: #555;\">Syringe 100-P \u03bcL</span></li>\n          <li>300041: <span style=\"color: #555;\">VALVE HEAD-D-1-12-050-C-U</span></li>\n          <li>SPL.3028: <span style=\"color: #555;\">Screw ISO 7380-1 \u2013 M3x30</span></li>\n        </ul>\n      </div>\n\n      <!-- SCRAP SECTION -->\n      <div style=\"border: 1px solid #ddd; border-radius: 4px; padding: 8px 10px;\">\n        <div style=\"margin-bottom: 6px; font-weight: 600; color: #444;\">SCRAP</div>\n        <ul style=\"list-style: none; padding: 0; margin: 0;\">\n          <li>RVM.1204: <span style=\"color: #555;\">Syringe to Connector Adaptor</span></li>\n        </ul>\n      </div>\n    </div>\n\n  </div>\n\n</div>\n"
+  },
+  {
+   "fieldname": "update_pumps_bom_button",
+   "fieldtype": "Button",
+   "label": "Update_Pumps_BOM"
+  }
+ ],
+ "issingle": 1,
+ "modified": "2025-11-12 10:34:41.892320",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "Update Pumps BOM",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}
