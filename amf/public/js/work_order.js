@@ -17,4 +17,8 @@ cur_frm.dashboard.add_transactions([
         'label': __("Planning"),
         'items': ["Planning"]
     },
+    {
+        'label': __("Timer"),
+        'items': ["Timer Production"]
+    },
 ]);

@@ -115,13 +115,20 @@ doc_events = {
         ],
         "before_submit": "amf.amf.utils.bom_mgt.update_item_from_default_bom",
         "on_update_after_submit": "amf.amf.utils.bom_mgt.update_item_from_default_bom"
-    }
+    },
+
+    "Timer Production": {
+        "before_save": "amf.amf.doctype.timer_production.timer_production.timer_before_save"
+    },
 }
 
 # Scheduled Tasks
 # ---------------
 
 scheduler_events = {
+    "hourly": [
+        "amf.amf.amf.doctype.timer_production.timer_production.send_timer_alert"
+    ],
     "daily": [
         "amf.amf.utils.item_image.update_item_images",
         "amf.amf.utils.capacity.update_capacity_utilization_rate",

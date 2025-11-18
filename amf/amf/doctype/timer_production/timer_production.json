@@ -1,0 +1,80 @@
+{
+ "autoname": "format: TIMER/{work_order}",
+ "creation": "2025-11-13 10:12:58.866284",
+ "description": "\"Timer Production\" serves as a live dashboard for tracking and managing ongoing production timers within a manufacturing workstation.\nIt acts as a single operational hub that stores all active or paused work order timers in a child table, allowing operators to start, pause, resume, and stop time tracking for each production order directly from a single interface (typically a shared workshop tablet).\n\nCompleted timers are removed automatically ensuring that the list always represents the current live production activity.",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "work_order",
+  "status",
+  "column_break_3",
+  "total_duration",
+  "operator",
+  "section_break_6",
+  "sessions_list"
+ ],
+ "fields": [
+  {
+   "fieldname": "work_order",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Work Order",
+   "options": "Work Order",
+   "reqd": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "\nIN PROCESS\nPAUSED\nFINISHED"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_duration",
+   "fieldtype": "Float",
+   "label": "Total duration",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_6",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "operator",
+   "fieldtype": "Data",
+   "label": "Actual Operator"
+  },
+  {
+   "fieldname": "sessions_list",
+   "fieldtype": "Table",
+   "label": "Sessions List",
+   "options": "Work Order Timer Table"
+  }
+ ],
+ "modified": "2025-11-18 08:21:09.797086",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "Timer Production",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
