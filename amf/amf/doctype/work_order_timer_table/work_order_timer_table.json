@@ -1,0 +1,60 @@
+{
+ "creation": "2025-11-13 09:59:50.968478",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "start_time",
+  "stop_time",
+  "duration",
+  "column_break_5",
+  "operator",
+  "comment"
+ ],
+ "fields": [
+  {
+   "fieldname": "operator",
+   "fieldtype": "Data",
+   "label": "Session Operator"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "start_time",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Start Time"
+  },
+  {
+   "fieldname": "stop_time",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Stop Time"
+  },
+  {
+   "fieldname": "duration",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Duration",
+   "read_only": 1
+  },
+  {
+   "fieldname": "comment",
+   "fieldtype": "Small Text",
+   "label": "Comment"
+  }
+ ],
+ "istable": 1,
+ "modified": "2025-11-17 14:13:33.805961",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "Work Order Timer Table",
+ "owner": "Administrator",
+ "permissions": [],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

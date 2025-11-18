@@ -1,0 +1,37 @@
+{
+ "creation": "2025-11-17 14:49:44.076291",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "operator",
+  "duration"
+ ],
+ "fields": [
+  {
+   "fieldname": "operator",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Operator",
+   "read_only": 1
+  },
+  {
+   "fieldname": "duration",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Duration",
+   "read_only": 1
+  }
+ ],
+ "istable": 1,
+ "modified": "2025-11-17 16:03:06.847548",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "Work Order Duration Table",
+ "owner": "Administrator",
+ "permissions": [],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

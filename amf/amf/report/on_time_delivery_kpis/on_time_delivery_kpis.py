@@ -39,7 +39,7 @@ def get_data(filters):
     if filters.item_group:
         extra_filters += """ AND i.item_group = "{}" """.format(filters.item_group)
     if not filters.include_rd:
-        extra_filters += """ AND (so.sales_order_type IS NULL OR so.sales_order_type != 'R&D') """
+        extra_filters += """ AND (so.sales_order_type IS NULL OR so.sales_order_type != 'R&D' OR so.sales_order_type != 'Hybrid') """
     extra_filters += """ AND dn.is_return != 1 """  # Exclude delivery note returns
     sql_query = """
 SELECT

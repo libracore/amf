@@ -567,6 +567,9 @@ def _prepare_simple_component_data(doc, group):
         "reference_code": doc.get(f'{group}_rnd'),
         "reference_name":f"{base_code}: {base_name}",
         "tag_raw_mat": doc.get(f'{group}_mat'),
+        "is_purchase_item": 0,
+        "country_of_origin": "Switzerland",
+        "item_default": "Main Stock - AMF21",
     }
 
     # Assembly code is derived by setting the second digit to '1'
@@ -578,6 +581,9 @@ def _prepare_simple_component_data(doc, group):
         "item_type": "Sub-Assembly",
         "reference_code": f"{doc.get(f'{group}_rnd')}.ASM",
         "reference_name": f"{assembly_item_code}: {base_name}",
+        "is_purchase_item": 0,
+        "country_of_origin": "Switzerland",
+        "item_default": "Main Stock - AMF21",
     }
 
     return component_data, asm_data, bom_materials
@@ -605,6 +611,10 @@ def _prepare_valve_head_data(doc):
         "reference_code": doc.get('head_rnd'),
         "reference_name": f"{head_code}: {head_name}",
         "description": doc.get('head_description'),
+        "is_purchase_item": 0,
+        "country_of_origin": "Switzerland",
+        "is_sales_item": 1,
+        "item_default": "Main Stock - AMF21",
     }
 
     bom_materials = [
@@ -651,7 +661,12 @@ def _prepare_rvm_data(doc, motor_info):
             f"<b>Body</b>: P201-O<br>"
             f"{head_desc}<br>"
             f"______________________________________________________"
-        )
+        ),
+        "has_batch_no": 0,
+        "is_purchase_item": 0,
+        "country_of_origin": "Switzerland",
+        "is_sales_item": 1,
+        "item_default": "Main Stock - AMF21",
     }
     return item_data, bom_materials
 
@@ -726,7 +741,12 @@ def _prepare_pump_data(doc, motor_code, syringe_code):
         "item_type": "Finished Good",
         "reference_code": reference_code,
         "reference_name": f"{item_code}: {item_name}",
-        "description": desc
+        "description": desc,
+        "has_batch_no": 0,
+        "is_purchase_item": 0,
+        "country_of_origin": "Switzerland",
+        "is_sales_item": 1,
+        "item_default": "Main Stock - AMF21",
     }
     scraps = [
             {"item_code": "RVM.1204", "qty": 1}
@@ -806,7 +826,11 @@ def _prepare_pump_hv_data(doc, motor_code, syringe_code):
         "item_type": "Finished Good",
         "reference_code": reference_code,
         "reference_name": f"{item_code}: {item_name}",
-        "description": desc
+        "description": desc,
+        "has_batch_no": 0,
+        "is_purchase_item": 0,
+        "country_of_origin": "Switzerland",
+        "item_default": "Main Stock - AMF21",
     }
     return item_data, bom_materials
 
