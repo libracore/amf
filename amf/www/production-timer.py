@@ -302,6 +302,10 @@ def get_work_order_item(work_order):
 @frappe.whitelist()
 def update_operator(work_order, operator):
     _ensure_logged_in()
+    operator = operator.upper()
+    # check if operator exist
+    if not frappe.db.get_all("User", {"username": operator}, "name"):
+        frappe.throw(_("L'opérateur {0} n'existe pas.").format(operator))
 
     clean_timer_trigram(operator)
     timer = frappe.get_doc("Timer Production", {"work_order": work_order})
