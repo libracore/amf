@@ -41,6 +41,7 @@ def get_timer_details(work_order):
     - status
     - total_seconds  (toujours en secondes)
     - active_sessions : liste de dicts {operator, start_time} pour chaque session active
+    - dict durée totale par opérateur sur cette OF
     """
     _ensure_logged_in()
 
@@ -72,6 +73,7 @@ def get_timer_details(work_order):
             })
 
     timer["active_sessions"] = active_sessions
+    timer["operators_time"] = get_operators_time(work_order)
 
     return timer
 
@@ -339,7 +341,7 @@ def change_operator(work_order, old_operator, new_operator):
         frappe.throw(_("L'opérateur {0} n'existe pas.").format(new_operator))
 
     clean_assignement(new_operator)
-    
+
     timer = frappe.get_doc("Timer Production", {"work_order": work_order})
     
     # check is session is active for old_operator
@@ -480,3 +482,30 @@ def clean_assignement(trigram):
         timer.assigned_operators = "/".join(split_ops)
         timer.save(ignore_permissions=True)
 
+
+
+# ==================================================
+#  GET OPERATORS TIME ON A WORK ORDER
+# ==================================================
+@frappe.whitelist()
+def get_operators_time(work_order):
+    """
+    Retourne le temps total passé par chaque opérateur sur l'OF.
+    Résultat : dict {operator: total_seconds}
+    """
+    _ensure_logged_in()
+
+    sessions = frappe.db.sql("""
+        SELECT operator, SUM(TIMESTAMPDIFF(SECOND, start_time, stop_time)) AS total_seconds
+        FROM `tabWork Order Timer Table`
+        WHERE parenttype='Timer Production' AND parent IN (
+            SELECT name FROM `tabTimer Production` WHERE work_order=%s
+        )
+        GROUP BY operator
+    """, (work_order,), as_dict=True)
+
+    result = {}
+    for sess in sessions:
+        result[sess.operator] = int(sess.total_seconds or 0)
+
+    return result
