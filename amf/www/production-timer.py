@@ -13,17 +13,17 @@ def _ensure_logged_in():
 # ==================================================
 #  UTILITY — return active session start_time
 # ==================================================
-def get_last_start_time(timer_name):
+def get_last_start_time(timer_name, operator):
     """
     Retourne le start_time de la dernière session active (où stop_time est NULL).
     """
     row = frappe.db.sql("""
         SELECT start_time
         FROM `tabWork Order Timer Table`
-        WHERE parent=%s AND (stop_time IS NULL OR stop_time = '')
+        WHERE parent=%s AND operator=%s AND stop_time IS NULL 
         ORDER BY idx DESC
         LIMIT 1
-    """, (timer_name,), as_dict=True)
+    """, (timer_name, operator), as_dict=True)
 
     return row[0].start_time if row else None
 
@@ -36,18 +36,18 @@ def get_timer_details(work_order):
     """
     Retourne les infos propres du timer :
     - name
-    - operator
+    - assigned_operators
     - work_order
     - status
     - total_seconds  (toujours en secondes)
-    - start_time     (uniquement si une session active existe)
+    - active_sessions : liste de dicts {operator, start_time} pour chaque session active
     """
     _ensure_logged_in()
 
     timer = frappe.db.get_value(
         "Timer Production",
         {"work_order": work_order},
-        ["name", "operator", "status", "total_duration", "work_order"],
+        ["name", "assigned_operators", "status", "total_duration", "work_order"],
         as_dict=True
     )
     if not timer:
@@ -56,11 +56,24 @@ def get_timer_details(work_order):
     # Toujours en secondes
     timer["total_seconds"] = int(timer.get("total_duration") or 0)
 
-    # Dernier start_time actif
-    timer["start_time"] = get_last_start_time(timer["name"])
+    # Liste des opérateurs assignés
+    operators = [
+        op.strip() for op in (timer.get("assigned_operators") or "").split("/")
+        if op.strip()
+    ]
+
+    active_sessions = []
+    for op in operators:
+        st = get_last_start_time(timer["name"], op)
+        if st:
+            active_sessions.append({
+                "operator": op,
+                "start_time": st
+            })
+
+    timer["active_sessions"] = active_sessions
 
     return timer
-
 
 # ==================================================
 #  GET ACTIVE TIMERS
@@ -88,7 +101,7 @@ def get_active_timers():
 #  SEARCH TIMER BY OF
 # ==================================================
 @frappe.whitelist()
-def search_timer_by_of(search_input):
+def search_timer(search_input):
     _ensure_logged_in()
     if not search_input:
         frappe.throw(_("Le paramètre 'research' est manquant."))
@@ -98,24 +111,26 @@ def search_timer_by_of(search_input):
         work_order = get_normalized_of_name(search_input) 
     
     else:
-        # search the latest timer for the given trigram
+        # search the latest timer with the search input as trigram in assigned_operators
         trigram = search_input.upper()
         timer = frappe.db.sql("""
             SELECT work_order
             FROM `tabTimer Production`
-            WHERE operator=%s
+            WHERE assigned_operators LIKE %s
+                AND status IN ("IN PROCESS", "PAUSED")
             ORDER BY modified DESC
             LIMIT 1
-        """, (trigram,), as_dict=True)
+        """, ("%" + trigram + "%",), as_dict=True)
         if not timer:
-            frappe.throw(_("Aucun timer trouvé pour l'opérateur {0}.").format(trigram))
+            return None
         work_order = timer[0].work_order 
 
-    #check if work order status is in process 
+    #check if work order is submitted
     of_status = frappe.db.get_value("Work Order", work_order, "status")
-    if of_status != "In Process":
-        frappe.throw(_("L'ordre de travail {0} n'est pas en statut 'En cours'. Statut actuel : {1}").format(work_order, of_status))
-        
+    if not of_status:
+        frappe.throw(_("L'OF {0} n'existe pas.").format(work_order))
+    if of_status in ["Completed", "Stopped", "Cancelled"]:
+        frappe.throw(_("L'OF {0} est \"{1}\".").format(work_order, of_status))
 
     timer = get_timer_details(work_order)
 
@@ -134,11 +149,11 @@ def search_timer_by_of(search_input):
     if trigram  in ["PRD", "administrator"]:
         trigram = ""  # avoid generic trigram for production staff user
     else:
-        clean_timer_trigram(trigram)
+        clean_assignement(trigram)
     new_timer = frappe.get_doc({
         "doctype": "Timer Production",
         "work_order": work_order,
-        "operator": trigram,
+        "assigned_operators": trigram,
         "status": "PAUSED",
         "total_duration": 0
     })
@@ -151,19 +166,17 @@ def search_timer_by_of(search_input):
 #  START TIMER
 # ==================================================
 @frappe.whitelist()
-def start_timer(work_order):
+def start_timer(work_order,trigram):
     _ensure_logged_in()
 
     timer = frappe.get_doc("Timer Production", {"work_order": work_order})
-
-    if timer.status == "IN PROCESS":
-        return {"status": "IN PROCESS", "message": "Déjà en cours."}
 
     # Nouvelle session
     timer.append("sessions_list", {
         "start_time": frappe.utils.now_datetime(),
         "stop_time": None,
-        "duration": 0
+        "duration": 0,
+        "operator": trigram
     })
 
     timer.status = "IN PROCESS"
@@ -179,26 +192,28 @@ def start_timer(work_order):
 def pause_timer(work_order, operator):
     _ensure_logged_in()
 
+    operator = operator.upper()
     timer = frappe.get_doc("Timer Production", {"work_order": work_order})
 
-    if timer.status != "IN PROCESS":
-        return {"status": "PAUSED", "message": "Timer déjà en pause."}
+    paused = False
 
-    # Trouver la session active
-    for sess in reversed(timer.sessions_list):
-        if not sess.stop_time:
-            now = frappe.utils.now_datetime()
+    now = frappe.utils.now_datetime()
+
+    # Fermer la session ACTIVE de cet opérateur
+    for sess in timer.sessions_list:
+        if sess.operator == operator and sess.stop_time is None:
             sess.stop_time = now
-            sess.operator = operator
-
-            # already done in timer_before_save
-            # delta = (now - sess.start_time).total_seconds()
-            # sess.duration = delta  # STOCKAGE DANS LA TABLE
-
-            # timer.total_duration = (timer.total_duration or 0) + delta
+            paused = True
             break
 
-    timer.status = "PAUSED"
+    if not paused:
+        frappe.msgprint(_("Aucune session active trouvée pour l'opérateur {0}.").format(operator))
+        return None
+
+    # Statut global = IN PROCESS s'il reste au moins une session active
+    remaining_active = any(s.stop_time is None for s in timer.sessions_list)
+    timer.status = "IN PROCESS" if remaining_active else "PAUSED"
+
     timer.save(ignore_permissions=True)
 
     return {"status": "PAUSED", "message": "Timer mis en pause."}
@@ -213,7 +228,7 @@ def finish_timer(work_order):
     """
     Termine un timer :
     - Si il est en PAUSED → passe en FINISHED.
-    - Si il est en IN PROCESS → exécute la pause, ajoute la durée, puis FINISHED.
+    - Si il est en IN PROCESS → exécute la pause, puis FINISHED.
     - Si déjà FINISHED → renvoie un message.
     """
     _ensure_logged_in()
@@ -233,39 +248,12 @@ def finish_timer(work_order):
         for sess in reversed(timer.sessions_list):
             if not sess.stop_time:
                 sess.stop_time = now
-                sess.operator = timer.operator
-                
-                # already done in timer_before_save
-                # delta = (now - sess.start_time).total_seconds()
-                # sess.duration = delta
-                # timer.total_duration = (timer.total_duration or 0) + delta
-                break
+                sess.comment = "Auto-pause lors du FINISH"
 
     # Mettre FINISHED
     timer.status = "FINISHED"
-    timer.operator = ""
+    timer.assigned_operators = ""
     timer.save(ignore_permissions=True)
-    
-    # already in timer_before_save
-    # # insérer la durée totale dans la doctype de l'OF
-    # wo_doc = frappe.get_doc("Work Order", work_order)
-    # wo_doc.total_duration = timer.total_duration
-    
-    # # obtenir la durée totale par opérateur ayant travaillé sur cette OF
-    # operator_durations = {}
-
-    # for sess in timer.sessions_list:
-    #     op = sess.operator or "Inconnu"
-    #     operator_durations[op] = operator_durations.get(op,0) + (sess.duration or 0)
-    
-    # wo_doc.duration_table = []
-    # for op, dur in operator_durations.items():
-    #     wo_doc.append("duration_table", {
-    #         "operator": op,
-    #         "duration": dur
-    #     })
-
-    # wo_doc.save(ignore_permissions=True)
 
     return {"status": "FINISHED", "message": "Timer terminé avec succès."}
 
@@ -300,20 +288,80 @@ def get_work_order_item(work_order):
 #  UPDATE OPERATOR
 # ==================================================
 @frappe.whitelist()
-def update_operator(work_order, operator):
+def add_operator(work_order, operator):
+    """
+    Met à jour l'opérateur assigné au timer de l'OF.
+    assigned_operators = "" => operator
+    assigned_operators = "MCH/ARD" => "MCH/ARD/<operator>"
+    assigned_operators = "MCH" => "MCH/<operator>" 
+    Nettoie les anciennes assignations avant de mettre à jour.
+    """
     _ensure_logged_in()
+    
     operator = operator.upper()
+    
     # check if operator exist
     if not frappe.db.get_all("User", {"username": operator}, "name"):
         frappe.throw(_("L'opérateur {0} n'existe pas.").format(operator))
 
-    clean_timer_trigram(operator)
+    clean_assignement(operator)
+    
     timer = frappe.get_doc("Timer Production", {"work_order": work_order})
-    timer.operator = operator
+    
+    exisiting_ops = []
+    if timer.assigned_operators:
+        exisiting_ops = [op.strip() for op in timer.assigned_operators.split("/") if op.strip()]
+
+    if operator not in exisiting_ops:
+        exisiting_ops.append(operator)
+
+    timer.assigned_operators = "/".join(exisiting_ops)
+
+
     timer.save(ignore_permissions=True)
 
     return {"message": "Opérateur mis à jour"}
 
+@frappe.whitelist()
+def change_operator(work_order, old_operator, new_operator):
+    """
+    Remplace un opérateur assigné au timer de l'OF par un autre.
+    assigned_operators = "MCH/ARD" , old_operator = "ARD", new_operator = "CBE" => "MCH/CBE"
+    assigned_operators = "MCH" , old_operator = "MCH", new_operator = "CBE" => "CBE"
+    """
+    _ensure_logged_in()
+    
+    old_operator = old_operator.upper()
+    new_operator = new_operator.upper()
+    
+    # check if new_operator exist
+    if not frappe.db.get_all("User", {"username": new_operator}, "name"):
+        frappe.throw(_("L'opérateur {0} n'existe pas.").format(new_operator))
+
+    clean_assignement(new_operator)
+    
+    timer = frappe.get_doc("Timer Production", {"work_order": work_order})
+    
+    # check is session is active for old_operator
+    if timer.status == "IN PROCESS":
+        for sess in reversed(timer.sessions_list):
+            if sess.operator == old_operator and sess.stop_time is None:
+                # make a pause on this session
+                now = frappe.utils.now_datetime()
+                sess.stop_time = now
+                sess.comment = "Auto-pause avant changement d'opérateur"
+                break
+            
+    split_ops = [op.strip() for op in timer.assigned_operators.split("/") if op.strip()]
+    if old_operator in split_ops:
+        split_ops.remove(old_operator)
+    if new_operator not in split_ops:
+        split_ops.append(new_operator)
+    timer.assigned_operators = "/".join(split_ops)
+
+    timer.save(ignore_permissions=True)
+
+    return {"message": "Opérateur mis à jour"}
 
 
 # ==================================================
@@ -386,20 +434,49 @@ def get_trigram_from_user():
 #  CLEAN TIMER TRIGRAM
 # =================================================
 @frappe.whitelist()
-def clean_timer_trigram(trigram):
+def clean_assignement(trigram):
     """
-    fetch all active timers (paused, in process) with given trigram and set trigram to empty string
+    fetch all active timers (paused, in process) with its assigned_operators and remove trigram to avoid multiple assignments
+    if assigned_operators = "MCH/ARD/CBE" and trigram = "ARD" => assigned_operators = "MCH/CBE"
+    if assigned_operators = "MCH/ARD" and trigram = "ARD" => assigned_operators = "MCH"
+    if assigned_operators = "ARD" and trigram = "ARD" => assigned_operators = ""
+    also, if timer is in process, make a pause before removing the trigram
     """
+
+    trigram = trigram.upper()
     timers = frappe.get_all(
         "Timer Production",
-        filters={"operator": trigram, "status": ["in", ["PAUSED", "IN PROCESS"]]},
+        filters={
+            "assigned_operators": ["like", f"%{trigram}%"],
+            "status": ["in", ["PAUSED", "IN PROCESS"]]},
         fields=["name"]
     )
 
     for t in timers:
         timer = frappe.get_doc("Timer Production", t["name"])
+        
         if timer.status == "IN PROCESS":
-            frappe.throw(_("L'opérateur {0} a un timer en cours pour l'OF {1}. Veuillez terminer ce timer avant de continuer.").format(trigram, timer.work_order))
-        timer.operator = ""
+            # make a pause and check status
+            frappe.msgprint("Vous travaillez actuellement sur le timer: {}, mise en pause de la session liée à votre trigramme".format(timer.name))
+            now = frappe.utils.now_datetime()
+            
+            for sess in reversed(timer.sessions_list):
+                
+                if sess.operator == trigram and sess.stop_time is None:
+                    sess.stop_time = now
+                    sess.comment = "Auto-pause avant nettoyage assignation"
+                    #sess.operator = trigram
+                    break
+                
+            remaining_active = any(sess.stop_time is None for sess in timer.sessions_list)
+            if remaining_active:
+                timer.status = "IN PROCESS"
+            else:
+                timer.status = "PAUSED"
+
+        split_ops = [op.strip() for op in timer.assigned_operators.split("/") if op.strip()]
+        if trigram in split_ops:
+            split_ops.remove(trigram)
+        timer.assigned_operators = "/".join(split_ops)
         timer.save(ignore_permissions=True)
 
