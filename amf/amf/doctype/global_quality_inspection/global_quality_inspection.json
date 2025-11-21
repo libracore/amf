@@ -30,7 +30,7 @@
   "quality_inspection_template",
   "readings",
   "items",
-  "motor_specific",
+  "item_specific",
   "client_specific"
  ],
  "fields": [
@@ -212,20 +212,20 @@
    "options": "Quality Inspection Reading"
   },
   {
-   "fieldname": "motor_specific",
-   "fieldtype": "Table",
-   "label": "Motor specific",
-   "options": "Quality Inspection Reading"
-  },
-  {
    "fieldname": "items",
    "fieldtype": "Table",
    "label": "Items",
    "options": "Quality Inspection Items Table"
+  },
+  {
+   "fieldname": "item_specific",
+   "fieldtype": "Table",
+   "label": "Item Specific",
+   "options": "Quality Inspection Reading"
   }
  ],
  "icon": "fa fa-search",
- "modified": "2025-11-11 12:21:47.282563",
+ "modified": "2025-11-18 13:44:07.880604",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Global Quality Inspection",

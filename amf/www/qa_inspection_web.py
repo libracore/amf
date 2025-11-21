@@ -38,14 +38,14 @@ def get_quality_inspection_by_dn(delivery_note):
         "reference_name": doc.get("reference_name"),
         "readings": _child_list(doc, "readings"),
         "items": _child_list(doc, "items"),
-        "motor_specific": _child_list(doc, "motor_specific"),
+        "item_specific": _child_list(doc, "item_specific"),
         "client_specific": _child_list(doc, "client_specific"),
     }
 
 @frappe.whitelist(allow_guest=False)
 def submit_quality_results(docname, data, global_status=None, verified_by=None):
     """
-    Met à jour les sous-tables (readings, items, motor_specific, client_specific)
+    Met à jour les sous-tables (readings, items, item_specific, client_specific)
     et le status global du document Global Quality Inspection.
     """
     import json
