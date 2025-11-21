@@ -245,13 +245,13 @@ def stock_entry_before_save(doc, method):
     else:
         _update_quantities(doc, log_id)
         update_log_entry(log_id, f"[{now_datetime()}] Before Save: quantites set for {doc.name}<br>")
-    if not doc.update_rate_items_method:
-        update_log_entry(log_id, f"[{now_datetime()}] Before Save: update rate flag not set<br>")
-    else:
-        _update_rates(doc, log_id)
-        update_log_entry(log_id, f"[{now_datetime()}] Before Save: rates set for {doc.name}<br>")
+    # if not doc.update_rate_items_method:
+    #     update_log_entry(log_id, f"[{now_datetime()}] Before Save: update rate flag not set<br>")
+    # else:
+    #     _update_rates(doc, log_id)
+    #     update_log_entry(log_id, f"[{now_datetime()}] Before Save: rates set for {doc.name}<br>")
     
-    if doc.update_quantity_items_method or doc.update_rate_items_method:
+    if doc.update_quantity_items_method: # or doc.update_rate_items_method:
         # Retrieve log messages and display to user
         try:
             log = frappe.get_doc("Log Entry", log_id)
@@ -710,6 +710,10 @@ def get_stock_and_rate_override(doc, method = None, log_id = None):
     override of get_stock_and_rate() function for a better gestion of scraps item in stock entry
 
     """
+    if not doc.update_rate_items_method:
+        print("get_stock_and_rate_override: update_rate_items_method flag not set. Return.")
+        return
+    
     print("Entering get_stock_and_rate_override.")
     if isinstance(doc, str):
         doc = frappe.parse_json(doc)
@@ -766,7 +770,7 @@ def set_basic_rate_override(doc, force=False, update_finished_item_rate=True, ra
         is_scrap = frappe.db.exists(
             "BOM Scrap Item",
             {"parent": doc.bom_no, "item_code": d.item_code}
-        )
+        )# or d.t_warehouse in ["Scrap - AMF21","Rework - AMF21"] :
 
         # DO NOT propagate FG rate to scrap
         if d.t_warehouse and not is_scrap:
@@ -789,7 +793,7 @@ def set_basic_rate_override(doc, force=False, update_finished_item_rate=True, ra
                 raw_material_cost += flt(d.basic_amount)
 
         # SCRAP ITEMS (patched)
-        if is_scrap:
+        if is_scrap: 
             scrap_rate = flt(get_incoming_rate(args, raise_error_if_no_rate), ...)
 
             if not scrap_rate:
