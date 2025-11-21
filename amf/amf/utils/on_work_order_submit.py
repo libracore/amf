@@ -15,7 +15,7 @@ def generate_qr(doc, method=None):
 
     # get some data from the Work Order to put in the QR code
     #data = doc.name  # for example
-    data = frappe.utils.get_url_to_form(doc.doctype, doc.name)
+    data = f"https://amf.libracore.ch/production-timer?param={doc.name}"
 
     # generate the QR code
     qr_code_str = generate_qr_code(data)

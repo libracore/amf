@@ -547,11 +547,9 @@ def auto_gen_qa_inspection(doc, method):
     """
     # check if DN have a suffix (e.g., DN-01473-1) if it has, remove the suffix for searching existing QI
     dn_base = doc.name
-    suffix = ""
     if '-' in doc.name[6:]:
         idx = doc.name.index('-', 6)
         dn_base = doc.name[:idx]
-        suffix = doc.name[idx:]
 
     # Find any existing QI whose reference_name starts with the base DN (handles DN-01473, DN-01473-1, DN-01473-2, ...)
     existing_qi_list = frappe.get_all(
@@ -595,8 +593,28 @@ def auto_gen_qa_inspection(doc, method):
     
     # Ignore mandatory validations
     qi.flags.ignore_mandatory = True
+
+
+    for item in doc.items:
+        #check if there is a template linked to item_code
+        item_template = frappe.db.get_value("Quality Inspection Template", {"name": ["like", f"% {item.item_code} %"]}, "name")
+        if item_template:
+            print("item_template:", item_template)
+            item_readings = get_template_details(item_template)
+            # Add a title row
+            title_row = qi.append("item_specific", {})
+            title_row.is_title = 1
+            title_row.specification = item_template
+            title_row.value = ""
+            title_row.status = ""
+            
+            for reading in item_readings:
+                row = qi.append("item_specific", {})
+                row.specification = reading.get("specification")
+                row.value         = reading.get("value")
+                row.status        = ""
     
-    #checking for fg item in delivery note to add specific template for each fg item type
+    # checking for fg item in delivery note to add specific template for each fg item type
     fg_items = [item for item in doc.items if item.item_code.startswith('4')]
     
     if fg_items:
@@ -606,8 +624,8 @@ def auto_gen_qa_inspection(doc, method):
             # taking second digit of item code to indentify the motor code
             motor_code = f"5{fg_item.item_code[1]}1000"
             
-            #checking if a template exists with a name starting with motor_code
-            fg_template = frappe.db.get_value("Quality Inspection Template", {"name": ["like", f"%{motor_code}%"]}, "name") 
+            # checking if a template exists with a name starting with motor_code
+            fg_template = frappe.db.get_value("Quality Inspection Template", {"name": ["like", f"% {motor_code} %"]}, "name") 
             
             if fg_template:
                 if fg_template in processed_templates:
@@ -616,18 +634,18 @@ def auto_gen_qa_inspection(doc, method):
                 fg_readings = get_template_details(fg_template)
                 
                 # Add a title row
-                title_row = qi.append("motor_specific", {})
+                title_row = qi.append("item_specific", {})
                 title_row.is_title = 1
                 title_row.specification = fg_template
                 title_row.value = ""
                 title_row.status = ""
                 
                 for reading in fg_readings:
-                    row = qi.append("motor_specific", {})
+                    row = qi.append("item_specific", {})
                     row.specification = reading.get("specification")
                     row.value         = reading.get("value")
                     row.status        = ""
-
+    
     if client:
         client_template = frappe.db.get_value(
             "Quality Inspection Template",

@@ -10,7 +10,7 @@
   "status",
   "column_break_3",
   "total_duration",
-  "operator",
+  "assigned_operators",
   "section_break_6",
   "sessions_list"
  ],
@@ -44,18 +44,18 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "operator",
-   "fieldtype": "Data",
-   "label": "Actual Operator"
-  },
-  {
    "fieldname": "sessions_list",
    "fieldtype": "Table",
    "label": "Sessions List",
    "options": "Work Order Timer Table"
+  },
+  {
+   "fieldname": "assigned_operators",
+   "fieldtype": "Data",
+   "label": "Actual Operator(s)"
   }
  ],
- "modified": "2025-11-18 08:21:09.797086",
+ "modified": "2025-11-20 11:45:14.342342",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Timer Production",
