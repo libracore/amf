@@ -16,7 +16,6 @@ def auto_gen_qa_inspection(batch_name):
     if not doc:
         return
     
-    print("Generating Quality Inspection for Batch:", doc.name)
     email = "alexandre.trachsel@amf.ch"
 
     item_code = doc.item
@@ -32,8 +31,6 @@ def auto_gen_qa_inspection(batch_name):
         qi.reference_name = doc.name
         qi.batch_no = doc.name
         qi.sample_size = get_batch_qty(batch_no=doc.name, warehouse="Quality Control - AMF21")
-        print("Sample Size:", qi.sample_size)
-        print("Batch Qty:", get_batch_qty(batch_no=doc.name, warehouse="Quality Control - AMF21"))
         description = frappe.db.get_value("Item", item_code, "internal_description") or ""
 
         description = description.replace("<b>", "").replace("</b>", "")
@@ -78,7 +75,6 @@ def auto_gen_qa_inspection(batch_name):
                 row.value         = detail.get("value")
                 row.status        = ""
         elif item_group == "Valve Seat":
-            print("Adding Valve Seat template details")
             template_details = get_template_details("Contrôle usinage SEAT")
             # Add a title row
             title_row = qi.append("item_specific", {})
@@ -98,22 +94,23 @@ def auto_gen_qa_inspection(batch_name):
             qi.quality_inspection_template = general_template
             template_details = get_template_details(general_template)
             for detail in template_details:
-                row = qi.append("reading", {})
+                row = qi.append("readings", {})
                 row.specification = detail.get("specification")
                 row.value         = detail.get("value")
                 row.status        = ""
 
         # add one line in items table for checking the quantity
         if qi.sample_size > 0:
-            print("Adding quantity check row")
             qty_row = qi.append("items", {})
-            print("Item code:", item_code)
             qty_row.item_code = item_code
             qty_row.item_name = qi.item_name
-            qty_row.quantity  = qi.sample_size
+            qty_row.item_qty  = qi.sample_size
+            qty_row.status     = ""
 
         # Insert the new Quality Inspection document (ignoring permissions if necessary)
-        print("Inserting Quality Inspection document")
+        # print all fieds for debugging
+        # for d in qi.as_dict():
+        #     print(f"{d}: {qi.get(d)}")
         qi.insert(ignore_permissions=True)
         print("Quality Inspection created:", qi.name)
 
