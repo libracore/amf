@@ -30,7 +30,7 @@ def generate_wo_qr(doc, method=None):
     file_data = save_file(file_name, qr_code_bytes, "Work Order", doc.name, is_private=1)
 
     # Set the field to the file's URL
-    doc.qr_code = file_data.file_url
+    doc.qrcode = file_data.file_url
 
     # Save the document (don't trigger events)
     doc.save()
