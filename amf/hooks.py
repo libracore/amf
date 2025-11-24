@@ -53,7 +53,7 @@ doctype_list_js = {
 
 doc_events = {
     "Work Order": {
-        "after_insert": "amf.amf.utils.custom.qr_code_to_document"
+        "after_insert": "amf.amf.utils.on_work_order_submit.generate_wo_qr"
     },
     "Lead": {
         "after_insert": [
