@@ -53,7 +53,7 @@ doctype_list_js = {
 
 doc_events = {
     "Work Order": {
-        "after_insert": "amf.amf.utils.on_work_order_submit.generate_wo_qr"
+        "after_insert": "amf.amf.utils.on_work_order_submit.generate_wo_qr",
     },
     "Lead": {
         "after_insert": [
@@ -76,7 +76,7 @@ doc_events = {
         ]
     },
     "Batch": {
-        "after_insert": "amf.amf.utils.barcode.after_insert_handler"
+        "after_insert": "amf.amf.utils.barcode.after_insert_handler",
     },
     "Delivery Note": {
         "before_save": "amf.amf.utils.delivery_note_api.before_save_dn",
