@@ -102,7 +102,8 @@ def prepare_materials_for_pump(item_code, item_name):
             {"item_code": head_code, "qty": 1},
             {"item_code": "SPL.3028", "qty": 2},
             {"item_code": "C100", "qty": 1},
-            {"item_code": "C101", "qty": 1},   
+            {"item_code": "C101", "qty": 1},  
+            {"item_code": "T100", "qty": 1},
         ]
     else:
         materials = [
