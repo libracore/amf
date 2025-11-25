@@ -42,6 +42,8 @@ def auto_gen_qa_inspection(batch_name):
         qi.item_name = frappe.db.get_value("Item", item_code, "item_name")
         qi.inspected_by = email
         qi.status = ''
+        qi.drawing = get_item_drawing(item_code)
+
         qi.flags.ignore_mandatory = True
 
         # check if there is a Quality Inspection Template for this item
@@ -112,7 +114,6 @@ def auto_gen_qa_inspection(batch_name):
         # for d in qi.as_dict():
         #     print(f"{d}: {qi.get(d)}")
         qi.insert(ignore_permissions=True)
-        print("Quality Inspection created:", qi.name)
 
         # Build the assignment message with Delivery Note name and client (assumed to be in 'customer')
         assignment_message = f"Inspection Qualité générée pour le Batch: {doc.name} pour l'item: {item_code}:{qi.item_name}."
@@ -128,11 +129,23 @@ def auto_gen_qa_inspection(batch_name):
         }
         assign_to_add(assignment_args)
         
-        # Notify the user about the created Quality Inspection with a clickable link
-        frappe.msgprint(
-            f"""Quality Inspection: 
-            <b><a href="/desk#Form/Global Quality Inspection/{qi.name}" target="_blank">{qi.name}</a></b>
-                has been created and assigned to {email}.""",
-            title="Quality Inspection Created",
-            indicator="green")
+        # # Notify the user about the created Quality Inspection with a clickable link
+        # frappe.msgprint(
+        #     f"""Quality Inspection: 
+        #     <b><a href="/desk#Form/Global Quality Inspection/{qi.name}" target="_blank">{qi.name}</a></b>
+        #         has been created and assigned to {email}.""",
+        #     title="Quality Inspection Created",
+        #     indicator="green")
         
+
+
+def get_item_drawing(item_code):
+    """
+    Get the drawing file for a given item code.
+    """
+    item = frappe.get_doc("Item", item_code)
+    for drawing in item.drawing_item:
+        if drawing.is_default:
+            drawing_file = drawing.drawing
+            break
+    return drawing_file

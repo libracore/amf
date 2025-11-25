@@ -22,6 +22,7 @@
   "column_break1",
   "item_name",
   "description",
+  "drawing",
   "section_break_14",
   "inspected_by",
   "verified_by",
@@ -230,10 +231,16 @@
    "fieldtype": "Table",
    "label": "Item Specific",
    "options": "Quality Inspection Reading"
+  },
+  {
+   "depends_on": "eval:doc.reference_type !='Delivery Note'",
+   "fieldname": "drawing",
+   "fieldtype": "Attach",
+   "label": "Drawing"
   }
  ],
  "icon": "fa fa-search",
- "modified": "2025-11-24 10:38:49.429712",
+ "modified": "2025-11-25 11:13:59.112446",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Global Quality Inspection",
