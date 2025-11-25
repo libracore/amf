@@ -92,11 +92,23 @@ def prepare_materials_for_pump(item_code, item_name):
             return None
     motor_code = f"5{item_code[1]}1000"   
     syringe_code = f"70{item_code[2]}000" 
-    #print("Preparing materials for pump:", item_code, "and motor:", motor_code, "and syringe:", syringe_code, "with head:", head_rnd,)   
-    materials = [
-        {"item_code": motor_code, "qty": 1},
-        {"item_code": syringe_code, "qty": 1},
-        {"item_code": head_code, "qty": 1},
-        {"item_code": "SPL.3028", "qty": 2},
-    ]   
+    #print("Preparing materials for pump:", item_code, "and motor:", motor_code, "and syringe:", syringe_code, "and head:", head_rnd,)   
+
+    # materials list depend on item_code second digit if 7 or B then C100, C101 and T100 are included
+    if item_code[1] in ['7', 'B']:
+        materials = [
+            {"item_code": motor_code, "qty": 1},
+            {"item_code": syringe_code, "qty": 1},
+            {"item_code": head_code, "qty": 1},
+            {"item_code": "SPL.3028", "qty": 2},
+            {"item_code": "C100", "qty": 1},
+            {"item_code": "C101", "qty": 1},   
+        ]
+    else:
+        materials = [
+            {"item_code": motor_code, "qty": 1},
+            {"item_code": syringe_code, "qty": 1},
+            {"item_code": head_code, "qty": 1},
+            {"item_code": "SPL.3028", "qty": 2},
+        ]  
     return materials
