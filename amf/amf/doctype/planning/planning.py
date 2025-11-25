@@ -189,6 +189,10 @@ def create_work_order(form_data: str, wo=None) -> dict:
             work_order, data)
         transfer_entry = _create_transfer_entry_if_applicable(
             work_order, data, manufacture_entry)
+        
+        from amf.amf.utils.batch import auto_gen_qa_inspection
+        auto_gen_qa_inspection(manufacture_batch)
+
 
         # Commit the transaction
         frappe.db.commit()

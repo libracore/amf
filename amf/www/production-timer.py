@@ -300,7 +300,9 @@ def add_operator(work_order, operator):
     """
     _ensure_logged_in()
     
+    print("Adding operator:", operator)
     operator = operator.upper()
+
     
     # check if operator exist
     if not frappe.db.get_all("User", {"username": operator}, "name"):
@@ -459,12 +461,12 @@ def clean_assignement(trigram):
         
         if timer.status == "IN PROCESS":
             # make a pause and check status
-            frappe.msgprint("Vous travaillez actuellement sur le timer: {}, mise en pause de la session liée à votre trigramme".format(timer.name))
             now = frappe.utils.now_datetime()
             
             for sess in reversed(timer.sessions_list):
                 
                 if sess.operator == trigram and sess.stop_time is None:
+                    # frappe.msgprint("Vous travaillez actuellement sur le timer: {}, mise en pause de la session liée à votre trigramme".format(timer.name))
                     sess.stop_time = now
                     sess.comment = "Auto-pause avant nettoyage assignation"
                     #sess.operator = trigram
