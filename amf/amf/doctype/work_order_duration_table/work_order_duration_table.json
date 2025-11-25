@@ -19,12 +19,12 @@
    "fieldname": "duration",
    "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "Duration",
+   "label": "Duration (sec)",
    "read_only": 1
   }
  ],
  "istable": 1,
- "modified": "2025-11-17 16:03:06.847548",
+ "modified": "2025-11-25 09:37:15.398933",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Work Order Duration Table",
