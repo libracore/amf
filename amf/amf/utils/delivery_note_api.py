@@ -597,7 +597,7 @@ def auto_gen_qa_inspection(doc, method):
 
     for item in doc.items:
         #check if there is a template linked to item_code
-        item_template = frappe.db.get_value("Quality Inspection Template", {"name": ["like", f"% {item.item_code} %"]}, "name")
+        item_template = frappe.db.get_value("Quality Inspection Template", {"name": ["like", f"%{item.item_code} %"]}, "name")
         if item_template:
             print("item_template:", item_template)
             item_readings = get_template_details(item_template)
