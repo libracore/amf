@@ -12,6 +12,9 @@ def auto_gen_qa_inspection(batch_name):
     """
     Automatically generate a Quality Inspection for certain Batches when the manufacture_batch field in work_order is filled in.
     """
+    # controle if batch exists
+    if not frappe.db.exists("Batch", batch_name):
+        return
     doc = frappe.get_doc("Batch", batch_name)
     if not doc:
         return
