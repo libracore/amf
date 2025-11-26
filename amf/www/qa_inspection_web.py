@@ -10,32 +10,40 @@ def _child_list(doc, fieldname):
     return [row.as_dict() for row in doc.get(fieldname) or []]
 
 @frappe.whitelist()
-def get_quality_inspection_by_dn(delivery_note):
+def get_quality_inspection(reference_name):
     """
-    Resolve the Global Quality Inspection linked to a Delivery Note and
+    Resolve the Global Quality Inspection linked to a Delivery Note, a Prec or a Batch and
     return the parent with all relevant child tables for rendering.
     """
     _ensure_logged_in()
 
-    if not delivery_note:
-        frappe.throw(_("Missing Delivery Note parameter."))
+    if not reference_name:
+        frappe.throw(_("Missing reference name parameter."))
 
-    delivery_note = get_normalized_dn_name(delivery_note)
+    if reference_name.startswith("DN") or reference_name.startswith("dn"):
+        reference_name = get_normalized_dn_name(reference_name)
+    elif reference_name.startswith("PREC") or reference_name.startswith("prec"):
+        reference_name = reference_name.upper()
 
     name = frappe.db.get_value(
         "Global Quality Inspection",
-        {"reference_name": delivery_note},
+        {"reference_name": reference_name},
         "name"
     )
     if not name:
         return None
 
     doc = frappe.get_doc("Global Quality Inspection", name)
-
+    
     return {
         "name": doc.name,
-        "customer_name": doc.get("customer_name"),
-        "reference_name": doc.get("reference_name"),
+        "customer_name": doc.customer_name,
+        "reference_name": doc.reference_name,
+        "reference_type": doc.reference_type,
+        "item_code": doc.item_code,
+        "item_name": doc.item_name,
+        "description": doc.description,
+        "drawing": doc.drawing,
         "readings": _child_list(doc, "readings"),
         "items": _child_list(doc, "items"),
         "item_specific": _child_list(doc, "item_specific"),
