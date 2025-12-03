@@ -300,7 +300,6 @@ def add_operator(work_order, operator):
     """
     _ensure_logged_in()
     
-    print("Adding operator:", operator)
     operator = operator.upper()
 
     
@@ -453,10 +452,18 @@ def clean_assignement(trigram):
         filters={
             "assigned_operators": ["like", f"%{trigram}%"],
             "status": ["in", ["PAUSED", "IN PROCESS"]]},
-        fields=["name"]
+        fields=["name", "work_order"]
     )
 
     for t in timers:
+        # check if work_order status is not Completed, Stopped or Cancelled
+        of_status = frappe.db.get_value("Work Order", t["work_order"], "status")
+        if of_status in ["Completed", "Stopped", "Cancelled"]:
+            finish_timer(t["work_order"])
+            continue
+
+
+
         timer = frappe.get_doc("Timer Production", t["name"])
         
         if timer.status == "IN PROCESS":
