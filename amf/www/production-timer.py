@@ -92,6 +92,10 @@ def get_active_timers():
 
     detailed = []
     for t in timers:
+        work_order_status = frappe.db.get_value("Work Order", t["work_order"], "status")
+        if work_order_status in ["Completed", "Stopped", "Cancelled"]:
+            finish_timer(t["work_order"])
+            continue
         info = get_timer_details(t["work_order"])
         if info:
             detailed.append(info)
@@ -518,3 +522,4 @@ def get_operators_time(work_order):
         result[sess.operator] = int(sess.total_seconds or 0)
 
     return result
+
