@@ -7,14 +7,16 @@
  "engine": "InnoDB",
  "field_order": [
   "report_date",
-  "customer",
-  "customer_name",
   "status",
   "column_break_4",
   "inspection_type",
   "reference_type",
   "reference_name",
-  "section_break_7",
+  "delivery_note_section",
+  "customer",
+  "column_break_9",
+  "customer_name",
+  "batch_section",
   "item_code",
   "item_serial_no",
   "batch_no",
@@ -23,10 +25,13 @@
   "item_name",
   "description",
   "drawing",
+  "purchase_receipt_section",
+  "supplier",
+  "drawings",
   "section_break_14",
   "inspected_by",
-  "verified_by",
   "column_break_17",
+  "verified_by",
   "specification_details",
   "quality_inspection_template",
   "readings",
@@ -79,11 +84,7 @@
    "options": "reference_type"
   },
   {
-   "fieldname": "section_break_7",
-   "fieldtype": "Section Break"
-  },
-  {
-   "depends_on": "eval:doc.reference_type !='Delivery Note'",
+   "depends_on": "eval:doc.reference_type =='Batch'",
    "description": "If required.",
    "fieldname": "item_code",
    "fieldtype": "Link",
@@ -97,7 +98,7 @@
    "search_index": 1
   },
   {
-   "depends_on": "eval:doc.item_code\neval:doc.reference_type !='Batch'",
+   "depends_on": "eval:doc.item_code && doc.reference_type !='Batch'",
    "fieldname": "item_serial_no",
    "fieldtype": "Link",
    "label": "Item Serial No",
@@ -106,7 +107,7 @@
    "options": "Serial No"
   },
   {
-   "depends_on": "eval:doc.reference_type !='Delivery Note'",
+   "depends_on": "eval:doc.reference_type =='Batch'",
    "fieldname": "batch_no",
    "fieldtype": "Link",
    "label": "Batch No",
@@ -115,7 +116,7 @@
    "options": "Batch"
   },
   {
-   "depends_on": "eval:doc.reference_type !='Delivery Note'",
+   "depends_on": "eval:doc.reference_type =='Batch'",
    "fieldname": "sample_size",
    "fieldtype": "Float",
    "label": "Sample Size",
@@ -129,6 +130,7 @@
    "width": "50%"
   },
   {
+   "depends_on": "eval:doc.reference_type =='Batch'",
    "fetch_from": "item_code.item_name",
    "fieldname": "item_name",
    "fieldtype": "Data",
@@ -137,7 +139,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "eval:doc.reference_type !='Delivery Note'",
+   "depends_on": "eval:doc.reference_type =='Batch'",
    "fieldname": "description",
    "fieldtype": "Small Text",
    "label": "Description",
@@ -202,7 +204,6 @@
    "depends_on": "eval:doc.reference_type =='Delivery Note'",
    "fieldname": "customer",
    "fieldtype": "Link",
-   "hidden": 1,
    "label": "Customer",
    "options": "Customer"
   },
@@ -211,10 +212,10 @@
    "fetch_from": "customer.customer_name",
    "fieldname": "customer_name",
    "fieldtype": "Data",
-   "hidden": 1,
    "label": "Customer Name"
   },
   {
+   "depends_on": "eval:doc.reference_type =='Delivery Note'",
    "fieldname": "client_specific",
    "fieldtype": "Table",
    "label": "Client Specific",
@@ -233,14 +234,47 @@
    "options": "Quality Inspection Reading"
   },
   {
-   "depends_on": "eval:doc.reference_type !='Delivery Note'",
+   "depends_on": "eval:doc.reference_type =='Batch'",
    "fieldname": "drawing",
    "fieldtype": "Attach",
    "label": "Drawing"
+  },
+  {
+   "fieldname": "delivery_note_section",
+   "fieldtype": "Section Break",
+   "label": "Delivery Note"
+  },
+  {
+   "fieldname": "column_break_9",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "batch_section",
+   "fieldtype": "Section Break",
+   "label": "Batch Section"
+  },
+  {
+   "fieldname": "purchase_receipt_section",
+   "fieldtype": "Section Break",
+   "label": "Purchase Receipt section"
+  },
+  {
+   "depends_on": "eval:doc.reference_type =='Purchase Receipt'",
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "label": "Supplier",
+   "options": "Supplier"
+  },
+  {
+   "depends_on": "eval:doc.reference_type =='Purchase Receipt'",
+   "fieldname": "drawings",
+   "fieldtype": "Table",
+   "label": "Drawings",
+   "options": "Drawings Quality Inspection"
   }
  ],
  "icon": "fa fa-search",
- "modified": "2025-11-25 11:13:59.112446",
+ "modified": "2025-12-05 12:26:11.485567",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Global Quality Inspection",
