@@ -4,7 +4,6 @@ from frappe.desk.form.assign_to import add as assign_to_add
 from erpnext.stock.doctype.quality_inspection_template.quality_inspection_template \
 	import get_template_details
 from erpnext.stock.doctype.batch.batch import get_batch_qty
-import re
 import html
 
 
@@ -50,12 +49,11 @@ def auto_gen_qa_inspection(batch_name):
         qi.flags.ignore_mandatory = True
 
         # check if there is a Quality Inspection Template for this item
-        item_template = frappe.db.get_value("Quality Inspection Template", {"name": ["like", f"% {item_code} %"]}, "name")
+        item_template = frappe.db.get_value("Quality Inspection Template", {"name": ["like", f"%{item_code}%"]}, "name")
         if item_template:
             template_details = get_template_details(item_template)
             # Add a title row
             title_row = qi.append("item_specific", {})
-            title_row.is_title = 1
             title_row.specification = item_template
             title_row.value = ""
             title_row.status = ""
@@ -70,7 +68,6 @@ def auto_gen_qa_inspection(batch_name):
             template_details = get_template_details("Contrôle usinage PLUG")
             # Add a title row
             title_row = qi.append("item_specific", {})
-            title_row.is_title = 1
             title_row.specification = "Contrôle usinage PLUG"
             title_row.value = ""
             title_row.status = ""
@@ -83,7 +80,6 @@ def auto_gen_qa_inspection(batch_name):
             template_details = get_template_details("Contrôle usinage SEAT")
             # Add a title row
             title_row = qi.append("item_specific", {})
-            title_row.is_title = 1
             title_row.specification = "Contrôle usinage SEAT"
             title_row.value = ""
             title_row.status = ""
@@ -94,7 +90,7 @@ def auto_gen_qa_inspection(batch_name):
                 row.status        = ""
 
         # add general inspection template for Batches if exists
-        general_template = frappe.db.get_value("Quality Inspection Template",  {"name": ["like", f"% BATCH %"]}, "name")
+        general_template = frappe.db.get_value("Quality Inspection Template",  {"name": "Batch"}, "name")
         if general_template:
             qi.quality_inspection_template = general_template
             template_details = get_template_details(general_template)

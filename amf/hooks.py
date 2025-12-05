@@ -120,6 +120,10 @@ doc_events = {
     "Timer Production": {
         "before_save": "amf.amf.doctype.timer_production.timer_production.timer_before_save"
     },
+
+    "Purchase Receipt": {
+        "on_submit": "amf.amf.utils.purchase_receipt.generate_qa_for_purchase_receipt"
+    }
 }
 
 # Scheduled Tasks
