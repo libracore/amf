@@ -100,7 +100,20 @@ def timer_before_save(timer, method = None):
 	if timer.status == "FINISHED":
 		    # insérer la durée totale dans la doctype de l'OF
 			work_order = timer.work_order
+			if not work_order:
+				frappe.logger().error(f"Timer {timer.name} finished but no Work Order linked.")
+				return
+
 			wo_doc = frappe.get_doc("Work Order", work_order)
+
+			# vérifier que l'OF n'est pas annulée
+			if wo_doc.docstatus == 2:
+				frappe.logger().info(
+					f"Timer {timer.name} finished but Work Order {wo_doc.name} is cancelled – skipped update"
+				)
+				return
+
+
 			wo_doc.total_duration = timer.total_duration
 			
 			# obtenir la durée totale par opérateur ayant travaillé sur cette OF
