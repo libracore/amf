@@ -1,0 +1,51 @@
+{
+ "creation": "2025-12-05 14:51:37.713129",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "hs_code_table",
+  "section_break_2",
+  "tariff_links"
+ ],
+ "fields": [
+  {
+   "fieldname": "hs_code_table",
+   "fieldtype": "Table",
+   "label": "HS Code Table",
+   "options": "HS Code Table"
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break",
+   "label": "Tariff / Customs References"
+  },
+  {
+   "fieldname": "tariff_links",
+   "fieldtype": "HTML",
+   "options": "<div class=\"tariff-links\">\n\n  <div class=\"tariff-row\">\n    <span class=\"flag\">\ud83c\uddfa\ud83c\uddf8</span>\n    <span class=\"country\">United States</span>\n    <a href=\"https://hts.usitc.gov/\" target=\"_blank\">\n      Harmonized Tariff Schedule (HTS)\n    </a>\n  </div>\n\n  <div class=\"tariff-row\">\n    <span class=\"flag\">\ud83c\uddea\ud83c\uddfa</span>\n    <span class=\"country\">European Union</span>\n    <a href=\"https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp?Lang=fr\" target=\"_blank\">\n      TARIC \u2013 EU Customs Tariff\n    </a>\n  </div>\n\n  <div class=\"tariff-row\">\n    <span class=\"flag\">\ud83c\udde8\ud83c\udded</span>\n    <span class=\"country\">Switzerland</span>\n    <a href=\"https://xtares.admin.ch/tares/login/loginFormFiller.do?l=fr\" target=\"_blank\">\n      TARES \u2013 Swiss Customs\n    </a>\n  </div>\n\n  <div class=\"tariff-row\">\n    <span class=\"flag\">\ud83c\uddec\ud83c\udde7</span>\n    <span class=\"country\">United Kingdom</span>\n    <a href=\"https://www.trade-tariff.service.gov.uk/find_commodity\" target=\"_blank\">\n      UK Trade Tariff\n    </a>\n  </div>\n\n  <div class=\"tariff-row\">\n    <span class=\"flag\">\ud83c\udde8\ud83c\uddf3</span>\n    <span class=\"country\">China</span>\n    <a href=\"https://www.transcustoms.com/\" target=\"_blank\">\n      China Customs Tariff\n    </a>\n  </div>\n\n  <div class=\"tariff-row\">\n    <span class=\"flag\">\ud83c\uddef\ud83c\uddf5</span>\n    <span class=\"country\">Japan</span>\n    <a href=\"https://www.customs.go.jp/english/tariff/index.htm\" target=\"_blank\">\n      Japan Customs Tariff\n    </a>\n  </div>\n\n</div>\n\n\n"
+  }
+ ],
+ "issingle": 1,
+ "modified": "2025-12-08 10:20:17.948418",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "HS Code",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
