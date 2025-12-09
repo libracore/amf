@@ -8,7 +8,7 @@ def get_work_orders():
     ongoing = frappe.get_all(
         "Work Order",
         filters={"status": "In Process",
-                 "production_item": ["not like", "%100_"] },
+                 "production_item": ["not like", "5_100_"] },
         fields=["name", "production_item","item_name"]
     )
 

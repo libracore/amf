@@ -79,7 +79,10 @@ doc_events = {
         "after_insert": "amf.amf.utils.barcode.after_insert_handler",
     },
     "Delivery Note": {
-        "before_save": "amf.amf.utils.delivery_note_api.before_save_dn",
+        "before_save": [
+            "amf.amf.utils.delivery_note_api.before_save_dn",
+        ],
+                        
         "after_insert": "amf.amf.utils.delivery_note_api.auto_gen_qa_inspection",
         "before_submit": "amf.amf.utils.delivery_note_api.check_qa_inspections_status"
     },
