@@ -864,3 +864,54 @@ def fetch_sn(product_id):
     print("new_sn:",new_sn)
     # Return the new_sn in a JSON-friendly format:
     return {"sn": str(new_sn)}
+
+
+
+@frappe.whitelist()
+def get_test_info(input_value):
+    """
+    function that returns all the necessary info for finding corresponding test
+    1) receives an input value (workorder id or item code)
+    2) returns a string with: client name, motor code, valve head code, syringe code
+    """
+    print("input_value:",input_value)
+    if input_value.startswith('OF'):
+        work_order_doc = frappe.get_doc("Work Order", input_value)
+        item_code = work_order_doc.production_item
+        item = frappe.get_doc("Item", item_code)
+        client_name = work_order_doc.custo_name
+        print("client_name:",client_name)
+    else:
+        if not (frappe.db.exists("Item", {"item_code": input_value})):
+            print("Item does not exist")
+            return "N/A,N/A,N/A,N/A"
+        item = frappe.get_doc("Item", input_value)
+        client_name = "N/A"
+        print("client_name:",client_name)
+    
+    if item.item_type == "Finished Good":
+        print("item.item_type: Finished Good")
+        bom = frappe.get_doc("BOM", item.default_bom)
+        motor_name = None
+        valve_head_name = None
+        syringe_name = None
+        for bom_item in bom.items:
+            if bom_item.item_code.startswith('5'):
+                motor_name = frappe.db.get_value("Item", bom_item.item_code, "reference_code")
+            if bom_item.item_code.startswith('3'):
+                valve_head_name = frappe.db.get_value("Item", bom_item.item_code, "reference_code")
+            if bom_item.item_code.startswith('70'):
+                syringe_name = frappe.db.get_value("Item", bom_item.item_code, "reference_code")
+        if syringe_name is None:
+            syringe_name = "N/A"
+        return f"{client_name},{motor_name},{valve_head_name},{syringe_name}"
+
+    elif item.item_group == "Valve Head":
+        if client_name == "N/A":
+            client_name = "SPARE"
+        valve_head_name = frappe.db.get_value("Item", item.item_code, "reference_code")
+        return f"{client_name},N/A,{valve_head_name},N/A"
+    
+    else :
+        print(item.item_type)
+        return "N/A,N/A,N/A,N/A"
