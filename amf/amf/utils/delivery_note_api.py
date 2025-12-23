@@ -512,6 +512,7 @@ def before_save_dn(doc, method):
                     order_by='creation asc', 
                     fields=['name']
                 )
+                
 
                 if not stock_entries:
                     frappe.log_error(f"No Stock Entries found for Work Order {wo.name}")
@@ -819,5 +820,6 @@ def check_qa_inspections_status(doc, method):
                  <b><a href="/desk#Form/Global Quality Inspection/{inspection.name}" target="_blank">{inspection.name}
                  </a></b> is not Accepted (current status: {inspection.status})."""
             )
+
 
 

@@ -79,3 +79,65 @@ def update_all_item_valuation_rates():
     update_log_entry(log_id, f"[{now_datetime()}] Valuation Rate Update Complete.<br>"
                     f"Updated {len(updated_items)} items.<br>"
                     f"Skipped {len(skipped_items)} items.<br>")
+
+
+def send_sales_email():
+    """
+    Sends an email notification about sales items that are missing item prices
+    or have been newly created in the last 7 days.
+    """
+
+    # missing price items
+    missing_price_items = []
+    sales_items = frappe.get_all("Item", filters={"is_sales_item": 1, "disabled": 0}, fields=["name", "item_name"])
+    
+    for item in sales_items:
+        price_exists = frappe.db.exists("Item Price", {"item_code": item.name})
+        if not price_exists:
+            missing_price_items.append(item)
+    
+    # last created sales items
+    new_sales_items = frappe.get_all(
+        "Item",
+        filters={
+            "is_sales_item": 1,
+            "disabled": 0,
+            "creation": [">", frappe.utils.add_days(frappe.utils.nowdate(), -7)]  # last 7 days
+        },
+        fields=["name", "item_name"]
+    )
+    message = ""
+    subject = "Sales Items Price Update Notification"
+
+    if new_sales_items:
+        # Prepare email content for new sales items
+        new_item_list_html = "<ul>"
+        for item in new_sales_items:
+            new_item_list_html += f"<li>{item.item_name} ({item.name})</li>"
+        new_item_list_html += "</ul>"
+        
+        message = f"""
+        <p>The following new sales items have been created in the last 7 days:</p>
+        {new_item_list_html}
+        <p>Please review and set item prices as necessary.</p>
+        """
+    if missing_price_items:
+        # Prepare email content
+        item_list_html = "<ul>"
+        for item in missing_price_items:
+            item_list_html += f"<li>{item.item_name} ({item.name})</li>"
+        item_list_html += "</ul>"
+        
+        message += f"""
+        <p>The following sales items are missing item prices:</p>
+        {item_list_html}
+        <p>Please update the item prices accordingly.</p>
+        """
+    
+    if message != "":
+        # Send email
+        frappe.sendmail(
+            recipients=["sales@amf.ch", "alexandre.ringwald@amf.ch"],
+            subject=subject,
+            message=message
+        )
