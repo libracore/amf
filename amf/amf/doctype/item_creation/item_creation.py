@@ -13,6 +13,22 @@ from frappe.model.document import Document
 class ItemCreation(Document):
 	pass
 
+# --- Mappings for Description Generation ---
+# These dictionaries map codes from head_name to human-readable descriptions.
+valve_type_map = {
+    'D': 'Distribution',      'DS': 'Distribution/Switch',
+    'B': 'Bypass',            'DA': 'Distribution/Angled',
+    'O': 'On/Off',            'OS': 'On/Off-Switch',
+    'SA': 'Switch/Angled',    'SL': 'Sample Loop',
+    'T': 'Triangle',          'M' : 'Multiplexing',
+    'C': 'Check',             'S' : 'Switch'
+}
+material_map = {
+    'C': 'PCTFE',             'P': 'PTFE',
+    'U': 'UHMW-PE',           'V': 'Viton',
+    'E': 'EPDM',              'S': 'Stainless Steel',
+    'K': 'PEEK',              'A': 'PMMA',
+}
 
 @frappe.whitelist()
 def populate_fields(head_name):
@@ -23,24 +39,8 @@ def populate_fields(head_name):
         head_name (str): The input string, e.g., "V-DS-1-10-100-C-P".
 
     Returns:
-        dict: A dictionary containing 'seat_name', 'plug_name', 'head_group', 'head_rnd', and 'head_description'.
+        dict: A dictionary containing 'seat_name', 'plug_name', 'head_group', 'head_rnd', 'head_description', 'seat_mat', and 'plug_mat'.
     """
-    # --- Mappings for Description Generation ---
-    # These dictionaries map codes from head_name to human-readable descriptions.
-    valve_type_map = {
-        'D': 'Distribution',      'DS': 'Distribution/Switch',
-        'B': 'Bypass',            'DA': 'Distribution/Angled',
-        'O': 'On/Off',            'OS': 'On/Off-Switch',
-        'SA': 'Switch/Angled',    'SL': 'Sample Loop',
-        'T': 'Triangle',          'M': 'Multiplexing',
-        'C': 'Check'
-    }
-    material_map = {
-        'C': 'PCTFE',             'P': 'PTFE',
-        'U': 'UHMW-PE',           'V': 'Viton',
-        'E': 'EPDM',              'S': 'Stainless Steel',
-        'K': 'PEEK'
-    }
 
     # --- Initialize Return Variables ---
     seat_name = ""
@@ -126,6 +126,8 @@ def populate_fields(head_name):
         "head_rnd": head_rnd,
         "head_description": head_description,
         "head_group": head_group,
+        "seat_mat": valve_material,
+        "plug_mat": plug_material,
     }
 
 
@@ -160,8 +162,6 @@ def populate_fields_from_existing_item(item_code):
         head_rnd = item.reference_code
         head_desc = item.description
 
-        #print all head details
-        print(f"Head Details - Code: {head_code}, Name: {head_name}, Group: {head_group}, RND: {head_rnd}")
 
 
         #derive expected seat and plug names
@@ -308,7 +308,6 @@ def get_last_item_code():
 
             # Compare to find the highest three-digit number
             if highest_digit_number is None or last_digits > highest_digit_number:
-                print(last_digits)
                 highest_digit_number = last_digits
 
     # Return the highest three-digit number found, or throw an error if none found
@@ -355,7 +354,7 @@ def get_data_for_preview(doc, group=None):
                     "item_name": item_data["item_name"]
                     })
     else :
-        print("invalid group")
+        frappe.throw(_("Invalid item group specified for preview: {0}").format(group))
     
     return fg_data
 
@@ -555,8 +554,22 @@ def _prepare_simple_component_data(doc, group):
             {"item_code": "SPL.3039", "qty": doc.get('seat_acc', 0)}
         ]
 
+
     if not all([base_name, base_code]):
         frappe.throw(_("Name and Code are required for {0}.").format(group))
+
+    
+    description = (
+        f"<b>Item Code:</b> {base_code}<br>"
+        f"<b>Item Name:</b> {base_name}<br>"
+        f"<b>Item Group:</b> {item_group}<br>"
+        f"<b>R&D Code:</b> {doc.get(f'{group}_rnd')}<br>"
+        f"<b>Valve Type:</b> {valve_type_map.get(base_name.split('-')[1], 'Unknown')}<br>"
+        f"<b>Number of Stages:</b> {base_name.split('-')[2]}<br>"
+        f"<b>Number of Ports:</b> {base_name.split('-')[3]}<br>"
+        f"<b>Channel Size:</b> {base_name.split('-')[4][0]}.{base_name.split('-')[4][1:]} mm<br>"
+        f"<b>{item_group.split(' ')[0]} Material:</b> {material_map.get(base_name.split('-')[5], 'Unknown')}"
+    )
 
     component_data = {
         "item_code": base_code,
@@ -565,15 +578,48 @@ def _prepare_simple_component_data(doc, group):
         "item_type": "Component",
         "valuation_rate": valuation_rate,
         "reference_code": doc.get(f'{group}_rnd'),
-        "reference_name":f"{base_code}: {base_name}",
+        "reference_name": f"{base_code}: {base_name}",
         "tag_raw_mat": doc.get(f'{group}_mat'),
         "is_purchase_item": 0,
         "country_of_origin": "Switzerland",
-        "item_default": "Main Stock - AMF21",
+        "item_defaults": [{
+                "default_warehouse": "Main Stock - AMF21",
+                # "expense_account": "4812 - Cost of materials (R&D) - AMF21",
+                # "income_account": "4812 - Cost of materials (R&D) - AMF21"
+            }],
+        "description": description,
     }
+    
+    # Add drawing_item child table if drawing exists
+    if doc.get(f'{group}_drawing'):
+        component_data["drawing_item"] = [{
+            "drawing": doc.get(f'{group}_drawing'),
+            "item_code": base_code,
+            "item_name": base_name,
+            "reference_code": doc.get(f'{group}_rnd'),
+            "version": "01",
+            "revision": "01",
+            "is_default": 1
+        }]
 
     # Assembly code is derived by setting the second digit to '1'
     assembly_item_code = base_code[0] + '1' + base_code[2:]
+
+    asm_description = (
+        f"<b>Item Code:</b> {assembly_item_code}<br>"
+        "------------------------------------------------------<br>"
+        "SUB-ASSEMBLY<br>"
+        "------------------------------------------------------<br>"
+        f"<b>Item Name:</b> {base_name}<br>"
+        f"<b>Item Group:</b> {item_group}<br>"
+        f"<b>R&D Code:</b> {doc.get(f'{group}_rnd')}.ASM<br>"
+        f"<b>Valve Type:</b> {valve_type_map.get(base_name.split('-')[1], 'Unknown')}<br>"
+        f"<b>Number of Stages:</b> {base_name.split('-')[2]}<br>"
+        f"<b>Number of Ports:</b> {base_name.split('-')[3]}<br>"
+        f"<b>Channel Size:</b> {base_name.split('-')[4][0]}.{base_name.split('-')[4][1:]} mm<br>"
+        f"<b>{item_group.split(' ')[0]} Material:</b> {material_map.get(base_name.split('-')[5], 'Unknown')}"
+    )
+
     asm_data = {
         "item_code": assembly_item_code,
         "item_name": f"{base_name}",
@@ -583,7 +629,12 @@ def _prepare_simple_component_data(doc, group):
         "reference_name": f"{assembly_item_code}: {base_name}",
         "is_purchase_item": 0,
         "country_of_origin": "Switzerland",
-        "item_default": "Main Stock - AMF21",
+        "item_defaults": [{
+                "default_warehouse": "Main Stock - AMF21",
+                # "expense_account": "4812 - Cost of materials (R&D) - AMF21",
+                # "income_account": "4812 - Cost of materials (R&D) - AMF21"
+            }],
+        "description": asm_description,
     }
 
     return component_data, asm_data, bom_materials
@@ -593,15 +644,16 @@ def _prepare_valve_head_data(doc):
     """Prepares data for the final Valve Head assembly."""
     head_name = doc.get('head_name')
     head_code = doc.get('head_code')
-    plug_code = doc.get('plug_code')
-    seat_code = doc.get('seat_code')
+    plug_code = doc.get('plug_code') or doc.get('plug_item')
+    seat_code = doc.get('seat_code') or doc.get('seat_item')
 
     if not all([head_name, head_code, plug_code, seat_code]):
         frappe.throw(_("Head, Plug, and Seat codes are required to build the Valve Head."))
 
-    # CRITICAL: The BOM must use the SUB-ASSEMBLY codes, not the base component codes.
+    # CRITICAL: The BOM must use the SUB-ASSEMBLY codes, not the base component codes.description
     plug_assembly_code = plug_code[0] + '1' + plug_code[2:]
     seat_assembly_code = seat_code[0] + '1' + seat_code[2:]
+    print(f"plug_assembly_code: {plug_assembly_code}, seat_assembly_code: {seat_assembly_code}")
 
     final_assembly_data = {
         "item_code": head_code,
@@ -614,7 +666,13 @@ def _prepare_valve_head_data(doc):
         "is_purchase_item": 0,
         "country_of_origin": "Switzerland",
         "is_sales_item": 1,
-        "item_default": "Main Stock - AMF21",
+        "item_defaults": [{
+                "default_warehouse": "Main Stock - AMF21",
+                # "expense_account": "4812 - Cost of materials (R&D) - AMF21",
+                # "income_account": "4812 - Cost of materials (R&D) - AMF21"
+            }],
+        "weight_per_unit": 0.10,
+        "weight_uom": "Kg",
     }
 
     bom_materials = [
@@ -659,14 +717,20 @@ def _prepare_rvm_data(doc, motor_info):
             f"<b>Version</b>: Fast<br>"
             f"______________________________________________________<br>"
             f"<b>Body</b>: P201-O<br>"
-            f"{head_desc}<br>"
+            f"{head_desc}"
             f"______________________________________________________"
         ),
         "has_batch_no": 0,
         "is_purchase_item": 0,
         "country_of_origin": "Switzerland",
         "is_sales_item": 1,
-        "item_default": "Main Stock - AMF21",
+        "item_defaults": [{
+                "default_warehouse": "Main Stock - AMF21",
+                # "expense_account": "4812 - Cost of materials (R&D) - AMF21",
+                # "income_account": "4812 - Cost of materials (R&D) - AMF21"
+            }],
+        "weight_per_unit": 0.53,
+        "weight_uom": "Kg",
     }
     return item_data, bom_materials
 
@@ -708,11 +772,11 @@ def _prepare_pump_data(doc, motor_code, syringe_code):
         ]
         desc = (
             f"SPM series – Industrial Programmable Syringe Pump<br>"
-            f"<b>Version</b>: SPM<br>"
+            f"<b>Version</b>: SPM {'HD' if M == 1 else ''}<br>"
             f"______________________________________________________<br>"
             f"<b>Body</b>: P1{M}0-O<br>"
             f"<b>Syringe</b>: {syringe_qty} µl ({syringe_rnd})<br>"
-            f"{head_desc}<br>"
+            f"{head_desc}"
             f"______________________________________________________"
         )
     else:
@@ -726,11 +790,11 @@ def _prepare_pump_data(doc, motor_code, syringe_code):
         ]
         desc = (
             f"LSPone series – Laboratory Microfluidic Programmable Syringe Pump<br>"
-            f"<b>Version</b>: LSPone<br>"
+            f"<b>Version</b>: LSPone {'HD' if M == 1 else ''}<br>"
             f"______________________________________________________<br>"
             f"<b>Body</b>: P1{M}O-L<br>"
             f"<b>Syringe</b>: {syringe_qty} µl ({syringe_rnd})<br>"
-            f"{head_desc}<br>"
+            f"{head_desc}"
             f"______________________________________________________"
         )
 
@@ -746,12 +810,18 @@ def _prepare_pump_data(doc, motor_code, syringe_code):
         "is_purchase_item": 0,
         "country_of_origin": "Switzerland",
         "is_sales_item": 1,
-        "item_default": "Main Stock - AMF21",
+        "item_defaults": [{
+                "default_warehouse": "Main Stock - AMF21",
+                # "expense_account": "4812 - Cost of materials (R&D) - AMF21",
+                # "income_account": "4812 - Cost of materials (R&D) - AMF21"
+            }],
+        "weight_per_unit": 2.18,
+        "weight_uom": "Kg",
     }
     scraps = [
             {"item_code": "RVM.1204", "qty": 1}
         ]
-    print(item_data["reference_code"])
+    
     return item_data, bom_materials, scraps
 
 
@@ -793,11 +863,11 @@ def _prepare_pump_hv_data(doc, motor_code, syringe_code):
         ]
         desc = (
             f"SPM series – Industrial Programmable Syringe Pump<br>"
-            f"<b>Version</b>: SPM<br>"
+            f"<b>Version</b>: SPM+ {'HD' if M == 1 else ''}<br>"
             f"______________________________________________________<br>"
             f"<b>Body</b>: P1{M}1-O<br>"
             f"<b>Syringe</b>: {syringe_qty} ml ({syringe_rnd})<br>"
-            f"{head_desc}<br>"
+            f"{head_desc}"
             f"______________________________________________________"
         )
     else:
@@ -811,11 +881,11 @@ def _prepare_pump_hv_data(doc, motor_code, syringe_code):
         ]
         desc = (
             f"LSPone series – Laboratory Microfluidic Programmable Syringe Pump<br>"
-            f"<b>Version</b>: LSPone<br>"
+            f"<b>Version</b>: LSPone+ {'HD' if M == 1 else ''}<br>"
             f"______________________________________________________<br>"
             f"<b>Body</b>: P1{M}1-L<br>"
             f"S<b>Syringe</b>: {syringe_qty} ml ({syringe_rnd})<br>"
-            f"{head_desc}<br>"
+            f"{head_desc}"
             f"______________________________________________________"
         )
 
@@ -830,7 +900,14 @@ def _prepare_pump_hv_data(doc, motor_code, syringe_code):
         "has_batch_no": 0,
         "is_purchase_item": 0,
         "country_of_origin": "Switzerland",
-        "item_default": "Main Stock - AMF21",
+        "is_sales_item": 1,
+        "item_defaults": [{
+                "default_warehouse": "Main Stock - AMF21",
+                # "expense_account": "4812 - Cost of materials (R&D) - AMF21",
+                # "income_account": "4812 - Cost of materials (R&D) - AMF21"
+            }],
+        "weight_per_unit": 2.18,
+        "weight_uom": "Kg",
     }
     return item_data, bom_materials
 

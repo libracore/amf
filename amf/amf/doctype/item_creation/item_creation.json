@@ -1,10 +1,12 @@
 {
+ "autoname": "naming_series:",
  "creation": "2024-10-10 10:10:10.134641",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "title",
+  "naming_series",
   "section_break_1",
   "3_valve_head_definition",
   "head_check",
@@ -116,12 +118,10 @@
    "read_only": 1
   },
   {
-   "default": "PCTFE",
    "depends_on": "eval:doc.seat_check=='Yes'",
    "fieldname": "seat_mat",
-   "fieldtype": "Select",
+   "fieldtype": "Data",
    "label": "Raw Material",
-   "options": "PCTFE\nPEEK\nPTFE\nPMMA",
    "read_only": 1
   },
   {
@@ -152,12 +152,10 @@
    "label": "No. of Magnets"
   },
   {
-   "default": "PTFE",
    "depends_on": "eval:doc.plug_check=='Yes'",
    "fieldname": "plug_mat",
    "fieldtype": "Select",
    "label": "Raw Material",
-   "options": "PTFE\nPE-UHMW",
    "read_only": 1
   },
   {
@@ -186,13 +184,15 @@
    "fieldname": "seat_check",
    "fieldtype": "Select",
    "label": "Do you need to create the <strong>Seat</strong> ?",
-   "options": "\nYes\nNo"
+   "options": "\nYes\nNo",
+   "reqd": 1
   },
   {
    "fieldname": "plug_check",
    "fieldtype": "Select",
    "label": "Do you need to create the <strong>Plug</strong> ?",
-   "options": "\nYes\nNo"
+   "options": "\nYes\nNo",
+   "reqd": 1
   },
   {
    "fieldname": "screw_type",
@@ -362,7 +362,8 @@
    "fieldname": "head_check",
    "fieldtype": "Select",
    "label": "Do you need to create the <strong>Valve Head</strong> ?",
-   "options": "\nYes\nNo"
+   "options": "\nYes\nNo",
+   "reqd": 1
   },
   {
    "depends_on": "eval:doc.head_check=='No'",
@@ -370,11 +371,19 @@
    "fieldtype": "Link",
    "label": "Which <strong>Valve Head</strong> would you like to use ?",
    "options": "Item"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Series",
+   "options": "Item Creation-",
+   "reqd": 1
   }
  ],
  "hide_toolbar": 1,
  "is_submittable": 1,
- "modified": "2025-10-20 15:23:04.152939",
+ "modified": "2025-12-22 10:44:06.559134",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Item Creation",

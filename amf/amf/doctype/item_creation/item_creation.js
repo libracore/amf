@@ -14,12 +14,13 @@ frappe.ui.form.on('Item Creation', {
     before_submit: async function (frm) {
         frappe.dom.freeze("Processing item creation, please wait...");
         try {
-            if (frm.doc.plug_check)
+            if (frm.doc.plug_check == 'Yes')
                 await createPlug(frm)
-            if (frm.doc.seat_check)
+
+            if (frm.doc.seat_check == 'Yes')
                 await createSeat(frm)
-            
-            if (frm.doc.head_check)
+
+            if (frm.doc.head_check == 'Yes')
                 await createHead(frm)
 
             if (frm.doc.rvm_check)
@@ -29,7 +30,9 @@ frappe.ui.form.on('Item Creation', {
             if (frm.doc.pump_hv_check)
                 await createPumpHV(frm)
 
-            
+            // If all server calls succeed, pop up validation sucess message with item codes.
+            frappe.show_alert("Item creation process completed successfully.");
+
         } catch (error) {
             // If any server call fails, the process stops and logs the error.
             console.error("Item creation failed:", error);
@@ -57,14 +60,14 @@ frappe.ui.form.on('Item Creation', {
         frm.set_query("seat_item", () => ({
             filters: [
                 ['Item', 'item_group', '=', 'Valve Seat'],
-                ['Item', 'item_code', 'like', '21_%'],
+                ['Item', 'item_code', 'like', '20_%'],
                 ['Item', 'disabled', '=', 'No'],
             ],
         }));
         frm.set_query("plug_item", () => ({
             filters: [
                 ['Item', 'item_group', '=', 'Plug'],
-                ['Item', 'item_code', 'like', '11_%'],
+                ['Item', 'item_code', 'like', '10_%'],
                 ['Item', 'disabled', '=', 'No'],
             ],
         }));
@@ -97,20 +100,22 @@ frappe.ui.form.on('Item Creation', {
                         frm.set_value('head_rnd', r.message.head_rnd);
                         frm.set_value('head_group', r.message.head_group);
                         frm.set_value('head_description', r.message.head_description);
+                        frm.set_value('seat_mat', r.message.seat_mat);
+                        frm.set_value('plug_mat', r.message.plug_mat);
                     }
                 }
             });
 
             frappe.call({
-            method: 'amf.amf.doctype.item_creation.item_creation.get_last_item_code',
-            callback: function(r) {
-                if (!r.exc) {
-                    console.log("Last 6-digit item code: " + r.message);
-                    frm.set_value('head_code', '300' + r.message);
-                    /*frm.set_value('seat_code', '200' + r.message);
-                    frm.set_value('plug_code', '100' + r.message);*/
+                method: 'amf.amf.doctype.item_creation.item_creation.get_last_item_code',
+                callback: function (r) {
+                    if (!r.exc) {
+                        console.log("Last 6-digit item code: " + r.message);
+                        frm.set_value('head_code', '300' + r.message);
+                        /*frm.set_value('seat_code', '200' + r.message);
+                        frm.set_value('plug_code', '100' + r.message);*/
+                    }
                 }
-            }
             });
         }
     },
@@ -118,7 +123,8 @@ frappe.ui.form.on('Item Creation', {
 
     head_item: function (frm) {
         if (frm.doc.head_item && frm.doc.head_check == 'No') {
-            frappe.call({method: 'amf.amf.doctype.item_creation.item_creation.populate_fields_from_existing_item',
+            frappe.call({
+                method: 'amf.amf.doctype.item_creation.item_creation.populate_fields_from_existing_item',
                 args: { item_code: frm.doc.head_item },
                 callback: function (r) {
                     if (!r.exc) {
@@ -129,7 +135,7 @@ frappe.ui.form.on('Item Creation', {
                         frm.set_value('head_rnd', r.message.head_rnd);
                         frm.set_value('head_group', r.message.head_group);
                         frm.set_value('head_description', r.message.head_description);
-                        
+
                         // Update the seat and plug fields
                         frm.set_value('seat_check', 'No');
                         frm.set_value('plug_check', 'No');
@@ -149,8 +155,8 @@ frappe.ui.form.on('Item Creation', {
         }
     },
 
-    
-    head_description_check: function(frm) {
+
+    head_description_check: function (frm) {
         // Use frm.doc.head_description_check to get the value of the checkbox (0 or 1)
         if (frm.doc.head_description_check) {
             // If checked, make the field editable (read_only = 0)
@@ -163,9 +169,9 @@ frappe.ui.form.on('Item Creation', {
         frm.refresh_field('head_description');
     },
 
-    
-    head_check: function(frm) {   
-       // Update the head fields 
+
+    head_check: function (frm) {
+        // Update the head fields 
         frm.set_value('head_code', "");
         frm.set_value('head_name', "VALVE HEAD-");
         frm.set_df_property('head_name', 'read_only', 0);
@@ -188,18 +194,18 @@ frappe.ui.form.on('Item Creation', {
         frm.set_df_property('seat_item', 'read_only', 0);
         frm.set_df_property('plug_item', 'read_only', 0);
     },
-    
 
-    seat_check: function(frm) {
+
+    seat_check: function (frm) {
         if (frm.doc.seat_check === 'Yes' && frm.doc.head_code) {
             // Extract the last three digits from head_code
             let head_code = frm.doc.head_code;
             let last_three_digits = head_code.slice(-3);  // Get the last three characters
-                
+
             if (!isNaN(last_three_digits)) {
                 // Convert last three digits to a number and add 2100
                 let result = '200' + parseInt(last_three_digits, 10);
-                
+
                 // Set the result into a target field, assuming 'seat_code' is the target field
                 frm.set_value('seat_code', result);
             } else {
@@ -208,16 +214,16 @@ frappe.ui.form.on('Item Creation', {
         }
     },
 
-    plug_check: function(frm) {
+    plug_check: function (frm) {
         if (frm.doc.plug_check === 'Yes' && frm.doc.head_code) {
             // Extract the last three digits from head_code
             let head_code = frm.doc.head_code;
             let last_three_digits = head_code.slice(-3);  // Get the last three characters
-            
+
             if (!isNaN(last_three_digits)) {
                 // Convert last three digits to a number and add 2100
                 let result = '100' + parseInt(last_three_digits, 10);
-                
+
                 // Set the result into a target field, assuming 'seat_code' is the target field
                 frm.set_value('plug_code', result);
             } else {
@@ -226,7 +232,7 @@ frappe.ui.form.on('Item Creation', {
         }
     },
 
-    rvm_check: function(frm) {
+    rvm_check: function (frm) {
         if (frm.doc.rvm_check && frm.doc.head_code) {
             frappe.call({
                 method: 'amf.amf.doctype.item_creation.item_creation.get_data_for_preview',
@@ -234,7 +240,7 @@ frappe.ui.form.on('Item Creation', {
                     'doc': frm.doc,
                     'group': 'rvm'
                 },
-                callback: function(r) {
+                callback: function (r) {
                     if (r.message) {
                         // Construire une liste HTML avec item_name + item_code
                         let html = "<ul>";
@@ -245,15 +251,15 @@ frappe.ui.form.on('Item Creation', {
                         frm.set_df_property("rvm_preview", "options", html);
                     } else {
                         frm.set_value("rvm_preview", "No preview available");
-                        }
                     }
+                }
             });
         } else {
             frm.set_value("rvm_preview", "Invalid format");
         }
     },
 
-    pump_check: function(frm) {
+    pump_check: function (frm) {
         if (frm.doc.pump_check && frm.doc.head_code) {
             frappe.call({
                 method: 'amf.amf.doctype.item_creation.item_creation.get_data_for_preview',
@@ -261,7 +267,7 @@ frappe.ui.form.on('Item Creation', {
                     'doc': frm.doc,
                     'group': 'pump'
                 },
-                callback: function(r) {
+                callback: function (r) {
                     if (r.message) {
                         // Construire une liste HTML avec item_name + item_code
                         let html = "<ul>";
@@ -272,15 +278,15 @@ frappe.ui.form.on('Item Creation', {
                         frm.set_df_property("pump_preview", "options", html);
                     } else {
                         frm.set_value("pump_preview", "No preview available");
-                        }
                     }
+                }
             });
         } else {
             frm.set_value("pump_preview", "Invalid format");
         }
     },
 
-    pump_hv_check: function(frm) {
+    pump_hv_check: function (frm) {
         if (frm.doc.pump_check && frm.doc.head_code) {
             frappe.call({
                 method: 'amf.amf.doctype.item_creation.item_creation.get_data_for_preview',
@@ -288,7 +294,7 @@ frappe.ui.form.on('Item Creation', {
                     'doc': frm.doc,
                     'group': 'pump_hv'
                 },
-                callback: function(r) {
+                callback: function (r) {
                     if (r.message) {
                         // Construire une liste HTML avec item_name + item_code
                         let html = "<ul>";
@@ -299,8 +305,8 @@ frappe.ui.form.on('Item Creation', {
                         frm.set_df_property("pump_hv_preview", "options", html);
                     } else {
                         frm.set_value("pump_hv_preview", "No preview available");
-                        }
                     }
+                }
             });
         } else {
             frm.set_value("pump_hv_preview", "Invalid format");
@@ -335,6 +341,7 @@ frappe.ui.form.on('Item Creation', {
 });
 
 async function createPlug(frm) {
+    print("Creating Plug...", frm.doc.plug_check);
     await frappe.call({
         method: 'amf.amf.doctype.item_creation.item_creation.create_item_from_doc',
         args: {
