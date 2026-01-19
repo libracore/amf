@@ -710,8 +710,8 @@ def get_stock_and_rate_override(doc, method = None, log_id = None):
     override of get_stock_and_rate() function for a better gestion of scraps item in stock entry
 
     """
-    if not doc.update_rate_items_method:
-        print("get_stock_and_rate_override: update_rate_items_method flag not set. Return.")
+    if doc.ignore_rate_calculation:
+        print("get_stock_and_rate_override: ignore_rate_calculation flag set. Return.")
         return
     
     print("Entering get_stock_and_rate_override.")
