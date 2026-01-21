@@ -126,7 +126,11 @@ doc_events = {
 
     "Purchase Receipt": {
         "on_submit": "amf.amf.utils.purchase_receipt.generate_qa_for_purchase_receipt"
-    }
+    },
+    
+    "Sales Invoice": {
+        "before_save": "amf.amf.utils.sales_invoice.validate_swiss_tva_on_sales_invoice"
+    },
 }
 
 # Scheduled Tasks
