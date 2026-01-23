@@ -1,13 +1,15 @@
+from xml.dom.minidom import Document
 import frappe
 from frappe import _
 from frappe.utils import cint
+from typing import Optional
 
 
 # If True: block when customer country cannot be determined (safer for VAT compliance)
 STRICT_COUNTRY_REQUIRED = True
 
 
-def _get_customer_country(customer: str, customer_address: str | None = None) -> str | None:
+def _get_customer_country(customer: str, customer_address: Optional[str] = None) -> Optional[str]:
     """
     Returns the customer's country using:
     1) Sales Invoice.customer_address if present
@@ -58,9 +60,39 @@ def _has_swiss_vat_line(doc) -> bool:
 
     return False
 
+def _coerce_to_document(doc) -> Document:
+    """
+    Accepts:
+      - Frappe Document (hooks)
+      - dict (already parsed)
+      - JSON string (common when passed via frappe.call args)
+    Returns:
+      - Frappe Document
+    """
+    # If it's already a Document, keep it
+    if isinstance(doc, Document):
+        return doc
 
+    # If it's a JSON string, parse it into a dict
+    if isinstance(doc, str):
+        doc = frappe.parse_json(doc)
+
+    # If it's a dict, try to load/finalize a Document
+    if isinstance(doc, dict):
+        # Best case: doctype + name -> fetch from DB (authoritative)
+        doctype = doc.get("doctype")
+        name = doc.get("name")
+        if doctype and name:
+            return frappe.get_doc(doctype, name)
+
+        # Otherwise, if it's a full doc dict (rare but possible)
+        if doctype:
+            return frappe.get_doc(doc)
+
+    raise TypeError(f"Unsupported doc type: {type(doc)}")
+
+@frappe.whitelist()
 def validate_swiss_tva_on_sales_invoice(doc, method=None):
-    print("On rentre ici Sales Invoice")
     """
     Hook this on Sales Invoice validate AND before_submit.
 
@@ -68,6 +100,9 @@ def validate_swiss_tva_on_sales_invoice(doc, method=None):
     - If customer country is Switzerland => must have a TVA/VAT line in Taxes.
     - If country cannot be determined => optionally block (STRICT_COUNTRY_REQUIRED).
     """
+    doc = _coerce_to_document(doc)
+    print(doc.doctype)
+    
     if doc.doctype != "Sales Invoice":
         return
 
@@ -109,9 +144,9 @@ def validate_swiss_tva_on_sales_invoice(doc, method=None):
         )
 
 
-@frappe.whitelist()
-def get_customer_country(customer: str, customer_address: str | None = None) -> str | None:
-    """
-    Whitelisted helper for the client script (UI) so you can pre-fill / cache country.
-    """
-    return _get_customer_country(customer, customer_address)
+# @frappe.whitelist()
+# def _get_customer_country(customer: str, customer_address: Optional[str] = None) -> Optional[str]:
+#     """
+#     Whitelisted helper for the client script (UI) so you can pre-fill / cache country.
+#     """
+#     return _get_customer_country(customer, customer_address)
