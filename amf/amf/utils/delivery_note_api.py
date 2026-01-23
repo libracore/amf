@@ -162,7 +162,7 @@ country_mapping = {
     'Namibia': 'NA',
     'Nauru': 'NR',
     'Nepal': 'NP',
-    'Netherlands (the)': 'NL',
+    'Netherlands': 'NL',
     'New Caledonia': 'NC',
     'New Zealand': 'NZ',
     'Nicaragua': 'NI',
@@ -472,7 +472,9 @@ def before_save_dn(doc, method):
     from the stock entries of the 'Manufacture' type, storing them in the 'product_serial_no' field.
     """
     for item in doc.items:
-        item.customs_tariff_number_ = get_HS_code(item.item_code, doc.shipping_address_name)
+
+        if not item.customs_tariff_number_ or item.customs_tariff_number_ == "":
+            item.customs_tariff_number_ = get_HS_code(item.item_code, doc.shipping_address_name)
 
 
         sales_order = item.against_sales_order
