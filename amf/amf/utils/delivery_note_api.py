@@ -162,7 +162,7 @@ country_mapping = {
     'Namibia': 'NA',
     'Nauru': 'NR',
     'Nepal': 'NP',
-    'Netherlands (the)': 'NL',
+    'Netherlands': 'NL',
     'New Caledonia': 'NC',
     'New Zealand': 'NZ',
     'Nicaragua': 'NI',
@@ -350,7 +350,7 @@ def generate_dhl(delivery_note_id):
 
     for item in delivery_note.items:
         # Split the commodity code by the period
-        parts = item.get("customs_tariff_number", "").split(".")
+        parts = item.get("customs_tariff_number_", "").split(".")
         first_part = parts[0]
         second_part = parts[1] if len(parts) > 1 else ""
         subpart1, subpart2 = second_part[:2], second_part[2:]
@@ -362,7 +362,7 @@ def generate_dhl(delivery_note_id):
 
         item_line = "1|INV_ITEM|{item_name}|{item_commodity_code}|{qty}|PCS|{net_rate}|{currency}|{weight_per_unit}||{country_of_origin}|MID|{item_code}||".format(
             item_name=item.item_name,
-            # Assuming customs_tariff_number is a custom field
+            # Assuming customs_tariff_number_ is a custom field
             item_commodity_code=formatted_commodity_code,
             qty=int(item.qty),
             net_rate=item.net_rate,
@@ -467,12 +467,14 @@ def check_serial_nos(doc, method):
 
 def before_save_dn(doc, method):
     """
-    Pre-save hook for Delivery Note to fetch and populate serial numbers from related Work Orders.
+    Pre-save hook for Delivery Note to fetch and populate serial numbers from related Work Orders and HS codes.
     This function checks each delivery note item, fetches related work orders, and gathers serial numbers
     from the stock entries of the 'Manufacture' type, storing them in the 'product_serial_no' field.
     """
     for item in doc.items:
-        item.customs_tariff_number_ = get_HS_code(item.item_code, doc.shipping_address_name)
+
+        if not item.customs_tariff_number_ or item.customs_tariff_number_ == "":
+            item.customs_tariff_number_ = get_HS_code(item.item_code, doc.shipping_address_name)
 
 
         sales_order = item.against_sales_order
@@ -537,17 +539,10 @@ def before_save_dn(doc, method):
 
             # After processing all stock entries, update the delivery note item field
             if serial_nos:
-                print("hey")
-                print(serial_nos)
-                print("hey")
-                print(serial_nos)
                 limited_serials = serial_nos[:int(item.qty)]
                 if not item.product_serial_no:
-                    print("on set")
-                    print("on set")
                     item.product_serial_no = '\n'.join(limited_serials)  # Join serial numbers with a newline
             else:
-                item.product_serial_no = None  # Set to None if no serial numbers found
                 frappe.log_error(f"No serial numbers found for item {item.item_code} in Delivery Note {doc.name}")
 
         except Exception as e:
