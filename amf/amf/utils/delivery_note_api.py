@@ -350,7 +350,7 @@ def generate_dhl(delivery_note_id):
 
     for item in delivery_note.items:
         # Split the commodity code by the period
-        parts = item.get("customs_tariff_number", "").split(".")
+        parts = item.get("customs_tariff_number_", "").split(".")
         first_part = parts[0]
         second_part = parts[1] if len(parts) > 1 else ""
         subpart1, subpart2 = second_part[:2], second_part[2:]
@@ -362,7 +362,7 @@ def generate_dhl(delivery_note_id):
 
         item_line = "1|INV_ITEM|{item_name}|{item_commodity_code}|{qty}|PCS|{net_rate}|{currency}|{weight_per_unit}||{country_of_origin}|MID|{item_code}||".format(
             item_name=item.item_name,
-            # Assuming customs_tariff_number is a custom field
+            # Assuming customs_tariff_number_ is a custom field
             item_commodity_code=formatted_commodity_code,
             qty=int(item.qty),
             net_rate=item.net_rate,
