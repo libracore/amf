@@ -390,7 +390,7 @@ def _create_work_order_doc(data: dict, bom_no: str) -> Document:
 def _create_manufacture_entry(work_order: Document, data: dict) -> tuple:
     """Creates a manufacture stock entry."""
     return _make_stock_entry(
-        work_order.name, 'Manufacture', int(
+        work_order.name, 'Manufacture', float(data['used_qty']), int(
             data['quantite_validee']), int(data['quantite_scrap'])
     )
 
@@ -399,36 +399,37 @@ def _create_transfer_entry_if_applicable(work_order: Document, data: dict, manuf
     """Creates a transfer stock entry if there's scrap quantity."""
     if int(data['quantite_scrap']) > 0:
         return _make_stock_entry(
-            work_order.name, 'Material Transfer', None, int(
+            work_order.name, 'Material Transfer', None, None, int(
                 data['quantite_scrap']), manufacture_entry
         )
     return None
 
 
-def _make_stock_entry(work_order_id, purpose, qty=None, scrap=None, ft_stock_entry=None):
+def _make_stock_entry(work_order_id, purpose, used_qty=None, qty=None, scrap=None,  ft_stock_entry=None):
     """Helper function to create stock entries for manufacturing or transfer purposes."""
     work_order = frappe.get_doc("Work Order", work_order_id)
 
     if purpose == 'Manufacture':
         stock_entry, batch_no = _create_stock_entry(
-            work_order, purpose, qty, scrap, True if qty else False)
+            work_order, purpose, used_qty, qty, scrap, True if qty else False)
 
     # Create transfer stock entry if no quantity is provided (i.e., scrap)
     if qty is None:
-        _create_stock_entry(work_order, purpose, None,
+        _create_stock_entry(work_order, purpose, None, None,
                             scrap, False, ft_stock_entry)
 
     if qty:
         return stock_entry.as_dict(), batch_no
 
 
-def _create_stock_entry(work_order, purpose, qty, scrap, from_bom, ft_stock_entry=None):
+def _create_stock_entry(work_order, purpose, used_qty=None, qty=None, scrap=None, from_bom=False, ft_stock_entry=None):
     """
     Create and return a Stock Entry document based on the Work Order.
 
     Args:
         work_order (Document): The related work order document.
         purpose (str): The purpose of the stock entry ('Manufacture' or 'Material Transfer').
+        used_qty (float): Used quantity of raw material.
         qty (int): Quantity of items.
         scrap (int): Scrap quantity.
         from_bom (bool): If the stock entry is from BOM.
@@ -448,7 +449,7 @@ def _create_stock_entry(work_order, purpose, qty, scrap, from_bom, ft_stock_entr
     if purpose == "Material Transfer":
         _set_material_transfer_data(stock_entry, scrap, ft_stock_entry)
     else:
-        _set_manufacture_data(stock_entry, qty, scrap,
+        _set_manufacture_data(stock_entry, used_qty, qty, scrap,
                               from_bom, work_order.raw_material_batch)
 
     stock_entry.set_stock_entry_type()
@@ -478,7 +479,7 @@ def _set_material_transfer_data(stock_entry, scrap, ft_stock_entry):
     stock_entry.append('items', item)
 
 
-def _set_manufacture_data(stock_entry, qty, scrap, from_bom, batch_no=None):
+def _set_manufacture_data(stock_entry, used_qty, qty, scrap, from_bom, batch_no=None):
     """Helper function to set data for manufacture stock entry."""
     stock_entry.fg_completed_qty = qty + scrap
     stock_entry.from_warehouse = 'Main Stock - AMF21' if qty else 'Quality Control - AMF21'
@@ -495,6 +496,7 @@ def _set_manufacture_data(stock_entry, qty, scrap, from_bom, batch_no=None):
         item_group = frappe.db.get_value("Item", item.item_code, "item_group")
         if item_group == "Raw Material":
             item.auto_batch_no_generation = 0
+            item.qty = used_qty
             item.batch_no = batch_no
 
 
@@ -631,3 +633,5 @@ def get_next_suivi_usinage():
     # 4) Construct the new suivi_usinage
     new_suivi = f"P-{today_str}-{new_digit_int}"
     return new_suivi
+
+
