@@ -15,7 +15,7 @@ frappe.ui.form.on('Planning', {
         // Only set defaults if this is a brand new document (not saved yet)
         if (frm.is_new()) {
             if (frm.doc.amended_from) {
-                frm.trigger('item_code'); 
+                frm.trigger('item_code');
             }
             set_default_values(frm);
             fetch_suivi_usinage(frm);
@@ -27,7 +27,7 @@ frappe.ui.form.on('Planning', {
     },
 
     after_submit: function (frm) {
-        
+
     },
 
     item_code: function (frm) {
@@ -45,19 +45,38 @@ frappe.ui.form.on('Planning', {
     },
 
     // Trigger batch fetch when the user picks a matiere
-    matiere: function(frm) {
-        frm.set_value('batch_matiere', '')
+    matiere: function (frm) {
+        frm.set_value('batch_matiere', '');
         frm.refresh_field('batch_matiere');
         if (frm.doc.matiere) {
             // frm.doc.matiere now holds the raw material's "name" (internal code),
             // so we can fetch enabled batches
-            frm.set_query("batch_matiere", function() {
+            frm.set_query("batch_matiere", function () {
                 return {
                     filters: {
                         "item": frm.doc.matiere,  // or whichever field you want to match
                         "disabled": 0
                     }
                 };
+            });
+        }
+    },
+    batch_matiere: function (frm) {
+        frm.set_value('available_qty', 0);
+        frm.refresh_field('available_qty');
+        if (frm.doc.batch_matiere) {
+            frappe.call({
+                method: "amf.amf.utils.batch.get_batch_quantity_in_warehouse",
+                args: {
+                    batch_no: frm.doc.batch_matiere,
+                    warehouse: "Main Stock - AMF21"
+                },
+                callback: function (r) {
+                    if (r.message) {
+                        frm.set_value('available_qty', r.message);
+                        frm.refresh_field('available_qty');
+                    }
+                }
             });
         }
     },
@@ -75,9 +94,9 @@ function set_default_values(frm) {
     frm.set_value("date_de_fin", frappe.datetime.now_datetime());
     frm.set_value("responsable", frappe.session.user);
     frm.set_value("entreprise", "Advanced Microfluidics SA");
-    
+
     // Set all these fields to null or empty as needed
-    
+
     const fieldsToClear = ["stock_entry", "batch", "item_code", "item_name", "batch_matiere", "matiere", "dimension_matiere"];
     const fieldsToClear_ = ["work_order"];
     if (!frm.doc.amended_from)
@@ -93,19 +112,19 @@ function fetch_suivi_usinage(frm) {
     frappe.call({
         method: "amf.amf.doctype.planning.planning.get_next_suivi_usinage"
     })
-    .then(r => {
-        if (r && r.message) {
-            frm.set_value("suivi_usinage", r.message);
-        }
-    })
-    .catch(err => {
-        frappe.msgprint({
-            title: __("Server Error"),
-            message: __("Unable to fetch the next 'suivi_usinage'. Please try again later."),
-            indicator: "red"
+        .then(r => {
+            if (r && r.message) {
+                frm.set_value("suivi_usinage", r.message);
+            }
+        })
+        .catch(err => {
+            frappe.msgprint({
+                title: __("Server Error"),
+                message: __("Unable to fetch the next 'suivi_usinage'. Please try again later."),
+                indicator: "red"
+            });
+            console.error("Error fetching suivi_usinage:", err);
         });
-        console.error("Error fetching suivi_usinage:", err);
-    });
 }
 
 function printSticker(frm) {
@@ -162,7 +181,7 @@ function fetchMaterials(frm) {
                 frm.set_df_property('matiere', 'options', rawMaterialOptions);
                 frm.refresh_field('matiere');
 
-                
+
                 // frm.set_df_property('matiere', 'options', response.message.items.join('\n'));
                 // frm.refresh_field('matiere');
             }
@@ -193,7 +212,7 @@ function createWorkOrder(frm) {
                     message: __('Ordre de Fabrication crée avec succès.')
                 });
                 frm.save('Update');
-                frappe.show_alert( __("Fichier mis à jour") );
+                frappe.show_alert(__("Fichier mis à jour"));
 
                 frappe.set_route("Form", "Work Order", frm.doc.work_order);
             } else {

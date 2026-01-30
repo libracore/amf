@@ -148,3 +148,24 @@ def get_item_drawing(item_code):
             drawing_file = drawing.drawing
             break
     return drawing_file
+
+
+@frappe.whitelist()
+def get_batch_quantity_in_warehouse(batch_no: str, warehouse:str):
+    """ retrieve the available quantity in warehouse for a given batch number """
+
+    if not batch_no or not warehouse:
+        frappe.throw("Batch number and warehouse must be provided")
+    
+    qty = frappe.db.sql(
+        """
+        SELECT COALESCE(SUM(actual_qty), 0)
+        FROM `tabStock Ledger Entry`
+        WHERE docstatus = 1
+          AND is_cancelled = 0
+          AND batch_no = %(batch_no)s
+          AND warehouse = %(warehouse)s
+        """,
+        {"batch_no": batch_no, "warehouse": warehouse},
+    )[0][0]
+    return float(qty or 0.0)

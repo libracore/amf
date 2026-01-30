@@ -23,6 +23,8 @@
   "matiere",
   "batch_matiere",
   "dimension_matiere",
+  "available_qty",
+  "used_qty",
   "section_break_16",
   "date_de_debut",
   "date_de_fin",
@@ -265,10 +267,26 @@
   {
    "fieldname": "column_break_30",
    "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.batch_matiere",
+   "fieldname": "available_qty",
+   "fieldtype": "Float",
+   "label": "Quantit\u00e9 de mati\u00e8re disponible ",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.matiere",
+   "description": "Quantit\u00e9 utilis\u00e9e en m\u00e8tre ",
+   "fieldname": "used_qty",
+   "fieldtype": "Float",
+   "label": "Quantit\u00e9 de mati\u00e8re utilis\u00e9e ",
+   "reqd": 1
   }
  ],
  "is_submittable": 1,
- "modified": "2025-02-28 14:35:54.279440",
+ "modified": "2026-01-30 18:29:23.982662",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Planning",
