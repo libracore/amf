@@ -30,7 +30,7 @@ def get_data(filters):
         SELECT 
             `tabEmployee`.`name` AS `employee`, 
             `tabEmployee`.`employee_name`,
-            (SELECT SUM(`new_leaves_allocated`)
+            (SELECT SUM(`total_leaves_allocated`)
              FROM `tabLeave Allocation`
              WHERE 
                 `tabLeave Allocation`.`employee` = `tabEmployee`.`name`
