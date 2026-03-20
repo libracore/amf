@@ -1,6 +1,7 @@
 import frappe
 from frappe import _
 from frappe.exceptions import LinkExistsError, ValidationError
+from frappe.utils import now_datetime
 
 @frappe.whitelist()
 def fetch_boms_with_operations_and_costs():
@@ -171,8 +172,28 @@ def deactivate_non_default_boms_():
 This is hooked in the BOM : before_save trigger (hooky.py)
 """
 def bom_before_save(doc, event):
+    # Keep the trace very explicit because this hook directly affects parent BOMs.
+    print(
+        "[BOM Hook {0}] before_save triggered for BOM {1} "
+        "(item={2}, is_default={3}, event={4})".format(
+            now_datetime(),
+            doc.name,
+            doc.item,
+            doc.is_default,
+            event,
+        )
+    )
     if doc.is_default:
+        print(
+            "[BOM Hook {0}] BOM {1} is default, checking parent BOM rows that "
+            "reference item {2}.".format(now_datetime(), doc.name, doc.item)
+        )
         update_depending_boms(doc.name, doc.item)
+    else:
+        print(
+            "[BOM Hook {0}] BOM {1} is not default, so no parent BOM links will "
+            "be updated.".format(now_datetime(), doc.name)
+        )
     
     return
     
@@ -181,7 +202,13 @@ def bom_before_save(doc, event):
 In case a default BOM is saved, update links to this BOM in all upper BOMs
 """
 def update_depending_boms(bom, item):
-    # find all BOMs depending on this item
+    # Find every parent BOM that contains the child item. We only want to update
+    # the row(s) that actually reference this item, never every row in the parent
+    # BOM. That was the source of the earlier data corruption.
+    print(
+        "[BOM Hook {0}] Searching parent BOMs that contain item {1} so they can "
+        "be repointed to BOM {2}.".format(now_datetime(), item, bom)
+    )
     depending_boms = frappe.db.sql("""
         SELECT `tabBOM`.`name`
         FROM `tabBOM Item`
@@ -193,21 +220,83 @@ def update_depending_boms(bom, item):
         {'item': item},
         as_dict=True
     )
+    print(
+        "[BOM Hook {0}] Found {1} parent BOM(s) referencing item {2}: {3}".format(
+            now_datetime(),
+            len(depending_boms),
+            item,
+            [row.get("name") for row in depending_boms],
+        )
+    )
     for d in depending_boms:
+        parent_bom = d.get("name")
+        matching_rows = frappe.db.sql(
+            """
+            SELECT `name`, `idx`, `bom_no`
+            FROM `tabBOM Item`
+            WHERE `parent` = %(depending)s
+                AND `item_code` = %(item)s
+                AND `parenttype` = 'BOM'
+            ORDER BY `idx`
+            """,
+            {"depending": parent_bom, "item": item},
+            as_dict=True,
+        )
+        print(
+            "[BOM Hook {0}] Parent BOM {1} has {2} matching row(s) for item {3}: {4}".format(
+                now_datetime(),
+                parent_bom,
+                len(matching_rows),
+                item,
+                [
+                    {
+                        "row": row.get("idx"),
+                        "row_name": row.get("name"),
+                        "previous_bom_no": row.get("bom_no") or "",
+                    }
+                    for row in matching_rows
+                ],
+            )
+        )
         try:
             frappe.db.sql("""
                     UPDATE `tabBOM Item`
                     SET `bom_no` = %(bom)s
-                    WHERE `parent` = %(depending)s;
+                    WHERE `parent` = %(depending)s
+                        AND `item_code` = %(item)s
+                        AND `parenttype` = 'BOM';
                 """,
                 {
                     'bom': bom,
-                    'depending': d.get("name")
+                    'depending': parent_bom,
+                    'item': item,
                 }
+            )
+            print(
+                "[BOM Hook {0}] Parent BOM {1} updated successfully. Only rows "
+                "for item {2} were set to bom_no={3}.".format(
+                    now_datetime(), parent_bom, item, bom
+                )
             )
         except Exception as err:
             frappe.log_error( "Unable to update depending BOM in {0}: {1}".format(d.get("name"), err), "Error updating depending bom")
+            print(
+                "[BOM Hook {0}] ERROR while updating parent BOM {1}: {2}".format(
+                    now_datetime(), parent_bom, err
+                )
+            )
         frappe.db.commit()
+        print(
+            "[BOM Hook {0}] Commit complete for parent BOM {1}.".format(
+                now_datetime(), parent_bom
+            )
+        )
+
+    print(
+        "[BOM Hook {0}] Parent BOM update pass finished for child item {1}.".format(
+            now_datetime(), item
+        )
+    )
         
     return
     
