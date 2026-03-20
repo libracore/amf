@@ -38,7 +38,7 @@ doctype_js = {
     # Keep both scripts active. A duplicate dict key would silently drop one.
     "Delivery Note": [
         "public/js/delivery_note.js",
-        "public/js/delivery_note_submit_readiness.js",
+    #    "public/js/delivery_note_submit_readiness.js",
     ],
     "Item": "public/js/item.js",
     "Quality Inspection": "public/js/quality_inspection.js",
