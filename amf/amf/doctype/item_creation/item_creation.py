@@ -30,6 +30,145 @@ material_map = {
     'K': 'PEEK',              'A': 'PMMA',
 }
 
+BOM_MANAGED_GROUP_ALIASES = {
+    "plug": "Plug",
+    "valve seat": "Valve Seat",
+    "seat": "Valve Seat",
+    "valve head": "Valve Head",
+    "head": "Valve Head",
+}
+
+BOM_MANAGED_PREFIXES = {
+    "Plug": {
+        "component": "10",
+        "sub-assembly": "11",
+    },
+    "Valve Seat": {
+        "component": "20",
+        "sub-assembly": "21",
+    },
+    "Valve Head": {
+        "component": "30",
+        "sub-assembly": "30",
+    },
+}
+
+RESERVED_BOM_MANAGED_PREFIXES = ("10", "11", "20", "21", "30")
+MIN_BOM_MANAGED_SUFFIX = 1
+MAX_BOM_MANAGED_SUFFIX = 9999
+
+
+def normalize_bom_managed_group(item_group):
+    normalized = BOM_MANAGED_GROUP_ALIASES.get((item_group or "").strip().lower())
+    if not normalized:
+        raise ValueError(_("Item group must be Plug, Valve Seat, or Valve Head."))
+    return normalized
+
+
+def normalize_bom_managed_variant(item_group, item_type=None, has_bom=None):
+    normalized_group = normalize_bom_managed_group(item_group)
+    if normalized_group == "Valve Head":
+        return "sub-assembly"
+
+    if has_bom is not None:
+        if isinstance(has_bom, str):
+            has_bom = has_bom.strip().lower() in ("1", "true", "yes")
+        return "sub-assembly" if has_bom else "component"
+
+    normalized_item_type = (item_type or "").strip().lower().replace("_", "-")
+    if normalized_item_type in ("sub-assembly", "sub assembly"):
+        return "sub-assembly"
+
+    return "component"
+
+
+def get_reserved_bom_managed_codes_for_suffix(suffix):
+    return ["{0}{1}".format(prefix, suffix) for prefix in RESERVED_BOM_MANAGED_PREFIXES]
+
+
+def build_bom_managed_item_code(item_group, suffix, item_type=None, has_bom=None):
+    normalized_group = normalize_bom_managed_group(item_group)
+    variant = normalize_bom_managed_variant(normalized_group, item_type=item_type, has_bom=has_bom)
+    prefix = BOM_MANAGED_PREFIXES[normalized_group][variant]
+    return "{0}{1}".format(prefix, suffix)
+
+
+def get_bom_managed_family_codes(suffix):
+    return {
+        "plug_component": build_bom_managed_item_code("Plug", suffix, item_type="Component"),
+        "plug_sub_assembly": build_bom_managed_item_code("Plug", suffix, item_type="Sub-Assembly"),
+        "seat_component": build_bom_managed_item_code("Valve Seat", suffix, item_type="Component"),
+        "seat_sub_assembly": build_bom_managed_item_code("Valve Seat", suffix, item_type="Sub-Assembly"),
+        "head": build_bom_managed_item_code("Valve Head", suffix, item_type="Sub-Assembly"),
+    }
+
+
+def get_next_available_bom_managed_suffix(existing_codes):
+    occupied_codes = {
+        item_code for item_code in (existing_codes or [])
+        if item_code and len(item_code) == 6 and item_code[:2] in RESERVED_BOM_MANAGED_PREFIXES and item_code[2:].isdigit()
+    }
+
+    highest_suffix = 0
+    for item_code in occupied_codes:
+        highest_suffix = max(highest_suffix, int(item_code[-4:]))
+
+    search_limit = min(MAX_BOM_MANAGED_SUFFIX, highest_suffix + 1)
+    for suffix_int in range(MIN_BOM_MANAGED_SUFFIX, search_limit + 1):
+        suffix = str(suffix_int).zfill(4)
+        reserved_codes = get_reserved_bom_managed_codes_for_suffix(suffix)
+        if not any(code in occupied_codes for code in reserved_codes):
+            return suffix
+
+    raise ValueError(_("No free 4-digit suffix is available for Plug, Valve Seat, and Valve Head item families."))
+
+
+def get_existing_bom_managed_item_codes():
+    rows = frappe.db.sql(
+        """
+        SELECT item_code
+        FROM `tabItem`
+        WHERE item_code REGEXP '^(10|11|20|21|30)[0-9]{4}$'
+        """,
+        as_dict=True,
+    )
+    return [row["item_code"] for row in rows]
+
+
+def get_highest_bom_managed_suffix(existing_codes=None):
+    occupied_codes = existing_codes or get_existing_bom_managed_item_codes()
+    suffixes = [int(item_code[-4:]) for item_code in occupied_codes if item_code and item_code[-4:].isdigit()]
+    return max(suffixes) if suffixes else 0
+
+
+@frappe.whitelist()
+def suggest_bom_managed_item_code(item_group, item_type=None, has_bom=None):
+    try:
+        normalized_group = normalize_bom_managed_group(item_group)
+        variant = normalize_bom_managed_variant(normalized_group, item_type=item_type, has_bom=has_bom)
+        suffix = get_next_available_bom_managed_suffix(get_existing_bom_managed_item_codes())
+        family_codes = get_bom_managed_family_codes(suffix)
+        suggested_item_type = "Sub-Assembly" if variant == "sub-assembly" else "Component"
+
+        return {
+            "item_group": normalized_group,
+            "item_type": suggested_item_type if normalized_group != "Valve Head" else "Sub-Assembly",
+            "family_suffix": suffix,
+            "item_code": build_bom_managed_item_code(
+                normalized_group,
+                suffix,
+                item_type=suggested_item_type,
+                has_bom=has_bom,
+            ),
+            "family_codes": family_codes,
+            "reserved_codes": get_reserved_bom_managed_codes_for_suffix(suffix),
+            "rule": _(
+                "The next suffix is accepted only when 10/11/20/21/30 with the same last 4 digits are all still unused."
+            ),
+        }
+    except ValueError as exc:
+        frappe.throw(str(exc))
+
 @frappe.whitelist()
 def populate_fields(head_name):
     """
@@ -274,48 +413,12 @@ def get_item_from_name(item_name):
 
 
 @frappe.whitelist()
-def get_last_item_code():
+def get_last_item_code(*args, **kwargs):
     """
-    Fetch the last three digits from items in the 'Valve Seat', 'Valve Head', and 'Plug' item groups
-    and return the highest three-digit number.
+    Legacy helper kept for compatibility with older callers.
+    Returns the highest occupied 4-digit suffix among the managed Plug/Seat/Head codes.
     """
-    # Define the relevant item groups
-
-    # if code_body:
-    item_groups = ['Product', 'Valve Head', 'Valve Seat', 'Plug']
-    # Query to find all item codes in the specified item groups
-    items = frappe.db.sql("""
-            SELECT item_code
-            FROM `tabItem`
-            WHERE item_group IN (%s, %s, %s, %s)
-            AND disabled = 0
-            AND item_code REGEXP '^[0-9]{6}$'
-        """, tuple(item_groups))
-
-    # Variable to store the highest three-digit number
-    highest_digit_number = None
-
-    # Process each item and extract the last three digits
-    for item in items:
-        item_code = item[0]  # Assuming 'name' is the item code
-
-        # Extract the last three digits from the item code (assumes the format allows this)
-        last_digits = item_code[-3:]  # Take the last three characters
-
-        # Check if the last three characters are numeric
-        if last_digits.isdigit():
-            last_digits = int(last_digits)
-
-            # Compare to find the highest three-digit number
-            if highest_digit_number is None or last_digits > highest_digit_number:
-                highest_digit_number = last_digits
-
-    # Return the highest three-digit number found, or throw an error if none found
-    if highest_digit_number is not None:
-        return highest_digit_number+1
-    else:
-        frappe.throw(
-            "No valid three-digit item codes found in the specified groups.")
+    return get_highest_bom_managed_suffix()
         
 
 @frappe.whitelist()
