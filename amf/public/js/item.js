@@ -35,6 +35,73 @@ function fetchBomManagedItemSuggestion(itemGroup, hasBom, callback) {
     });
 }
 
+function getDefaultBomManagedItemName(itemGroup) {
+    switch (itemGroup) {
+        case "Valve Head":
+            return "VALVE HEAD-A-X-XX-XXX-B-C";
+        case "Valve Seat":
+            return "SEAT-A-X-XX-XXX-B";
+        case "Plug":
+            return "PLUG-A-X-XX-XXX-B";
+        default:
+            return "";
+    }
+}
+
+function applyBomManagedDefaults(frm, itemGroup) {
+    frm.clear_table("uoms");
+    frm.clear_table("item_defaults");
+    frm.refresh_field("uoms");
+    frm.refresh_field("item_defaults");
+
+    if (!isBomManagedItemGroup(itemGroup)) {
+        return;
+    }
+
+    frm.set_value("default_material_request_type", "Manufacture");
+    frm.set_value("has_batch_no", 1);
+    frm.set_value("create_new_batch", 0);
+    frm.set_value("is_purchase_item", 0);
+    frm.set_value("stock_uom", "Nos");
+    frm.set_value("item_name", getDefaultBomManagedItemName(itemGroup));
+
+    frm.add_child("uoms", {
+        uom: "Nos",
+        conversion_factor: 1,
+    });
+    frm.refresh_field("uoms");
+
+    frm.add_child("item_defaults", {
+        company: "Advanced Microfluidics SA",
+        default_warehouse: "Main Stock - AMF21",
+        expense_account: "4009 - Cost of material: Valve Head - AMF21",
+        income_account: "3007 - Valve Head sales revenue - AMF21",
+    });
+    frm.refresh_field("item_defaults");
+
+    if (itemGroup === "Valve Head") {
+        frm.set_value("is_sales_item", 1);
+        frm.set_value("sales_uom", "Nos");
+        frm.set_value("customs_tariff_number", "8481 80 90 05");
+    } else {
+        frm.set_value("is_sales_item", 0);
+        frm.set_value("sales_uom", "");
+        frm.set_value("customs_tariff_number", "");
+    }
+}
+
+function shouldRequireTagRawMat(itemCode) {
+    return (itemCode || "").startsWith("10") || (itemCode || "").startsWith("20");
+}
+
+function updateTagRawMatRequirement(frm) {
+    if (!frm.fields_dict.tag_raw_mat) {
+        return;
+    }
+
+    frm.set_df_property("tag_raw_mat", "reqd", shouldRequireTagRawMat(frm.doc.item_code) ? 1 : 0);
+}
+
 function applyBomManagedSuggestion(frm, suggestion) {
     const itemType = suggestion.item_group === "Valve Head"
         ? "Sub-Assembly"
@@ -45,6 +112,8 @@ function applyBomManagedSuggestion(frm, suggestion) {
         frm.set_value("item_type", itemType);
     }
     frm.set_value("item_code", suggestion.item_code);
+    applyBomManagedDefaults(frm, suggestion.item_group);
+    updateTagRawMatRequirement(frm);
 }
 
 function updateBomManagedDialog(dialog) {
@@ -134,6 +203,8 @@ function showBomManagedItemDialog(frm) {
 
 frappe.ui.form.on("Item", {
     refresh: function (frm) {
+        updateTagRawMatRequirement(frm);
+
         if (!frm.is_new()) {
             return;
         }
@@ -148,5 +219,9 @@ frappe.ui.form.on("Item", {
                 showBomManagedItemDialog(frm);
             }, 150);
         }
+    },
+
+    item_code: function (frm) {
+        updateTagRawMatRequirement(frm);
     },
 });
