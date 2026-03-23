@@ -62,12 +62,16 @@ doc_events = {
     "Batch": {
         "after_insert": "amf.amf.utils.barcode.after_insert_handler",
     },
+    "Bin": {
+        "on_update": "amf.amf.utils.bin_bom_sync.sync_item_bom_stock_qty_on_bin_update",
+    },
     "BOM": {
         "before_save": [
             "amf.amf.utils.bom_updating.bom_before_save",
             "amf.amf.utils.bom_child_bom_resolver.apply_item_default_boms_to_rows",
         ],
-        "before_submit": "amf.amf.utils.bom_mgt.update_item_from_default_bom",
+        "on_submit": "amf.amf.utils.bom_mgt.update_item_from_default_bom",
+        "on_cancel": "amf.amf.utils.bom_mgt.update_item_from_default_bom",
         "on_update_after_submit": "amf.amf.utils.bom_mgt.update_item_from_default_bom",
     },
     "Contact": {
@@ -88,6 +92,7 @@ doc_events = {
         "before_submit": "amf.amf.utils.delivery_note_api.check_qa_inspections_status",
     },
     "Item": {
+        "validate": "amf.amf.utils.bom_mgt.sync_item_bom_fields",
         "after_insert": "amf.amf.utils.custom.qr_code_to_document",
     },
     "Lead": {
@@ -164,6 +169,9 @@ scheduler_events = {
         "amf.master_crm.doctype.global_satisfaction_score.global_satisfaction_score.calculate_global_scores",
         "amf.amf.utils.item_mgt.update_all_item_valuation_rates_enq",
         "amf.amf.utils.cleaning.enqueue_log_cleanup",
+    ],
+    "monthly_long": [
+        "amf.amf.utils.bom_hierarchy_sync.enqueue_sync_latest_bom_hierarchy_for_all_items",
     ],
 }
 
