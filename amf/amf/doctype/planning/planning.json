@@ -44,7 +44,9 @@
   "batch",
   "section_break_32",
   "amended_from",
-  "name_id"
+  "name_id",
+  "section_break_costing",
+  "costing"
  ],
  "fields": [
   {
@@ -283,10 +285,23 @@
    "fieldtype": "Float",
    "label": "Quantit\u00e9 de mati\u00e8re utilis\u00e9e ",
    "reqd": 1
+  },
+  {
+   "fieldname": "section_break_costing",
+   "fieldtype": "Section Break",
+   "label": "Costing"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "costing",
+   "fieldtype": "Table",
+   "label": "Costing",
+   "options": "Planning Costing Table",
+   "read_only": 1
   }
  ],
  "is_submittable": 1,
- "modified": "2026-01-30 18:29:23.982662",
+ "modified": "2026-03-24 13:52:06.000000",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Planning",

@@ -8,6 +8,7 @@ from erpnext.manufacturing.doctype.bom.bom import get_bom_items_as_dict
 from erpnext.stock.utils import get_latest_stock_qty
 import frappe
 from frappe.model.document import Document
+from frappe.utils import flt
 from frappe.utils.data import now_datetime
 from frappe.utils.pdf import get_pdf
 from frappe.utils.file_manager import save_file
@@ -16,8 +17,216 @@ from datetime import datetime
 from frappe import ValidationError
 
 
+PLANNING_COSTING_HOURLY_RATE = 75.0
+MINUTES_PER_HOUR = 60.0
+PLANNING_COSTING_SOURCE_FIELDS = (
+    "batch",
+    "batch_matiere",
+    "quantite_validee",
+    "quantite_scrap",
+    "temps_de_cycle_min",
+    "temps_de_reglage_hr",
+    "temps_de_programmation_hr",
+    "used_qty",
+)
+
+
 class Planning(Document):
-    pass
+    def validate(self):
+        sync_planning_costing_table(self)
+
+
+def calculate_planning_cost(
+    quantite_validee=0,
+    quantite_scrap=0,
+    temps_de_cycle_min=0,
+    temps_de_reglage_hr=0,
+    temps_de_programmation_hr=0,
+    hourly_rate=PLANNING_COSTING_HOURLY_RATE,
+):
+    """
+    Calculate the process cost of production using the requested manufacturing formula.
+
+    Formula:
+        ((quantite_validee + quantite_scrap) * temps_de_cycle_min * 75 / 60)
+        + (temps_de_reglage_hr + temps_de_programmation_hr) * 75
+
+    The calculation intentionally includes scrap quantity because scrap pieces
+    still consume cycle time on the machine.
+    """
+    # 1) Both validated parts and scrap parts consumed machine time.
+    #    We therefore cost the total processed quantity, not only the good output.
+    total_processed_qty = flt(quantite_validee) + flt(quantite_scrap)
+
+    # 2) The cycle time is stored in minutes, while the shop rate is hourly.
+    #    Multiplying quantity * cycle minutes gives total machine minutes.
+    #    Dividing by 60 converts those minutes into hours before applying the hourly rate.
+    cycle_cost = (
+        total_processed_qty
+        * flt(temps_de_cycle_min)
+        * flt(hourly_rate)
+        / MINUTES_PER_HOUR
+    )
+
+    # 3) Setup and programming are already stored in hours.
+    #    We can therefore add them directly and multiply once by the same hourly rate.
+    fixed_preparation_hours = flt(temps_de_reglage_hr) + flt(temps_de_programmation_hr)
+    fixed_preparation_cost = fixed_preparation_hours * flt(hourly_rate)
+
+    # 4) The process cost is the sum of:
+    #    - the variable production cost driven by cycle time
+    #    - the fixed preparation cost driven by setup + programming time
+    return flt(cycle_cost + fixed_preparation_cost, 2)
+
+
+def calculate_planning_total_cost(process_cost=0, raw_material_cost=0):
+    """Combine machining/setup cost with raw material cost into the final total cost."""
+    return flt(flt(process_cost) + flt(raw_material_cost), 2)
+
+
+@frappe.whitelist()
+def get_planning_raw_material_costing(batch_matiere=None, used_qty=0):
+    """
+    Resolve the raw material cost for the selected raw-material batch.
+
+    Strategy:
+    1. Look up the latest submitted Purchase Receipt Item linked to the batch.
+       In this site, raw-material purchase rows keep the batch number and the
+       stock UOM is `Meter`, so `valuation_rate` already represents the cost per meter.
+    2. If no Purchase Receipt row is found for the batch, fall back to the raw
+       material Item valuation rate.
+    3. Multiply the resolved cost per meter by `used_qty` from Planning.
+    """
+    result = {
+        "raw_material_prec": None,
+        "raw_material_cost_per_meter": 0,
+        "raw_material_cost": 0,
+    }
+
+    if not batch_matiere:
+        return result
+
+    batch_item = frappe.db.get_value("Batch", batch_matiere, "item")
+
+    purchase_receipt_rows = frappe.db.sql(
+        """
+        SELECT
+            pri.parent AS purchase_receipt,
+            COALESCE(
+                NULLIF(pri.valuation_rate, 0),
+                NULLIF(pri.base_amount / NULLIF(pri.stock_qty, 0), 0),
+                NULLIF(pri.base_rate, 0),
+                NULLIF(pri.rate, 0),
+                0
+            ) AS cost_per_meter
+        FROM `tabPurchase Receipt Item` pri
+        INNER JOIN `tabPurchase Receipt` pr ON pr.name = pri.parent
+        WHERE pr.docstatus = 1
+          AND pri.batch_no = %(batch_matiere)s
+        ORDER BY pr.posting_date DESC, pr.creation DESC, pri.idx DESC
+        LIMIT 1
+        """,
+        {"batch_matiere": batch_matiere},
+        as_dict=True,
+    )
+
+    if purchase_receipt_rows:
+        result["raw_material_prec"] = purchase_receipt_rows[0].get("purchase_receipt")
+        result["raw_material_cost_per_meter"] = flt(
+            purchase_receipt_rows[0].get("cost_per_meter"), 6
+        )
+    elif batch_item:
+        # Fallback for batches that do not point back to a submitted PREC row.
+        # The item valuation rate is still expressed per stock UOM, which is Meter for these materials.
+        result["raw_material_cost_per_meter"] = flt(
+            frappe.db.get_value("Item", batch_item, "valuation_rate"), 6
+        )
+
+    result["raw_material_cost"] = flt(
+        result["raw_material_cost_per_meter"] * flt(used_qty), 2
+    )
+    return result
+
+
+def calculate_planning_cost_per_part(total_cost=0, quantite_validee=0):
+    """
+    Calculate the cost per finished part.
+
+    We distribute the full production cost over `quantite_validee` only.
+    This means any scrap cost is absorbed by the good parts, which is usually
+    the most useful figure for quoting and finished-goods analysis.
+    """
+    validated_qty = flt(quantite_validee)
+    if validated_qty <= 0:
+        return 0
+
+    return flt(flt(total_cost) / validated_qty, 2)
+
+
+def build_planning_costing_row(doc, raw_material_costing=None):
+    """Build the single computed row shown in the Costing child table."""
+    if not has_planning_costing_inputs(doc):
+        return None
+
+    process_cost = calculate_planning_cost(
+        quantite_validee=doc.get("quantite_validee"),
+        quantite_scrap=doc.get("quantite_scrap"),
+        temps_de_cycle_min=doc.get("temps_de_cycle_min"),
+        temps_de_reglage_hr=doc.get("temps_de_reglage_hr"),
+        temps_de_programmation_hr=doc.get("temps_de_programmation_hr"),
+    )
+    raw_material_costing = raw_material_costing or get_planning_raw_material_costing(
+        batch_matiere=doc.get("batch_matiere"),
+        used_qty=doc.get("used_qty"),
+    )
+    total_cost = calculate_planning_total_cost(
+        process_cost=process_cost,
+        raw_material_cost=raw_material_costing.get("raw_material_cost"),
+    )
+
+    return {
+        "batch_no": doc.get("batch"),
+        "raw_material_prec": raw_material_costing.get("raw_material_prec"),
+        "raw_material_cost_per_meter": raw_material_costing.get("raw_material_cost_per_meter"),
+        "raw_material_cost": raw_material_costing.get("raw_material_cost"),
+        "total_cost": total_cost,
+        "cost_per_part": calculate_planning_cost_per_part(
+            total_cost=total_cost,
+            quantite_validee=doc.get("quantite_validee"),
+        ),
+    }
+
+
+def has_planning_costing_inputs(doc):
+    """
+    Only render the costing row once at least one source field has a value.
+
+    This keeps a brand-new Planning form from showing an empty 0-cost row
+    before the user starts entering production data.
+    """
+    return any(doc.get(fieldname) not in (None, "") for fieldname in PLANNING_COSTING_SOURCE_FIELDS)
+
+
+def sync_planning_costing_table(doc):
+    """
+    Keep the computed child table synchronized with the main Planning fields.
+
+    The table intentionally contains a single row:
+    - `batch_no` mirrors the parent `batch`
+    - `raw_material_prec` shows the PREC used to price the raw-material batch
+    - `raw_material_cost_per_meter` stores the resolved cost per meter
+    - `raw_material_cost` multiplies the meter cost by `used_qty`
+    - `total_cost` combines process cost and raw material cost
+    - `cost_per_part` distributes that total across validated parts
+    """
+    if not doc.meta.get_field("costing"):
+        return
+
+    doc.set("costing", [])
+
+    costing_row = build_planning_costing_row(doc)
+    if costing_row:
+        doc.append("costing", costing_row)
 
 
 @frappe.whitelist()
