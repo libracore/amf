@@ -4,6 +4,8 @@
 frappe.ui.form.on('Planning', {
     refresh: function (frm) {
         set_item_queries(frm);
+        ensurePlanningRawMaterialCostingLoaded(frm);
+        syncCostingTable(frm);
         if (frm.doc.docstatus === 1) {
             frm.add_custom_button(__('<i class="fa fa-print"></i>&nbsp;&nbsp;•&nbsp;&nbsp;Sticker'), function () {
                 printSticker(frm)
@@ -20,6 +22,9 @@ frappe.ui.form.on('Planning', {
             set_default_values(frm);
             fetch_suivi_usinage(frm);
         }
+
+        ensurePlanningRawMaterialCostingLoaded(frm);
+        syncCostingTable(frm);
     },
 
     on_submit: function (frm) {
@@ -64,27 +69,216 @@ frappe.ui.form.on('Planning', {
     batch_matiere: function (frm) {
         frm.set_value('available_qty', 0);
         frm.refresh_field('available_qty');
-        if (frm.doc.batch_matiere) {
-            frappe.call({
-                method: "amf.amf.utils.batch.get_batch_quantity_in_warehouse",
-                args: {
-                    batch_no: frm.doc.batch_matiere,
-                    warehouse: "Main Stock - AMF21"
-                },
-                callback: function (r) {
-                    if (r.message) {
-                        frm.set_value('available_qty', r.message);
-                        frm.refresh_field('available_qty');
-                    }
-                }
-            });
+
+        if (!frm.doc.batch_matiere) {
+            frm._planning_raw_material_costing = null;
+            syncCostingTable(frm);
+            return;
         }
+
+        frappe.call({
+            method: "amf.amf.utils.batch.get_batch_quantity_in_warehouse",
+            args: {
+                batch_no: frm.doc.batch_matiere,
+                warehouse: "Main Stock - AMF21"
+            },
+            callback: function (r) {
+                if (r.message) {
+                    frm.set_value('available_qty', r.message);
+                    frm.refresh_field('available_qty');
+                }
+            }
+        });
+
+        fetchPlanningRawMaterialCosting(frm);
     },
 
     suivi_usinage: function (frm) {
         frm.set_value('name_id', frm.doc.suivi_usinage);
     },
+
+    batch: function (frm) {
+        syncCostingTable(frm);
+    },
+
+    quantite_validee: function (frm) {
+        syncCostingTable(frm);
+    },
+
+    quantite_scrap: function (frm) {
+        syncCostingTable(frm);
+    },
+
+    temps_de_cycle_min: function (frm) {
+        syncCostingTable(frm);
+    },
+
+    temps_de_programmation_hr: function (frm) {
+        syncCostingTable(frm);
+    },
+
+    temps_de_reglage_hr: function (frm) {
+        syncCostingTable(frm);
+    },
+
+    used_qty: function (frm) {
+        syncCostingTable(frm);
+    },
 });
+
+const PLANNING_COSTING_HOURLY_RATE = 75;
+const MINUTES_PER_HOUR = 60;
+const PLANNING_COSTING_SOURCE_FIELDS = [
+    'batch',
+    'batch_matiere',
+    'quantite_validee',
+    'quantite_scrap',
+    'temps_de_cycle_min',
+    'temps_de_programmation_hr',
+    'temps_de_reglage_hr',
+    'used_qty',
+];
+
+function hasPlanningCostingInputs(doc) {
+    return PLANNING_COSTING_SOURCE_FIELDS.some(fieldname => {
+        const value = doc[fieldname];
+        return value !== undefined && value !== null && value !== '';
+    });
+}
+
+function ensurePlanningRawMaterialCostingLoaded(frm) {
+    if (!frm.doc.batch_matiere) {
+        frm._planning_raw_material_costing = null;
+        return;
+    }
+
+    if (
+        frm._planning_raw_material_costing
+        && frm._planning_raw_material_costing.batch_matiere === frm.doc.batch_matiere
+    ) {
+        return;
+    }
+
+    fetchPlanningRawMaterialCosting(frm);
+}
+
+function fetchPlanningRawMaterialCosting(frm) {
+    if (!frm.doc.batch_matiere) {
+        frm._planning_raw_material_costing = null;
+        syncCostingTable(frm);
+        return;
+    }
+
+    const requestedBatch = frm.doc.batch_matiere;
+    frappe.call({
+        method: 'amf.amf.doctype.planning.planning.get_planning_raw_material_costing',
+        args: {
+            batch_matiere: requestedBatch,
+            used_qty: frm.doc.used_qty,
+        },
+        callback: function (r) {
+            if (frm.doc.batch_matiere !== requestedBatch) {
+                return;
+            }
+
+            frm._planning_raw_material_costing = Object.assign(
+                { batch_matiere: requestedBatch },
+                r.message || {}
+            );
+            syncCostingTable(frm);
+        }
+    });
+}
+
+function getPlanningRawMaterialCostingFromCache(frm) {
+    const cachedCostPerMeter = flt(
+        frm._planning_raw_material_costing && frm._planning_raw_material_costing.raw_material_cost_per_meter
+    );
+
+    return {
+        raw_material_prec: (frm._planning_raw_material_costing && frm._planning_raw_material_costing.raw_material_prec) || '',
+        raw_material_cost_per_meter: cachedCostPerMeter,
+        raw_material_cost: flt(cachedCostPerMeter * flt(frm.doc.used_qty), 2),
+    };
+}
+
+function syncCostingTable(frm) {
+    if (!frm.fields_dict.costing) {
+        return;
+    }
+
+    // Keep the child table strictly computed from the parent document.
+    // We always rebuild the table from scratch so there is only one reliable row.
+    frm.clear_table('costing');
+
+    if (!hasPlanningCostingInputs(frm.doc)) {
+        frm.refresh_field('costing');
+        return;
+    }
+
+    const processCost = calculatePlanningCost(frm.doc);
+    const rawMaterialCosting = getPlanningRawMaterialCostingFromCache(frm);
+    const totalCost = calculatePlanningTotalCost(processCost, rawMaterialCosting.raw_material_cost);
+
+    frm.add_child('costing', {
+        batch_no: frm.doc.batch || '',
+        raw_material_prec: rawMaterialCosting.raw_material_prec,
+        raw_material_cost_per_meter: rawMaterialCosting.raw_material_cost_per_meter,
+        raw_material_cost: rawMaterialCosting.raw_material_cost,
+        total_cost: totalCost,
+        cost_per_part: calculatePlanningCostPerPart(frm.doc, totalCost),
+    });
+
+    frm.refresh_field('costing');
+}
+
+function calculatePlanningCost(doc) {
+    // Step 1:
+    // Count every processed part, including scrap.
+    // Scrap pieces still consumed machine time, so they must be included in the process cost.
+    const totalProcessedQty = flt(doc.quantite_validee) + flt(doc.quantite_scrap);
+
+    // Step 2:
+    // Convert the repetitive production effort into cost.
+    // - `temps_de_cycle_min` is stored in minutes per piece
+    // - multiplying by the processed quantity gives total production minutes
+    // - multiplying by 75 applies the hourly machine/shop rate
+    // - dividing by 60 converts minutes into hours before pricing them
+    const cycleCost =
+        (totalProcessedQty * flt(doc.temps_de_cycle_min) * PLANNING_COSTING_HOURLY_RATE) / MINUTES_PER_HOUR;
+
+    // Step 3:
+    // Setup and programming are fixed preparation activities.
+    // They are already stored in hours, so we simply add them together
+    // and multiply once by the same hourly rate.
+    const fixedPreparationHours = flt(doc.temps_de_reglage_hr) + flt(doc.temps_de_programmation_hr);
+    const fixedPreparationCost = fixedPreparationHours * PLANNING_COSTING_HOURLY_RATE;
+
+    // Step 4:
+    // The process cost is the sum of:
+    // - the variable cycle-based production cost
+    // - the fixed setup + programming cost
+    return flt(cycleCost + fixedPreparationCost, 2);
+}
+
+function calculatePlanningTotalCost(processCost, rawMaterialCost) {
+    // Step 5:
+    // Add the raw material consumption cost to the machining/setup cost
+    // to get the final total production cost.
+    return flt(flt(processCost) + flt(rawMaterialCost), 2);
+}
+
+function calculatePlanningCostPerPart(doc, totalCost) {
+    // Step 6:
+    // Spread the full production cost across the validated pieces only.
+    // This makes scrap cost visible inside the finished part cost.
+    const validatedQty = flt(doc.quantite_validee);
+    if (validatedQty <= 0) {
+        return 0;
+    }
+
+    return flt(flt(totalCost) / validatedQty, 2);
+}
 
 /**
  * Sets default values for a new Planning form.
@@ -205,6 +399,7 @@ function createWorkOrder(frm) {
                 frm.set_value('work_order', response.message.work_order);
                 frm.set_value('stock_entry', response.message.stock_entry);
                 frm.set_value('batch', response.message.batch);
+                syncCostingTable(frm);
                 frm.set_df_property(frm.doc.work_order, "read_only", 1);
                 frappe.msgprint({
                     title: __('Planning confirmé'),

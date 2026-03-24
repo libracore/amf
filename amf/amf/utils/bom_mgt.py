@@ -12,6 +12,9 @@ from amf.amf.utils.stock_entry import (
 # Constants
 DEFAULT_WAREHOUSE = "Main Stock - AMF21"
 LOG_CATEGORY = "BOM Sync"
+ITEM_BOM_SNAPSHOT_FIELD = "item_default_bom"
+ITEM_BOM_TABLE_FIELD = "bom_table"
+ITEM_BOM_COST_FIELD = "bom_cost"
 
 @frappe.whitelist()
 def execute_db_update_enqueue():
@@ -481,100 +484,208 @@ def execute_scheduled():
 @frappe.whitelist()
 def update_item_from_default_bom(doc, method=None, log_id=None):
     """
-    Applies default BOM to the Item record.
-    Accepts the name of the BOM that triggered the update
-    so it can be logged (even if not actually the default).
+    Sync the custom Item BOM snapshot fields from the core Item.default_bom.
+
+    Supports both BOM document events and internal batch calls.
     """
-    item_name = frappe.db.get_value("BOM", doc.name, "item_name")
+    item, trigger_bom_name, trigger_label = _resolve_item_sync_context(doc, method)
+    if not item:
+        return
+
     if not log_id:
-        # 1) Initialize log
         context = _dict(doctype="BOM", name="Item Default_BOM Update")
-        log_id = _get_or_create_log(context)  # assume doc context not needed here
+        log_id = _get_or_create_log(context)
 
     ts = now_datetime()
-    update_log_entry(log_id, f"[{now_datetime()}] {ts} → Processing Item '{item_name}' (triggered by BOM '{doc.name}' and method : '{method}')")
-
-    # 1. Load Item
-    item_code = frappe.db.get_value("BOM", doc.name, "item")
-    item = frappe.get_doc("Item", item_code)
-    if not item:
-        update_log_entry(log_id, f"[{now_datetime()}] ❌ Item '{item_name}' not found, skipping.")
-        return
-
-    # 2. Clear old BOM fields
-    item.set("item_default_bom", None)
-    item.set("bom_table", [])
-    item.set("bom_cost", 0.0)
-    update_log_entry(log_id, f"[{now_datetime()}] Cleared item_default_bom, bom_table & bom_cost")
-
-    """# 3. Find true default BOM
-    default_bom = frappe.db.get_value(
-        "BOM",
-        {"item": item_name, "is_default": 1, "docstatus": 1},
-        "name"
+    _log_bom_sync(
+        log_id,
+        "{0} -> Processing Item '{1}' (trigger BOM='{2}', method='{3}')".format(
+            ts, item.name, trigger_bom_name or "", trigger_label or ""
+        ),
     )
-    if not default_bom:
-        update_log_entry(log_id, f"[{now_datetime()}] No default BOM for Item '{item_name}'. Saving cleared state.")
-        _safe_save(item, item_name, log_id, "Item cleared")
+
+    if trigger_bom_name and item.default_bom and item.default_bom != trigger_bom_name:
+        _log_bom_sync(
+            log_id,
+            "Skipped Item '{0}' because current default_bom is '{1}', not '{2}'".format(
+                item.name, item.default_bom, trigger_bom_name
+            ),
+        )
         return
 
-    update_log_entry(log_id, f"[{now_datetime()}] Default BOM identified: '{default_bom}'")
+    _populate_item_bom_snapshot(item, log_id=log_id)
+    _safe_save(
+        item,
+        item.name,
+        log_id,
+        "Item updated from default BOM '{0}'".format(item.default_bom or ""),
+    )
 
-    # 4. Load BOM document
-    bom = custom_try(frappe.get_doc, "BOM", default_bom)
-    if not bom:
-        update_log_entry(log_id, f"[{now_datetime()}] ❌ Default BOM '{default_bom}' not found. Saving cleared Item.")
-        _safe_save(item, item_name, log_id, "Item after missing BOM")
-        return"""
 
-    # 4. checking if bom is default and active
-    is_active, is_default = frappe.db.get_value("BOM", doc.name, ["is_active", "is_default"])
-    if not is_active or not is_default:
-        update_log_entry(log_id, f"[{now_datetime()}] ⚠️ BOM '{doc.name}' ignorée car is_active={is_active}, is_default={is_default}.")
-        _safe_save(item, item_name, log_id, "Item left cleared (inactive or non-default BOM)")
+def sync_item_bom_fields(doc, method=None):
+    """
+    Keep the custom Item BOM fields in sync with the core Item.default_bom field.
+    """
+    if not doc or getattr(doc, "doctype", None) != "Item":
         return
 
-    # 5. Assign and copy table
-    item.item_default_bom = doc.name
-    update_log_entry(log_id, f"[{now_datetime()}] Linked Item to BOM '{doc.name}'")
+    _populate_item_bom_snapshot(doc)
 
-    # Preload bin quantities for all codes in one go
-    codes = [d.item_code for d in doc.items]
+
+def _resolve_item_sync_context(doc, method=None):
+    if hasattr(doc, "doctype") and doc.doctype == "BOM":
+        item_code = doc.item
+        trigger_bom_name = doc.name
+        trigger_label = method
+    else:
+        item_code = doc
+        trigger_bom_name = method if isinstance(method, str) else None
+        trigger_label = "manual"
+
+    if not item_code:
+        return None, trigger_bom_name, trigger_label
+
+    item = custom_try(frappe.get_doc, "Item", item_code)
+    return item, trigger_bom_name, trigger_label
+
+
+def _populate_item_bom_snapshot(item_doc, log_id=None):
+    default_bom_name = item_doc.get("default_bom")
+
+    item_doc.set(ITEM_BOM_SNAPSHOT_FIELD, default_bom_name or None)
+    item_doc.set(ITEM_BOM_TABLE_FIELD, [])
+    item_doc.set(ITEM_BOM_COST_FIELD, 0.0)
+    _log_bom_sync(log_id, "Cleared item_default_bom, bom_table and bom_cost for Item '{0}'".format(item_doc.name))
+
+    if not default_bom_name:
+        _log_bom_sync(log_id, "Item '{0}' has no default_bom. Snapshot left empty.".format(item_doc.name))
+        return
+
+    bom_doc = _get_default_bom_doc(item_doc, default_bom_name)
+    if not bom_doc:
+        _log_bom_sync(
+            log_id,
+            "Default BOM '{0}' for Item '{1}' could not be loaded. Snapshot left empty.".format(
+                default_bom_name, item_doc.name
+            ),
+        )
+        return
+
+    component_map = _get_bom_component_map(bom_doc)
+    bin_map = _get_component_stock_map(row.item_code for row in bom_doc.items if row.item_code)
+
+    for bom_item in bom_doc.items:
+        item_code = bom_item.get("item_code")
+        component = component_map.get(item_code, {})
+        if component.get("disabled"):
+            _log_bom_sync(
+                log_id,
+                "Skipping disabled BOM line item '{0}' for Item '{1}'".format(item_code, item_doc.name),
+            )
+            continue
+
+        qty = flt(bom_item.get("qty"))
+        rate = flt(bom_item.get("rate"))
+        base_rate = flt(bom_item.get("base_rate")) or rate
+        amount = flt(bom_item.get("amount")) or (qty * rate)
+        base_amount = flt(bom_item.get("base_amount")) or (qty * base_rate)
+
+        row = item_doc.append(ITEM_BOM_TABLE_FIELD, {})
+        row.update(
+            {
+                "item_code": item_code,
+                "item_name": bom_item.get("item_name"),
+                "operation": bom_item.get("operation"),
+                "bom_no": component.get("default_bom") or "",
+                "source_warehouse": bom_item.get("source_warehouse") or DEFAULT_WAREHOUSE,
+                "description": bom_item.get("description"),
+                "image": bom_item.get("image"),
+                "qty": qty,
+                "uom": bom_item.get("uom"),
+                "stock_qty": bin_map.get(item_code, 0.0),
+                "stock_uom": bom_item.get("stock_uom") or bom_item.get("uom"),
+                "conversion_factor": flt(bom_item.get("conversion_factor")) or 1.0,
+                "rate": rate,
+                "base_rate": base_rate,
+                "amount": amount,
+                "base_amount": base_amount,
+                "scrap": flt(bom_item.get("scrap")),
+                "qty_consumed_per_unit": flt(bom_item.get("qty_consumed_per_unit")),
+                "allow_alternative_item": bom_item.get("allow_alternative_item") or 0,
+                "include_item_in_manufacturing": bom_item.get("include_item_in_manufacturing") or 0,
+                "original_item": bom_item.get("original_item"),
+            }
+        )
+        _log_bom_sync(
+            log_id,
+            "Added BOM row '{0}' to Item '{1}' with qty={2} and stock={3}".format(
+                item_code, item_doc.name, qty, row.stock_qty
+            ),
+        )
+
+    item_doc.set(ITEM_BOM_COST_FIELD, round(flt(bom_doc.total_cost or 0.0), 2))
+    _log_bom_sync(
+        log_id,
+        "Set bom_cost for Item '{0}' to {1}".format(item_doc.name, item_doc.get(ITEM_BOM_COST_FIELD)),
+    )
+
+
+def _get_default_bom_doc(item_doc, bom_name):
+    bom_doc = custom_try(frappe.get_doc, "BOM", bom_name)
+    if not bom_doc:
+        return None
+
+    allowed_items = {item_doc.name}
+    if item_doc.get("variant_of"):
+        allowed_items.add(item_doc.variant_of)
+
+    if bom_doc.item not in allowed_items:
+        frappe.throw(
+            _("Default BOM {0} does not belong to Item {1} or its template").format(
+                bom_name, item_doc.name
+            )
+        )
+
+    return bom_doc
+
+
+def _get_bom_component_map(bom_doc):
+    item_codes = sorted({row.item_code for row in bom_doc.items if row.item_code})
+    if not item_codes:
+        return {}
+
+    component_rows = frappe.get_all(
+        "Item",
+        filters={"name": ["in", item_codes]},
+        fields=["name", "default_bom", "disabled"],
+        as_list=False,
+    )
+    return {
+        row.name: {
+            "default_bom": row.default_bom,
+            "disabled": row.disabled,
+        }
+        for row in component_rows
+    }
+
+
+def _get_component_stock_map(item_codes):
+    item_codes = sorted(set(filter(None, item_codes)))
+    if not item_codes:
+        return {}
+
     bins = frappe.get_all(
         "Bin",
-        filters={"item_code": ["in", codes], "warehouse": DEFAULT_WAREHOUSE},
+        filters={"item_code": ["in", item_codes], "warehouse": DEFAULT_WAREHOUSE},
         fields=["item_code", "actual_qty"],
         as_list=False,
     )
-    bin_map = {b.item_code: flt(b.actual_qty) for b in bins}
+    return {row.item_code: flt(row.actual_qty) for row in bins}
 
-    for bi in doc.items:
-        code = bi.item_code
-        if frappe.db.get_value("Item", code, "disabled"):
-            update_log_entry(log_id, f"[{now_datetime()}] Skipping disabled BOM line item '{code}'")
-            continue
 
-        row = item.append("bom_table", {})
-        row.update({
-            "item_code": code,
-            "item_name": bi.item_name,
-            "source_warehouse": DEFAULT_WAREHOUSE,
-            "qty": bi.qty,
-            "uom": bi.uom,
-            "description": bi.description,
-            "rate": flt(bi.rate),
-            "stock_qty": bin_map.get(code, 0.0),
-            "bom_no": frappe.db.get_value(
-                "BOM", {"item": code, "is_default": 1}, "name"
-            ) or ""
-        })
-        update_log_entry(log_id, f"[{now_datetime()}] → Added line for '{code}': qty={bi.qty}, stock={row.stock_qty}")
-
-    # 6. Set cost and save
-    item.bom_cost = round(flt(doc.total_cost or 0.0),2) 
-    update_log_entry(log_id, f"[{now_datetime()}] Set bom_cost to {item.bom_cost}")
-
-    _safe_save(item, item_name, log_id, f"Item updated with BOM '{doc.name}'")
+def _log_bom_sync(log_id, message):
+    if log_id:
+        update_log_entry(log_id, "[{0}] {1}".format(now_datetime(), message))
 
 
 def _safe_save(doc, name, log_id, context):

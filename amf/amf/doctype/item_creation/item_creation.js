@@ -53,21 +53,21 @@ frappe.ui.form.on('Item Creation', {
         frm.set_query("head_item", () => ({
             filters: [
                 ['Item', 'item_group', '=', 'Valve Head'],
-                ['Item', 'item_code', 'like', '3_%'],
+                ['Item', 'item_code', 'like', '30%'],
                 ['Item', 'disabled', '=', 'No'],
             ],
         }));
         frm.set_query("seat_item", () => ({
             filters: [
                 ['Item', 'item_group', '=', 'Valve Seat'],
-                ['Item', 'item_code', 'like', '20_%'],
+                ['Item', 'item_code', 'like', '20%'],
                 ['Item', 'disabled', '=', 'No'],
             ],
         }));
         frm.set_query("plug_item", () => ({
             filters: [
                 ['Item', 'item_group', '=', 'Plug'],
-                ['Item', 'item_code', 'like', '10_%'],
+                ['Item', 'item_code', 'like', '10%'],
                 ['Item', 'disabled', '=', 'No'],
             ],
         }));
@@ -107,13 +107,14 @@ frappe.ui.form.on('Item Creation', {
             });
 
             frappe.call({
-                method: 'amf.amf.doctype.item_creation.item_creation.get_last_item_code',
+                method: 'amf.amf.doctype.item_creation.item_creation.suggest_bom_managed_item_code',
+                args: {
+                    item_group: 'Valve Head',
+                    has_bom: 1,
+                },
                 callback: function (r) {
-                    if (!r.exc) {
-                        console.log("Last 6-digit item code: " + r.message);
-                        frm.set_value('head_code', '300' + r.message);
-                        /*frm.set_value('seat_code', '200' + r.message);
-                        frm.set_value('plug_code', '100' + r.message);*/
+                    if (!r.exc && r.message) {
+                        frm.set_value('head_code', r.message.item_code);
                     }
                 }
             });
@@ -198,36 +199,26 @@ frappe.ui.form.on('Item Creation', {
 
     seat_check: function (frm) {
         if (frm.doc.seat_check === 'Yes' && frm.doc.head_code) {
-            // Extract the last three digits from head_code
             let head_code = frm.doc.head_code;
-            let last_three_digits = head_code.slice(-3);  // Get the last three characters
+            let shared_suffix = head_code.slice(-4);
 
-            if (!isNaN(last_three_digits)) {
-                // Convert last three digits to a number and add 2100
-                let result = '200' + parseInt(last_three_digits, 10);
-
-                // Set the result into a target field, assuming 'seat_code' is the target field
-                frm.set_value('seat_code', result);
+            if (!isNaN(shared_suffix)) {
+                frm.set_value('seat_code', '20' + shared_suffix);
             } else {
-                frappe.msgprint("Invalid head_code format. Last three characters should be digits.");
+                frappe.msgprint("Invalid head_code format. The last 4 characters should be digits.");
             }
         }
     },
 
     plug_check: function (frm) {
         if (frm.doc.plug_check === 'Yes' && frm.doc.head_code) {
-            // Extract the last three digits from head_code
             let head_code = frm.doc.head_code;
-            let last_three_digits = head_code.slice(-3);  // Get the last three characters
+            let shared_suffix = head_code.slice(-4);
 
-            if (!isNaN(last_three_digits)) {
-                // Convert last three digits to a number and add 2100
-                let result = '100' + parseInt(last_three_digits, 10);
-
-                // Set the result into a target field, assuming 'seat_code' is the target field
-                frm.set_value('plug_code', result);
+            if (!isNaN(shared_suffix)) {
+                frm.set_value('plug_code', '10' + shared_suffix);
             } else {
-                frappe.msgprint("Invalid head_code format. Last three characters should be digits.");
+                frappe.msgprint("Invalid head_code format. The last 4 characters should be digits.");
             }
         }
     },

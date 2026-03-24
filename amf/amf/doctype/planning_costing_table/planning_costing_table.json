@@ -1,0 +1,76 @@
+{
+ "creation": "2026-03-24 00:00:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "batch_no",
+  "raw_material_prec",
+  "raw_material_cost_per_meter",
+  "raw_material_cost",
+  "total_cost",
+  "cost_per_part"
+ ],
+ "fields": [
+  {
+   "allow_on_submit": 1,
+   "fieldname": "batch_no",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Batch No",
+   "options": "Batch",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "raw_material_prec",
+   "fieldtype": "Link",
+   "label": "Raw Material PREC",
+   "options": "Purchase Receipt",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "raw_material_cost_per_meter",
+   "fieldtype": "Currency",
+   "label": "Raw Material Cost / Meter",
+   "precision": "6",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "raw_material_cost",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Raw Material Cost",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "total_cost",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Total Cost",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "cost_per_part",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Cost per Part",
+   "read_only": 1
+  }
+ ],
+ "istable": 1,
+ "modified": "2026-03-24 14:29:50.483411",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "Planning Costing Table",
+ "owner": "Administrator",
+ "permissions": [],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
