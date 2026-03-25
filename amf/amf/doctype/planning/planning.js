@@ -5,7 +5,7 @@ frappe.ui.form.on('Planning', {
     refresh: function (frm) {
         set_item_queries(frm);
         ensurePlanningRawMaterialCostingLoaded(frm);
-        syncCostingTable(frm);
+        // syncCostingTable(frm);
         if (frm.doc.docstatus === 1) {
             frm.add_custom_button(__('<i class="fa fa-print"></i>&nbsp;&nbsp;•&nbsp;&nbsp;Sticker'), function () {
                 printSticker(frm)
@@ -24,15 +24,11 @@ frappe.ui.form.on('Planning', {
         }
 
         ensurePlanningRawMaterialCostingLoaded(frm);
-        syncCostingTable(frm);
+        // syncCostingTable(frm);
     },
 
     on_submit: function (frm) {
         createWorkOrder(frm);
-    },
-
-    after_submit: function (frm) {
-
     },
 
     item_code: function (frm) {
@@ -72,7 +68,9 @@ frappe.ui.form.on('Planning', {
 
         if (!frm.doc.batch_matiere) {
             frm._planning_raw_material_costing = null;
-            syncCostingTable(frm);
+            if (frm.doc.batch) {
+                // syncCostingTable(frm);
+            }
             return;
         }
 
@@ -98,52 +96,42 @@ frappe.ui.form.on('Planning', {
     },
 
     batch: function (frm) {
-        syncCostingTable(frm);
+        // The costing row should only start existing once the finished batch is known.
+        // As soon as the batch is filled, rebuild the single computed child-table row.
+        // syncCostingTable(frm);
     },
 
-    quantite_validee: function (frm) {
-        syncCostingTable(frm);
-    },
+    // quantite_validee: function (frm) {
+    //     syncCostingTable(frm);
+    // },
 
-    quantite_scrap: function (frm) {
-        syncCostingTable(frm);
-    },
+    // quantite_scrap: function (frm) {
+    //     syncCostingTable(frm);
+    // },
 
-    temps_de_cycle_min: function (frm) {
-        syncCostingTable(frm);
-    },
+    // temps_de_cycle_min: function (frm) {
+    //     syncCostingTable(frm);
+    // },
 
-    temps_de_programmation_hr: function (frm) {
-        syncCostingTable(frm);
-    },
+    // temps_de_programmation_hr: function (frm) {
+    //     syncCostingTable(frm);
+    // },
 
-    temps_de_reglage_hr: function (frm) {
-        syncCostingTable(frm);
-    },
+    // temps_de_reglage_hr: function (frm) {
+    //     syncCostingTable(frm);
+    // },
 
-    used_qty: function (frm) {
-        syncCostingTable(frm);
-    },
+    // used_qty: function (frm) {
+    //     syncCostingTable(frm);
+    // },
 });
 
 const PLANNING_COSTING_HOURLY_RATE = 75;
 const MINUTES_PER_HOUR = 60;
-const PLANNING_COSTING_SOURCE_FIELDS = [
-    'batch',
-    'batch_matiere',
-    'quantite_validee',
-    'quantite_scrap',
-    'temps_de_cycle_min',
-    'temps_de_programmation_hr',
-    'temps_de_reglage_hr',
-    'used_qty',
-];
-
 function hasPlanningCostingInputs(doc) {
-    return PLANNING_COSTING_SOURCE_FIELDS.some(fieldname => {
-        const value = doc[fieldname];
-        return value !== undefined && value !== null && value !== '';
-    });
+    // Mirror the server rule: the costing table should not exist before the
+    // finished batch is assigned on the Planning document.
+    return !!doc.batch;
 }
 
 function ensurePlanningRawMaterialCostingLoaded(frm) {
@@ -165,7 +153,9 @@ function ensurePlanningRawMaterialCostingLoaded(frm) {
 function fetchPlanningRawMaterialCosting(frm) {
     if (!frm.doc.batch_matiere) {
         frm._planning_raw_material_costing = null;
-        syncCostingTable(frm);
+        if (frm.doc.batch) {
+            syncCostingTable(frm);
+        }
         return;
     }
 
@@ -185,7 +175,10 @@ function fetchPlanningRawMaterialCosting(frm) {
                 { batch_matiere: requestedBatch },
                 r.message || {}
             );
-            syncCostingTable(frm);
+
+            if (frm.doc.batch) {
+                syncCostingTable(frm);
+            }
         }
     });
 }
@@ -304,21 +297,21 @@ function set_default_values(frm) {
  */
 function fetch_suivi_usinage(frm) {
     frappe.call({
-        method: "amf.amf.doctype.planning.planning.get_next_suivi_usinage"
-    })
-        .then(r => {
+        method: "amf.amf.doctype.planning.planning.get_next_suivi_usinage",
+        callback: function (r) {
             if (r && r.message) {
                 frm.set_value("suivi_usinage", r.message);
             }
-        })
-        .catch(err => {
+        },
+        error: function (err) {
             frappe.msgprint({
                 title: __("Server Error"),
                 message: __("Unable to fetch the next 'suivi_usinage'. Please try again later."),
                 indicator: "red"
             });
             console.error("Error fetching suivi_usinage:", err);
-        });
+        }
+    });
 }
 
 function printSticker(frm) {
