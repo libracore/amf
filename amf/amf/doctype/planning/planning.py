@@ -19,21 +19,11 @@ from frappe import ValidationError
 
 PLANNING_COSTING_HOURLY_RATE = 75.0
 MINUTES_PER_HOUR = 60.0
-PLANNING_COSTING_SOURCE_FIELDS = (
-    "batch",
-    "batch_matiere",
-    "quantite_validee",
-    "quantite_scrap",
-    "temps_de_cycle_min",
-    "temps_de_reglage_hr",
-    "temps_de_programmation_hr",
-    "used_qty",
-)
-
-
 class Planning(Document):
     def validate(self):
-        sync_planning_costing_table(self)
+        costing_row = build_planning_costing_row(self)
+        sync_planning_costing_table(self, costing_row=costing_row)
+        sync_planning_batch_cost_per_part(self, costing_row=costing_row)
 
 
 def calculate_planning_cost(
@@ -199,15 +189,140 @@ def build_planning_costing_row(doc, raw_material_costing=None):
 
 def has_planning_costing_inputs(doc):
     """
-    Only render the costing row once at least one source field has a value.
+    Only allow costing once the produced batch is known.
 
-    This keeps a brand-new Planning form from showing an empty 0-cost row
-    before the user starts entering production data.
+    Business rule requested by the user:
+    - do not create the Costing row while the Planning is still being prepared
+    - only create/update it once `batch` has been assigned on the Planning
+
+    In practice, this means the costing table starts existing only after the
+    production flow reached the stage where the finished batch is available.
     """
-    return any(doc.get(fieldname) not in (None, "") for fieldname in PLANNING_COSTING_SOURCE_FIELDS)
+    return bool(doc.get("batch"))
 
 
-def sync_planning_costing_table(doc):
+def sync_planning_batch_cost_per_part(doc, costing_row=None):
+    """
+    Persist the computed unit cost onto the produced Batch record.
+
+    The Planning document is where the manufacturing cost is calculated, but the
+    Batch is where users often look up information about a finished lot later on.
+    We therefore mirror the computed `cost_per_part` onto the linked Batch so the
+    lot keeps its unit cost even outside the Planning form.
+    """
+    batch_name = doc.get("batch")
+    if not batch_name:
+        return
+
+    if not frappe.db.exists("Batch", batch_name):
+        return
+
+    if not frappe.get_meta("Batch").get_field("cost_per_part"):
+        return
+
+    costing_row = costing_row if costing_row is not None else build_planning_costing_row(doc)
+    cost_per_part = flt((costing_row or {}).get("cost_per_part"), 2)
+
+    if flt(frappe.db.get_value("Batch", batch_name, "cost_per_part"), 2) == cost_per_part:
+        return
+
+    frappe.db.set_value("Batch", batch_name, "cost_per_part", cost_per_part, update_modified=False)
+
+
+@frappe.whitelist()
+def backfill_planning_batch_cost_per_part():
+    """
+    Retroactively mirror already-saved unit costs from Planning onto Batch.
+
+    Why this backfill reads from the child table instead of recomputing:
+    1. `Planning Costing Table` already stores the historical `cost_per_part`
+       that users saw when the Planning was saved.
+    2. Reusing that persisted value avoids any drift if costing rules, defaults,
+       or linked raw-material data changed after the original production run.
+    3. We still reuse `sync_planning_batch_cost_per_part` for the actual write so
+       the retroactive path stays aligned with the normal save-time behavior.
+    """
+    if not frappe.get_meta("Batch").get_field("cost_per_part"):
+        frappe.throw(frappe._("Batch field 'cost_per_part' does not exist."))
+
+    planning_rows = frappe.db.sql(
+        """
+        SELECT
+            p.name AS planning,
+            p.batch AS batch,
+            p.batch_matiere AS batch_matiere,
+            p.quantite_validee AS quantite_validee,
+            p.quantite_scrap AS quantite_scrap,
+            p.temps_de_cycle_min AS temps_de_cycle_min,
+            p.temps_de_reglage_hr AS temps_de_reglage_hr,
+            p.temps_de_programmation_hr AS temps_de_programmation_hr,
+            p.used_qty AS used_qty,
+            pct.cost_per_part AS stored_cost_per_part
+        FROM `tabPlanning` p
+        LEFT JOIN `tabPlanning Costing Table` pct
+            ON pct.parent = p.name
+           AND pct.parenttype = 'Planning'
+           AND pct.parentfield = 'costing'
+           AND pct.idx = 1
+        WHERE COALESCE(p.batch, '') != ''
+        ORDER BY p.modified DESC, p.creation DESC
+        """,
+        as_dict=True,
+    )
+
+    result = {
+        "total": len(planning_rows),
+        "updated": 0,
+        "skipped": 0,
+        "duplicate_batches": 0,
+        "missing_batch_doc": 0,
+        "missing_cost_per_part": 0,
+    }
+    processed_batches = set()
+
+    for row in planning_rows:
+        batch_name = row.get("batch")
+        if batch_name in processed_batches:
+            result["duplicate_batches"] += 1
+            continue
+
+        processed_batches.add(batch_name)
+
+        if not frappe.db.exists("Batch", batch_name):
+            result["missing_batch_doc"] += 1
+            continue
+
+        cost_per_part = flt(row.get("stored_cost_per_part"), 2)
+        if cost_per_part <= 0:
+            costing_row = build_planning_costing_row(row)
+            cost_per_part = flt((costing_row or {}).get("cost_per_part"), 2)
+
+        if cost_per_part <= 0:
+            result["missing_cost_per_part"] += 1
+            continue
+
+        current_cost_per_part = flt(
+            frappe.db.get_value("Batch", batch_name, "cost_per_part"), 2
+        )
+        if current_cost_per_part == cost_per_part:
+            result["skipped"] += 1
+            continue
+
+        # Pass the existing stored unit cost into the same sync helper used on
+        # save so the write path stays centralized in one place.
+        sync_planning_batch_cost_per_part(
+            {"batch": batch_name},
+            costing_row={"cost_per_part": cost_per_part},
+        )
+        result["updated"] += 1
+
+    if result["updated"]:
+        frappe.db.commit()
+
+    return result
+
+
+def sync_planning_costing_table(doc, costing_row=None):
     """
     Keep the computed child table synchronized with the main Planning fields.
 
@@ -224,7 +339,7 @@ def sync_planning_costing_table(doc):
 
     doc.set("costing", [])
 
-    costing_row = build_planning_costing_row(doc)
+    costing_row = costing_row if costing_row is not None else build_planning_costing_row(doc)
     if costing_row:
         doc.append("costing", costing_row)
 

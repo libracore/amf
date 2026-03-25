@@ -43,6 +43,22 @@ class TestPlanning(unittest.TestCase):
             49.11,
         )
 
+    def test_build_planning_costing_row_requires_batch(self):
+        self.assertIsNone(build_planning_costing_row({
+            'batch': '',
+            'batch_matiere': 'RAW-BATCH-001',
+            'used_qty': 0.3,
+            'quantite_validee': 10,
+            'quantite_scrap': 2,
+            'temps_de_cycle_min': 3.5,
+            'temps_de_reglage_hr': 1.25,
+            'temps_de_programmation_hr': 0.75,
+        }, raw_material_costing={
+            'raw_material_prec': 'PREC-02519',
+            'raw_material_cost_per_meter': 962.001813,
+            'raw_material_cost': 288.6,
+        }))
+
     def test_build_planning_costing_row_maps_batch_material_and_totals(self):
         row = build_planning_costing_row({
             'batch': 'BATCH-001',

@@ -92,6 +92,7 @@ doc_events = {
         "before_submit": "amf.amf.utils.delivery_note_api.check_qa_inspections_status",
     },
     "Item": {
+        "onload": "amf.amf.utils.item_costing.populate_item_batch_costing_table",
         "validate": "amf.amf.utils.bom_mgt.sync_item_bom_fields",
         "after_insert": "amf.amf.utils.custom.qr_code_to_document",
     },
