@@ -60,13 +60,13 @@ def get_item_machining_cost_entries(item_code):
 
 
 def get_item_assembly_cost_entries(item_code):
-	"""Fetch assembly-side costs per batch from Timer Production Assembly Cost."""
+	"""Fetch assembly-side unit costs per batch from Timer Production Assembly Cost."""
 	return frappe.db.sql(
 		"""
 		SELECT
 			tpac.name AS source_row,
 			NULLIF(b.name, '') AS batch_no,
-			tpac.total_cost AS assembly_cost
+			tpac.cost_per_part AS assembly_cost
 		FROM `tabTimer Production Assembly Cost` tpac
 		INNER JOIN `tabTimer Production` tp ON tp.name = tpac.parent
 		LEFT JOIN `tabBatch` b ON b.work_order = tp.work_order AND b.item = %(item_code)s

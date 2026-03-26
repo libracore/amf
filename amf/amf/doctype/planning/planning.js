@@ -388,21 +388,17 @@ function createWorkOrder(frm) {
         callback: function (response) {
             console.log(response);
             if (response && response.message.success) {
-                // Set the values returned from the response
-                frm.set_value('work_order', response.message.work_order);
-                frm.set_value('stock_entry', response.message.stock_entry);
-                frm.set_value('batch', response.message.batch);
-                syncCostingTable(frm);
-                frm.set_df_property(frm.doc.work_order, "read_only", 1);
+                frm.reload_doc();
                 frappe.msgprint({
                     title: __('Planning confirmé'),
                     indicator: 'green',
                     message: __('Ordre de Fabrication crée avec succès.')
                 });
-                frm.save('Update');
                 frappe.show_alert(__("Fichier mis à jour"));
 
-                frappe.set_route("Form", "Work Order", frm.doc.work_order);
+                if (response.message.work_order) {
+                    frappe.set_route("Form", "Work Order", response.message.work_order);
+                }
             } else {
                 // Error handling
                 frappe.validated = false;

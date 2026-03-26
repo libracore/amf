@@ -4,10 +4,12 @@
 from __future__ import unicode_literals
 
 import unittest
+from unittest.mock import Mock, patch
 
 from amf.amf.utils.item_costing import (
 	build_item_batch_costing_rows,
 	calculate_item_batch_total_cost,
+	get_item_assembly_cost_entries,
 )
 
 
@@ -61,3 +63,14 @@ class TestItemCosting(unittest.TestCase):
 			"assembly_cost": None,
 			"total_cost": 125.0,
 		}])
+
+	def test_get_item_assembly_cost_entries_uses_cost_per_part(self):
+		mock_frappe = Mock()
+		mock_frappe.db.sql.return_value = []
+
+		with patch("amf.amf.utils.item_costing.frappe", mock_frappe):
+			get_item_assembly_cost_entries("ITEM-001")
+
+		query = mock_frappe.db.sql.call_args[0][0]
+		self.assertIn("tpac.cost_per_part AS assembly_cost", query)
+		self.assertNotIn("tpac.total_cost AS assembly_cost", query)
