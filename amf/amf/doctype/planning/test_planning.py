@@ -4,11 +4,15 @@
 from __future__ import unicode_literals
 
 import unittest
+from unittest.mock import patch
+
+from frappe import _dict
 from amf.amf.doctype.planning.planning import (
     build_planning_costing_row,
     calculate_planning_cost,
     calculate_planning_total_cost,
     calculate_planning_cost_per_part,
+    sync_planning_costing_after_batch_assignment,
 )
 
 
@@ -81,3 +85,28 @@ class TestPlanning(unittest.TestCase):
         self.assertEqual(row['raw_material_cost'], 288.6)
         self.assertEqual(row['total_cost'], 491.1)
         self.assertEqual(row['cost_per_part'], 49.11)
+
+    def test_sync_planning_costing_after_batch_assignment_updates_batch_dependent_outputs(self):
+        doc = _dict({
+            'name': 'PLAN-0001',
+            'batch': '',
+        })
+        costing_row = {
+            'batch_no': 'BATCH-001',
+            'cost_per_part': 49.11,
+        }
+
+        with patch(
+            'amf.amf.doctype.planning.planning.build_planning_costing_row',
+            return_value=costing_row,
+        ) as build_costing_row, patch(
+            'amf.amf.doctype.planning.planning.persist_planning_costing_table'
+        ) as persist_costing_table, patch(
+            'amf.amf.doctype.planning.planning.sync_planning_batch_cost_per_part'
+        ) as sync_batch_cost:
+            sync_planning_costing_after_batch_assignment(doc, batch_no='BATCH-001')
+
+        self.assertEqual(doc.batch, 'BATCH-001')
+        build_costing_row.assert_called_once_with(doc)
+        persist_costing_table.assert_called_once_with(doc, costing_row=costing_row)
+        sync_batch_cost.assert_called_once_with(doc, costing_row=costing_row)

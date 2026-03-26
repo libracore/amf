@@ -8,7 +8,7 @@ from erpnext.manufacturing.doctype.bom.bom import get_bom_items_as_dict
 from erpnext.stock.utils import get_latest_stock_qty
 import frappe
 from frappe.model.document import Document
-from frappe.utils import flt
+from frappe.utils import cstr, flt
 from frappe.utils.data import now_datetime
 from frappe.utils.pdf import get_pdf
 from frappe.utils.file_manager import save_file
@@ -227,6 +227,102 @@ def sync_planning_batch_cost_per_part(doc, costing_row=None):
         return
 
     frappe.db.set_value("Batch", batch_name, "cost_per_part", cost_per_part, update_modified=False)
+
+
+def persist_planning_costing_table(doc, costing_row=None):
+    """
+    Persist the computed costing row without resaving the Planning document.
+
+    The manufacturing flow sets the produced batch after the Planning was already
+    submitted. When that happens we still want the costing child table to be
+    updated immediately, without relying on a later Planning save.
+    """
+    planning_name = cstr((doc or {}).get("name")).strip()
+    if not planning_name:
+        return
+
+    if not frappe.get_meta("Planning").get_field("costing"):
+        return
+
+    frappe.db.sql(
+        """
+        DELETE FROM `tabPlanning Costing Table`
+        WHERE parent = %(parent)s
+          AND parenttype = 'Planning'
+          AND parentfield = 'costing'
+        """,
+        {"parent": planning_name},
+    )
+
+    if costing_row:
+        costing_doc = frappe.get_doc({
+            "doctype": "Planning Costing Table",
+            "parent": planning_name,
+            "parenttype": "Planning",
+            "parentfield": "costing",
+            "idx": 1,
+            "batch_no": costing_row.get("batch_no"),
+            "raw_material_prec": costing_row.get("raw_material_prec"),
+            "raw_material_cost_per_meter": costing_row.get("raw_material_cost_per_meter"),
+            "raw_material_cost": costing_row.get("raw_material_cost"),
+            "total_cost": costing_row.get("total_cost"),
+            "cost_per_part": costing_row.get("cost_per_part"),
+        })
+        costing_doc.insert(ignore_permissions=True)
+
+    if hasattr(doc, "set") and hasattr(doc, "append") and getattr(doc, "meta", None):
+        sync_planning_costing_table(doc, costing_row=costing_row)
+
+
+def sync_planning_work_order_references(
+    planning_name=None,
+    work_order_name=None,
+    stock_entry_name=None,
+    batch_no=None,
+):
+    """
+    Persist the manufacturing references directly onto Planning.
+
+    This keeps the server as the source of truth and avoids needing a follow-up
+    Planning update from the browser just to store the generated references.
+    """
+    planning_name = cstr(planning_name).strip()
+    if not planning_name or not frappe.db.exists("Planning", planning_name):
+        return
+
+    updates = {}
+    if work_order_name:
+        updates["work_order"] = work_order_name
+    if stock_entry_name:
+        updates["stock_entry"] = stock_entry_name
+    if batch_no:
+        updates["batch"] = batch_no
+
+    if updates:
+        frappe.db.set_value("Planning", planning_name, updates, update_modified=False)
+
+
+def sync_planning_costing_after_batch_assignment(doc, batch_no=None):
+    """
+    Finalize batch-dependent costing as soon as the finished batch exists.
+
+    The computed batch cost should be written during manufacturing, not only
+    when a later Planning save happens to trigger `validate`.
+    """
+    if not doc:
+        return
+
+    batch_no = cstr(batch_no or doc.get("batch")).strip()
+    if not batch_no:
+        return
+
+    doc.update({"batch": batch_no})
+    costing_row = build_planning_costing_row(doc)
+    if not costing_row:
+        return
+
+    persist_planning_costing_table(doc, costing_row=costing_row)
+    sync_planning_batch_cost_per_part(doc, costing_row=costing_row)
 
 
 @frappe.whitelist()
@@ -513,6 +609,17 @@ def create_work_order(form_data: str, wo=None) -> dict:
             work_order, data)
         transfer_entry = _create_transfer_entry_if_applicable(
             work_order, data, manufacture_entry)
+
+        sync_planning_work_order_references(
+            planning_name=data.get("name"),
+            work_order_name=work_order.name,
+            stock_entry_name=manufacture_entry.name if manufacture_entry else None,
+            batch_no=manufacture_batch,
+        )
+        sync_planning_costing_after_batch_assignment(
+            data,
+            batch_no=manufacture_batch,
+        )
         
         from amf.amf.utils.batch import auto_gen_qa_inspection
         auto_gen_qa_inspection(manufacture_batch)
@@ -957,5 +1064,3 @@ def get_next_suivi_usinage():
     # 4) Construct the new suivi_usinage
     new_suivi = f"P-{today_str}-{new_digit_int}"
     return new_suivi
-
-
