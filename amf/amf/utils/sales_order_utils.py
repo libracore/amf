@@ -161,8 +161,10 @@ def create_work_order(item_code, qty, warehouse, sales_order=None):
     #wo_doc.assembly_specialist_start = 'CBE'
     if item_code.startswith("4"):
         wo_doc.wip_step = 1
+        wo_doc.skip_transfer = 1
     if item_code.startswith("10") or item_code.startswith("20"):
         wo_doc.wip_step = 1
+        wo_doc.skip_transfer = 1
         wo_doc.assembly_specialist_start = 'MBA'
         wo_doc.progress = 'En Attente'
 
