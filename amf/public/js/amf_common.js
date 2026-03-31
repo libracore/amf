@@ -17,32 +17,48 @@ if (window.location.host.indexOf("amf") >= 0) {
 
 window.onload = async function () {
     console.log("Welcome to AMF ERP");
+    var today = new Date();
+    var isAmfHost = window.location.hostname.includes("amf");
+    var isAprilFishDay = today.getFullYear() === 2026 && today.getMonth() === 3 && today.getDate() === 1;
+    var aprilFishGif = "/assets/amf/img/april-fish.gif";
+
     setTimeout(function() {
         var navbars = document.getElementsByClassName("navbar");
         if (navbars.length > 0) {
-            if (window.location.hostname.includes("amf")) {
+            if (isAmfHost) {
                 navbars[0].style.backgroundColor = "#2b47d9";
                 navbars[0].style.borderColor = "#2b47d9";
             }
         }
         var navlogo = document.getElementsByClassName("app-logo");
         if (navlogo.length > 0) {
-            if (window.location.hostname.includes("amf")) {
-                navlogo[0].src = "https://amf.libracore.ch/files/AMF2023-Full.png";
-                navlogo[0].setAttribute('style', 'width: 150px !important; margin-top: -1px !important');
-            } else {
-                navlogo[0].src = "https://amf.libracore.ch/files/AMF2023-Full.png";
-                navlogo[0].setAttribute('style', 'width: 150px !important; margin-top: -1px !important');
-            }
+            navlogo[0].src = "https://amf.libracore.ch/files/AMF2023-Full.png";
+            navlogo[0].setAttribute('style', 'width: 150px !important; margin-top: -1px !important');
         }
         var navsearch = document.getElementById('navbar-search');
-            if (window.location.hostname.includes("amf")) {
+        if (navsearch) {
+            if (isAmfHost) {
                 navsearch.style.backgroundColor = "#263fc3";
                 navsearch.style.borderColor = "#263fc3";
             } else {
                 navsearch.style.backgroundColor = "#02804E";
                 navsearch.style.borderColor = "#02804E";
             }
+
+            if (isAprilFishDay) {
+                navsearch.style.backgroundImage = "url('" + aprilFishGif + "')";
+                navsearch.style.backgroundRepeat = "no-repeat";
+                navsearch.style.backgroundPosition = "center center";
+                navsearch.style.backgroundSize = "cover";
+                navsearch.style.paddingRight = "";
+            } else {
+                navsearch.style.backgroundImage = "none";
+                navsearch.style.backgroundRepeat = "";
+                navsearch.style.backgroundPosition = "";
+                navsearch.style.backgroundSize = "";
+                navsearch.style.paddingRight = "";
+            }
+        }
     }, 500);
 }
 
