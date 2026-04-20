@@ -2,9 +2,126 @@
 // For license information, please see license.txt
 
 const eur1form_note = __('You have not entered the EUR.1 form number. If an EUR.1 form is not necessary for this shipment, please indicate below with a check mark.');
+const DELIVERY_NOTE_DESTINATION_REGION = {
+    EU: "EU",
+    US: "US"
+};
+
+function set_delivery_note_doc_value(frm, fieldname, value) {
+    if (!frm.fields_dict || !frm.fields_dict[fieldname]) {
+        return;
+    }
+
+    const normalizedValue = value || "";
+    if ((frm.doc[fieldname] || "") === normalizedValue) {
+        return;
+    }
+
+    frm.doc[fieldname] = normalizedValue;
+    frm.refresh_field(fieldname);
+}
+
+function set_delivery_note_field_visibility(frm, fieldname, shouldShow) {
+    if (!frm.fields_dict || !frm.fields_dict[fieldname]) {
+        return;
+    }
+
+    frm.set_df_property(fieldname, "hidden", shouldShow ? 0 : 1);
+}
+
+function apply_delivery_note_customs_visibility(frm, customsContext) {
+    const destinationRegion = customsContext ? customsContext.destination_region : null;
+    const hasEin = Boolean((frm.doc.ein || "").trim());
+    const hasEori = Boolean((frm.doc.tax_id || "").trim());
+
+    set_delivery_note_field_visibility(
+        frm,
+        "ein",
+        destinationRegion === DELIVERY_NOTE_DESTINATION_REGION.US && hasEin
+    );
+    set_delivery_note_field_visibility(
+        frm,
+        "tax_id",
+        destinationRegion === DELIVERY_NOTE_DESTINATION_REGION.EU && hasEori
+    );
+}
+
+function fetch_delivery_note_customs_context(frm) {
+    return new Promise(function (resolve) {
+        if (!frm.doc.customer) {
+            resolve({
+                destination_country: null,
+                destination_country_code: null,
+                destination_region: null,
+                ein: "",
+                tax_id: ""
+            });
+            return;
+        }
+
+        frappe.call({
+            method: "amf.amf.utils.delivery_note_api.get_delivery_note_customs_context",
+            args: {
+                customer: frm.doc.customer,
+                shipping_address_name: frm.doc.shipping_address_name,
+                customer_address: frm.doc.customer_address
+            },
+            callback: function (r) {
+                resolve(r.message || {
+                    destination_country: null,
+                    destination_country_code: null,
+                    destination_region: null,
+                    ein: "",
+                    tax_id: ""
+                });
+            },
+            error: function () {
+                resolve({
+                    destination_country: null,
+                    destination_country_code: null,
+                    destination_region: null,
+                    ein: "",
+                    tax_id: ""
+                });
+            }
+        });
+    });
+}
+
+async function sync_delivery_note_customs_identifiers(frm) {
+    const requestId = (frm.__delivery_note_customs_request_id || 0) + 1;
+    frm.__delivery_note_customs_request_id = requestId;
+
+    const customsContext = await fetch_delivery_note_customs_context(frm);
+    if (frm.__delivery_note_customs_request_id !== requestId) {
+        return;
+    }
+
+    frm.__delivery_note_customs_context = customsContext;
+    set_delivery_note_doc_value(frm, "tax_id", customsContext.tax_id || "");
+    set_delivery_note_doc_value(frm, "ein", customsContext.ein || "");
+    apply_delivery_note_customs_visibility(frm, customsContext);
+}
 
 frappe.ui.form.on("Delivery Note", {
+    customer: function (frm) {
+        sync_delivery_note_customs_identifiers(frm);
+    },
+    shipping_address_name: function (frm) {
+        sync_delivery_note_customs_identifiers(frm);
+    },
+    customer_address: function (frm) {
+        sync_delivery_note_customs_identifiers(frm);
+    },
+    tax_id: function (frm) {
+        apply_delivery_note_customs_visibility(frm, frm.__delivery_note_customs_context);
+    },
+    ein: function (frm) {
+        apply_delivery_note_customs_visibility(frm, frm.__delivery_note_customs_context);
+    },
     refresh: function (frm) {
+        sync_delivery_note_customs_identifiers(frm);
+
         // attach tooltip for EUR.1 form
         const description = "Fill out a paper EUR.1 form and place it on the package if the following criteria are met:\n\n"
             + "1. The destination is in the EU\n"
