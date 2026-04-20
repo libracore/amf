@@ -266,6 +266,156 @@ EU_ISO_CODES = {
     "SI", "ES", "SE"
 }
 
+COUNTRY_CODE_ALIASES = {
+    "USA": "US",
+    "UNITED STATES": "US",
+    "UNITED STATES OF AMERICA": "US",
+}
+
+DESTINATION_REGION_US = "US"
+DESTINATION_REGION_EU = "EU"
+
+
+def get_country_code(country):
+    if not country:
+        return None
+
+    country = country.strip()
+    if not country:
+        return None
+
+    normalized_country = country.upper()
+    if normalized_country in EU_ISO_CODES or normalized_country == DESTINATION_REGION_US:
+        return normalized_country
+
+    if normalized_country in COUNTRY_CODE_ALIASES:
+        return COUNTRY_CODE_ALIASES[normalized_country]
+
+    return country_mapping.get(country)
+
+
+def get_customer_address_name(customer):
+    if not customer:
+        return None
+
+    customer_primary_address = frappe.db.get_value("Customer", customer, "customer_primary_address")
+    if customer_primary_address:
+        return customer_primary_address
+
+    linked_address = frappe.db.sql(
+        """
+        SELECT dl.parent
+        FROM `tabDynamic Link` dl
+        INNER JOIN `tabAddress` a ON a.name = dl.parent
+        WHERE dl.parenttype = 'Address'
+          AND dl.link_doctype = 'Customer'
+          AND dl.link_name = %s
+        ORDER BY IFNULL(a.is_primary_address, 0) DESC, a.modified DESC
+        LIMIT 1
+        """,
+        (customer,),
+        as_list=True,
+    )
+    if linked_address and linked_address[0] and linked_address[0][0]:
+        return linked_address[0][0]
+
+    return None
+
+
+def get_delivery_destination_country(customer=None, shipping_address_name=None, customer_address=None):
+    address_candidates = [
+        shipping_address_name,
+        customer_address,
+        get_customer_address_name(customer),
+    ]
+
+    for address_name in address_candidates:
+        if not address_name:
+            continue
+
+        country = frappe.db.get_value("Address", address_name, "country")
+        if country:
+            return country
+
+    return None
+
+
+def get_delivery_destination_region(customer=None, shipping_address_name=None, customer_address=None):
+    destination_country = get_delivery_destination_country(
+        customer=customer,
+        shipping_address_name=shipping_address_name,
+        customer_address=customer_address,
+    )
+    destination_country_code = get_country_code(destination_country)
+
+    if destination_country_code == DESTINATION_REGION_US:
+        return DESTINATION_REGION_US, destination_country, destination_country_code
+
+    if destination_country_code in EU_ISO_CODES:
+        return DESTINATION_REGION_EU, destination_country, destination_country_code
+
+    return None, destination_country, destination_country_code
+
+
+def get_customer_customs_identifiers(customer):
+    identifiers = {
+        "tax_id": "",
+        "ein": "",
+    }
+    if not customer or not frappe.db.exists("Customer", customer):
+        return identifiers
+
+    customer_fields = ["tax_id"]
+    customer_meta = frappe.get_meta("Customer")
+    if customer_meta.has_field("ein"):
+        customer_fields.append("ein")
+
+    customer_values = frappe.db.get_value("Customer", customer, customer_fields, as_dict=True) or {}
+    identifiers["tax_id"] = customer_values.get("tax_id") or ""
+    identifiers["ein"] = customer_values.get("ein") or ""
+    return identifiers
+
+
+def build_delivery_note_customs_context(customer=None, shipping_address_name=None, customer_address=None):
+    destination_region, destination_country, destination_country_code = get_delivery_destination_region(
+        customer=customer,
+        shipping_address_name=shipping_address_name,
+        customer_address=customer_address,
+    )
+    customer_identifiers = get_customer_customs_identifiers(customer)
+
+    return {
+        "destination_country": destination_country,
+        "destination_country_code": destination_country_code,
+        "destination_region": destination_region,
+        "tax_id": customer_identifiers.get("tax_id", "") if destination_region == DESTINATION_REGION_EU else "",
+        "ein": customer_identifiers.get("ein", "") if destination_region == DESTINATION_REGION_US else "",
+    }
+
+
+def apply_delivery_note_customs_identifiers(doc):
+    customs_context = build_delivery_note_customs_context(
+        customer=doc.get("customer"),
+        shipping_address_name=doc.get("shipping_address_name"),
+        customer_address=doc.get("customer_address"),
+    )
+
+    doc.tax_id = customs_context.get("tax_id") or ""
+
+    if doc.meta.has_field("ein"):
+        doc.ein = customs_context.get("ein") or ""
+
+    return customs_context
+
+
+@frappe.whitelist()
+def get_delivery_note_customs_context(customer=None, shipping_address_name=None, customer_address=None):
+    return build_delivery_note_customs_context(
+        customer=customer,
+        shipping_address_name=shipping_address_name,
+        customer_address=customer_address,
+    )
+
 
 
 @frappe.whitelist()
@@ -471,6 +621,8 @@ def before_save_dn(doc, method):
     This function checks each delivery note item, fetches related work orders, and gathers serial numbers
     from the stock entries of the 'Manufacture' type, storing them in the 'product_serial_no' field.
     """
+    apply_delivery_note_customs_identifiers(doc)
+
     for item in doc.items:
 
         if not item.customs_tariff_number_ or item.customs_tariff_number_ == "":
@@ -591,7 +743,7 @@ def get_HS_code(item_code, shipping_address_name):
         return None
 
     country = frappe.db.get_value("Address", shipping_address_name,"country")
-    hs_country = country_mapping.get(country, "")
+    hs_country = get_country_code(country) or ""
     if not hs_country:
         return None
     if hs_country in EU_ISO_CODES:
@@ -815,6 +967,5 @@ def check_qa_inspections_status(doc, method):
                  <b><a href="/desk#Form/Global Quality Inspection/{inspection.name}" target="_blank">{inspection.name}
                  </a></b> is not Accepted (current status: {inspection.status})."""
             )
-
 
 
