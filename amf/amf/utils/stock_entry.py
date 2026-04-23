@@ -269,10 +269,23 @@ def stock_entry_before_submit(doc, method):
     """
     Main pipeline before submit:
       1) Initialize or retrieve same log entry
-      2) Manufacture batch
-      3) Batch assignment
+      2) Recalculate rates from the current rows
+      3) Manufacture batch
+      4) Batch assignment
     """
     log_id = _get_or_create_log(doc)
+    try:
+        update_log_entry(log_id, f"[{now_datetime()}] -- Submit recalculation: purpose={doc.purpose}, WO={doc.work_order} --<br>")
+        # `before_save` is not executed during submit in Frappe, so any draft that goes
+        # straight to submit would otherwise keep a stale finished-good rate.
+        get_stock_and_rate_override(doc, method=method, log_id=log_id)
+        update_log_entry(log_id, f"[{now_datetime()}] Submit recalculation completed<br>")
+    except Exception as e:
+        err_msg = f"Error recalculating rates before submit: {e}"
+        update_log_entry(log_id, err_msg)
+        frappe.log_error(err_msg, f"stock_entry_before_submit {doc.name}<br>")
+        raise
+
     if not doc.handle_manufacture_batch_method:
         update_log_entry(log_id, f"[{now_datetime()}] Before Submit: handle manufacture batch flag not set<br>")
     else:
@@ -714,7 +727,6 @@ def get_stock_and_rate_override(doc, method = None, log_id = None):
         print("get_stock_and_rate_override: ignore_rate_calculation flag set. Return.")
         return
     
-    print("Entering get_stock_and_rate_override.")
     if isinstance(doc, str):
         doc = frappe.parse_json(doc)
     if isinstance(doc, dict):
@@ -746,6 +758,503 @@ def get_stock_and_rate_override(doc, method = None, log_id = None):
 
     if method is None:
         doc.save()
+
+
+def _get_disabled_batch_numbers(items):
+    batch_nos = sorted({row.batch_no for row in (items or []) if row.batch_no})
+    if not batch_nos:
+        return []
+
+    disabled_batches = frappe.get_all(
+        "Batch",
+        filters={
+            "name": ["in", batch_nos],
+            "disabled": 1,
+        },
+        fields=["name"],
+    )
+    return [row.name for row in disabled_batches]
+
+
+def _set_batch_disabled_state(batch_nos, disabled):
+    for batch_no in batch_nos or []:
+        frappe.db.set_value("Batch", batch_no, "disabled", disabled, update_modified=False)
+
+
+@frappe.whitelist()
+def repair_manufacture_stock_entries(stock_entry_names, dry_run=True, cancel_original=True):
+    """
+    Repair submitted non-serialized manufacture entries by:
+      1) duplicating the original entry,
+      2) recalculating the duplicate with the current rows and posting datetime,
+      3) submitting the corrected duplicate,
+      4) cancelling the original entry.
+
+    The duplicate is submitted first so later stock movements keep enough stock during the
+    repair window. Serialized entries must use repair_serialized_manufacture_stock_entries()
+    because they cannot safely coexist twice before the original is cancelled. Automatic
+    repair only proceeds when the recalculation materially changes the entry and brings
+    value_difference back to zero.
+    """
+    return _run_repair_handler(
+        stock_entry_names,
+        dry_run=dry_run,
+        cancel_original=cancel_original,
+        repair_handler=_repair_manufacture_stock_entry,
+        error_title="repair_manufacture_stock_entries",
+    )
+
+
+@frappe.whitelist()
+def repair_serialized_manufacture_stock_entries(stock_entry_names, dry_run=True, cancel_original=True):
+    """
+    Repair submitted serialized manufacture entries by:
+      1) recalculating a duplicate in memory,
+      2) cancelling the original entry inside the same transaction,
+      3) inserting and submitting the recalculated replacement.
+
+    This path avoids a temporary duplicate presence of the same serial numbers. Live repair
+    requires cancel_original=1 because the original must be reversed before the replacement
+    can be submitted safely.
+    """
+    return _run_repair_handler(
+        stock_entry_names,
+        dry_run=dry_run,
+        cancel_original=cancel_original,
+        repair_handler=_repair_serialized_manufacture_stock_entry,
+        error_title="repair_serialized_manufacture_stock_entries",
+    )
+
+
+@frappe.whitelist()
+def repair_problematic_manufacture_stock_entries(
+    from_date="2025-01-01",
+    to_date="2025-12-31",
+    dry_run=True,
+    cancel_original=True,
+    include_results=False,
+):
+    """
+    Bulk wrapper for manufacture repairs:
+      - selects submitted Manufacture stock entries on/after from_date
+      - optionally limits the selection to posting_date on/before to_date
+      - keeps only entries with a non-zero value_difference
+      - passes the names to repair_manufacture_stock_entries()
+    """
+    filters = [
+        ["Stock Entry", "docstatus", "=", 1],
+        ["Stock Entry", "purpose", "=", "Manufacture"],
+        ["Stock Entry", "posting_date", ">=", from_date],
+        ["Stock Entry", "value_difference", "!=", 0],
+    ]
+    if to_date:
+        filters.append(["Stock Entry", "posting_date", "<=", to_date])
+
+    stock_entries = frappe.get_all(
+        "Stock Entry",
+        filters=filters,
+        fields=["name"],
+        order_by="posting_date asc, name asc",
+        limit_page_length=0,
+    )
+    stock_entry_names = [row.name for row in stock_entries]
+    results = repair_manufacture_stock_entries(
+        stock_entry_names,
+        dry_run=dry_run,
+        cancel_original=cancel_original,
+    )
+
+    return _build_bulk_repair_response(
+        stock_entry_names,
+        results,
+        from_date=from_date,
+        to_date=to_date,
+        dry_run=dry_run,
+        cancel_original=cancel_original,
+        include_results=include_results,
+    )
+
+
+@frappe.whitelist()
+def repair_problematic_serialized_manufacture_stock_entries(
+    from_date="2024-01-01",
+    to_date="2024-01-31",
+    dry_run=True,
+    cancel_original=True,
+    include_results=True,
+):
+    """
+    Bulk wrapper for serialized manufacture repairs.
+    """
+    query = """
+        select distinct se.name
+        from `tabStock Entry` se
+        inner join `tabStock Entry Detail` sed on sed.parent = se.name
+        where se.docstatus = 1
+          and se.purpose = 'Manufacture'
+          and se.posting_date >= %(from_date)s
+          and se.value_difference != 0
+          and ifnull(sed.serial_no, '') != ''
+    """
+    params = {"from_date": from_date}
+    if to_date:
+        query += " and se.posting_date <= %(to_date)s"
+        params["to_date"] = to_date
+    query += " order by se.posting_date asc, se.name asc"
+
+    stock_entries = frappe.db.sql(query, params, as_dict=True)
+    stock_entry_names = [row.name for row in stock_entries]
+    results = repair_serialized_manufacture_stock_entries(
+        stock_entry_names,
+        dry_run=dry_run,
+        cancel_original=cancel_original,
+    )
+
+    return _build_bulk_repair_response(
+        stock_entry_names,
+        results,
+        from_date=from_date,
+        to_date=to_date,
+        dry_run=dry_run,
+        cancel_original=cancel_original,
+        include_results=include_results,
+    )
+
+
+def _row_get(row, fieldname):
+    if isinstance(row, dict):
+        return row.get(fieldname)
+    return getattr(row, fieldname, None)
+
+
+def _stock_entry_has_serial_numbers(stock_entry):
+    return any((_row_get(row, "serial_no") or "").strip() for row in (stock_entry.items or []))
+
+
+def _build_bulk_repair_response(
+    stock_entry_names,
+    results,
+    from_date,
+    to_date,
+    dry_run,
+    cancel_original,
+    include_results,
+):
+    summary = {}
+    for result in results:
+        status = result.get("status") or "unknown"
+        summary[status] = summary.get(status, 0) + 1
+
+    return {
+        "from_date": from_date,
+        "to_date": to_date,
+        "dry_run": frappe.utils.cint(dry_run),
+        "cancel_original": frappe.utils.cint(cancel_original),
+        "stock_entry_count": len(stock_entry_names),
+        "status_summary": summary,
+        "results": results if frappe.utils.cint(include_results) else [],
+    }
+
+
+def _run_repair_handler(stock_entry_names, dry_run=True, cancel_original=True, repair_handler=None, error_title=None):
+    if isinstance(stock_entry_names, str):
+        stock_entry_names = frappe.parse_json(stock_entry_names)
+
+    results = []
+    dry_run = frappe.utils.cint(dry_run)
+    cancel_original = frappe.utils.cint(cancel_original)
+
+    for stock_entry_name in stock_entry_names or []:
+        try:
+            result = repair_handler(
+                stock_entry_name,
+                dry_run=dry_run,
+                cancel_original=cancel_original,
+            )
+        except Exception:
+            frappe.log_error(
+                frappe.get_traceback(),
+                "{0} {1}".format(error_title or "repair_stock_entries", stock_entry_name),
+            )
+            result = {
+                "stock_entry": stock_entry_name,
+                "status": "error",
+                "reason": frappe.get_traceback(),
+            }
+        results.append(result)
+
+    return results
+
+
+def _build_skipped_repair_result(stock_entry_name, reason):
+    return {
+        "stock_entry": stock_entry_name,
+        "status": "skipped",
+        "reason": reason,
+    }
+
+
+def _validate_repairable_manufacture_entry(original, stock_entry_name, require_serialized=None):
+    if original.docstatus != 1:
+        return _build_skipped_repair_result(
+            stock_entry_name,
+            "Only submitted stock entries can be repaired.",
+        )
+
+    if original.purpose != "Manufacture":
+        return _build_skipped_repair_result(
+            stock_entry_name,
+            "Only Manufacture stock entries are supported.",
+        )
+
+    has_serial_numbers = _stock_entry_has_serial_numbers(original)
+
+    if require_serialized is False and has_serial_numbers:
+        return _build_skipped_repair_result(
+            stock_entry_name,
+            "Serialized manufacture entries must be repaired with repair_serialized_manufacture_stock_entries().",
+        )
+
+    if require_serialized is True and not has_serial_numbers:
+        return _build_skipped_repair_result(
+            stock_entry_name,
+            "Only serialized Manufacture stock entries are supported.",
+        )
+
+    return None
+
+
+def _prepare_repair_duplicate(original):
+    duplicate = frappe.copy_doc(original)
+    duplicate.naming_series = original.naming_series
+    duplicate.posting_date = original.posting_date
+    duplicate.posting_time = original.posting_time
+    duplicate.set_posting_time = 1
+    duplicate.handle_manufacture_batch_method = 1
+    duplicate.assign_batch_method = 1
+    duplicate.remarks = (original.remarks or "")
+    duplicate.remarks = (
+        (duplicate.remarks + "\n" if duplicate.remarks else "")
+        + "Repair duplicate for {0}".format(original.name)
+    )
+
+    item_codes = sorted({row.item_code for row in duplicate.items if row.item_code})
+    batch_map = {}
+    if item_codes:
+        batch_records = frappe.get_all(
+            "Item",
+            filters={"item_code": ["in", item_codes]},
+            fields=["item_code", "has_batch_no"],
+        )
+        batch_map = {
+            _row_get(row, "item_code"): _row_get(row, "has_batch_no")
+            for row in batch_records
+        }
+
+    for row in duplicate.items:
+        if row.t_warehouse and not row.batch_no and batch_map.get(row.item_code):
+            row.auto_batch_no_generation = 1
+
+    get_stock_and_rate_override(duplicate, method="repair")
+    return duplicate
+
+
+def _build_repair_result(stock_entry_name, original, duplicate, dry_run, repair_strategy):
+    original_value_difference = flt(original.value_difference)
+    repaired_value_difference = flt(duplicate.value_difference)
+    value_difference_delta = flt(repaired_value_difference - original_value_difference)
+
+    return {
+        "stock_entry": stock_entry_name,
+        "status": "dry_run" if dry_run else "ready",
+        "repair_strategy": repair_strategy,
+        "original_value_difference": original_value_difference,
+        "repaired_value_difference": repaired_value_difference,
+        "value_difference_delta": value_difference_delta,
+        "duplicate_name": getattr(duplicate, "name", None),
+    }
+
+
+def _get_terminal_repair_result(result, dry_run=True, cancel_original=True):
+    if abs(result["value_difference_delta"]) <= 0.01:
+        result["status"] = "needs_review"
+        result["reason"] = "Recalculation did not change value_difference."
+        return result
+
+    if abs(result["repaired_value_difference"]) > 0.01:
+        result["status"] = "needs_review"
+        result["reason"] = "Recalculation still leaves a non-zero value_difference."
+        return result
+
+    if not dry_run and not cancel_original:
+        result["status"] = "needs_review"
+        result["reason"] = "Live repair requires cancel_original=1 to keep Work Order quantities consistent."
+        return result
+
+    if dry_run:
+        return result
+
+    return None
+
+
+def _prepare_live_repair_environment(duplicate, result):
+    disabled_batches = _get_disabled_batch_numbers(duplicate.items)
+    existing_allow_negative_stock = frappe.db.get_value("Stock Settings", None, "allow_negative_stock")
+
+    if disabled_batches:
+        result["reenabled_batches"] = disabled_batches
+        _set_batch_disabled_state(disabled_batches, 0)
+
+    frappe.db.sql("set innodb_lock_wait_timeout = 300")
+    frappe.db.set_value("Stock Settings", None, "allow_negative_stock", 1, update_modified=False)
+    return disabled_batches, existing_allow_negative_stock
+
+
+def _restore_live_repair_environment(disabled_batches, existing_allow_negative_stock):
+    if disabled_batches:
+        _set_batch_disabled_state(disabled_batches, 1)
+
+    frappe.db.set_value(
+        "Stock Settings",
+        None,
+        "allow_negative_stock",
+        existing_allow_negative_stock,
+        update_modified=False,
+    )
+
+
+def _reset_duplicate_flags(duplicate):
+    if getattr(duplicate, "flags", None) is not None:
+        duplicate.flags.ignore_validate = False
+
+
+def _submit_repair_duplicate(duplicate, bypass_work_order_update=True):
+    # Insert without stock-entry validate so the copied source batches can be reused
+    # inside the same repair transaction.
+    duplicate.flags.ignore_validate = True
+    duplicate.insert(ignore_permissions=True, ignore_links=True)
+    duplicate.flags.ignore_validate = False
+    duplicate.validate_bom = lambda: None
+    duplicate.validate_work_order = lambda: None
+    if bypass_work_order_update:
+        duplicate.update_work_order = lambda: None
+    duplicate.make_sl_entries = (
+        lambda sl_entries, is_amended=None, allow_negative_stock=False, via_landed_cost_voucher=False:
+            duplicate.__class__.make_sl_entries(
+                duplicate,
+                sl_entries,
+                is_amended=is_amended,
+                allow_negative_stock=True,
+                via_landed_cost_voucher=via_landed_cost_voucher,
+            )
+    )
+    duplicate.submit()
+
+
+def _run_live_repair_duplicate_first(original, duplicate, result, cancel_original=True):
+    disabled_batches, existing_allow_negative_stock = _prepare_live_repair_environment(duplicate, result)
+
+    try:
+        _submit_repair_duplicate(duplicate, bypass_work_order_update=True)
+        result["duplicate_name"] = duplicate.name
+        result["status"] = "duplicated"
+
+        if cancel_original:
+            original.cancel()
+            result["status"] = "cancelled_original"
+
+        _restore_live_repair_environment(disabled_batches, existing_allow_negative_stock)
+        frappe.db.commit()
+        return result
+    except Exception:
+        frappe.db.rollback()
+        _reset_duplicate_flags(duplicate)
+        _restore_live_repair_environment(disabled_batches, existing_allow_negative_stock)
+        frappe.db.commit()
+        raise
+
+
+def _run_live_repair_cancel_first(original, duplicate, result):
+    disabled_batches, existing_allow_negative_stock = _prepare_live_repair_environment(duplicate, result)
+
+    try:
+        original.cancel()
+        _submit_repair_duplicate(duplicate, bypass_work_order_update=False)
+        result["duplicate_name"] = duplicate.name
+        result["status"] = "cancelled_original"
+
+        _restore_live_repair_environment(disabled_batches, existing_allow_negative_stock)
+        frappe.db.commit()
+        return result
+    except Exception:
+        frappe.db.rollback()
+        _reset_duplicate_flags(duplicate)
+        _restore_live_repair_environment(disabled_batches, existing_allow_negative_stock)
+        frappe.db.commit()
+        raise
+
+
+def _repair_manufacture_stock_entry(stock_entry_name, dry_run=True, cancel_original=True):
+    original = frappe.get_doc("Stock Entry", stock_entry_name)
+    guardrail_result = _validate_repairable_manufacture_entry(
+        original,
+        stock_entry_name,
+        require_serialized=False,
+    )
+    if guardrail_result:
+        return guardrail_result
+
+    duplicate = _prepare_repair_duplicate(original)
+    result = _build_repair_result(
+        stock_entry_name,
+        original,
+        duplicate,
+        dry_run=dry_run,
+        repair_strategy="duplicate_first",
+    )
+    terminal_result = _get_terminal_repair_result(
+        result,
+        dry_run=dry_run,
+        cancel_original=cancel_original,
+    )
+    if terminal_result:
+        return terminal_result
+
+    return _run_live_repair_duplicate_first(
+        original,
+        duplicate,
+        result,
+        cancel_original=cancel_original,
+    )
+
+
+def _repair_serialized_manufacture_stock_entry(stock_entry_name, dry_run=True, cancel_original=True):
+    original = frappe.get_doc("Stock Entry", stock_entry_name)
+    guardrail_result = _validate_repairable_manufacture_entry(
+        original,
+        stock_entry_name,
+        require_serialized=True,
+    )
+    if guardrail_result:
+        return guardrail_result
+
+    duplicate = _prepare_repair_duplicate(original)
+    result = _build_repair_result(
+        stock_entry_name,
+        original,
+        duplicate,
+        dry_run=dry_run,
+        repair_strategy="serialized_cancel_first",
+    )
+    terminal_result = _get_terminal_repair_result(
+        result,
+        dry_run=dry_run,
+        cancel_original=cancel_original,
+    )
+    if terminal_result:
+        return terminal_result
+
+    return _run_live_repair_cancel_first(original, duplicate, result)
 
 def set_basic_rate_override(doc, force=False, update_finished_item_rate=True, raise_error_if_no_rate=True, log_id=None):
     """
@@ -794,16 +1303,28 @@ def set_basic_rate_override(doc, force=False, update_finished_item_rate=True, ra
 
         # SCRAP ITEMS (patched)
         if is_scrap: 
-            scrap_rate = flt(get_incoming_rate(args, raise_error_if_no_rate), ...)
-
+            scrap_rate = flt(
+                frappe.db.get_value(
+                    "BOM Scrap Item",
+                    {"parent": doc.bom_no, "item_code": d.item_code},
+                    "rate",
+                ) or 0,
+                doc.precision("basic_rate", d),
+            )
             if not scrap_rate:
-                scrap_rate = frappe.db.get_value("BOM Scrap Item", {...}, "rate") or 0
+                scrap_rate = flt(
+                    get_incoming_rate(args, raise_error_if_no_rate),
+                    doc.precision("basic_rate", d),
+                )
 
             # d.allow_zero_valuation_rate = 1
             d.basic_rate = scrap_rate
             d.valuation_rate = scrap_rate
             
-            d.basic_amount = flt(d.transfer_qty * scrap_rate, ...)
+            d.basic_amount = flt(
+                d.transfer_qty * scrap_rate,
+                doc.precision("basic_amount", d),
+            )
             update_log_entry(
                 log_id, f"[{now_datetime()}] Scrap Item {d.item_code}: basic_rate set to {d.basic_rate}, basic_amount set to {d.basic_amount}<br>")   
             scrap_material_cost += d.basic_amount
@@ -824,6 +1345,3 @@ def set_basic_rate_override(doc, force=False, update_finished_item_rate=True, ra
                     d.basic_amount = flt((raw_material_cost - scrap_material_cost), d.precision("basic_amount"))
                     update_log_entry(
                         log_id, f"[{now_datetime()}] FG Item {d.item_code}: basic_rate set to {d.basic_rate}, basic_amount set to {d.basic_amount}<br>")
-
-
-
