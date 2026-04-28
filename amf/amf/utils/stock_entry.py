@@ -569,26 +569,26 @@ def create_log_entry(message, category, name):
     """
     Create a new Log Entry and return its ID.
     """
-    log = frappe.get_doc({
-        "doctype": "Log Entry",
-        "timestamp": datetime.datetime.now(),
-        "category": category,
-        "message": message,
-        "reference_name": name,
-    }).insert(ignore_permissions=True)
-    frappe.db.commit()
-    return log.name
+    # log = frappe.get_doc({
+    #     "doctype": "Log Entry",
+    #     "timestamp": datetime.datetime.now(),
+    #     "category": category,
+    #     "message": message,
+    #     "reference_name": name,
+    # }).insert(ignore_permissions=True)
+    # frappe.db.commit()
+    # return log.name
 
 
 def update_log_entry(log_id, message):
     """
     Append a message to an existing Log Entry.
     """
-    log = custom_try(frappe.get_doc, "Log Entry", log_id)
-    if not log:
-        return
-    log.message = (log.message or "") + "\n" + (message or "")
-    custom_try(log.save, ignore_permissions=True)
+    # log = custom_try(frappe.get_doc, "Log Entry", log_id)
+    # if not log:
+    #     return
+    # log.message = (log.message or "") + "\n" + (message or "")
+    # custom_try(log.save, ignore_permissions=True)
 
 
 def custom_try(func, *args, **kwargs):
@@ -828,11 +828,11 @@ def repair_serialized_manufacture_stock_entries(stock_entry_names, dry_run=True,
 
 @frappe.whitelist()
 def repair_problematic_manufacture_stock_entries(
-    from_date="2025-01-01",
-    to_date="2025-12-31",
-    dry_run=True,
+    from_date="2026-01-01",
+    to_date="2026-12-31",
+    dry_run=False,
     cancel_original=True,
-    include_results=False,
+    include_results=True,
 ):
     """
     Bulk wrapper for manufacture repairs:
@@ -877,9 +877,9 @@ def repair_problematic_manufacture_stock_entries(
 
 @frappe.whitelist()
 def repair_problematic_serialized_manufacture_stock_entries(
-    from_date="2024-01-01",
-    to_date="2024-01-31",
-    dry_run=True,
+    from_date="2026-01-01",
+    to_date="2026-12-31",
+    dry_run=False,
     cancel_original=True,
     include_results=True,
 ):
@@ -927,8 +927,89 @@ def _row_get(row, fieldname):
     return getattr(row, fieldname, None)
 
 
+SERIAL_NO_STATE_FIELDS = (
+    "warehouse",
+    "batch_no",
+    "location",
+    "company",
+    "supplier",
+    "supplier_name",
+    "sales_order",
+    "purchase_document_type",
+    "purchase_document_no",
+    "purchase_date",
+    "purchase_time",
+    "purchase_rate",
+    "delivery_document_type",
+    "delivery_document_no",
+    "delivery_date",
+    "delivery_time",
+    "customer",
+    "customer_name",
+    "sales_invoice",
+    "warranty_expiry_date",
+    "maintenance_status",
+)
+
+
+def _split_serial_numbers(serial_no_value):
+    serial_no_value = (serial_no_value or "").replace(",", "\n")
+    return [serial_no.strip() for serial_no in serial_no_value.splitlines() if serial_no.strip()]
+
+
 def _stock_entry_has_serial_numbers(stock_entry):
     return any((_row_get(row, "serial_no") or "").strip() for row in (stock_entry.items or []))
+
+
+def _get_stock_entry_serial_numbers(stock_entry):
+    serial_numbers = []
+    for row in stock_entry.items or []:
+        serial_numbers.extend(_split_serial_numbers(_row_get(row, "serial_no")))
+    return sorted(set(serial_numbers))
+
+
+def _capture_serial_no_state(serial_numbers):
+    if not serial_numbers:
+        return {}
+
+    serial_docs = frappe.get_all(
+        "Serial No",
+        filters={"name": ["in", serial_numbers]},
+        fields=["name"] + list(SERIAL_NO_STATE_FIELDS),
+        limit_page_length=0,
+    )
+    serial_state = {}
+    for serial_doc in serial_docs:
+        serial_state[_row_get(serial_doc, "name")] = {
+            fieldname: _row_get(serial_doc, fieldname)
+            for fieldname in SERIAL_NO_STATE_FIELDS
+        }
+    return serial_state
+
+
+def _restore_serial_no_state(serial_state):
+    for serial_no, values in (serial_state or {}).items():
+        frappe.db.set_value("Serial No", serial_no, values, update_modified=False)
+
+
+def _align_serial_no_warehouses_for_cancel(stock_entry):
+    warehouse_by_serial = {}
+    for row in stock_entry.items or []:
+        target_warehouse = _row_get(row, "t_warehouse")
+        if not target_warehouse:
+            continue
+
+        for serial_no in _split_serial_numbers(_row_get(row, "serial_no")):
+            warehouse_by_serial[serial_no] = target_warehouse
+            frappe.db.set_value(
+                "Serial No",
+                serial_no,
+                "warehouse",
+                target_warehouse,
+                update_modified=False,
+            )
+
+    return warehouse_by_serial
 
 
 def _build_bulk_repair_response(
@@ -1176,10 +1257,16 @@ def _run_live_repair_duplicate_first(original, duplicate, result, cancel_origina
 
 def _run_live_repair_cancel_first(original, duplicate, result):
     disabled_batches, existing_allow_negative_stock = _prepare_live_repair_environment(duplicate, result)
+    serial_no_state = _capture_serial_no_state(_get_stock_entry_serial_numbers(original))
 
     try:
+        aligned_serials = _align_serial_no_warehouses_for_cancel(original)
+        if aligned_serials:
+            result["temporarily_aligned_serial_count"] = len(aligned_serials)
+
         original.cancel()
         _submit_repair_duplicate(duplicate, bypass_work_order_update=False)
+        _restore_serial_no_state(serial_no_state)
         result["duplicate_name"] = duplicate.name
         result["status"] = "cancelled_original"
 

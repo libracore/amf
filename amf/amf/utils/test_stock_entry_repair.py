@@ -74,6 +74,30 @@ class TestStockEntryRepair(unittest.TestCase):
 		self.assertEqual(result["repair_strategy"], "serialized_cancel_first")
 		self.assertAlmostEqual(result["repaired_value_difference"], 0.0, places=2)
 
+	def test_align_serial_no_warehouses_for_cancel_uses_target_warehouses(self):
+		stock_entry = self._make_stock_entry(
+			items=[
+				self._make_row(t_warehouse="Main Stock - AMF21", serial_no="SER-0001\nSER-0002"),
+				self._make_row(s_warehouse="Source - AMF21", serial_no="RAW-0001"),
+				self._make_row(t_warehouse="Finished Goods - AMF21", serial_no="SER-0003, SER-0004"),
+			],
+		)
+		mock_frappe = SimpleNamespace(db=SimpleNamespace(set_value=Mock()))
+
+		with patch.object(stock_entry_utils, "frappe", mock_frappe):
+			warehouse_by_serial = stock_entry_utils._align_serial_no_warehouses_for_cancel(stock_entry)
+
+		self.assertEqual(
+			warehouse_by_serial,
+			{
+				"SER-0001": "Main Stock - AMF21",
+				"SER-0002": "Main Stock - AMF21",
+				"SER-0003": "Finished Goods - AMF21",
+				"SER-0004": "Finished Goods - AMF21",
+			},
+		)
+		self.assertEqual(mock_frappe.db.set_value.call_count, 4)
+
 	def test_serialized_live_path_cancels_original_before_submitting_duplicate(self):
 		call_order = []
 		original = self._make_stock_entry(
@@ -89,11 +113,31 @@ class TestStockEntryRepair(unittest.TestCase):
 
 		with patch.object(
 			stock_entry_utils,
+			"_get_stock_entry_serial_numbers",
+			return_value=["SER-0001"],
+		), patch.object(
+			stock_entry_utils,
+			"_capture_serial_no_state",
+			side_effect=lambda serial_numbers: call_order.append("snapshot") or {
+				"SER-0001": {"warehouse": "Stores - AMF21"}
+			},
+		), patch.object(
+			stock_entry_utils,
+			"_align_serial_no_warehouses_for_cancel",
+			side_effect=lambda doc: call_order.append("align") or {
+				"SER-0001": "Main Stock - AMF21"
+			},
+		), patch.object(
+			stock_entry_utils,
 			"_prepare_live_repair_environment",
 			return_value=([], 0),
 		), patch.object(
 			stock_entry_utils,
 			"_restore_live_repair_environment",
+		), patch.object(
+			stock_entry_utils,
+			"_restore_serial_no_state",
+			side_effect=lambda serial_state: call_order.append("restore"),
 		), patch.object(
 			stock_entry_utils,
 			"_submit_repair_duplicate",
@@ -111,10 +155,11 @@ class TestStockEntryRepair(unittest.TestCase):
 				result,
 			)
 
-		self.assertEqual(call_order, ["cancel", "submit:False"])
+		self.assertEqual(call_order, ["snapshot", "align", "cancel", "submit:False", "restore"])
 		submit_duplicate.assert_called_once_with(duplicate, bypass_work_order_update=False)
 		self.assertEqual(live_result["status"], "cancelled_original")
 		self.assertEqual(live_result["duplicate_name"], "STE-REPAIRED")
+		self.assertEqual(live_result["temporarily_aligned_serial_count"], 1)
 		mock_frappe.db.commit.assert_called_once_with()
 
 	def test_problematic_manufacture_wrapper_defaults_to_dry_run_without_results(self):
