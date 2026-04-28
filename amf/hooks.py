@@ -179,8 +179,12 @@ scheduler_events = {
 # Override Methods
 # ------------------------------
 # override_whitelisted_methods = {
-#     "frappe.desk.doctype.event.event.get_events": "amf.event.get_events"
+#     "frappe.desk.link_preview.get_preview_data": "amf.amf.link_preview.get_preview_data",
 # }
+
+# override_whitelisted_methods.update({
+#     "frappe.desk.doctype.event.event.get_events": "amf.event.get_events"
+# })
 override_doctype_dashboards = {
     "Delivery Note": "amf.amf.utils.dashboards.modify_dn_dashboard",
 }
