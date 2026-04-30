@@ -957,6 +957,456 @@ def _split_serial_numbers(serial_no_value):
     return [serial_no.strip() for serial_no in serial_no_value.splitlines() if serial_no.strip()]
 
 
+@frappe.whitelist()
+def correct_submitted_manufacture_qty(
+    stock_entry_name="STE-14760",
+    new_fg_completed_qty=41,
+    dry_run=False,
+    allow_negative_stock=True,
+    update_work_order_qty=True,
+    reason=True,
+):
+    """
+    Correct the manufactured quantity of a submitted Manufacture Stock Entry.
+
+    This intentionally bypasses normal submitted-document editing, then rebuilds
+    the stock and accounting ledgers from the corrected rows. It is meant for a
+    narrow historical repair where cancelling/amending the entry is no longer
+    practical because later batch movements exist.
+    """
+    frappe.only_for(("System Manager", "Stock Manager", "Manufacturing Manager"))
+
+    stock_entry_name = (stock_entry_name or "").strip()
+    new_fg_completed_qty = flt(new_fg_completed_qty)
+    dry_run = frappe.utils.cint(dry_run)
+    allow_negative_stock = frappe.utils.cint(allow_negative_stock)
+    update_work_order_qty = frappe.utils.cint(update_work_order_qty)
+
+    if not stock_entry_name:
+        frappe.throw(_("Stock Entry is required."))
+    if new_fg_completed_qty <= 0:
+        frappe.throw(_("New manufactured quantity must be greater than zero."))
+
+    if not frappe.db.exists("Stock Entry", stock_entry_name):
+        frappe.throw(_("Stock Entry {0} does not exist.").format(stock_entry_name))
+
+    if not dry_run:
+        frappe.db.sql("set innodb_lock_wait_timeout = 300")
+        frappe.db.sql(
+            "select name from `tabStock Entry` where name=%s for update",
+            stock_entry_name,
+        )
+
+    stock_entry = frappe.get_doc("Stock Entry", stock_entry_name)
+    plan = _build_manufacture_qty_correction_plan(
+        stock_entry,
+        new_fg_completed_qty,
+        update_work_order_qty=update_work_order_qty,
+    )
+
+    if plan["status"] in ("blocked", "noop") or dry_run:
+        if plan["status"] == "ready":
+            plan["status"] = "dry_run"
+            plan["message"] = _("Preview ready. No changes were posted.")
+        return plan
+
+    existing_allow_negative_stock = frappe.db.get_value(
+        "Stock Settings",
+        None,
+        "allow_negative_stock",
+    )
+
+    try:
+        if allow_negative_stock:
+            frappe.db.set_value(
+                "Stock Settings",
+                None,
+                "allow_negative_stock",
+                1,
+                update_modified=False,
+            )
+
+        result = _apply_manufacture_qty_correction(
+            stock_entry,
+            plan,
+            allow_negative_stock=allow_negative_stock,
+            reason=reason,
+        )
+
+        if allow_negative_stock:
+            frappe.db.set_value(
+                "Stock Settings",
+                None,
+                "allow_negative_stock",
+                existing_allow_negative_stock,
+                update_modified=False,
+            )
+
+        frappe.db.commit()
+        return result
+    except Exception:
+        frappe.db.rollback()
+        if allow_negative_stock:
+            frappe.db.set_value(
+                "Stock Settings",
+                None,
+                "allow_negative_stock",
+                existing_allow_negative_stock,
+                update_modified=False,
+            )
+            frappe.db.commit()
+        raise
+
+
+def _build_manufacture_qty_correction_plan(
+    stock_entry,
+    new_fg_completed_qty,
+    update_work_order_qty=True,
+):
+    current_qty = flt(stock_entry.fg_completed_qty)
+    production_item = _get_manufacture_production_item(stock_entry)
+    precision = _get_doc_precision(stock_entry, "fg_completed_qty")
+    plan = {
+        "stock_entry": stock_entry.name,
+        "status": "ready",
+        "work_order": stock_entry.work_order,
+        "posting_date": stock_entry.posting_date,
+        "posting_time": stock_entry.posting_time,
+        "production_item": production_item,
+        "current_fg_completed_qty": current_qty,
+        "new_fg_completed_qty": flt(new_fg_completed_qty, precision),
+        "ratio": 0,
+        "rows": [],
+        "serial_conflicts": [],
+        "update_work_order_qty": frappe.utils.cint(update_work_order_qty),
+        "work_order_qty_will_update": 0,
+        "work_order_qty_before": None,
+        "message": None,
+    }
+
+    def block(message):
+        plan["status"] = "blocked"
+        plan["message"] = message
+        return plan
+
+    if stock_entry.docstatus != 1:
+        return block(_("Only submitted Stock Entries can be corrected."))
+    if stock_entry.purpose != "Manufacture":
+        return block(_("Only Manufacture Stock Entries are supported."))
+    if current_qty <= 0:
+        return block(_("Current manufactured quantity must be greater than zero."))
+
+    if abs(current_qty - plan["new_fg_completed_qty"]) <= 0.000001:
+        plan["status"] = "noop"
+        plan["message"] = _("Stock Entry already has this manufactured quantity.")
+        return plan
+
+    ratio = plan["new_fg_completed_qty"] / current_qty
+    plan["ratio"] = flt(ratio, 9)
+
+    finished_good_rows = [
+        row for row in stock_entry.items
+        if _is_finished_good_row(stock_entry, row, production_item)
+    ]
+    if not finished_good_rows:
+        return block(_("Could not identify the finished good row to correct."))
+
+    single_finished_good_row = finished_good_rows[0] if len(finished_good_rows) == 1 else None
+
+    for row in stock_entry.items:
+        row_precision = _get_doc_precision(row, "qty")
+        transfer_precision = _get_doc_precision(row, "transfer_qty")
+        old_qty = flt(row.qty)
+        old_transfer_qty = flt(row.transfer_qty)
+
+        if single_finished_good_row and row.name == single_finished_good_row.name:
+            new_qty = plan["new_fg_completed_qty"]
+        else:
+            new_qty = flt(old_qty * ratio, row_precision)
+
+        conversion_factor = flt(row.conversion_factor) or 1
+        new_transfer_qty = flt(new_qty * conversion_factor, transfer_precision)
+        serial_numbers = _split_serial_numbers(row.serial_no)
+        is_finished_good = row in finished_good_rows
+        is_scrap = _is_scrap_row(stock_entry, row)
+
+        row_plan = {
+            "name": row.name,
+            "idx": row.idx,
+            "item_code": row.item_code,
+            "s_warehouse": row.s_warehouse,
+            "t_warehouse": row.t_warehouse,
+            "batch_no": row.batch_no,
+            "serial_count": len(serial_numbers),
+            "is_finished_good": 1 if is_finished_good else 0,
+            "is_scrap": 1 if is_scrap else 0,
+            "old_qty": old_qty,
+            "new_qty": new_qty,
+            "old_transfer_qty": old_transfer_qty,
+            "new_transfer_qty": new_transfer_qty,
+        }
+        plan["rows"].append(row_plan)
+
+        if serial_numbers and abs(abs(new_transfer_qty) - len(serial_numbers)) > 0.000001:
+            plan["serial_conflicts"].append({
+                "row": row.idx,
+                "item_code": row.item_code,
+                "new_transfer_qty": new_transfer_qty,
+                "serial_count": len(serial_numbers),
+            })
+
+    if plan["serial_conflicts"]:
+        return block(_(
+            "This Stock Entry has serialized rows whose serial count would not match the corrected quantity."
+        ))
+
+    if stock_entry.work_order and update_work_order_qty:
+        work_order_qty = flt(frappe.db.get_value("Work Order", stock_entry.work_order, "qty"))
+        plan["work_order_qty_before"] = work_order_qty
+        if abs(work_order_qty - current_qty) <= 0.000001:
+            plan["work_order_qty_will_update"] = 1
+
+    return plan
+
+
+def _apply_manufacture_qty_correction(stock_entry, plan, allow_negative_stock=True, reason=None):
+    _apply_planned_quantities_to_stock_entry(stock_entry, plan)
+    _recalculate_stock_entry_amounts_from_existing_rates(stock_entry)
+    _append_qty_correction_note(stock_entry, plan, reason)
+
+    stock_entry.modified = frappe.utils.now()
+    stock_entry.modified_by = frappe.session.user
+    stock_entry.db_update()
+    for row in stock_entry.items:
+        row.db_update()
+
+    ledger_result = _rebuild_stock_entry_ledgers(
+        stock_entry,
+        allow_negative_stock=allow_negative_stock,
+    )
+    work_order_result = _sync_work_order_after_manufacture_qty_correction(stock_entry, plan)
+    _add_qty_correction_comment(stock_entry, plan, reason, work_order_result)
+
+    frappe.clear_document_cache("Stock Entry", stock_entry.name)
+    if stock_entry.work_order:
+        frappe.clear_document_cache("Work Order", stock_entry.work_order)
+
+    result = dict(plan)
+    result.update(ledger_result)
+    result["work_order_result"] = work_order_result
+    result["status"] = "updated"
+    result["message"] = _("Manufacture quantity corrected and ledgers reposted.")
+    return result
+
+
+def _apply_planned_quantities_to_stock_entry(stock_entry, plan):
+    rows_by_name = {row.name: row for row in stock_entry.items}
+    stock_entry.fg_completed_qty = plan["new_fg_completed_qty"]
+
+    for row_plan in plan["rows"]:
+        row = rows_by_name[row_plan["name"]]
+        row.qty = row_plan["new_qty"]
+        row.transfer_qty = row_plan["new_transfer_qty"]
+
+
+def _recalculate_stock_entry_amounts_from_existing_rates(stock_entry):
+    raw_material_cost = 0.0
+    scrap_material_cost = 0.0
+    finished_good_rows = []
+
+    for row in stock_entry.items:
+        row.basic_amount = flt(
+            flt(row.transfer_qty) * flt(row.basic_rate),
+            _get_doc_precision(row, "basic_amount"),
+        )
+
+        if row.s_warehouse and not row.t_warehouse:
+            raw_material_cost += flt(row.basic_amount)
+        elif row.t_warehouse and _is_scrap_row(stock_entry, row):
+            scrap_material_cost += flt(row.basic_amount)
+        elif row.t_warehouse:
+            finished_good_rows.append(row)
+
+    if len(finished_good_rows) == 1 and flt(finished_good_rows[0].transfer_qty):
+        finished_good = finished_good_rows[0]
+        finished_good.basic_amount = flt(
+            raw_material_cost - scrap_material_cost,
+            _get_doc_precision(finished_good, "basic_amount"),
+        )
+        finished_good.basic_rate = flt(
+            finished_good.basic_amount / flt(finished_good.transfer_qty),
+            _get_doc_precision(finished_good, "basic_rate"),
+        )
+
+    stock_entry.distribute_additional_costs()
+    stock_entry.update_valuation_rate()
+    stock_entry.set_total_incoming_outgoing_value()
+    stock_entry.set_total_amount()
+
+
+def _rebuild_stock_entry_ledgers(stock_entry, allow_negative_stock=True):
+    from erpnext.accounts.general_ledger import delete_gl_entries
+
+    deleted_sle_count = frappe.db.count(
+        "Stock Ledger Entry",
+        {"voucher_type": stock_entry.doctype, "voucher_no": stock_entry.name},
+    )
+    deleted_gl_count = frappe.db.count(
+        "GL Entry",
+        {"voucher_type": stock_entry.doctype, "voucher_no": stock_entry.name},
+    )
+
+    delete_gl_entries(voucher_type=stock_entry.doctype, voucher_no=stock_entry.name)
+    frappe.db.sql(
+        "delete from `tabStock Ledger Entry` where voucher_type=%s and voucher_no=%s",
+        (stock_entry.doctype, stock_entry.name),
+    )
+
+    if allow_negative_stock:
+        stock_entry.make_sl_entries = (
+            lambda sl_entries, is_amended=None, allow_negative_stock=False, via_landed_cost_voucher=False:
+            stock_entry.__class__.make_sl_entries(
+                stock_entry,
+                sl_entries,
+                is_amended=is_amended,
+                allow_negative_stock=True,
+                via_landed_cost_voucher=via_landed_cost_voucher,
+            )
+        )
+
+    stock_entry.update_stock_ledger()
+    stock_entry.make_gl_entries()
+
+    return {
+        "deleted_stock_ledger_entries": deleted_sle_count,
+        "deleted_gl_entries": deleted_gl_count,
+        "new_stock_ledger_entries": frappe.db.count(
+            "Stock Ledger Entry",
+            {"voucher_type": stock_entry.doctype, "voucher_no": stock_entry.name},
+        ),
+        "new_gl_entries": frappe.db.count(
+            "GL Entry",
+            {"voucher_type": stock_entry.doctype, "voucher_no": stock_entry.name},
+        ),
+    }
+
+
+def _sync_work_order_after_manufacture_qty_correction(stock_entry, plan):
+    if not stock_entry.work_order:
+        return {}
+
+    work_order = frappe.get_doc("Work Order", stock_entry.work_order)
+    result = {
+        "work_order": work_order.name,
+        "qty_before": flt(work_order.qty),
+        "qty_updated": 0,
+        "status_before": work_order.status,
+    }
+
+    if plan.get("update_work_order_qty") and plan.get("work_order_qty_will_update"):
+        work_order.qty = plan["new_fg_completed_qty"]
+        if work_order.bom_no:
+            work_order.set_required_items(reset_only_qty=True)
+
+        work_order.db_update()
+        for row in work_order.get("required_items"):
+            row.db_update()
+
+        result["qty_updated"] = 1
+
+    work_order.update_work_order_qty()
+    result["status_after"] = work_order.update_status()
+
+    if result["qty_updated"]:
+        work_order.update_work_order_qty_in_so()
+        work_order.update_completed_qty_in_material_request()
+        work_order.update_planned_qty()
+        work_order.update_ordered_qty()
+
+    result["qty_after"] = flt(frappe.db.get_value("Work Order", work_order.name, "qty"))
+    result["produced_qty_after"] = flt(frappe.db.get_value("Work Order", work_order.name, "produced_qty"))
+    return result
+
+
+def _append_qty_correction_note(stock_entry, plan, reason=None):
+    note = "Manufacture quantity corrected by {0} on {1}: {2} -> {3}".format(
+        frappe.session.user,
+        frappe.utils.now(),
+        plan["current_fg_completed_qty"],
+        plan["new_fg_completed_qty"],
+    )
+    if reason:
+        note += ". Reason: {0}".format(reason)
+
+    stock_entry.remarks = (stock_entry.remarks or "").strip()
+    stock_entry.remarks = (stock_entry.remarks + "\n" if stock_entry.remarks else "") + note
+
+
+def _add_qty_correction_comment(stock_entry, plan, reason=None, work_order_result=None):
+    try:
+        content = _(
+            "Manufacture quantity corrected from {0} to {1}. Stock and accounting ledgers were rebuilt."
+        ).format(plan["current_fg_completed_qty"], plan["new_fg_completed_qty"])
+        if reason:
+            content += " " + _("Reason: {0}").format(reason)
+
+        frappe.get_doc({
+            "doctype": "Comment",
+            "comment_type": "Info",
+            "reference_doctype": "Stock Entry",
+            "reference_name": stock_entry.name,
+            "content": content,
+        }).insert(ignore_permissions=True)
+
+        if stock_entry.work_order:
+            work_order_content = content
+            if work_order_result and work_order_result.get("qty_updated"):
+                work_order_content += " " + _("Work Order quantity was also corrected.")
+
+            frappe.get_doc({
+                "doctype": "Comment",
+                "comment_type": "Info",
+                "reference_doctype": "Work Order",
+                "reference_name": stock_entry.work_order,
+                "content": work_order_content,
+            }).insert(ignore_permissions=True)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Manufacture quantity correction comment failed")
+
+
+def _get_manufacture_production_item(stock_entry):
+    if stock_entry.work_order:
+        return frappe.db.get_value("Work Order", stock_entry.work_order, "production_item")
+    if stock_entry.bom_no:
+        return frappe.db.get_value("BOM", stock_entry.bom_no, "item")
+    return None
+
+
+def _is_finished_good_row(stock_entry, row, production_item=None):
+    production_item = production_item or _get_manufacture_production_item(stock_entry)
+    if not row.t_warehouse:
+        return False
+    if production_item and row.item_code == production_item:
+        return True
+    return bool(stock_entry.bom_no and row.bom_no == stock_entry.bom_no and not _is_scrap_row(stock_entry, row))
+
+
+def _is_scrap_row(stock_entry, row):
+    if not stock_entry.bom_no or not row.t_warehouse:
+        return False
+    return bool(frappe.db.exists(
+        "BOM Scrap Item",
+        {"parent": stock_entry.bom_no, "item_code": row.item_code},
+    ))
+
+
+def _get_doc_precision(doc, fieldname, default=6):
+    try:
+        return doc.precision(fieldname)
+    except Exception:
+        return frappe.utils.cint(frappe.db.get_default("float_precision")) or default
+
+
 def _stock_entry_has_serial_numbers(stock_entry):
     return any((_row_get(row, "serial_no") or "").strip() for row in (stock_entry.items or []))
 
