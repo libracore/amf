@@ -33,6 +33,262 @@ class TestStockEntryRepair(unittest.TestCase):
 		values.update(overrides)
 		return SimpleNamespace(**values)
 
+	def _make_amount_row(self, **overrides):
+		values = {
+			"name": "ROW-001",
+			"idx": 1,
+			"item_code": "ITEM-001",
+			"s_warehouse": None,
+			"t_warehouse": None,
+			"qty": 1.0,
+			"transfer_qty": 1.0,
+			"conversion_factor": 1.0,
+			"basic_rate": 0.0,
+			"basic_amount": 0.0,
+			"additional_cost": 0.0,
+			"amount": 0.0,
+			"valuation_rate": 0.0,
+			"serial_no": "",
+			"batch_no": None,
+		}
+		values.update(overrides)
+		row = SimpleNamespace(**values)
+		row.precision = lambda fieldname: {
+			"amount": 2,
+			"basic_amount": 2,
+			"basic_rate": 6,
+			"valuation_rate": 6,
+			"qty": 6,
+			"transfer_qty": 6,
+		}.get(fieldname, 6)
+		return row
+
+	def _make_value_stock_entry(self, rows, additional_costs=None, **overrides):
+		entry = SimpleNamespace(
+			name="STE-VALUE",
+			doctype="Stock Entry",
+			docstatus=1,
+			purpose="Manufacture",
+			work_order=None,
+			bom_no="BOM-001",
+			fg_completed_qty=1.0,
+			posting_date="2024-02-23",
+			posting_time="10:00:00",
+			production_item="FG-001",
+			total_incoming_value=0.0,
+			total_outgoing_value=0.0,
+			value_difference=0.0,
+			total_amount=0.0,
+			items=rows,
+			additional_costs=additional_costs or [],
+		)
+		for key, value in overrides.items():
+			setattr(entry, key, value)
+
+		def get(fieldname):
+			return getattr(entry, fieldname, None)
+
+		def precision(fieldname):
+			return {
+				"value_difference": 2,
+				"total_incoming_value": 2,
+				"total_outgoing_value": 2,
+				"fg_completed_qty": 6,
+			}.get(fieldname, 6)
+
+		def distribute_additional_costs():
+			entry.total_additional_costs = sum(stock_entry_utils.flt(row.amount) for row in entry.additional_costs)
+			total_basic_amount = sum(
+				stock_entry_utils.flt(row.basic_amount)
+				for row in entry.items
+				if row.t_warehouse
+			)
+			for row in entry.items:
+				if row.t_warehouse and total_basic_amount:
+					row.additional_cost = (
+						stock_entry_utils.flt(row.basic_amount) / total_basic_amount
+					) * entry.total_additional_costs
+				else:
+					row.additional_cost = 0.0
+
+		def update_valuation_rate():
+			for row in entry.items:
+				if row.transfer_qty:
+					row.amount = stock_entry_utils.flt(
+						stock_entry_utils.flt(row.basic_amount) + stock_entry_utils.flt(row.additional_cost),
+						row.precision("amount"),
+					)
+					row.valuation_rate = stock_entry_utils.flt(
+						stock_entry_utils.flt(row.basic_rate)
+						+ (stock_entry_utils.flt(row.additional_cost) / stock_entry_utils.flt(row.transfer_qty)),
+						row.precision("valuation_rate"),
+					)
+
+		def set_total_incoming_outgoing_value():
+			entry.total_incoming_value = 0.0
+			entry.total_outgoing_value = 0.0
+			for row in entry.items:
+				if row.t_warehouse:
+					entry.total_incoming_value += stock_entry_utils.flt(row.amount)
+				if row.s_warehouse:
+					entry.total_outgoing_value += stock_entry_utils.flt(row.amount)
+			entry.value_difference = entry.total_incoming_value - entry.total_outgoing_value
+
+		entry.get = get
+		entry.precision = precision
+		entry.distribute_additional_costs = distribute_additional_costs
+		entry.update_valuation_rate = update_valuation_rate
+		entry.set_total_incoming_outgoing_value = set_total_incoming_outgoing_value
+		entry.set_total_amount = Mock()
+		return entry
+
+	def test_balanced_manufacture_qty_recalculation_offsets_additional_costs(self):
+		raw = self._make_amount_row(
+			name="RAW",
+			idx=1,
+			item_code="RAW-001",
+			s_warehouse="WIP - AMF21",
+			transfer_qty=2,
+			basic_rate=50,
+		)
+		scrap = self._make_amount_row(
+			name="SCRAP",
+			idx=2,
+			item_code="SCRAP-001",
+			t_warehouse="Scrap - AMF21",
+			basic_rate=10,
+		)
+		finished_good = self._make_amount_row(
+			name="FG",
+			idx=3,
+			item_code="FG-001",
+			t_warehouse="Main Stock - AMF21",
+			basic_rate=999,
+		)
+		stock_entry = self._make_value_stock_entry(
+			[raw, scrap, finished_good],
+			additional_costs=[SimpleNamespace(amount=5)],
+		)
+
+		with patch.object(
+			stock_entry_utils.frappe,
+			"get_system_settings",
+			return_value="Banker's Rounding (legacy)",
+		), patch.object(
+			stock_entry_utils,
+			"_is_scrap_row",
+			side_effect=lambda doc, row: row.item_code == "SCRAP-001",
+		):
+			result = stock_entry_utils._recalculate_stock_entry_amounts_from_existing_rates(
+				stock_entry,
+				balance_value_difference=True,
+			)
+
+		self.assertEqual(result["status"], "balanced")
+		self.assertAlmostEqual(stock_entry.total_incoming_value, 100.0, places=2)
+		self.assertAlmostEqual(stock_entry.total_outgoing_value, 100.0, places=2)
+		self.assertAlmostEqual(stock_entry.value_difference, 0.0, places=2)
+		self.assertAlmostEqual(finished_good.basic_amount, 85.0, places=2)
+
+	def test_balanced_manufacture_qty_recalculation_blocks_negative_fg_amount(self):
+		raw = self._make_amount_row(
+			name="RAW",
+			idx=1,
+			item_code="RAW-001",
+			s_warehouse="WIP - AMF21",
+			basic_rate=10,
+		)
+		scrap = self._make_amount_row(
+			name="SCRAP",
+			idx=2,
+			item_code="SCRAP-001",
+			t_warehouse="Scrap - AMF21",
+			basic_rate=9,
+		)
+		finished_good = self._make_amount_row(
+			name="FG",
+			idx=3,
+			item_code="FG-001",
+			t_warehouse="Main Stock - AMF21",
+			basic_rate=10,
+		)
+		stock_entry = self._make_value_stock_entry(
+			[raw, scrap, finished_good],
+			additional_costs=[SimpleNamespace(amount=5)],
+		)
+
+		with patch.object(
+			stock_entry_utils.frappe,
+			"get_system_settings",
+			return_value="Banker's Rounding (legacy)",
+		), patch.object(
+			stock_entry_utils,
+			"_is_scrap_row",
+			side_effect=lambda doc, row: row.item_code == "SCRAP-001",
+		):
+			result = stock_entry_utils._recalculate_stock_entry_amounts_from_existing_rates(
+				stock_entry,
+				balance_value_difference=True,
+			)
+
+		self.assertEqual(result["status"], "blocked")
+		self.assertIn("negative", result["message"])
+
+	def test_correct_submitted_manufacture_qty_allows_blank_qty_for_balance_only_preview(self):
+		raw = self._make_amount_row(
+			name="RAW",
+			idx=1,
+			item_code="RAW-001",
+			s_warehouse="WIP - AMF21",
+			basic_rate=100,
+		)
+		finished_good = self._make_amount_row(
+			name="FG",
+			idx=2,
+			item_code="FG-001",
+			t_warehouse="Main Stock - AMF21",
+			basic_rate=95,
+		)
+		stock_entry = self._make_value_stock_entry(
+			[raw, finished_good],
+			total_incoming_value=95,
+			total_outgoing_value=100,
+			value_difference=-5,
+		)
+		frappe_module = stock_entry_utils.frappe
+		mock_frappe = SimpleNamespace(
+			only_for=Mock(),
+			db=SimpleNamespace(exists=Mock(return_value=True)),
+			get_doc=Mock(return_value=stock_entry),
+			utils=frappe_module.utils,
+			throw=frappe_module.throw,
+		)
+
+		with patch.object(frappe_module, "get_system_settings", return_value="Banker's Rounding (legacy)"), patch.object(
+			stock_entry_utils,
+			"frappe",
+			mock_frappe,
+		), patch.object(
+			stock_entry_utils,
+			"_get_manufacture_production_item",
+			return_value="FG-001",
+		), patch.object(
+			stock_entry_utils,
+			"_is_scrap_row",
+			return_value=False,
+		):
+			result = stock_entry_utils.correct_submitted_manufacture_qty(
+				"STE-VALUE",
+				None,
+				dry_run=True,
+				update_work_order_qty=False,
+			)
+
+		self.assertEqual(result["status"], "dry_run")
+		self.assertEqual(result["quantity_will_update"], 0)
+		self.assertAlmostEqual(result["new_fg_completed_qty"], 1.0, places=2)
+		self.assertAlmostEqual(result["value_difference_after"], 0.0, places=2)
+
 	def test_non_serialized_repair_still_skips_serialized_entries(self):
 		original = self._make_stock_entry(
 			items=[self._make_row(serial_no="SER-0001")],

@@ -959,12 +959,13 @@ def _split_serial_numbers(serial_no_value):
 
 @frappe.whitelist()
 def correct_submitted_manufacture_qty(
-    stock_entry_name="STE-14760",
-    new_fg_completed_qty=41,
+    stock_entry_name,
+    new_fg_completed_qty=None,
     dry_run=False,
     allow_negative_stock=True,
     update_work_order_qty=True,
-    reason=True,
+    reason='Manufacture Correction',
+    balance_value_difference=True,
 ):
     """
     Correct the manufactured quantity of a submitted Manufacture Stock Entry.
@@ -972,21 +973,21 @@ def correct_submitted_manufacture_qty(
     This intentionally bypasses normal submitted-document editing, then rebuilds
     the stock and accounting ledgers from the corrected rows. It is meant for a
     narrow historical repair where cancelling/amending the entry is no longer
-    practical because later batch movements exist.
+    practical because later batch movements exist. When balance_value_difference
+    is enabled, the finished-good valuation is adjusted so total incoming and
+    outgoing values net to zero before ledgers are reposted.
     """
     frappe.only_for(("System Manager", "Stock Manager", "Manufacturing Manager"))
 
     stock_entry_name = (stock_entry_name or "").strip()
-    new_fg_completed_qty = flt(new_fg_completed_qty)
+    new_fg_completed_qty = None if new_fg_completed_qty in (None, "") else flt(new_fg_completed_qty)
     dry_run = frappe.utils.cint(dry_run)
     allow_negative_stock = frappe.utils.cint(allow_negative_stock)
     update_work_order_qty = frappe.utils.cint(update_work_order_qty)
+    balance_value_difference = frappe.utils.cint(balance_value_difference)
 
     if not stock_entry_name:
         frappe.throw(_("Stock Entry is required."))
-    if new_fg_completed_qty <= 0:
-        frappe.throw(_("New manufactured quantity must be greater than zero."))
-
     if not frappe.db.exists("Stock Entry", stock_entry_name):
         frappe.throw(_("Stock Entry {0} does not exist.").format(stock_entry_name))
 
@@ -998,10 +999,16 @@ def correct_submitted_manufacture_qty(
         )
 
     stock_entry = frappe.get_doc("Stock Entry", stock_entry_name)
+    if new_fg_completed_qty is None:
+        new_fg_completed_qty = flt(stock_entry.fg_completed_qty)
+    if new_fg_completed_qty <= 0:
+        frappe.throw(_("New manufactured quantity must be greater than zero."))
+
     plan = _build_manufacture_qty_correction_plan(
         stock_entry,
         new_fg_completed_qty,
         update_work_order_qty=update_work_order_qty,
+        balance_value_difference=balance_value_difference,
     )
 
     if plan["status"] in ("blocked", "noop") or dry_run:
@@ -1062,10 +1069,13 @@ def _build_manufacture_qty_correction_plan(
     stock_entry,
     new_fg_completed_qty,
     update_work_order_qty=True,
+    balance_value_difference=True,
 ):
     current_qty = flt(stock_entry.fg_completed_qty)
     production_item = _get_manufacture_production_item(stock_entry)
     precision = _get_doc_precision(stock_entry, "fg_completed_qty")
+    new_fg_completed_qty = flt(new_fg_completed_qty, precision)
+    qty_changed = abs(current_qty - new_fg_completed_qty) > 0.000001
     plan = {
         "stock_entry": stock_entry.name,
         "status": "ready",
@@ -1074,11 +1084,20 @@ def _build_manufacture_qty_correction_plan(
         "posting_time": stock_entry.posting_time,
         "production_item": production_item,
         "current_fg_completed_qty": current_qty,
-        "new_fg_completed_qty": flt(new_fg_completed_qty, precision),
+        "new_fg_completed_qty": new_fg_completed_qty,
+        "quantity_will_update": 1 if qty_changed else 0,
         "ratio": 0,
         "rows": [],
         "serial_conflicts": [],
         "update_work_order_qty": frappe.utils.cint(update_work_order_qty),
+        "balance_value_difference": frappe.utils.cint(balance_value_difference),
+        "total_incoming_value_before": flt(stock_entry.total_incoming_value),
+        "total_outgoing_value_before": flt(stock_entry.total_outgoing_value),
+        "value_difference_before": flt(stock_entry.value_difference),
+        "total_incoming_value_after": None,
+        "total_outgoing_value_after": None,
+        "value_difference_after": None,
+        "value_balance": {},
         "work_order_qty_will_update": 0,
         "work_order_qty_before": None,
         "message": None,
@@ -1096,9 +1115,12 @@ def _build_manufacture_qty_correction_plan(
     if current_qty <= 0:
         return block(_("Current manufactured quantity must be greater than zero."))
 
-    if abs(current_qty - plan["new_fg_completed_qty"]) <= 0.000001:
+    if not qty_changed and (
+        not plan["balance_value_difference"]
+        or abs(flt(stock_entry.value_difference)) <= 0.000001
+    ):
         plan["status"] = "noop"
-        plan["message"] = _("Stock Entry already has this manufactured quantity.")
+        plan["message"] = _("Stock Entry already has this manufactured quantity and value balance.")
         return plan
 
     ratio = plan["new_fg_completed_qty"] / current_qty
@@ -1112,6 +1134,12 @@ def _build_manufacture_qty_correction_plan(
         return block(_("Could not identify the finished good row to correct."))
 
     single_finished_good_row = finished_good_rows[0] if len(finished_good_rows) == 1 else None
+    if plan["balance_value_difference"] and (
+        not single_finished_good_row or single_finished_good_row.s_warehouse
+    ):
+        return block(_(
+            "Value balancing requires exactly one target-only finished good row."
+        ))
 
     for row in stock_entry.items:
         row_precision = _get_doc_precision(row, "qty")
@@ -1160,18 +1188,25 @@ def _build_manufacture_qty_correction_plan(
             "This Stock Entry has serialized rows whose serial count would not match the corrected quantity."
         ))
 
-    if stock_entry.work_order and update_work_order_qty:
+    if qty_changed and stock_entry.work_order and update_work_order_qty:
         work_order_qty = flt(frappe.db.get_value("Work Order", stock_entry.work_order, "qty"))
         plan["work_order_qty_before"] = work_order_qty
         if abs(work_order_qty - current_qty) <= 0.000001:
             plan["work_order_qty_will_update"] = 1
 
+    _prepare_manufacture_qty_correction_value_preview(stock_entry, plan)
     return plan
 
 
 def _apply_manufacture_qty_correction(stock_entry, plan, allow_negative_stock=True, reason=None):
     _apply_planned_quantities_to_stock_entry(stock_entry, plan)
-    _recalculate_stock_entry_amounts_from_existing_rates(stock_entry)
+    balance_result = _recalculate_stock_entry_amounts_from_existing_rates(
+        stock_entry,
+        balance_value_difference=plan.get("balance_value_difference"),
+    )
+    _set_plan_value_totals_from_stock_entry(plan, stock_entry, balance_result)
+    if balance_result.get("status") == "blocked":
+        frappe.throw(balance_result.get("message"))
     _append_qty_correction_note(stock_entry, plan, reason)
 
     stock_entry.modified = frappe.utils.now()
@@ -1195,7 +1230,7 @@ def _apply_manufacture_qty_correction(stock_entry, plan, allow_negative_stock=Tr
     result.update(ledger_result)
     result["work_order_result"] = work_order_result
     result["status"] = "updated"
-    result["message"] = _("Manufacture quantity corrected and ledgers reposted.")
+    result["message"] = _("Manufacture correction posted and ledgers reposted.")
     return result
 
 
@@ -1209,10 +1244,34 @@ def _apply_planned_quantities_to_stock_entry(stock_entry, plan):
         row.transfer_qty = row_plan["new_transfer_qty"]
 
 
-def _recalculate_stock_entry_amounts_from_existing_rates(stock_entry):
+def _prepare_manufacture_qty_correction_value_preview(stock_entry, plan):
+    _apply_planned_quantities_to_stock_entry(stock_entry, plan)
+    balance_result = _recalculate_stock_entry_amounts_from_existing_rates(
+        stock_entry,
+        balance_value_difference=plan.get("balance_value_difference"),
+    )
+    _set_plan_value_totals_from_stock_entry(plan, stock_entry, balance_result)
+
+    if balance_result.get("status") == "blocked":
+        plan["status"] = "blocked"
+        plan["message"] = balance_result.get("message")
+
+
+def _set_plan_value_totals_from_stock_entry(plan, stock_entry, balance_result=None):
+    plan["total_incoming_value_after"] = flt(stock_entry.total_incoming_value)
+    plan["total_outgoing_value_after"] = flt(stock_entry.total_outgoing_value)
+    plan["value_difference_after"] = flt(stock_entry.value_difference)
+    plan["value_balance"] = balance_result or {}
+
+
+def _recalculate_stock_entry_amounts_from_existing_rates(stock_entry, balance_value_difference=False):
     raw_material_cost = 0.0
     scrap_material_cost = 0.0
     finished_good_rows = []
+    balance_result = {
+        "requested": frappe.utils.cint(balance_value_difference),
+        "status": "not_requested",
+    }
 
     for row in stock_entry.items:
         row.basic_amount = flt(
@@ -1229,19 +1288,171 @@ def _recalculate_stock_entry_amounts_from_existing_rates(stock_entry):
 
     if len(finished_good_rows) == 1 and flt(finished_good_rows[0].transfer_qty):
         finished_good = finished_good_rows[0]
-        finished_good.basic_amount = flt(
-            raw_material_cost - scrap_material_cost,
-            _get_doc_precision(finished_good, "basic_amount"),
-        )
-        finished_good.basic_rate = flt(
-            finished_good.basic_amount / flt(finished_good.transfer_qty),
-            _get_doc_precision(finished_good, "basic_rate"),
+        finished_good_basic_amount = raw_material_cost - scrap_material_cost
+        if balance_value_difference:
+            finished_good_basic_amount -= _get_total_additional_costs(stock_entry)
+
+        if balance_value_difference and finished_good_basic_amount < -0.000001:
+            return {
+                "requested": 1,
+                "status": "blocked",
+                "message": _(
+                    "Cannot balance values because the finished good amount would become negative."
+                ),
+                "calculated_basic_amount": flt(finished_good_basic_amount),
+            }
+
+        _set_row_basic_amount_and_rate(
+            finished_good,
+            max(finished_good_basic_amount, 0.0)
+            if balance_value_difference else finished_good_basic_amount,
         )
 
     stock_entry.distribute_additional_costs()
     stock_entry.update_valuation_rate()
     stock_entry.set_total_incoming_outgoing_value()
     stock_entry.set_total_amount()
+    if balance_value_difference:
+        balance_result = _balance_stock_entry_value_difference(
+            stock_entry,
+            finished_good_rows,
+        )
+
+    return balance_result
+
+
+def _get_total_additional_costs(stock_entry):
+    if hasattr(stock_entry, "get"):
+        additional_costs = stock_entry.get("additional_costs") or []
+    else:
+        additional_costs = getattr(stock_entry, "additional_costs", []) or []
+
+    return sum(flt(row.amount) for row in additional_costs)
+
+
+def _set_row_basic_amount_and_rate(row, basic_amount):
+    row.basic_amount = flt(
+        basic_amount,
+        _get_doc_precision(row, "basic_amount"),
+    )
+    if flt(row.transfer_qty):
+        row.basic_rate = flt(
+            flt(row.basic_amount) / flt(row.transfer_qty),
+            _get_doc_precision(row, "basic_rate"),
+        )
+
+
+def _set_row_amount_and_rates(row, amount):
+    amount = flt(amount, _get_doc_precision(row, "amount"))
+    additional_cost = flt(row.additional_cost)
+    row.amount = amount
+    row.basic_amount = flt(
+        amount - additional_cost,
+        _get_doc_precision(row, "basic_amount"),
+    )
+
+    if flt(row.transfer_qty):
+        row.basic_rate = flt(
+            flt(row.basic_amount) / flt(row.transfer_qty),
+            _get_doc_precision(row, "basic_rate"),
+        )
+        row.valuation_rate = flt(
+            amount / flt(row.transfer_qty),
+            _get_doc_precision(row, "valuation_rate"),
+        )
+
+
+def _balance_stock_entry_value_difference(stock_entry, finished_good_rows):
+    if len(finished_good_rows) != 1:
+        return {
+            "requested": 1,
+            "status": "blocked",
+            "message": _("Value balancing requires exactly one finished good row."),
+        }
+
+    finished_good = finished_good_rows[0]
+    if finished_good.s_warehouse or not finished_good.t_warehouse:
+        return {
+            "requested": 1,
+            "status": "blocked",
+            "message": _("Value balancing requires a target-only finished good row."),
+        }
+
+    if not flt(finished_good.transfer_qty):
+        return {
+            "requested": 1,
+            "status": "blocked",
+            "message": _("Cannot balance values for a zero-quantity finished good row."),
+        }
+
+    value_precision = _get_doc_precision(stock_entry, "value_difference", default=2)
+    amount_precision = _get_doc_precision(finished_good, "amount", default=value_precision)
+    difference_before = flt(stock_entry.value_difference)
+    amount_before = flt(finished_good.amount)
+    rounded_difference = flt(difference_before, amount_precision)
+
+    if rounded_difference:
+        balanced_amount = flt(amount_before - rounded_difference, amount_precision)
+        if balanced_amount < -0.000001:
+            return {
+                "requested": 1,
+                "status": "blocked",
+                "message": _(
+                    "Cannot balance values because the finished good amount would become negative."
+                ),
+                "amount_before": amount_before,
+                "calculated_amount": balanced_amount,
+                "value_difference_before": difference_before,
+            }
+
+        _set_row_amount_and_rates(finished_good, max(balanced_amount, 0.0))
+        stock_entry.set_total_incoming_outgoing_value()
+
+    final_difference = flt(stock_entry.value_difference, value_precision)
+    if final_difference:
+        balanced_amount = flt(flt(finished_good.amount) - final_difference, amount_precision)
+        if balanced_amount < -0.000001:
+            return {
+                "requested": 1,
+                "status": "blocked",
+                "message": _(
+                    "Cannot balance values because the finished good amount would become negative."
+                ),
+                "amount_before": amount_before,
+                "calculated_amount": balanced_amount,
+                "value_difference_before": difference_before,
+            }
+
+        _set_row_amount_and_rates(finished_good, max(balanced_amount, 0.0))
+        stock_entry.set_total_incoming_outgoing_value()
+
+    final_difference = flt(stock_entry.value_difference, value_precision)
+    if final_difference:
+        return {
+            "requested": 1,
+            "status": "blocked",
+            "message": _("Could not fully balance the value difference."),
+            "row": finished_good.idx,
+            "item_code": finished_good.item_code,
+            "amount_before": amount_before,
+            "amount_after": flt(finished_good.amount),
+            "adjustment": flt(flt(finished_good.amount) - amount_before),
+            "value_difference_before": difference_before,
+            "value_difference_after": flt(stock_entry.value_difference),
+        }
+
+    stock_entry.value_difference = 0.0
+    return {
+        "requested": 1,
+        "status": "balanced",
+        "row": finished_good.idx,
+        "item_code": finished_good.item_code,
+        "amount_before": amount_before,
+        "amount_after": flt(finished_good.amount),
+        "adjustment": flt(flt(finished_good.amount) - amount_before),
+        "value_difference_before": difference_before,
+        "value_difference_after": 0.0,
+    }
 
 
 def _rebuild_stock_entry_ledgers(stock_entry, allow_negative_stock=True):
@@ -1329,12 +1540,25 @@ def _sync_work_order_after_manufacture_qty_correction(stock_entry, plan):
 
 
 def _append_qty_correction_note(stock_entry, plan, reason=None):
-    note = "Manufacture quantity corrected by {0} on {1}: {2} -> {3}".format(
-        frappe.session.user,
-        frappe.utils.now(),
-        plan["current_fg_completed_qty"],
-        plan["new_fg_completed_qty"],
-    )
+    if plan.get("quantity_will_update"):
+        note = "Manufacture quantity corrected by {0} on {1}: {2} -> {3}".format(
+            frappe.session.user,
+            frappe.utils.now(),
+            plan["current_fg_completed_qty"],
+            plan["new_fg_completed_qty"],
+        )
+    else:
+        note = "Manufacture values balanced by {0} on {1}".format(
+            frappe.session.user,
+            frappe.utils.now(),
+        )
+
+    value_balance = plan.get("value_balance") or {}
+    if value_balance.get("status") == "balanced":
+        note += ". Value difference: {0} -> {1}".format(
+            plan.get("value_difference_before"),
+            plan.get("value_difference_after"),
+        )
     if reason:
         note += ". Reason: {0}".format(reason)
 
@@ -1344,9 +1568,19 @@ def _append_qty_correction_note(stock_entry, plan, reason=None):
 
 def _add_qty_correction_comment(stock_entry, plan, reason=None, work_order_result=None):
     try:
-        content = _(
-            "Manufacture quantity corrected from {0} to {1}. Stock and accounting ledgers were rebuilt."
-        ).format(plan["current_fg_completed_qty"], plan["new_fg_completed_qty"])
+        if plan.get("quantity_will_update"):
+            content = _(
+                "Manufacture quantity corrected from {0} to {1}. Stock and accounting ledgers were rebuilt."
+            ).format(plan["current_fg_completed_qty"], plan["new_fg_completed_qty"])
+        else:
+            content = _("Manufacture values balanced. Stock and accounting ledgers were rebuilt.")
+
+        value_balance = plan.get("value_balance") or {}
+        if value_balance.get("status") == "balanced":
+            content += " " + _("Value difference: {0} to {1}.").format(
+                plan.get("value_difference_before"),
+                plan.get("value_difference_after"),
+            )
         if reason:
             content += " " + _("Reason: {0}").format(reason)
 
