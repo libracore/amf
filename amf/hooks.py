@@ -42,6 +42,7 @@ doctype_js = {
     ],
     "Item": "public/js/item.js",
     "Quality Inspection": "public/js/quality_inspection.js",
+    "Purchase Invoice": "public/js/purchase_invoice.js",
     "Quotation": "public/js/quotation.js",
     "Sales Order": "public/js/sales_order.js",
     "Stock Entry": "public/js/stock_entry.js",
