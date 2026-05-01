@@ -2116,3 +2116,4 @@ def set_basic_rate_override(doc, force=False, update_finished_item_rate=True, ra
                     d.basic_amount = flt((raw_material_cost - scrap_material_cost), d.precision("basic_amount"))
                     update_log_entry(
                         log_id, f"[{now_datetime()}] FG Item {d.item_code}: basic_rate set to {d.basic_rate}, basic_amount set to {d.basic_amount}<br>")
+
