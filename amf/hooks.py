@@ -92,6 +92,8 @@ doc_events = {
         ],
         "after_insert": "amf.amf.utils.delivery_note_api.auto_gen_qa_inspection",
         "before_submit": "amf.amf.utils.delivery_note_api.check_qa_inspections_status",
+        "on_submit": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
+        "on_cancel": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
     },
     "Item": {
         "onload": "amf.amf.utils.item_costing.populate_item_batch_costing_table",
@@ -135,7 +137,9 @@ doc_events = {
         "on_submit": [
             "amf.amf.utils.custom.qr_code_to_document",
             "amf.amf.utils.stock_entry.check_rates_and_assign_on_submit",
+            "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
         ],
+        "on_cancel": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
     },
     "Timer Production": {
         "before_save": "amf.amf.doctype.timer_production.timer_production.timer_before_save",
@@ -200,4 +204,5 @@ after_install = "amf.amf.utils.project_id.after_install"
 after_migrate = [
     "amf.master_crm.migration.translate_customer_to_organization",
     "amf.amf.utils.project_id.sync_project_id_customization",
+    "amf.amf.utils.loan_order_setup.sync_loan_order_custom_fields",
 ]

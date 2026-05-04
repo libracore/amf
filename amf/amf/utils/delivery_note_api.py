@@ -622,12 +622,18 @@ def before_save_dn(doc, method):
     from the stock entries of the 'Manufacture' type, storing them in the 'product_serial_no' field.
     """
     apply_delivery_note_customs_identifiers(doc)
+    is_loan_delivery_note = bool(doc.get("loan_order"))
 
     for item in doc.items:
+        tariff_field = "customs_tariff_number_"
+        if not item.meta.get_field(tariff_field) and item.meta.get_field("customs_tariff_number"):
+            tariff_field = "customs_tariff_number"
 
-        if not item.customs_tariff_number_ or item.customs_tariff_number_ == "":
-            item.customs_tariff_number_ = get_HS_code(item.item_code, doc.shipping_address_name)
+        if item.meta.get_field(tariff_field) and not item.get(tariff_field):
+            item.set(tariff_field, get_HS_code(item.item_code, doc.shipping_address_name))
 
+        if is_loan_delivery_note:
+            continue
 
         sales_order = item.against_sales_order
         
@@ -769,6 +775,9 @@ def auto_gen_qa_inspection(doc, method):
         doc: The Delivery Note document
         method: Hook method parameter (not used here)
     """
+    if doc.get("loan_order"):
+        return
+
     # check if DN have a suffix (e.g., DN-01473-1) if it has, remove the suffix for searching existing QI
     dn_base = doc.name
     if '-' in doc.name[6:]:
@@ -944,6 +953,9 @@ def check_qa_inspections_status(doc, method):
     Check the status of all Quality Inspections linked to the Delivery Note before submission.
     If any linked Quality Inspection is not 'Accepted', raise an exception to prevent submission.
     """
+    if doc.get("loan_order"):
+        return
+
     # Fetch all Quality Inspections linked to this Delivery Note
     qa_inspections = frappe.get_all(
         "Global Quality Inspection",
@@ -953,7 +965,7 @@ def check_qa_inspections_status(doc, method):
         },
         fields=["name", "status"]
     )
-    if not qa_inspections and doc.skip_quality_inspection != 1:
+    if not qa_inspections and doc.get("skip_quality_inspection") != 1:
         # No linked Quality Inspections found; nothing to check
         frappe.throw(
             f"No Quality Inspections found linked to Delivery Note {doc.name}. Cannot submit without Quality Inspection."
@@ -961,11 +973,9 @@ def check_qa_inspections_status(doc, method):
 
     # Check the status of each Quality Inspection
     for inspection in qa_inspections:
-        if inspection.status != "Accepted" and doc.skip_quality_inspection != 1:
+        if inspection.status != "Accepted" and doc.get("skip_quality_inspection") != 1:
             frappe.throw(
                 f"""Cannot submit Delivery Note {doc.name} because Quality Inspection:
                  <b><a href="/desk#Form/Global Quality Inspection/{inspection.name}" target="_blank">{inspection.name}
                  </a></b> is not Accepted (current status: {inspection.status})."""
             )
-
-
