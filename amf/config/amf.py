@@ -27,7 +27,13 @@ def get_data():
                         "label": _("On Time Delivery KPIs"),
                         "doctype": "Sales Order",
                         "is_query_report": True
-                   }            
+                   },
+                   {
+                        "type": "doctype",
+                        "name": "Loan Order",
+                        "label": _("Loan Order"),
+                        "description": _("Loan Order")
+                    },          
             ]
         }, 
         {

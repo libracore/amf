@@ -87,6 +87,20 @@ def sync_loan_order_custom_fields():
 					"print_hide": 1,
 				},
 			],
+			"Issue": [
+				{
+					"fieldname": "loan_order",
+					"fieldtype": "Link",
+					"label": "Loan Order",
+					"options": "Loan Order",
+					"insert_after": "customer",
+					"allow_on_submit": 1,
+					"read_only": 1,
+					"no_copy": 1,
+					"print_hide": 1,
+					"in_standard_filter": 1,
+				},
+			],
 		},
 		update=True,
 	)
