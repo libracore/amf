@@ -189,6 +189,8 @@ scheduler_events = {
 # })
 override_doctype_dashboards = {
     "Delivery Note": "amf.amf.utils.dashboards.modify_dn_dashboard",
+    "Issue": "amf.amf.utils.dashboards.modify_issue_dashboard",
+    "Sales Order": "amf.amf.utils.dashboards.modify_so_dashboard",
 }
 
 after_install = "amf.amf.utils.project_id.after_install"
