@@ -125,6 +125,9 @@ doc_events = {
             "amf.amf.utils.custom.qrcode_serial_no",
         ],
     },
+    "Stock Ledger Entry": {
+        "on_submit": "amf.amf.utils.batch_auto_disable.queue_batch_disabled_state_sync",
+    },
     "Stock Entry": {
         "onload": "amf.amf.utils.stock_entry.stock_entry_onload",
         "validate": "amf.amf.utils.stock_entry.stock_entry_validate",
@@ -161,6 +164,7 @@ scheduler_events = {
         "amf.amf.amf.doctype.timer_production.timer_production.send_timer_alert",
     ],
     "daily": [
+        "amf.amf.utils.batch_auto_disable.sync_all_batch_disabled_states",
         "amf.amf.utils.item_image.update_item_images",
         "amf.amf.utils.capacity.update_capacity_utilization_rate",
         "amf.www.tracking.fetch_and_display_tracking_info_enqueue",
@@ -205,4 +209,5 @@ after_migrate = [
     "amf.master_crm.migration.translate_customer_to_organization",
     "amf.amf.utils.project_id.sync_project_id_customization",
     "amf.amf.utils.loan_order_setup.sync_loan_order_custom_fields",
+    "amf.amf.utils.batch_auto_disable.sync_batch_auto_disable_custom_fields",
 ]
