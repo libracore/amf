@@ -42,6 +42,7 @@ doctype_js = {
     ],
     "Item": "public/js/item.js",
     "Quality Inspection": "public/js/quality_inspection.js",
+    "Purchase Invoice": "public/js/purchase_invoice.js",
     "Quotation": "public/js/quotation.js",
     "Sales Order": "public/js/sales_order.js",
     "Stock Entry": "public/js/stock_entry.js",
@@ -91,6 +92,8 @@ doc_events = {
         ],
         "after_insert": "amf.amf.utils.delivery_note_api.auto_gen_qa_inspection",
         "before_submit": "amf.amf.utils.delivery_note_api.check_qa_inspections_status",
+        "on_submit": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
+        "on_cancel": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
     },
     "Item": {
         "onload": "amf.amf.utils.item_costing.populate_item_batch_costing_table",
@@ -122,6 +125,9 @@ doc_events = {
             "amf.amf.utils.custom.qrcode_serial_no",
         ],
     },
+    "Stock Ledger Entry": {
+        "on_submit": "amf.amf.utils.batch_auto_disable.queue_batch_disabled_state_sync",
+    },
     "Stock Entry": {
         "onload": "amf.amf.utils.stock_entry.stock_entry_onload",
         "validate": "amf.amf.utils.stock_entry.stock_entry_validate",
@@ -134,7 +140,9 @@ doc_events = {
         "on_submit": [
             "amf.amf.utils.custom.qr_code_to_document",
             "amf.amf.utils.stock_entry.check_rates_and_assign_on_submit",
+            "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
         ],
+        "on_cancel": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
     },
     "Timer Production": {
         "before_save": "amf.amf.doctype.timer_production.timer_production.timer_before_save",
@@ -156,6 +164,7 @@ scheduler_events = {
         "amf.amf.amf.doctype.timer_production.timer_production.send_timer_alert",
     ],
     "daily": [
+        "amf.amf.utils.batch_auto_disable.sync_all_batch_disabled_states",
         "amf.amf.utils.item_image.update_item_images",
         "amf.amf.utils.capacity.update_capacity_utilization_rate",
         "amf.www.tracking.fetch_and_display_tracking_info_enqueue",
@@ -188,6 +197,8 @@ scheduler_events = {
 # })
 override_doctype_dashboards = {
     "Delivery Note": "amf.amf.utils.dashboards.modify_dn_dashboard",
+    "Issue": "amf.amf.utils.dashboards.modify_issue_dashboard",
+    "Sales Order": "amf.amf.utils.dashboards.modify_so_dashboard",
 }
 
 after_install = "amf.amf.utils.project_id.after_install"
@@ -197,4 +208,6 @@ after_install = "amf.amf.utils.project_id.after_install"
 after_migrate = [
     "amf.master_crm.migration.translate_customer_to_organization",
     "amf.amf.utils.project_id.sync_project_id_customization",
+    "amf.amf.utils.loan_order_setup.sync_loan_order_custom_fields",
+    "amf.amf.utils.batch_auto_disable.sync_batch_auto_disable_custom_fields",
 ]

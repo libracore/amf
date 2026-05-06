@@ -1,0 +1,340 @@
+{
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2026-05-04 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "naming_series",
+  "status",
+  "company",
+  "currency",
+  "transaction_date",
+  "expected_return_date",
+  "actual_return_date",
+  "party_section",
+  "party_type",
+  "party",
+  "party_name",
+  "column_break_party",
+  "delivery_customer",
+  "contact_person",
+  "contact_email",
+  "warehouse_section",
+  "source_warehouse",
+  "loan_warehouse",
+  "return_warehouse",
+  "column_break_warehouse",
+  "stock_movement_method",
+  "require_neutral_stock_accounts",
+  "details_section",
+  "purpose",
+  "explanation",
+  "terms",
+  "items_section",
+  "items",
+  "documents_section",
+  "outward_stock_entry",
+  "outward_delivery_note",
+  "column_break_documents",
+  "return_stock_entry",
+  "return_delivery_note",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Title",
+   "read_only": 1
+  },
+  {
+   "default": "LOAN-ORD-.YYYY.-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "LOAN-ORD-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nSubmitted\nPartly Loaned\nOn Loan\nOverdue\nPartly Returned\nReturned\nClosed\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "transaction_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Loan Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "expected_return_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Expected Return Date"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "actual_return_date",
+   "fieldtype": "Date",
+   "label": "Actual Return Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "party_section",
+   "fieldtype": "Section Break",
+   "label": "Party"
+  },
+  {
+   "fieldname": "party_type",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Party Type",
+   "options": "\nCustomer\nSupplier",
+   "reqd": 1
+  },
+  {
+   "fieldname": "party",
+   "fieldtype": "Dynamic Link",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "label": "Party",
+   "options": "party_type",
+   "reqd": 1
+  },
+  {
+   "fieldname": "party_name",
+   "fieldtype": "Data",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "label": "Party Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_party",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.party_type == 'Supplier'",
+   "description": "Required only when a Delivery Note is needed for a supplier loan.",
+   "fieldname": "delivery_customer",
+   "fieldtype": "Link",
+   "label": "Delivery Note Customer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "contact_person",
+   "fieldtype": "Link",
+   "label": "Contact Person",
+   "options": "Contact"
+  },
+  {
+   "fieldname": "contact_email",
+   "fieldtype": "Data",
+   "label": "Contact Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "warehouse_section",
+   "fieldtype": "Section Break",
+   "label": "Warehouses"
+  },
+  {
+   "fieldname": "source_warehouse",
+   "fieldtype": "Link",
+   "label": "Default Source Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "fieldname": "loan_warehouse",
+   "fieldtype": "Link",
+   "label": "Default Loan Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "fieldname": "return_warehouse",
+   "fieldtype": "Link",
+   "label": "Default Return Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "column_break_warehouse",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Stock Entry",
+   "fieldname": "stock_movement_method",
+   "fieldtype": "Select",
+   "label": "Preferred Stock Movement",
+   "options": "Stock Entry\nDelivery Note",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "description": "Blocks generated stock documents if the warehouses resolve to different inventory accounts while perpetual inventory is enabled.",
+   "fieldname": "require_neutral_stock_accounts",
+   "fieldtype": "Check",
+   "label": "Require Neutral Stock Accounts",
+   "allow_on_submit": "1"
+  },
+  {
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "purpose",
+   "fieldtype": "Small Text",
+   "label": "Purpose"
+  },
+  {
+   "fieldname": "explanation",
+   "fieldtype": "Text Editor",
+   "label": "Explanation"
+  },
+  {
+   "fieldname": "terms",
+   "fieldtype": "Small Text",
+   "label": "Terms"
+  },
+  {
+   "fieldname": "items_section",
+   "fieldtype": "Section Break",
+   "label": "Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Loan Order Item",
+   "reqd": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "documents_section",
+   "fieldtype": "Section Break",
+   "label": "Generated Documents"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "outward_stock_entry",
+   "fieldtype": "Link",
+   "label": "Outward Stock Entry",
+   "no_copy": 1,
+   "options": "Stock Entry",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "outward_delivery_note",
+   "fieldtype": "Link",
+   "label": "Outward Delivery Note",
+   "no_copy": 1,
+   "options": "Delivery Note",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_documents",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "return_stock_entry",
+   "fieldtype": "Link",
+   "label": "Return Stock Entry",
+   "no_copy": 1,
+   "options": "Stock Entry",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "return_delivery_note",
+   "fieldtype": "Link",
+   "label": "Return Delivery Note",
+   "no_copy": 1,
+   "options": "Delivery Note",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Loan Order",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "is_submittable": 1,
+ "modified": "2026-05-04 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "Loan Order",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "status,party,party_name",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "party_name",
+ "track_changes": 1
+}

@@ -40,24 +40,6 @@ def get_stock(code=None):
 
 @frappe.whitelist()
 def disable_zero_stock_batches():
-    # Get batches with zero stock or batches not found in Stock Ledger Entry
-    batches = frappe.db.sql("""
-        SELECT name
-        FROM `tabBatch`
-        WHERE name NOT IN (
-            SELECT DISTINCT batch_no
-            FROM `tabStock Ledger Entry`
-            WHERE batch_no IS NOT NULL
-        )
-        OR name IN (
-            SELECT batch_no
-            FROM `tabStock Ledger Entry`
-            GROUP BY batch_no
-            HAVING SUM(actual_qty) = 0
-        )
-    """, as_dict=True)
+    from amf.amf.utils.batch_auto_disable import sync_all_batch_disabled_states
 
-    # Disable batches
-    for batch in batches:
-        frappe.db.set_value('Batch', batch['name'], 'disabled', 1)
-        frappe.db.commit()  # Commit the changes to the database after each update
+    return sync_all_batch_disabled_states()
