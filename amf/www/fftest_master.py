@@ -2,7 +2,7 @@ from amf.amf.utils.work_order_creation import get_default_bom
 import frappe
 from frappe import _, ValidationError
 from frappe.utils import flt
-from datetime import datetime
+from amf.amf.utils.batch_naming import make_internal_production_batch_id
 
 @frappe.whitelist()
 def make_stock_entry(source_work_order_id, serial_no_id=None):
@@ -358,13 +358,9 @@ def assign_or_create_batch_for_last_item(work_order_id, last_item):
 
 def create_batch_name(item_code):
     """
-    Generate a batch name:
-    - current datetime as YYYYMMDDHHMMSS
-    - item_code
-    - 'AMF'
+    Generate an internal production batch name.
     """
-    timestamp_str = datetime.now().strftime('%Y%m%d%H%M%S')
-    return f"{timestamp_str} {item_code} AMF"
+    return make_internal_production_batch_id()
 
 
 def update_rate_and_availability_ste(stock_entry_doc, method):

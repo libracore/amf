@@ -10,37 +10,40 @@ What this does:
 */
 frappe.ui.form.on("Purchase Receipt", {
     
-    before_submit: function(frm) {
+    before_submit: async function(frm) {
         let created_batches = {};
-        $.each(frm.doc.items || [], async function(i, d) {
+        for (const d of frm.doc.items || []) {
             console.log(d);
+            const supplier_batch = (d.supplier_batch || "").trim();
+            const batch_key = [d.item_code, supplier_batch].join("::");
             
-            if (created_batches[d.item_code]) {
-                d.batch_no = created_batches[d.item_code];
-                return;  // Skip to next iteration if batch already created for this item
+            if (created_batches[batch_key]) {
+                d.batch_no = created_batches[batch_key];
+                continue;
             }
             
             let item = await frappe.db.get_value('Item', d.item_code, 'has_batch_no');
             if (item.message.has_batch_no) {
-                let batch_id = d.item_code + " • " + frm.doc.posting_date + " • " + frm.doc.supplier + " • " + frm.doc.purchase_order_ + " • " + frm.doc.total_qty;
-                //d.batch_no = d.item_code + "/" + frm.doc.posting_date + "/" + frm.doc.supplier;
+                let batch_id = await getSupplierReceiptBatchId(frm.doc.supplier);
                 
-                frappe.call({
+                const response = await frappe.call({
                     method: "frappe.client.insert",
                     args: {
                         doc: {
                             doctype: "Batch",
                             item: d.item_code,
                             batch_id: batch_id,
+                            supplier: frm.doc.supplier,
+                            supplier_batch: supplier_batch,
+                            reference_doctype: frm.doc.doctype,
+                            reference_name: frm.doc.name,
                         }
-                    },
-                    callback: function(response) {
-                        d.batch_no = response.message.name;
-                        created_batches[d.item_code] = response.message.name;
                     }
                 });
+                d.batch_no = response.message.name;
+                created_batches[batch_key] = response.message.name;
             }
-        });
+        }
     },
 
     refresh: function (frm) {
@@ -132,3 +135,11 @@ frappe.ui.form.on("Purchase Receipt", {
         );
     },
 });
+
+async function getSupplierReceiptBatchId(supplier) {
+    const response = await frappe.call({
+        method: "amf.amf.utils.batch_naming.make_supplier_receipt_batch_id_api",
+        args: { supplier: supplier || "" }
+    });
+    return response && response.message;
+}

@@ -62,6 +62,7 @@ doctype_list_js = {
 
 doc_events = {
     "Batch": {
+        "autoname": "amf.amf.utils.batch_naming.apply_amf_batch_autoname",
         "after_insert": "amf.amf.utils.barcode.after_insert_handler",
     },
     "Bin": {
@@ -110,6 +111,7 @@ doc_events = {
         "validate": "amf.amf.utils.purchase_invoice.apply_default_cost_center",
     },
     "Purchase Receipt": {
+        "before_submit": "amf.amf.utils.purchase_receipt.assign_supplier_batches",
         "on_submit": "amf.amf.utils.purchase_receipt.generate_qa_for_purchase_receipt",
     },
     "Project": {
@@ -210,4 +212,5 @@ after_migrate = [
     "amf.amf.utils.project_id.sync_project_id_customization",
     "amf.amf.utils.loan_order_setup.sync_loan_order_custom_fields",
     "amf.amf.utils.batch_auto_disable.sync_batch_auto_disable_custom_fields",
+    "amf.amf.utils.batch_naming.sync_supplier_batch_custom_fields",
 ]

@@ -4,6 +4,7 @@ from frappe import _
 from frappe.utils.data import now_datetime
 from frappe.utils.file_manager import save_file
 from weasyprint import HTML
+from amf.amf.utils.batch_naming import make_internal_production_batch_id
 
 @frappe.whitelist()  # Allows this method to be called from the client side
 def create_work_order(form_data: str) -> dict:
@@ -199,15 +200,11 @@ def create_batch_if_manufacture(self):
         item_has_batch_no = frappe.db.get_value('Item', last_item.item_code, 'has_batch_no')
 
         if item_has_batch_no:
-            posting_date = self.posting_date
-            batch_id = f"{last_item.item_code} {posting_date} AMF {self.fg_completed_qty}"
+            batch_id = make_internal_production_batch_id()
             existing_batch = frappe.db.exists('Batch', {'batch_id': batch_id})
 
             if existing_batch:
-                # Handling duplicate - generating a unique batch ID
-                # Example: appending a timestamp or a counter
-                unique_suffix = now_datetime().strftime('%H%M%S')  # Using timestamp for uniqueness
-                batch_id += f" {unique_suffix}"
+                batch_id = make_internal_production_batch_id()
 
             # Create new batch with either the original or updated unique batch ID
             new_batch_doc = frappe.get_doc({

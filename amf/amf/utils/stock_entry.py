@@ -4,6 +4,7 @@ from erpnext.stock.utils import get_incoming_rate
 import frappe
 from frappe import _, _dict
 from frappe.utils import flt
+from amf.amf.utils.batch_naming import make_internal_production_batch_id
 
 def batch_to_stock_entry(doc, method=None):
     print("Entering batch_to_stock_entry.")
@@ -16,8 +17,7 @@ def batch_to_stock_entry(doc, method=None):
             "Item", last_item.item_code, "has_batch_no")
         # If the item has a batch number
         if has_batch_no:
-            # Generate the batch_id using the given format
-            batch_id = f"{last_item.item_code} {doc.posting_date} {doc.work_order} {int(doc.fg_completed_qty)}"
+            batch_id = make_internal_production_batch_id()
             print(batch_id)
             # Create a new Batch entry
             new_batch = frappe.get_doc(
@@ -461,8 +461,7 @@ def _assign_batch_for_row(row, doc, log_id, batch_map=None):
         update_log_entry(log_id, f"[{now_datetime()}] Row {item}: batch not required or auto-gen off<br>")
         return
 
-    ts = now_datetime().strftime("%Y%m%d%H%M%S")
-    batch_id = f"{ts} {item}"
+    batch_id = make_internal_production_batch_id()
 
     if not frappe.db.exists("Batch", batch_id):
         batch = frappe.get_doc({
@@ -2116,4 +2115,3 @@ def set_basic_rate_override(doc, force=False, update_finished_item_rate=True, ra
                     d.basic_amount = flt((raw_material_cost - scrap_material_cost), d.precision("basic_amount"))
                     update_log_entry(
                         log_id, f"[{now_datetime()}] FG Item {d.item_code}: basic_rate set to {d.basic_rate}, basic_amount set to {d.basic_amount}<br>")
-
