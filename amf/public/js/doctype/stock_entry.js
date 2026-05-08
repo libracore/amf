@@ -61,17 +61,8 @@ frappe.ui.form.on("Stock Entry", {
             let item = await frappe.db.get_value('Item', d.item_code, 'has_batch_no');
 
             if (item.message.has_batch_no) {
-                let batch_id = d.item_code + " • " + frm.doc.posting_date + " • " + "AMF" + " • " + frm.doc.fg_completed_qty;
-                let existingBatch = await frappe.db.get_value('Batch', { 'batch_id': batch_id }, 'name');
+                let batch_id = await getInternalProductionBatchId();
 
-                if (existingBatch && existingBatch.message !== undefined) {
-                    // Handling duplicate - generating a unique batch ID
-                    // Example: appending a timestamp or a counter
-                    let uniqueSuffix = new Date().getTime(); // Using timestamp for uniqueness
-                    batch_id += " • " + uniqueSuffix;
-                }
-
-                // Create new batch with either the original or updated unique batch ID
                 let new_batch = await frappe.call({
                     method: "frappe.client.insert",
                     args: {
@@ -85,8 +76,17 @@ frappe.ui.form.on("Stock Entry", {
                 d.batch_no = new_batch.message.name;
             }
         }
-    },
+    }
+});
 
+async function getInternalProductionBatchId() {
+    const response = await frappe.call({
+        method: "amf.amf.utils.batch_naming.make_internal_production_batch_id_api"
+    });
+    return response && response.message;
+}
+
+frappe.ui.form.on("Stock Entry", {
     on_submit: function (frm) {
         if (frm.doc.docstatus === 1 && frm.doc.stock_entry_type === "Manufacture") {
             frappe.call({

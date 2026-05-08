@@ -15,6 +15,7 @@ from frappe.utils.file_manager import save_file
 from frappe.utils.print_format import download_pdf
 from datetime import datetime
 from frappe import ValidationError
+from amf.amf.utils.batch_naming import make_internal_production_batch_id
 
 
 PLANNING_COSTING_HOURLY_RATE = 75.0
@@ -947,13 +948,11 @@ def create_batch_if_manufacture(stock_entry):
             'Item', last_item.item_code, 'has_batch_no')
 
         if item_has_batch_no:
-            unique_suffix = now_datetime().strftime('%Y%m%d%H%M%S')
-            batch_id = f"{unique_suffix} {last_item.item_code} AMF"
+            batch_id = make_internal_production_batch_id()
             existing_batch = frappe.db.exists('Batch', {'batch_id': batch_id})
 
             if existing_batch:
-                # Generate a unique batch ID if necessary
-                batch_id += f" #2"
+                batch_id = make_internal_production_batch_id()
 
             new_batch_doc = frappe.get_doc({
                 'doctype': 'Batch',

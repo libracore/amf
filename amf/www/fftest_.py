@@ -1,8 +1,8 @@
 import frappe
 from frappe import _, ValidationError
 from frappe.utils import flt
-from datetime import datetime
 from erpnext.stock.doctype.stock_entry.stock_entry import get_additional_costs
+from amf.amf.utils.batch_naming import make_internal_production_batch_id
 
 @frappe.whitelist()
 def make_stock_entry(work_order_id, serial_no_id=None):
@@ -175,17 +175,11 @@ def assign_or_create_batch_for_last_item(work_order_id, last_item):
         return None
 
 
-def create_batch_name(item_code):
+def create_batch_name(item_code, *args):
     """
-    Construct a batch name using:
-      1. The current date/time in YYYYMMDDHHMMSS format
-      2. The item code
-      3. The constant string 'AMF'
-
-    Example output: 20250128121030 ITEM-ABC AMF
+    Generate an internal production batch name.
     """
-    timestamp_str = datetime.now().strftime('%Y%m%d%H%M%S')  
-    return f"{timestamp_str} {item_code} AMF"
+    return make_internal_production_batch_id()
 
 
 def update_rate_and_availability_ste(doc, method):

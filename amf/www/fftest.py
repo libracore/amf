@@ -1,8 +1,8 @@
 from erpnext.stock.doctype.stock_entry.stock_entry import get_additional_costs
 import frappe
-from frappe.utils import random_string
-from frappe.utils.data import flt, today
+from frappe.utils.data import flt
 from frappe import _, ValidationError
+from amf.amf.utils.batch_naming import make_internal_production_batch_id
 
 @frappe.whitelist()
 def make_stock_entry(work_order_id, serial_no_id=None):
@@ -135,12 +135,9 @@ def assign_or_create_batch_for_last_item(work_order_id, last_item):
 
 def create_batch_name(item_code, work_order_qty):
     """
-    Construct a batch name based on the given item code, current date, a constant string "AMF", the work order quantity,
-    and a unique identifier.
+    Generate an internal production batch name.
     """
-    date_str = today()
-    unique_id = random_string(5)
-    batch_name = f"{item_code} {date_str} AMF {work_order_qty} {unique_id}"
+    batch_name = make_internal_production_batch_id()
     print(batch_name)
     return batch_name
 

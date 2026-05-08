@@ -5,6 +5,80 @@ from erpnext.stock.doctype.quality_inspection_template.quality_inspection_templa
 	import get_template_details
 import html
 
+from frappe.utils import cstr
+
+from amf.amf.utils.batch_naming import make_supplier_receipt_batch_id
+
+
+def assign_supplier_batches(pr_doc, method=None):
+    """
+    Create or reuse one internal Batch per item and supplier batch combination.
+    """
+    created_batches = {}
+    item_codes = [row.item_code for row in pr_doc.get("items") if row.item_code]
+    if not item_codes:
+        return
+
+    item_batch_map = {
+        item.name: item.has_batch_no
+        for item in frappe.get_all(
+            "Item",
+            filters={"name": ["in", item_codes]},
+            fields=["name", "has_batch_no"],
+        )
+    }
+
+    for row in pr_doc.get("items"):
+        if not row.item_code or not item_batch_map.get(row.item_code):
+            continue
+
+        supplier_batch = cstr(row.get("supplier_batch")).strip()
+        key = (row.item_code, supplier_batch)
+
+        if row.batch_no:
+            created_batches.setdefault(key, row.batch_no)
+            _sync_batch_supplier_batch(row.batch_no, supplier_batch)
+            continue
+
+        if not row.get("batch_no_auto_generation"):
+            continue
+
+        if key in created_batches:
+            row.batch_no = created_batches[key]
+            continue
+
+        batch_values = {
+            "doctype": "Batch",
+            "item": row.item_code,
+            "batch_id": make_supplier_receipt_batch_id(pr_doc.supplier),
+            "supplier": pr_doc.supplier,
+            "reference_doctype": pr_doc.doctype,
+            "reference_name": pr_doc.name,
+        }
+        if frappe.get_meta("Batch").get_field("supplier_batch"):
+            batch_values["supplier_batch"] = supplier_batch
+
+        batch = frappe.get_doc(batch_values).insert(ignore_permissions=True)
+        row.batch_no = batch.name
+        created_batches[key] = batch.name
+
+
+def _sync_batch_supplier_batch(batch_no, supplier_batch):
+    if not batch_no or not supplier_batch or not frappe.db.exists("Batch", batch_no):
+        return
+    if not frappe.get_meta("Batch").get_field("supplier_batch"):
+        return
+
+    current_supplier_batch = cstr(frappe.db.get_value("Batch", batch_no, "supplier_batch")).strip()
+    if not current_supplier_batch:
+        frappe.db.set_value(
+            "Batch",
+            batch_no,
+            "supplier_batch",
+            supplier_batch,
+            update_modified=False,
+        )
+
 @frappe.whitelist()
 def get_templates_for_purchase_receipt(item_codes):
     """
