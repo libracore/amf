@@ -1,4 +1,22 @@
 const BOM_MANAGED_ITEM_GROUPS = ["Plug", "Valve Seat", "Valve Head"];
+const SPARE_PART_PREFIXES = ["30"];
+const RVM_PREFIXES = ["41", "42", "43", "44", "4D", "51", "52", "53", "54", "5D"];
+const SPM_STD_PREFIXES = ["45", "46", "47", "48", "55", "56", "57", "58"];
+const SPM_HD_PREFIXES = ["49", "4A", "4B", "4C", "59", "5A", "5B", "5C"];
+const SPM_HV_PREFIXES = ["46", "48", "4A", "4C", "56", "58", "5A", "5C"];
+const RVM_PRODUCT_LINE_RULES = [
+    ["-D-", "RVM D"],
+    ["-S-", "RVM S"],
+    ["-O-", "RVM O"],
+];
+const CUSTOM_PRODUCT_LINE_RULES = [
+    ["NRE", "NRE"],
+    ["CUSTOM VALVE", "Custom Valve"],
+    ["VALVE CUSTOM", "Custom Valve"],
+    ["CUSTOM SYSTEM", "Custom System"],
+    ["CUSTOM CONFIGURATION", "Custom System"],
+    ["CUSTOM", "Custom System"],
+];
 
 function isBomManagedItemGroup(itemGroup) {
     return BOM_MANAGED_ITEM_GROUPS.includes(itemGroup);
@@ -102,6 +120,98 @@ function updateTagRawMatRequirement(frm) {
     frm.set_df_property("tag_raw_mat", "reqd", shouldRequireTagRawMat(frm.doc.item_code) ? 1 : 0);
 }
 
+function startsWithAny(value, prefixes) {
+    return prefixes.some(function (prefix) {
+        return value.startsWith(prefix);
+    });
+}
+
+function getProductFamily(itemCode, itemName) {
+    const normalizedCode = (itemCode || "").trim().toUpperCase();
+    if (startsWithAny(normalizedCode, SPARE_PART_PREFIXES)) {
+        return "Spare Part";
+    }
+    if (startsWithAny(normalizedCode, RVM_PREFIXES)) {
+        return "RVM";
+    }
+    if (startsWithAny(normalizedCode, SPM_STD_PREFIXES.concat(SPM_HD_PREFIXES))) {
+        return "SPM";
+    }
+    if (getCustomProductLine(itemCode, itemName)) {
+        return "Custom";
+    }
+
+    return "";
+}
+
+function getProductLine(productFamily, itemCode, itemName) {
+    const normalizedCode = (itemCode || "").trim().toUpperCase();
+    const normalizedName = (itemName || "").toUpperCase();
+
+    if (productFamily === "SPM") {
+        if (startsWithAny(normalizedCode, SPM_HD_PREFIXES)) {
+            return "SPM HD";
+        }
+        if (startsWithAny(normalizedCode, SPM_STD_PREFIXES)) {
+            return "SPM STD";
+        }
+    }
+
+    if (productFamily === "RVM") {
+        for (const rule of RVM_PRODUCT_LINE_RULES) {
+            if (normalizedName.includes(rule[0])) {
+                return rule[1];
+            }
+        }
+    }
+
+    if (productFamily === "Custom") {
+        return getCustomProductLine(itemCode, itemName);
+    }
+
+    return "";
+}
+
+function getProductVariant(productLine, itemCode, itemName) {
+    if (!["SPM HD", "SPM STD"].includes(productLine)) {
+        return "";
+    }
+
+    const normalizedCode = (itemCode || "").trim().toUpperCase();
+    const normalizedName = (itemName || "").toUpperCase();
+    const pressure = startsWithAny(normalizedCode, SPM_HV_PREFIXES) || normalizedName.includes("-HV")
+        ? "HV"
+        : "LV";
+
+    return productLine + " " + pressure;
+}
+
+function getCustomProductLine(itemCode, itemName) {
+    const value = ((itemCode || "") + " " + (itemName || "")).toUpperCase();
+    for (const rule of CUSTOM_PRODUCT_LINE_RULES) {
+        if (value.includes(rule[0])) {
+            return rule[1];
+        }
+    }
+
+    return "";
+}
+
+function updateItemReportingFields(frm) {
+    const productFamily = getProductFamily(frm.doc.item_code, frm.doc.item_name);
+    const productLine = getProductLine(productFamily, frm.doc.item_code, frm.doc.item_name);
+
+    if (frm.fields_dict.product_family) {
+        frm.set_value("product_family", productFamily);
+    }
+    if (frm.fields_dict.product_line) {
+        frm.set_value("product_line", productLine);
+    }
+    if (frm.fields_dict.product_variant) {
+        frm.set_value("product_variant", getProductVariant(productLine, frm.doc.item_code, frm.doc.item_name));
+    }
+}
+
 function applyBomManagedSuggestion(frm, suggestion) {
     const itemType = suggestion.item_group === "Valve Head"
         ? "Sub-Assembly"
@@ -114,6 +224,7 @@ function applyBomManagedSuggestion(frm, suggestion) {
     frm.set_value("item_code", suggestion.item_code);
     applyBomManagedDefaults(frm, suggestion.item_group);
     updateTagRawMatRequirement(frm);
+    updateItemReportingFields(frm);
 }
 
 function updateBomManagedDialog(dialog) {
@@ -204,6 +315,9 @@ function showBomManagedItemDialog(frm) {
 frappe.ui.form.on("Item", {
     refresh: function (frm) {
         updateTagRawMatRequirement(frm);
+        if (frm.is_new()) {
+            updateItemReportingFields(frm);
+        }
 
         if (!frm.is_new()) {
             return;
@@ -223,5 +337,10 @@ frappe.ui.form.on("Item", {
 
     item_code: function (frm) {
         updateTagRawMatRequirement(frm);
+        updateItemReportingFields(frm);
+    },
+
+    item_name: function (frm) {
+        updateItemReportingFields(frm);
     },
 });
