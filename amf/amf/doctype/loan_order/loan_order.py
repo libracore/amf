@@ -10,7 +10,7 @@ from erpnext.stock import get_warehouse_account_map
 from erpnext.stock.get_item_details import get_conversion_factor
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import cint, flt, nowdate, nowtime
+from frappe.utils import cint, flt, getdate, nowdate, nowtime
 
 
 LOAN_MOVEMENT_OUTWARD = "Outward"
@@ -217,7 +217,7 @@ class LoanOrder(Document):
 			return "Returned"
 		if total_returned > 0:
 			return "Partly Returned"
-		if self.expected_return_date and nowdate() > self.expected_return_date:
+		if self.expected_return_date and getdate(nowdate()) > getdate(self.expected_return_date):
 			return "Overdue"
 		if total_loaned < total_qty:
 			return "Partly Loaned"

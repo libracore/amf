@@ -99,7 +99,10 @@ doc_events = {
     },
     "Item": {
         "onload": "amf.amf.utils.item_costing.populate_item_batch_costing_table",
-        "validate": "amf.amf.utils.bom_mgt.sync_item_bom_fields",
+        "validate": [
+            "amf.amf.utils.bom_mgt.sync_item_bom_fields",
+            "amf.amf.utils.item_reporting.apply_item_reporting_fields",
+        ],
         "after_insert": "amf.amf.utils.custom.qr_code_to_document",
     },
     "Lead": {
@@ -214,4 +217,5 @@ after_migrate = [
     "amf.amf.utils.loan_order_setup.sync_loan_order_custom_fields",
     "amf.amf.utils.batch_auto_disable.sync_batch_auto_disable_custom_fields",
     "amf.amf.utils.batch_naming.sync_supplier_batch_custom_fields",
+    "amf.amf.utils.item_reporting.sync_item_reporting_custom_fields",
 ]
