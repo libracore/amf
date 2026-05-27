@@ -18,6 +18,7 @@ RAW_MATERIAL_LABEL_WIDTH_MM = 100
 RAW_MATERIAL_LABEL_HEIGHT_MM = 62
 RAW_MATERIAL_LABEL_BACKGROUND_FILE = "slide_usi.pdf"
 RAW_MATERIAL_FIT_VALUE_WIDTH_MM = 58
+RAW_MATERIAL_LABEL_PRINT_MARGIN_MM = 2
 
 
 def assign_supplier_batches(pr_doc, method=None):
@@ -391,7 +392,7 @@ def _render_raw_material_sticker_html(labels, label_printer):
             purchase_order=_escape(label.purchase_order),
             batch_no=_escape(label.batch_no),
             item_name_style=_fit_label_value_style(label.item_name, 12, 7.2),
-            batch_no_style=_fit_label_value_style(label.batch_no, 8, 7.6),
+            batch_no_style=_fit_label_value_style(label.batch_no, 16, 7.6),
             batch_qr_code=label.batch_qr_code,
         ))
 
@@ -481,12 +482,34 @@ def _apply_raw_material_label_background(label_pdf):
         background_readers.append(background_reader)
         page = background_reader.getPage(0)
         page.mergePage(label_reader.getPage(page_index))
-        writer.addPage(page)
+        _add_raw_material_label_page(writer, page)
 
     output = BytesIO()
     writer.write(output)
     output.seek(0)
     return output.read()
+
+
+def _add_raw_material_label_page(writer, page):
+    margin_pt = RAW_MATERIAL_LABEL_PRINT_MARGIN_MM * 72.0 / 25.4
+    if margin_pt <= 0:
+        writer.addPage(page)
+        return
+
+    page_width = float(page.mediaBox.getWidth())
+    page_height = float(page.mediaBox.getHeight())
+    if margin_pt * 2 >= page_width or margin_pt * 2 >= page_height:
+        frappe.throw(_("Raw Material sticker print margin is larger than the label page."))
+
+    scale = min(
+        (page_width - (margin_pt * 2)) / page_width,
+        (page_height - (margin_pt * 2)) / page_height,
+    )
+    tx = (page_width - (page_width * scale)) / 2
+    ty = (page_height - (page_height * scale)) / 2
+
+    output_page = writer.addBlankPage(width=page_width, height=page_height)
+    output_page.mergeScaledTranslatedPage(page, scale, tx, ty)
 
 
 def _fit_label_value_style(value, max_font_size_pt, line_height_mm):
