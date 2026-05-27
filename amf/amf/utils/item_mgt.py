@@ -1,7 +1,12 @@
-from amf.amf.utils.stock_entry import _get_or_create_log, update_log_entry
+from amf.amf.utils.stock_entry import (
+    _get_or_create_log,
+    _rebuild_stock_entry_ledgers,
+    _set_batch_disabled_state,
+    update_log_entry,
+)
 
 import frappe
-from frappe.utils import cint, flt, now_datetime, nowdate, nowtime
+from frappe.utils import cint, cstr, flt, now_datetime, nowdate, nowtime
 
 DEFAULT_BATCH_VALUATION_WAREHOUSE = "Scrap - AMF21"
 DEFAULT_BATCH_VALUATION_ITEM_GROUP = "Valve Seat"
@@ -9,11 +14,18 @@ DEFAULT_BATCH_VALUATION_RATE = 20.0
 DEFAULT_BATCH_VALUATION_CODE_LENGTH = 6
 DEFAULT_RECONCILIATION_ROWS = 100
 VALUATION_RATE_TOLERANCE = 0.000001
+DEFAULT_SCRAP_DEVALUATION_STOCK_ENTRY_FROM_DATE = "2025-01-01"
+DEFAULT_SCRAP_DEVALUATION_TARGETS = (
+    {"code_prefix": "10", "target_rate": 0.01},
+    {"code_prefix": "11", "target_rate": 0.01},
+    {"code_prefix": "20", "target_rate": 1.0},
+    {"code_prefix": "21", "target_rate": 1.0},
+)
 DEFAULT_BATCH_VALUATION_TARGETS = (
-    {"code_prefix": "10", "code_length": 6, "target_rate": 0.5},
-    {"code_prefix": "11", "code_length": 6, "target_rate": 0.75},
-    {"code_prefix": "2", "code_length": 6, "target_rate": 20.0},
-    {"code_prefix": "30", "code_length": 6, "target_rate": 20.75},
+    {"code_prefix": "10", "code_length": 6, "target_rate": 0.01},
+    {"code_prefix": "11", "code_length": 6, "target_rate": 0.01},
+    {"code_prefix": "20", "code_length": 6, "target_rate": 1.0},
+    {"code_prefix": "21", "code_length": 6, "target_rate": 1.0},
 )
 SALES_EMAIL_RECIPIENTS = [
     "sales@amf.ch",
@@ -160,6 +172,158 @@ def enqueue_configured_scrap_batch_valuation_reconciliation(
         max_rows_per_reconciliation=max_rows_per_reconciliation,
     )
     return None
+
+
+@frappe.whitelist()
+def enqueue_repair_scrap_valuation_from_default_bom(
+    warehouse=DEFAULT_BATCH_VALUATION_WAREHOUSE,
+    company=None,
+    as_of_date=None,
+    as_of_time="23:59:59",
+    stock_entry_from_date=DEFAULT_SCRAP_DEVALUATION_STOCK_ENTRY_FROM_DATE,
+    item_code=None,
+    dry_run=1,
+    allow_negative_stock=1,
+    update_item_master=0,
+):
+    """Queue the direct Stock Entry based scrap devaluation repair."""
+    _enqueue_long_job(
+        "amf.amf.utils.item_mgt.repair_scrap_valuation_from_default_bom",
+        warehouse=warehouse,
+        company=company,
+        as_of_date=as_of_date,
+        as_of_time=as_of_time,
+        stock_entry_from_date=stock_entry_from_date,
+        item_code=item_code,
+        dry_run=cint(dry_run),
+        allow_negative_stock=cint(allow_negative_stock),
+        update_item_master=cint(update_item_master),
+    )
+    return None
+
+
+@frappe.whitelist()
+def repair_scrap_valuation_from_default_bom(
+    warehouse=DEFAULT_BATCH_VALUATION_WAREHOUSE,
+    company=None,
+    as_of_date=None,
+    as_of_time="23:59:59",
+    stock_entry_from_date=DEFAULT_SCRAP_DEVALUATION_STOCK_ENTRY_FROM_DATE,
+    item_code=None,
+    dry_run=1,
+    allow_negative_stock=1,
+    update_item_master=0,
+):
+    """
+    Devalue scrap stock by editing the submitted Stock Entry rows directly.
+
+    No Stock Reconciliation is created. For every matching item with positive
+    balance in the scrap warehouse, incoming Stock Entry rows into the scrap
+    warehouse are repriced from the configured item-code prefix rules. The
+    affected Stock Entries are then reposted so SLE, Bin and GL are rebuilt
+    from the corrected source document.
+    """
+    frappe.only_for(("System Manager", "Stock Manager", "Accounts Manager"))
+
+    dry_run = cint(dry_run)
+    allow_negative_stock = cint(allow_negative_stock)
+    update_item_master = 0
+    as_of_date = as_of_date or nowdate()
+    as_of_time = as_of_time or "23:59:59"
+    stock_entry_from_date = stock_entry_from_date or DEFAULT_SCRAP_DEVALUATION_STOCK_ENTRY_FROM_DATE
+    company = company or frappe.db.get_value("Warehouse", warehouse, "company")
+
+    if not warehouse:
+        frappe.throw("Warehouse is required.")
+    if not frappe.db.exists("Warehouse", warehouse):
+        frappe.throw("Warehouse {0} does not exist.".format(warehouse))
+    if not company:
+        frappe.throw("Company could not be resolved for warehouse {0}.".format(warehouse))
+
+    log_id = _create_direct_scrap_valuation_log(
+        warehouse=warehouse,
+        company=company,
+        as_of_date=as_of_date,
+        as_of_time=as_of_time,
+        stock_entry_from_date=stock_entry_from_date,
+        item_code=item_code,
+        dry_run=dry_run,
+    )
+
+    targets = _get_scrap_devaluation_targets(
+        warehouse=warehouse,
+        company=company,
+        as_of_date=as_of_date,
+        as_of_time=as_of_time,
+        item_code=item_code,
+    )
+    plan = _build_scrap_devaluation_plan(
+        targets=targets,
+        warehouse=warehouse,
+        company=company,
+        as_of_date=as_of_date,
+        as_of_time=as_of_time,
+        stock_entry_from_date=stock_entry_from_date,
+    )
+
+    summary = {
+        "log_id": log_id,
+        "warehouse": warehouse,
+        "company": company,
+        "as_of_date": as_of_date,
+        "as_of_time": as_of_time,
+        "stock_entry_from_date": stock_entry_from_date,
+        "item_code": item_code,
+        "dry_run": bool(dry_run),
+        "allow_negative_stock": bool(allow_negative_stock),
+        "update_item_master": bool(update_item_master),
+        "valuation_rules": DEFAULT_SCRAP_DEVALUATION_TARGETS,
+        "target_balance_count": len(targets),
+        "target_item_count": len({row.item_code for row in targets}),
+        "rows_examined": plan["rows_examined"],
+        "rows_to_update": len(plan["rows_to_update"]),
+        "stock_entries_to_rebuild": len(plan["stock_entries"]),
+        "item_master_updates": len(plan["item_master_updates"]),
+        "disabled_batches_to_temporarily_enable": len(plan["disabled_batches"]),
+        "missing_batch_rows_temporarily_allowed": len(
+            plan["missing_batch_rows_for_rebuild"]
+        ),
+        "serial_numbers_temporarily_seeded": len(plan["serial_numbers_for_rebuild"]),
+        "blocked_rows": plan["blocked_rows"],
+        "sample_rows": plan["rows_to_update"][:20],
+        "rebuilt_stock_entries": [],
+        "updated_items": [],
+    }
+
+    update_log_entry(
+        log_id,
+        (
+            "[{0}] Prepared direct scrap devaluation repair: "
+            "{1} balance row(s), {2} Stock Entry Detail row(s), "
+            "{3} Stock Entry document(s), dry_run={4}.<br>"
+        ).format(
+            now_datetime(),
+            summary["target_balance_count"],
+            summary["rows_to_update"],
+            summary["stock_entries_to_rebuild"],
+            dry_run,
+        ),
+    )
+
+    if dry_run or (
+        not plan["rows_to_update"]
+        and not (update_item_master and plan["item_master_updates"])
+    ):
+        return summary
+
+    _apply_scrap_devaluation_plan(
+        plan=plan,
+        summary=summary,
+        log_id=log_id,
+        allow_negative_stock=allow_negative_stock,
+        update_item_master=update_item_master,
+    )
+    return summary
 
 
 @frappe.whitelist()
@@ -380,6 +544,786 @@ def _get_last_purchase_rate(item_code):
         return 0.0
 
     return flt(last_purchase_rate[0].rate)
+
+
+def _create_direct_scrap_valuation_log(
+    warehouse,
+    company,
+    as_of_date,
+    as_of_time,
+    stock_entry_from_date,
+    item_code,
+    dry_run,
+):
+    log_context = frappe._dict(
+        {
+            "doctype": "Stock Entry",
+            "name": "Direct scrap devaluation repair {0} / {1}".format(
+                warehouse, now_datetime()
+            ),
+        }
+    )
+    log_id = _get_or_create_log(log_context)
+    update_log_entry(
+        log_id,
+        (
+            "[{0}] Started direct scrap devaluation repair for warehouse={1}, "
+            "company={2}, as_of={3} {4}, stock_entry_from_date={5}, "
+            "item_code={6}, dry_run={7}.<br>"
+        ).format(
+            now_datetime(),
+            warehouse,
+            company,
+            as_of_date,
+            as_of_time,
+            stock_entry_from_date,
+            item_code or "",
+            dry_run,
+        ),
+    )
+    return log_id
+
+
+def _get_scrap_devaluation_targets(
+    warehouse, company, as_of_date, as_of_time, item_code=None
+):
+    item_condition = ""
+    params = {
+        "warehouse": warehouse,
+        "company": company,
+        "as_of_date": as_of_date,
+        "as_of_time": as_of_time,
+    }
+    if item_code:
+        item_condition = "AND sle.item_code = %(item_code)s"
+        params["item_code"] = item_code
+
+    prefix_conditions = []
+    for idx, rule in enumerate(DEFAULT_SCRAP_DEVALUATION_TARGETS):
+        key = "devaluation_prefix_{0}".format(idx)
+        prefix_conditions.append("sle.item_code LIKE %({0})s".format(key))
+        params[key] = "{0}%".format(rule["code_prefix"])
+
+    rows = frappe.db.sql(
+        """
+        SELECT
+            sle.item_code,
+            item.item_name,
+            IFNULL(sle.batch_no, '') AS batch_no,
+            IFNULL(batch.disabled, 0) AS batch_disabled,
+            SUM(sle.actual_qty) AS balance_qty
+        FROM `tabStock Ledger Entry` sle
+        INNER JOIN `tabItem` item
+            ON item.name = sle.item_code
+        LEFT JOIN `tabBatch` batch
+            ON batch.name = sle.batch_no
+        WHERE sle.warehouse = %(warehouse)s
+          AND sle.company = %(company)s
+          AND IFNULL(sle.is_cancelled, 'No') = 'No'
+          AND item.disabled = 0
+          AND ({prefix_condition})
+          AND TIMESTAMP(sle.posting_date, sle.posting_time) <= TIMESTAMP(%(as_of_date)s, %(as_of_time)s)
+          {item_condition}
+        GROUP BY
+            sle.item_code,
+            item.item_name,
+            IFNULL(sle.batch_no, ''),
+            IFNULL(batch.disabled, 0)
+        HAVING balance_qty > 0
+        ORDER BY sle.item_code, IFNULL(sle.batch_no, '')
+        """.format(
+            prefix_condition=" OR ".join(prefix_conditions),
+            item_condition=item_condition,
+        ),
+        params,
+        as_dict=True,
+    )
+
+    targets = []
+    for row in rows:
+        rule = _get_scrap_devaluation_rule_for_item(row.item_code)
+        if not rule:
+            continue
+
+        row.target_rate = flt(rule["target_rate"])
+        row.valuation_rule = "{0}* -> {1}".format(
+            rule["code_prefix"],
+            row.target_rate,
+        )
+        targets.append(row)
+
+    return targets
+
+
+def _get_scrap_devaluation_rule_for_item(item_code):
+    item_code = cstr(item_code)
+    for rule in DEFAULT_SCRAP_DEVALUATION_TARGETS:
+        if item_code.startswith(rule["code_prefix"]):
+            return rule
+
+    return None
+
+
+def _build_scrap_devaluation_plan(
+    targets, warehouse, company, as_of_date, as_of_time, stock_entry_from_date
+):
+    target_by_key = {
+        (row.item_code, row.batch_no or ""): row
+        for row in targets
+    }
+    target_item_codes = sorted({row.item_code for row in targets})
+    rows = _get_scrap_devaluation_stock_entry_rows(
+        target_item_codes=target_item_codes,
+        warehouse=warehouse,
+        company=company,
+        as_of_date=as_of_date,
+        as_of_time=as_of_time,
+        stock_entry_from_date=stock_entry_from_date,
+    )
+
+    plan = {
+        "rows_examined": len(rows),
+        "rows_to_update": [],
+        "stock_entries": [],
+        "item_master_updates": [],
+        "disabled_batches": [],
+        "missing_batch_rows_for_rebuild": [],
+        "serial_numbers_for_rebuild": [],
+        "blocked_rows": [],
+        "rows_by_stock_entry": {},
+        "target_by_item": {},
+    }
+    stock_entry_names = set()
+    disabled_batches = set()
+
+    for target in targets:
+        plan["target_by_item"][target.item_code] = {
+            "item_code": target.item_code,
+            "item_name": target.item_name,
+            "valuation_rule": target.valuation_rule,
+            "target_rate": flt(target.target_rate),
+        }
+        if target.batch_no and cint(target.batch_disabled):
+            disabled_batches.add(target.batch_no)
+
+    for row in rows:
+        key = (row.item_code, row.batch_no or "")
+        target = target_by_key.get(key)
+        if not target:
+            continue
+
+        target_rate = flt(target.target_rate)
+        if not flt(row.transfer_qty):
+            plan["blocked_rows"].append(
+                {
+                    "row": row.name,
+                    "stock_entry": row.parent,
+                    "item_code": row.item_code,
+                    "reason": "transfer_qty is zero",
+                }
+            )
+            continue
+
+        expected_amount = flt(row.transfer_qty) * target_rate
+        current_amount = flt(row.amount)
+        current_rate = flt(row.valuation_rate)
+        if (
+            abs(current_rate - target_rate) <= VALUATION_RATE_TOLERANCE
+            and abs(current_amount - expected_amount) <= VALUATION_RATE_TOLERANCE
+        ):
+            continue
+
+        row_plan = {
+            "row": row.name,
+            "stock_entry": row.parent,
+            "posting_date": row.posting_date,
+            "posting_time": row.posting_time,
+            "purpose": row.purpose,
+            "item_code": row.item_code,
+            "item_name": target.item_name,
+            "batch_no": row.batch_no or "",
+            "batch_disabled": cint(row.batch_disabled),
+            "valuation_rule": target.valuation_rule,
+            "balance_qty": flt(target.balance_qty),
+            "transfer_qty": flt(row.transfer_qty),
+            "old_basic_rate": flt(row.basic_rate),
+            "old_valuation_rate": current_rate,
+            "old_amount": current_amount,
+            "target_rate": target_rate,
+            "target_amount": expected_amount,
+            "s_warehouse": row.s_warehouse,
+            "t_warehouse": row.t_warehouse,
+        }
+        plan["rows_to_update"].append(row_plan)
+        plan["rows_by_stock_entry"].setdefault(row.parent, []).append(row_plan)
+        stock_entry_names.add(row.parent)
+
+        if row.batch_no and cint(row.batch_disabled):
+            disabled_batches.add(row.batch_no)
+
+    plan["stock_entries"] = _sort_stock_entries_for_rebuild(stock_entry_names)
+    plan["disabled_batches"] = sorted(disabled_batches)
+    plan["missing_batch_rows_for_rebuild"] = _get_missing_batch_rows_for_rebuild(
+        plan["stock_entries"]
+    )
+    plan["serial_numbers_for_rebuild"] = _get_serial_numbers_for_rebuild(
+        plan["stock_entries"]
+    )
+    plan["item_master_updates"] = []
+    return plan
+
+
+def _get_scrap_devaluation_stock_entry_rows(
+    target_item_codes,
+    warehouse,
+    company,
+    as_of_date,
+    as_of_time,
+    stock_entry_from_date,
+):
+    if not target_item_codes:
+        return []
+
+    item_codes_sql = ", ".join(
+        [frappe.db.escape(item_code) for item_code in target_item_codes]
+    )
+    from_date_condition = ""
+    params = {
+        "company": company,
+        "warehouse": warehouse,
+        "as_of_date": as_of_date,
+        "as_of_time": as_of_time,
+    }
+    if stock_entry_from_date:
+        from_date_condition = "AND se.posting_date >= %(stock_entry_from_date)s"
+        params["stock_entry_from_date"] = stock_entry_from_date
+
+    return frappe.db.sql(
+        """
+        SELECT
+            sed.name,
+            sed.parent,
+            sed.item_code,
+            IFNULL(sed.batch_no, '') AS batch_no,
+            IFNULL(batch.disabled, 0) AS batch_disabled,
+            sed.s_warehouse,
+            sed.t_warehouse,
+            sed.transfer_qty,
+            sed.basic_rate,
+            sed.basic_amount,
+            sed.additional_cost,
+            sed.amount,
+            sed.valuation_rate,
+            se.purpose,
+            se.posting_date,
+            se.posting_time
+        FROM `tabStock Entry Detail` sed
+        INNER JOIN `tabStock Entry` se
+            ON se.name = sed.parent
+        LEFT JOIN `tabBatch` batch
+            ON batch.name = sed.batch_no
+        WHERE se.docstatus = 1
+          AND se.company = %(company)s
+          AND sed.t_warehouse = %(warehouse)s
+          AND sed.item_code IN ({item_codes_sql})
+          {from_date_condition}
+          AND TIMESTAMP(se.posting_date, se.posting_time) <= TIMESTAMP(%(as_of_date)s, %(as_of_time)s)
+        ORDER BY
+            se.posting_date,
+            se.posting_time,
+            se.creation,
+            se.name,
+            sed.idx
+        """.format(
+            item_codes_sql=item_codes_sql,
+            from_date_condition=from_date_condition,
+        ),
+        params,
+        as_dict=True,
+    )
+
+
+def _sort_stock_entries_for_rebuild(stock_entry_names):
+    if not stock_entry_names:
+        return []
+
+    return [
+        row.name
+        for row in frappe.db.sql(
+            """
+            SELECT name
+            FROM `tabStock Entry`
+            WHERE name IN ({stock_entries})
+            ORDER BY posting_date, posting_time, creation, name
+            """.format(
+                stock_entries=", ".join(
+                    [frappe.db.escape(name) for name in stock_entry_names]
+                )
+            ),
+            as_dict=True,
+        )
+    ]
+
+
+def _get_item_master_valuation_updates(target_by_item):
+    updates = []
+    for item_code, target in sorted(target_by_item.items()):
+        current_rate = flt(frappe.db.get_value("Item", item_code, "valuation_rate"))
+        target_rate = flt(target["target_rate"])
+        if abs(current_rate - target_rate) <= VALUATION_RATE_TOLERANCE:
+            continue
+
+        updates.append(
+            {
+                "item_code": item_code,
+                "item_name": target["item_name"],
+                "valuation_rule": target.get("valuation_rule"),
+                "old_valuation_rate": current_rate,
+                "target_rate": target_rate,
+            }
+        )
+    return updates
+
+
+def _get_missing_batch_rows_for_rebuild(stock_entry_names):
+    """
+    Return submitted Stock Entry rows that violate today's batch master setting.
+
+    Some old Stock Entry rows were submitted without batch numbers before the
+    Item was made batch-controlled. Reposting such vouchers should preserve the
+    historical shape instead of inventing a batch or changing the Item master.
+    """
+    if not stock_entry_names:
+        return []
+
+    return frappe.db.sql(
+        """
+        SELECT
+            sed.name AS row,
+            sed.parent AS stock_entry,
+            sed.item_code,
+            item.item_name
+        FROM `tabStock Entry Detail` sed
+        INNER JOIN `tabStock Entry` se
+            ON se.name = sed.parent
+        INNER JOIN `tabItem` item
+            ON item.name = sed.item_code
+        WHERE sed.parent IN ({stock_entries})
+          AND se.docstatus = 1
+          AND item.has_batch_no = 1
+          AND IFNULL(sed.batch_no, '') = ''
+          AND (
+              IFNULL(sed.s_warehouse, '') != ''
+              OR IFNULL(sed.t_warehouse, '') != ''
+          )
+        ORDER BY sed.parent, sed.idx
+        """.format(
+            stock_entries=", ".join(
+                [frappe.db.escape(name) for name in stock_entry_names]
+            )
+        ),
+        as_dict=True,
+    )
+
+
+def _get_serial_numbers_for_rebuild(stock_entry_names):
+    if not stock_entry_names:
+        return []
+
+    rows = frappe.db.sql(
+        """
+        SELECT sed.serial_no
+        FROM `tabStock Entry Detail` sed
+        INNER JOIN `tabStock Entry` se
+            ON se.name = sed.parent
+        WHERE sed.parent IN ({stock_entries})
+          AND se.docstatus = 1
+          AND IFNULL(sed.serial_no, '') != ''
+        ORDER BY sed.parent, sed.idx
+        """.format(
+            stock_entries=", ".join(
+                [frappe.db.escape(name) for name in stock_entry_names]
+            )
+        ),
+        as_dict=True,
+    )
+
+    serial_nos = set()
+    for row in rows:
+        for serial_no in _split_serial_numbers(row.serial_no):
+            serial_nos.add(serial_no)
+
+    return sorted(serial_nos)
+
+
+def _apply_scrap_devaluation_plan(
+    plan, summary, log_id, allow_negative_stock, update_item_master
+):
+    existing_allow_negative_stock = frappe.db.get_value(
+        "Stock Settings", None, "allow_negative_stock"
+    )
+    restore_stock_ledger_validation = None
+
+    try:
+        frappe.db.sql("set innodb_lock_wait_timeout = 300")
+        if allow_negative_stock:
+            frappe.db.set_value(
+                "Stock Settings",
+                None,
+                "allow_negative_stock",
+                1,
+                update_modified=False,
+            )
+
+        if plan["disabled_batches"]:
+            _set_batch_disabled_state(plan["disabled_batches"], 0)
+
+        restore_stock_ledger_validation = _allow_historical_missing_batch_rows(
+            plan["missing_batch_rows_for_rebuild"]
+        )
+
+        for stock_entry_name in plan["stock_entries"]:
+            stock_entry = frappe.get_doc("Stock Entry", stock_entry_name)
+            _apply_scrap_valuation_rows_to_stock_entry(
+                stock_entry=stock_entry,
+                row_plans=plan["rows_by_stock_entry"].get(stock_entry_name, []),
+            )
+            stock_entry.modified = frappe.utils.now()
+            stock_entry.modified_by = frappe.session.user
+            stock_entry.db_update()
+            for row in stock_entry.items:
+                row.db_update()
+
+        if update_item_master:
+            for item_update in plan["item_master_updates"]:
+                frappe.db.set_value(
+                    "Item",
+                    item_update["item_code"],
+                    "valuation_rate",
+                    item_update["target_rate"],
+                    update_modified=True,
+                )
+                summary["updated_items"].append(item_update["item_code"])
+
+        for stock_entry_name in plan["stock_entries"]:
+            stock_entry = frappe.get_doc("Stock Entry", stock_entry_name)
+            serial_state = _seed_serial_numbers_for_stock_entry_rebuild(stock_entry)
+            try:
+                ledger_result = _rebuild_stock_entry_ledgers(
+                    stock_entry,
+                    allow_negative_stock=allow_negative_stock,
+                )
+            finally:
+                _restore_serial_numbers_after_stock_entry_rebuild(serial_state)
+
+            summary["rebuilt_stock_entries"].append(
+                {
+                    "stock_entry": stock_entry_name,
+                    "ledger_result": ledger_result,
+                }
+            )
+            frappe.clear_document_cache("Stock Entry", stock_entry_name)
+            update_log_entry(
+                log_id,
+                "[{0}] Rebuilt Stock Entry {1}.<br>".format(
+                    now_datetime(), stock_entry_name
+                ),
+            )
+
+        if restore_stock_ledger_validation:
+            restore_stock_ledger_validation()
+            restore_stock_ledger_validation = None
+
+        if plan["disabled_batches"]:
+            _set_batch_disabled_state(plan["disabled_batches"], 1)
+
+        if allow_negative_stock:
+            frappe.db.set_value(
+                "Stock Settings",
+                None,
+                "allow_negative_stock",
+                existing_allow_negative_stock,
+                update_modified=False,
+            )
+
+        frappe.db.commit()
+        update_log_entry(
+            log_id,
+            "[{0}] Direct scrap devaluation repair completed.<br>".format(
+                now_datetime()
+            ),
+        )
+    except Exception:
+        if restore_stock_ledger_validation:
+            restore_stock_ledger_validation()
+        frappe.db.rollback()
+        if plan["disabled_batches"]:
+            _set_batch_disabled_state(plan["disabled_batches"], 1)
+        if allow_negative_stock:
+            frappe.db.set_value(
+                "Stock Settings",
+                None,
+                "allow_negative_stock",
+                existing_allow_negative_stock,
+                update_modified=False,
+            )
+        frappe.db.commit()
+        raise
+
+
+SERIAL_NO_REBUILD_STATE_FIELDS = (
+    "item_code",
+    "warehouse",
+    "batch_no",
+    "location",
+    "company",
+    "supplier",
+    "supplier_name",
+    "sales_order",
+    "purchase_document_type",
+    "purchase_document_no",
+    "purchase_date",
+    "purchase_time",
+    "purchase_rate",
+    "delivery_document_type",
+    "delivery_document_no",
+    "delivery_date",
+    "delivery_time",
+    "customer",
+    "customer_name",
+    "sales_invoice",
+    "warranty_expiry_date",
+    "maintenance_status",
+)
+
+
+def _seed_serial_numbers_for_stock_entry_rebuild(stock_entry):
+    from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
+
+    serial_state = {}
+    for row in stock_entry.items:
+        if not row.serial_no:
+            continue
+
+        seed_warehouse = row.s_warehouse or None
+        for serial_no in get_serial_nos(row.serial_no):
+            if not frappe.db.exists("Serial No", serial_no):
+                continue
+
+            if serial_no not in serial_state:
+                serial_state[serial_no] = frappe.db.get_value(
+                    "Serial No",
+                    serial_no,
+                    SERIAL_NO_REBUILD_STATE_FIELDS,
+                    as_dict=True,
+                )
+
+            frappe.db.set_value(
+                "Serial No",
+                serial_no,
+                "item_code",
+                row.item_code,
+                update_modified=False,
+            )
+            frappe.db.set_value(
+                "Serial No",
+                serial_no,
+                "warehouse",
+                seed_warehouse,
+                update_modified=False,
+            )
+            frappe.db.set_value(
+                "Serial No",
+                serial_no,
+                "batch_no",
+                row.batch_no,
+                update_modified=False,
+            )
+            frappe.db.set_value(
+                "Serial No",
+                serial_no,
+                "company",
+                stock_entry.company,
+                update_modified=False,
+            )
+            frappe.clear_document_cache("Serial No", serial_no)
+
+    return serial_state
+
+
+def _restore_serial_numbers_after_stock_entry_rebuild(serial_state):
+    for serial_no, state in (serial_state or {}).items():
+        if not state:
+            continue
+
+        for fieldname in SERIAL_NO_REBUILD_STATE_FIELDS:
+            frappe.db.set_value(
+                "Serial No",
+                serial_no,
+                fieldname,
+                state.get(fieldname),
+                update_modified=False,
+            )
+        frappe.clear_document_cache("Serial No", serial_no)
+
+
+def _split_serial_numbers(serial_no_value):
+    return [
+        serial_no.strip()
+        for serial_no in cstr(serial_no_value).replace(",", "\n").splitlines()
+        if serial_no.strip()
+    ]
+
+
+def _allow_historical_missing_batch_rows(missing_batch_rows):
+    allowed_rows = {row.row for row in (missing_batch_rows or [])}
+    if not allowed_rows:
+        return None
+
+    from erpnext.stock.doctype.stock_ledger_entry.stock_ledger_entry import (
+        StockLedgerEntry,
+    )
+
+    original_validate_item = StockLedgerEntry.validate_item
+
+    def validate_item_allowing_historical_missing_batch(self):
+        try:
+            return original_validate_item(self)
+        except frappe.ValidationError as exc:
+            if (
+                self.voucher_type == "Stock Entry"
+                and self.voucher_detail_no in allowed_rows
+                and not cstr(self.batch_no).strip()
+                and "Batch number is mandatory" in cstr(exc)
+            ):
+                return
+            raise
+
+    StockLedgerEntry.validate_item = validate_item_allowing_historical_missing_batch
+
+    def restore():
+        StockLedgerEntry.validate_item = original_validate_item
+
+    return restore
+
+
+def _apply_scrap_valuation_rows_to_stock_entry(stock_entry, row_plans):
+    row_plan_by_name = {row_plan["row"]: row_plan for row_plan in row_plans}
+    if not row_plan_by_name:
+        return
+
+    for row in stock_entry.items:
+        row_plan = row_plan_by_name.get(row.name)
+        if not row_plan:
+            continue
+
+        _set_stock_entry_detail_target_valuation(
+            row,
+            row_plan["target_rate"],
+        )
+
+    _rebalance_stock_entry_finished_goods_if_possible(stock_entry, row_plan_by_name)
+    _recalculate_stock_entry_value_totals(stock_entry)
+
+
+def _set_stock_entry_detail_target_valuation(row, target_rate):
+    transfer_qty = flt(row.transfer_qty)
+    if not transfer_qty:
+        frappe.throw("Stock Entry Detail {0} has zero transfer_qty.".format(row.name))
+
+    amount_precision = _get_doc_precision(row, "amount")
+    basic_amount_precision = _get_doc_precision(row, "basic_amount")
+    basic_rate_precision = _get_doc_precision(row, "basic_rate")
+    valuation_rate_precision = _get_doc_precision(row, "valuation_rate")
+
+    amount = flt(transfer_qty * flt(target_rate), amount_precision)
+    basic_amount = flt(amount - flt(row.additional_cost), basic_amount_precision)
+    basic_rate = flt(basic_amount / transfer_qty, basic_rate_precision)
+    if basic_rate < -VALUATION_RATE_TOLERANCE:
+        frappe.throw(
+            "Stock Entry Detail {0} cannot be set to valuation rate {1} "
+            "because additional cost is higher than the target amount.".format(
+                row.name, target_rate
+            )
+        )
+
+    row.basic_amount = basic_amount if abs(basic_amount) > VALUATION_RATE_TOLERANCE else 0
+    row.basic_rate = basic_rate if abs(basic_rate) > VALUATION_RATE_TOLERANCE else 0
+    row.amount = amount
+    row.valuation_rate = flt(target_rate, valuation_rate_precision)
+
+
+def _rebalance_stock_entry_finished_goods_if_possible(stock_entry, changed_rows):
+    if stock_entry.purpose not in ("Manufacture", "Repack"):
+        return
+
+    changed_row_names = set(changed_rows)
+    finished_good_rows = [
+        row
+        for row in stock_entry.items
+        if row.t_warehouse and row.name not in changed_row_names
+    ]
+    if len(finished_good_rows) != 1:
+        return
+
+    finished_good = finished_good_rows[0]
+    outgoing_amount = sum(
+        flt(row.amount)
+        for row in stock_entry.items
+        if row.s_warehouse and not row.t_warehouse
+    )
+    other_incoming_amount = sum(
+        flt(row.amount)
+        for row in stock_entry.items
+        if row.t_warehouse and row.name != finished_good.name
+    )
+    target_amount = flt(outgoing_amount - other_incoming_amount)
+    if target_amount < -VALUATION_RATE_TOLERANCE:
+        return
+
+    _set_stock_entry_detail_target_amount(finished_good, max(target_amount, 0.0))
+
+
+def _set_stock_entry_detail_target_amount(row, target_amount):
+    transfer_qty = flt(row.transfer_qty)
+    if not transfer_qty:
+        return
+
+    amount_precision = _get_doc_precision(row, "amount")
+    basic_amount_precision = _get_doc_precision(row, "basic_amount")
+    basic_rate_precision = _get_doc_precision(row, "basic_rate")
+    valuation_rate_precision = _get_doc_precision(row, "valuation_rate")
+
+    row.amount = flt(target_amount, amount_precision)
+    row.basic_amount = flt(
+        flt(row.amount) - flt(row.additional_cost),
+        basic_amount_precision,
+    )
+    row.basic_rate = flt(row.basic_amount / transfer_qty, basic_rate_precision)
+    row.valuation_rate = flt(row.amount / transfer_qty, valuation_rate_precision)
+
+
+def _recalculate_stock_entry_value_totals(stock_entry):
+    stock_entry.total_incoming_value = sum(
+        flt(row.amount) for row in stock_entry.items if row.t_warehouse
+    )
+    stock_entry.total_outgoing_value = sum(
+        flt(row.amount) for row in stock_entry.items if row.s_warehouse
+    )
+    stock_entry.value_difference = (
+        flt(stock_entry.total_incoming_value) - flt(stock_entry.total_outgoing_value)
+    )
+
+    stock_entry.total_amount = None
+    if stock_entry.purpose not in ("Manufacture", "Repack"):
+        stock_entry.total_amount = sum(flt(row.amount) for row in stock_entry.items)
+
+
+def _get_doc_precision(doc, fieldname, default=6):
+    try:
+        return doc.precision(fieldname)
+    except Exception:
+        return cint(frappe.db.get_default("float_precision")) or default
 
 
 def _run_batch_valuation_reconciliation(
