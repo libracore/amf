@@ -1740,6 +1740,7 @@
    "_comments": null,
    "_liked_by": null,
    "_user_tags": null,
+   "allow_on_submit": 1,
    "creation": "2026-03-31 00:00:00.000000",
    "default_value": null,
    "doc_type": "Delivery Note",
