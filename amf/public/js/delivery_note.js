@@ -98,8 +98,10 @@ async function sync_delivery_note_customs_identifiers(frm) {
     }
 
     frm.__delivery_note_customs_context = customsContext;
-    set_delivery_note_doc_value(frm, "tax_id", customsContext.tax_id || "");
-    set_delivery_note_doc_value(frm, "ein", customsContext.ein || "");
+    if (Number(frm.doc.docstatus || 0) !== 1) {
+        set_delivery_note_doc_value(frm, "tax_id", customsContext.tax_id || "");
+        set_delivery_note_doc_value(frm, "ein", customsContext.ein || "");
+    }
     apply_delivery_note_customs_visibility(frm, customsContext);
 }
 
