@@ -92,6 +92,7 @@ doc_events = {
         "before_save": [
             "amf.amf.utils.delivery_note_api.before_save_dn",
         ],
+        "before_update_after_submit": "amf.amf.utils.delivery_note_api.preserve_submitted_customs_identifiers",
         "after_insert": "amf.amf.utils.delivery_note_api.auto_gen_qa_inspection",
         "before_submit": "amf.amf.utils.delivery_note_api.check_qa_inspections_status",
         "on_submit": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",

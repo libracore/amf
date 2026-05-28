@@ -2,6 +2,7 @@ import frappe
 from amf.amf.utils.qr_code_generator import generate_qr_code
 import os
 from frappe.desk.form.assign_to import add as assign_to_add
+from frappe.utils import cint
 from erpnext.stock.doctype.quality_inspection_template.quality_inspection_template \
 	import get_template_details
 
@@ -393,12 +394,39 @@ def build_delivery_note_customs_context(customer=None, shipping_address_name=Non
     }
 
 
+CUSTOMS_IDENTIFIER_FIELDS = ("tax_id", "ein")
+
+
+def get_delivery_note_value_before_save(doc, fieldname):
+    previous_doc = doc.get_doc_before_save()
+    if previous_doc:
+        return previous_doc.get(fieldname)
+
+    if doc.get("name"):
+        return frappe.db.get_value(doc.doctype, doc.name, fieldname)
+
+    return doc.get(fieldname)
+
+
+def preserve_submitted_customs_identifiers(doc, method=None):
+    if cint(doc.get("docstatus")) != 1:
+        return
+
+    for fieldname in CUSTOMS_IDENTIFIER_FIELDS:
+        if doc.meta.has_field(fieldname):
+            doc.set(fieldname, get_delivery_note_value_before_save(doc, fieldname))
+
+
 def apply_delivery_note_customs_identifiers(doc):
     customs_context = build_delivery_note_customs_context(
         customer=doc.get("customer"),
         shipping_address_name=doc.get("shipping_address_name"),
         customer_address=doc.get("customer_address"),
     )
+
+    if cint(doc.get("docstatus")) == 1:
+        preserve_submitted_customs_identifiers(doc)
+        return customs_context
 
     doc.tax_id = customs_context.get("tax_id") or ""
 

@@ -7,7 +7,7 @@ a Landed Cost Voucher prefilled with the net transport cost.
 */
 
 frappe.ui.form.on("Purchase Invoice", {
-    after_save: function(frm) {
+    before_submit: function(frm) {
         amf_show_transport_invoice_lcv_reminder(frm);
     },
 });
