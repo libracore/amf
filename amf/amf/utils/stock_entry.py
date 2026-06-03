@@ -3,7 +3,7 @@ from erpnext.stock.doctype.stock_entry.stock_entry import StockEntry
 from erpnext.stock.utils import get_incoming_rate
 import frappe
 from frappe import _, _dict
-from frappe.utils import flt
+from frappe.utils import flt, cint
 from amf.amf.utils.batch_naming import make_internal_production_batch_id
 
 def batch_to_stock_entry(doc, method=None):
@@ -254,13 +254,14 @@ def stock_entry_before_save(doc, method):
     if doc.update_quantity_items_method: # or doc.update_rate_items_method:
         # Retrieve log messages and display to user
         try:
-            log = frappe.get_doc("Log Entry", log_id)
-            # Show a popup with the log details
-            frappe.msgprint(
-                _(log.message),
-                title=_("Changes Applied on Save"),
-                indicator="green"
-            )
+            if log_id:
+                log = frappe.get_doc("Log Entry", log_id)
+                # Show a popup with the log details
+                frappe.msgprint(
+                    _(log.message),
+                    title=_("Changes Applied on Save"),
+                    indicator="green"
+                )
         except Exception as e:
             frappe.log_error(message=str(e), title="Error displaying changes popup")
     
@@ -299,8 +300,9 @@ def stock_entry_before_submit(doc, method):
             frappe.log_error(err_msg, f"stock_entry_before_submit {doc.name}<br>")
             raise
         
-    if not doc.assign_batch_method:
-        update_log_entry(log_id, f"[{now_datetime()}] Before Submit: assign batch flag not set<br>")
+    should_assign_batches = doc.assign_batch_method or _has_auto_batch_rows(doc)
+    if not should_assign_batches:
+        update_log_entry(log_id, f"[{now_datetime()}] Before Submit: assign batch flag not set and no auto-batch rows found<br>")
     else:
         try:
             update_log_entry(log_id, f"[{now_datetime()}] -- Batch assignment: {len(doc.items)} rows --<br>")
@@ -312,16 +314,17 @@ def stock_entry_before_submit(doc, method):
             frappe.log_error(err_msg, f"stock_entry_before_submit {doc.name}<br>")
             raise
         
-    if doc.handle_manufacture_batch_method or doc.assign_batch_method:
+    if doc.handle_manufacture_batch_method or should_assign_batches:
         # Retrieve log messages and display to user
         try:
-            log = frappe.get_doc("Log Entry", log_id)
-            # Show a popup with the log details
-            frappe.msgprint(
-                _(log.message),
-                title=_("Changes Applied on Submit"),
-                indicator="green"
-            )
+            if log_id:
+                log = frappe.get_doc("Log Entry", log_id)
+                # Show a popup with the log details
+                frappe.msgprint(
+                    _(log.message),
+                    title=_("Changes Applied on Submit"),
+                    indicator="green"
+                )
         except Exception as e:
             frappe.log_error(message=str(e), title="Error displaying changes popup<br>")
 
@@ -443,6 +446,23 @@ def _assign_batches(doc, log_id):
         _assign_batch_for_row(row, doc, log_id, batch_map)
 
 
+def _has_auto_batch_rows(doc):
+    for row in doc.items or []:
+        if _row_needs_auto_batch(row):
+            return True
+    return False
+
+
+def _row_needs_auto_batch(row):
+    return (
+        row.get("item_code")
+        and not row.get("batch_no")
+        and cint(row.get("auto_batch_no_generation")) == 1
+        and row.get("t_warehouse")
+        and not row.get("s_warehouse")
+    )
+
+
 def _assign_batch_for_row(row, doc, log_id, batch_map=None):
     """
     Create or reuse batch for a single row.
@@ -457,8 +477,11 @@ def _assign_batch_for_row(row, doc, log_id, batch_map=None):
 
     # Determine if batch needed
     has_batch = batch_map.get(item) if batch_map else frappe.db.get_value("Item", item, "has_batch_no") or 0
-    if has_batch != 1 or row.auto_batch_no_generation != 1:
+    if has_batch != 1 or cint(row.auto_batch_no_generation) != 1:
         update_log_entry(log_id, f"[{now_datetime()}] Row {item}: batch not required or auto-gen off<br>")
+        return
+    if not row.t_warehouse or row.s_warehouse:
+        update_log_entry(log_id, f"[{now_datetime()}] Row {item}: auto batch skipped because row is not incoming-only<br>")
         return
 
     batch_id = make_internal_production_batch_id()
@@ -467,7 +490,9 @@ def _assign_batch_for_row(row, doc, log_id, batch_map=None):
         batch = frappe.get_doc({
             "doctype": "Batch",
             "item": item,
-            "batch_id": batch_id
+            "batch_id": batch_id,
+            "reference_doctype": doc.doctype,
+            "reference_name": doc.name
         }).insert(ignore_permissions=True)
         row.batch_no = batch.name
         update_log_entry(log_id, f"[{now_datetime()}] Row {item}: created batch {batch.name}<br>")
@@ -550,7 +575,10 @@ def _get_or_create_log(doc):
     """
     Retrieve existing Log Entry for this Stock Entry or create a new one.
     """
-    reference = f"{doc.doctype}: {doc.name}"
+    if getattr(doc, "flags", None) and doc.flags.get("amf_log_id"):
+        return doc.flags.amf_log_id
+
+    reference = "{0}: {1}".format(doc.doctype, doc.get("name") or "Unsaved")
     existing = frappe.get_all(
         "Log Entry",
         filters={"reference_name": reference},
@@ -559,35 +587,50 @@ def _get_or_create_log(doc):
         fields=["name"]
     )
     if existing:
+        if getattr(doc, "flags", None):
+            doc.flags.amf_log_id = existing[0].name
         return existing[0].name
     # not found → create
-    msg = f"[{now_datetime()}] {doc.doctype} {doc.name} initiated"
-    return create_log_entry(msg, doc.doctype, reference)
+    msg = "[{0}] {1} {2} initiated".format(
+        now_datetime(),
+        doc.doctype,
+        doc.get("name") or "Unsaved",
+    )
+    log_id = create_log_entry(msg, doc.doctype, reference)
+    if log_id and getattr(doc, "flags", None):
+        doc.flags.amf_log_id = log_id
+    return log_id
 
 def create_log_entry(message, category, name):
     """
     Create a new Log Entry and return its ID.
     """
-    # log = frappe.get_doc({
-    #     "doctype": "Log Entry",
-    #     "timestamp": datetime.datetime.now(),
-    #     "category": category,
-    #     "message": message,
-    #     "reference_name": name,
-    # }).insert(ignore_permissions=True)
-    # frappe.db.commit()
-    # return log.name
+    try:
+        log = frappe.get_doc({
+            "doctype": "Log Entry",
+            "timestamp": now_datetime(),
+            "category": category,
+            "message": message or "",
+            "reference_name": name,
+        }).insert(ignore_permissions=True)
+        return log.name
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Unable to create Stock Entry Log Entry")
+        return None
 
 
 def update_log_entry(log_id, message):
     """
     Append a message to an existing Log Entry.
     """
-    # log = custom_try(frappe.get_doc, "Log Entry", log_id)
-    # if not log:
-    #     return
-    # log.message = (log.message or "") + "\n" + (message or "")
-    # custom_try(log.save, ignore_permissions=True)
+    if not log_id:
+        return
+    try:
+        log = frappe.get_doc("Log Entry", log_id)
+        log.message = (log.message or "") + "\n" + (message or "")
+        log.save(ignore_permissions=True)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Unable to update Stock Entry Log Entry")
 
 
 def custom_try(func, *args, **kwargs):

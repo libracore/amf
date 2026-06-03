@@ -56,28 +56,40 @@ frappe.ui.form.on("Stock Entry", {
 
 
     before_submit: async function (frm) {
-        if (frm.doc.purpose === 'Manufacture') {
-            let d = frm.doc.items[frm.doc.items.length - 1];
-            let item = await frappe.db.get_value('Item', d.item_code, 'has_batch_no');
-
-            if (item.message.has_batch_no) {
-                let batch_id = await getInternalProductionBatchId();
-
-                let new_batch = await frappe.call({
-                    method: "frappe.client.insert",
-                    args: {
-                        doc: {
-                            doctype: "Batch",
-                            item: d.item_code,
-                            batch_id: batch_id,
-                        }
-                    }
-                });
-                d.batch_no = new_batch.message.name;
-            }
+        for (const row of frm.doc.items || []) {
+            await createBatchForAutoRow(frm, row);
         }
     }
 });
+
+async function createBatchForAutoRow(frm, row) {
+    if (!row.item_code || row.batch_no || Number(row.auto_batch_no_generation) !== 1) {
+        return;
+    }
+    if (!row.t_warehouse || row.s_warehouse) {
+        return;
+    }
+
+    let item = await frappe.db.get_value("Item", row.item_code, "has_batch_no");
+    if (!item.message || item.message.has_batch_no !== 1) {
+        return;
+    }
+
+    let batch_id = await getInternalProductionBatchId();
+    let new_batch = await frappe.call({
+        method: "frappe.client.insert",
+        args: {
+            doc: {
+                doctype: "Batch",
+                item: row.item_code,
+                batch_id: batch_id,
+                reference_doctype: frm.doc.doctype,
+                reference_name: frm.doc.name,
+            }
+        }
+    });
+    row.batch_no = new_batch.message.name;
+}
 
 async function getInternalProductionBatchId() {
     const response = await frappe.call({

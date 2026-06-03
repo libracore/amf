@@ -42,6 +42,16 @@ def sync_supplier_batch_custom_fields():
                     "in_standard_filter": 1,
                 }
             ],
+            "Stock Entry Detail": [
+                {
+                    "fieldname": "auto_batch_no_generation",
+                    "fieldtype": "Check",
+                    "label": "Auto Batch No Generation",
+                    "insert_after": "batch_no",
+                    "default": "1",
+                    "columns": 1,
+                }
+            ],
         },
         update=True,
     )
@@ -224,6 +234,60 @@ def patch_active_batch_custom_scripts():
                 ),
             ]
             for old_text, new_text in purchase_receipt_replacements:
+                if old_text in script and new_text not in script:
+                    script = script.replace(old_text, new_text)
+                    changed = True
+
+        if script_name == "Stock Entry-Client":
+            stock_entry_replacements = [
+                (
+                    "row.auto_batch_no_generation !== 1",
+                    "Number(row.auto_batch_no_generation) !== 1",
+                ),
+                (
+                    "    if (row.auto_batch_no_generation !== 1) {\n"
+                    "        return;\n"
+                    "    }",
+                    "    if (row.auto_batch_no_generation !== 1) {\n"
+                    "        return;\n"
+                    "    }\n"
+                    "    if (!row.t_warehouse || row.s_warehouse) {\n"
+                    "        return;\n"
+                    "    }",
+                ),
+                (
+                    "    if (Number(row.auto_batch_no_generation) !== 1) {\n"
+                    "        return;\n"
+                    "    }",
+                    "    if (Number(row.auto_batch_no_generation) !== 1) {\n"
+                    "        return;\n"
+                    "    }\n"
+                    "    if (!row.t_warehouse || row.s_warehouse) {\n"
+                    "        return;\n"
+                    "    }",
+                ),
+                (
+                    "const newBatch = await createBatchNo(row.item_code, batchId);",
+                    "const newBatch = await createBatchNo(row.item_code, batchId, frm.doc.doctype, frm.doc.name);",
+                ),
+                (
+                    "async function createBatchNo(item_code, batch_id) {",
+                    "async function createBatchNo(item_code, batch_id, reference_doctype, reference_name) {",
+                ),
+                (
+                    "                doctype: \"Batch\",\n"
+                    "                item: item_code,\n"
+                    "                batch_id: batch_id,\n"
+                    "            }",
+                    "                doctype: \"Batch\",\n"
+                    "                item: item_code,\n"
+                    "                batch_id: batch_id,\n"
+                    "                reference_doctype: reference_doctype || \"Stock Entry\",\n"
+                    "                reference_name: reference_name || \"\",\n"
+                    "            }",
+                ),
+            ]
+            for old_text, new_text in stock_entry_replacements:
                 if old_text in script and new_text not in script:
                     script = script.replace(old_text, new_text)
                     changed = True
