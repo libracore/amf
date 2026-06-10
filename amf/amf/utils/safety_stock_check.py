@@ -360,10 +360,12 @@
 import statistics
 import frappe
 import math
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from statistics import mean, stdev
+from typing import Optional
 import numpy as np
 from frappe.core.doctype.communication.email import make
+from frappe.utils import cstr, get_datetime
 from amf.amf.utils.stock_entry import _get_or_create_log, update_log_entry
 from amf.amf.utils.stock_entry import now_datetime
 
@@ -372,6 +374,13 @@ SERVICE_LEVEL_Z = 1.64  # Z-score for 95% service level
 DEFAULT_LEAD_TIME = 15  # days
 DEFAULT_STD_DEV_LEAD_TIME = 15  # days
 EXCLUDED_WAREHOUSES = ["AMF_OLD", "Scrap - AMF21", "R&D - AMF21"]
+LEAD_TIME_SAMPLE_LIMIT = 50
+MANUFACTURED_LEAD_TIME_HIGH_CONFIDENCE_SOURCES = (
+    "planning_stock_entry",
+    "planning_work_order",
+    "timer",
+    "work_order_actual",
+)
 
 doc = frappe._dict({
         "doctype": "Bin",
@@ -401,6 +410,13 @@ def check_stock_levels(test_mode=0):
         if item.is_purchase_item:
             # update_log_entry(log_id, f"[{now_datetime()}] Calculating lead time for purchase item")
             avg_lt, std_lt = _calc_lead_time(item.name)
+            if avg_lt is None:
+                avg_lt = float(item.lead_time_days or DEFAULT_LEAD_TIME)
+                std_lt = DEFAULT_STD_DEV_LEAD_TIME
+                update_log_entry(
+                    log_id,
+                    f"[{now_datetime()}] No linked PO/PREC lead-time history; using Item/default lead time={avg_lt}"
+                )
             update_log_entry(log_id, f"[{now_datetime()}] Lead time stats: avg_lt={avg_lt}, std_lt={std_lt}")
         else:
             update_log_entry(log_id, f"[{now_datetime()}] Using default lead time for non-purchase item")
@@ -445,13 +461,111 @@ def check_stock_levels(test_mode=0):
         update_log_entry(log_id, f"[{now_datetime()}] Notifications sent")
 
 
+@frappe.whitelist()
+def update_purchase_item_lead_times(dry_run=0, item_code=None):
+    """
+    Refresh Item.lead_time_days for purchase items from linked PO/PREC history only.
+
+    This intentionally does not recalculate safety stock, reorder levels, reorder
+    flags, or notifications. Items without reliable linked Purchase Order to
+    Purchase Receipt history are left unchanged.
+    """
+    dry_run = cstr(dry_run).lower() in ("1", "true", "yes")
+    filters = {
+        "is_purchase_item": 1,
+        "disabled": 0,
+    }
+    if item_code:
+        filters["name"] = item_code
+
+    items = frappe.get_all("Item", filters=filters, fields=["name", "lead_time_days"])
+    result = {
+        "dry_run": dry_run,
+        "items_checked": len(items),
+        "items_with_history": 0,
+        "items_updated": 0,
+        "items_unchanged": 0,
+        "items_without_history": 0,
+        "changes": [],
+    }
+
+    for item in items:
+        update_result = _refresh_purchase_item_lead_time(item.name, dry_run=dry_run)
+        _merge_lead_time_update_result(result, update_result)
+
+    if not dry_run:
+        frappe.db.commit()
+
+    return result
+
+
+@frappe.whitelist()
+def update_manufactured_item_lead_times(dry_run=0, item_code=None):
+    """
+    Refresh Item.lead_time_days for manufactured items from production history only.
+
+    The finish event is the submitted Manufacture Stock Entry. The start event is
+    selected from the best available operational evidence: Planning, Timer
+    Production, Work Order actual/custom fields, then Work Order planned/creation
+    fallback. Safety stock, reorder levels, reorder flags, and notifications are
+    not recalculated here.
+    """
+    dry_run = cstr(dry_run).lower() in ("1", "true", "yes")
+    filters = {
+        "is_stock_item": 1,
+        "is_purchase_item": 0,
+        "disabled": 0,
+    }
+    if item_code:
+        filters["name"] = item_code
+
+    items = frappe.get_all("Item", filters=filters, fields=["name", "lead_time_days"])
+    result = {
+        "dry_run": dry_run,
+        "items_checked": len(items),
+        "items_with_history": 0,
+        "items_updated": 0,
+        "items_unchanged": 0,
+        "items_without_history": 0,
+        "items_low_confidence_only": 0,
+        "source_counts": {},
+        "changes": [],
+    }
+
+    for item in items:
+        update_result = _refresh_manufactured_item_lead_time(item.name, dry_run=dry_run)
+        _merge_lead_time_update_result(result, update_result)
+
+    if not dry_run:
+        frappe.db.commit()
+
+    return result
+
+
+def update_purchase_item_lead_times_from_receipt(doc, method=None):
+    """Refresh lead time for purchase items touched by a submitted Purchase Receipt."""
+    item_codes = sorted({row.item_code for row in doc.get("items", []) if row.item_code})
+    for item_code in item_codes:
+        _refresh_purchase_item_lead_time(item_code, dry_run=False)
+
+
+def update_manufactured_item_lead_time_from_stock_entry(doc, method=None):
+    """Refresh lead time for the produced item when a Manufacture Stock Entry is submitted."""
+    if doc.purpose != "Manufacture" or not doc.work_order:
+        return
+
+    item_code = frappe.db.get_value("Work Order", doc.work_order, "production_item")
+    if item_code:
+        _refresh_manufactured_item_lead_time(item_code, dry_run=False)
+
+
 # --- Data Fetching Helpers ---
 def _get_items(test_mode: bool):
     """
     Fetch stock items, excluding those with 'GX' in their name.
     In test mode, only return the specific test item.
     """
-    fields = ["name", "item_name", "is_purchase_item"]
+    fields = ["name", "item_name", "is_purchase_item", "lead_time_days"]
     
     # 1. Simple equals filters
     base_filters = [
@@ -488,30 +602,357 @@ def _get_items(test_mode: bool):
         fields=fields
     )
 
-def _calc_lead_time(item_code: str) -> tuple[float, float]:
-    """
-    Calculate average and std deviation of positive lead times for an item.
-    Excludes zero or negative durations via SQL filter and Python.
-    """
-    query = (
-        "SELECT DATEDIFF(pr.creation, pri.schedule_date) AS lt "
-        "FROM `tabPurchase Receipt Item` pri "
-        "JOIN `tabPurchase Receipt` pr ON pri.parent=pr.name "
-        "WHERE pri.docstatus=1 "
-        "  AND pri.item_code=%s "
-    )
-    rows = frappe.db.sql(query, item_code, as_dict=True)
-    # Exclude any null or non-positive values
-    lead_times = [r.lt for r in rows if r.lt is not None]
-    update_log_entry(log_id, f"[{now_datetime()}] Lead time stats: {lead_times}")
-    return _calculate_lead_time_statistics(lead_times)
 
-def _calculate_lead_time_statistics(lead_times):
+def _refresh_purchase_item_lead_time(item_code, dry_run=False):
+    item = frappe.db.get_value(
+        "Item",
+        item_code,
+        ["name", "lead_time_days", "is_purchase_item", "disabled"],
+        as_dict=True,
+    )
+    if not item or not item.is_purchase_item or item.disabled:
+        return {"status": "skipped"}
+
+    avg_lt, _std_lt = _calc_lead_time(item.name)
+    if avg_lt is None:
+        return {"status": "without_history"}
+
+    return _set_item_lead_time_days(
+        item.name,
+        item.lead_time_days,
+        int(math.ceil(avg_lt or 0)),
+        dry_run=dry_run,
+    )
+
+
+def _refresh_manufactured_item_lead_time(item_code, dry_run=False):
+    item = frappe.db.get_value(
+        "Item",
+        item_code,
+        ["name", "lead_time_days", "is_stock_item", "is_purchase_item", "disabled"],
+        as_dict=True,
+    )
+    if not item or not item.is_stock_item or item.is_purchase_item or item.disabled:
+        return {"status": "skipped"}
+
+    avg_lt, _std_lt, lead_time_context = _calc_manufactured_lead_time(item.name)
+    if avg_lt is None:
+        return {"status": "without_history"}
+
+    result = _set_item_lead_time_days(
+        item.name,
+        item.lead_time_days,
+        int(math.ceil(avg_lt or 0)),
+        dry_run=dry_run,
+    )
+    result.update({
+        "observations": lead_time_context.get("observations"),
+        "low_confidence_only": lead_time_context.get("low_confidence_only"),
+        "source_counts": lead_time_context.get("source_counts", {}),
+    })
+    return result
+
+
+def _set_item_lead_time_days(item_code, old_lead_time_days, new_lead_time_days, dry_run=False):
+    old_lead_time_days = int(old_lead_time_days or 0)
+    if old_lead_time_days == new_lead_time_days:
+        return {"status": "unchanged"}
+
+    if not dry_run:
+        frappe.db.set_value("Item", item_code, "lead_time_days", new_lead_time_days)
+
+    return {
+        "status": "updated",
+        "change": {
+            "item_code": item_code,
+            "old_lead_time_days": old_lead_time_days,
+            "new_lead_time_days": new_lead_time_days,
+        },
+    }
+
+
+def _merge_lead_time_update_result(result, update_result):
+    status = update_result.get("status")
+
+    if status in ("updated", "unchanged"):
+        if update_result.get("low_confidence_only") and "items_low_confidence_only" in result:
+            result["items_low_confidence_only"] += 1
+
+        if "source_counts" in result:
+            for source, count in update_result.get("source_counts", {}).items():
+                result["source_counts"][source] = result["source_counts"].get(source, 0) + count
+
+    if status == "without_history":
+        result["items_without_history"] += 1
+        return
+
+    if status == "unchanged":
+        result["items_with_history"] += 1
+        result["items_unchanged"] += 1
+        return
+
+    if status != "updated":
+        return
+
+    result["items_with_history"] += 1
+    result["items_updated"] += 1
+
+    change = update_result.get("change", {})
+    if update_result.get("observations") is not None:
+        change["observations"] = update_result.get("observations")
+
+    if update_result.get("low_confidence_only") is not None:
+        change["low_confidence_only"] = update_result.get("low_confidence_only")
+
+    result["changes"].append(change)
+
+
+def _calc_lead_time(item_code: str) -> tuple[Optional[float], Optional[float]]:
+    """
+    Calculate actual purchase lead time from submitted PO date to submitted PREC date.
+
+    ERPNext's Item.lead_time_days describes supplier delivery time. For purchased
+    items, the most reliable historical signal is the exact Purchase Order Item
+    row linked to each Purchase Receipt Item row:
+      - PO transaction_date = date the order was placed
+      - PREC posting_date = date the material was received into stock
+    Required By / schedule_date is deliberately not used here because it measures
+    whether the supplier was early or late against a promise, not actual lead time.
+    """
+    rows = _get_purchase_item_lead_time_rows(item_code)
+    if not rows:
+        return None, None
+
+    lead_times = [row.lt for row in rows if row.lt is not None]
+    if not lead_times:
+        return None, None
+
+    weights = [row.received_stock_qty for row in rows if row.lt is not None]
+    update_log_entry(log_id, f"[{now_datetime()}] Lead time observations: {lead_times}")
+    return _calculate_lead_time_statistics(lead_times, weights)
+
+
+def _get_purchase_item_lead_time_rows(item_code: str, limit: int = LEAD_TIME_SAMPLE_LIMIT):
+    return frappe.db.sql(
+        """
+        SELECT
+            DATEDIFF(pr.posting_date, po.transaction_date) AS lt,
+            COALESCE(NULLIF(pri.stock_qty, 0), pri.qty, 1) AS received_stock_qty,
+            po.name AS purchase_order,
+            pr.name AS purchase_receipt,
+            po.transaction_date AS order_date,
+            pr.posting_date AS receipt_date
+        FROM `tabPurchase Receipt Item` pri
+        INNER JOIN `tabPurchase Receipt` pr ON pr.name = pri.parent
+        INNER JOIN `tabPurchase Order Item` poi ON poi.name = pri.purchase_order_item
+        INNER JOIN `tabPurchase Order` po ON po.name = poi.parent
+        INNER JOIN `tabItem` item ON item.name = pri.item_code
+        WHERE pri.item_code = %s
+            AND poi.item_code = pri.item_code
+            AND item.is_purchase_item = 1
+            AND item.disabled = 0
+            AND pri.docstatus = 1
+            AND pr.docstatus = 1
+            AND po.docstatus = 1
+            AND IFNULL(pr.is_return, 0) = 0
+            AND COALESCE(NULLIF(pri.stock_qty, 0), pri.qty, 0) > 0
+            AND po.transaction_date IS NOT NULL
+            AND pr.posting_date IS NOT NULL
+            AND DATEDIFF(pr.posting_date, po.transaction_date) >= 0
+        ORDER BY pr.posting_date DESC, pr.posting_time DESC, pr.name DESC
+        LIMIT %s
+        """,
+        (item_code, limit),
+        as_dict=True,
+    )
+
+
+def _calc_manufactured_lead_time(item_code: str):
+    rows = _get_manufactured_item_lead_time_rows(item_code)
+    observations = []
+
+    for row in rows:
+        finish_at = _combine_date_and_time(row.posting_date, row.posting_time)
+        if not finish_at:
+            continue
+
+        start_at, source = _get_manufacturing_start(row, finish_at)
+        if not start_at:
+            continue
+
+        lead_time_seconds = (finish_at - start_at).total_seconds()
+        if lead_time_seconds < 0:
+            continue
+
+        observations.append({
+            "lead_time_days": max(1, int(math.ceil(lead_time_seconds / 86400.0))),
+            "weight": row.completed_qty,
+            "source": source,
+        })
+
+    if not observations:
+        return None, None, {}
+
+    high_confidence_observations = [
+        obs for obs in observations
+        if obs.get("source") in MANUFACTURED_LEAD_TIME_HIGH_CONFIDENCE_SOURCES
+    ]
+    selected_observations = high_confidence_observations or observations
+
+    lead_times = [obs.get("lead_time_days") for obs in selected_observations]
+    weights = [obs.get("weight") for obs in selected_observations]
+    avg_lt, std_lt = _calculate_lead_time_statistics(lead_times, weights)
+
+    source_counts = {}
+    for obs in selected_observations:
+        source = obs.get("source")
+        source_counts[source] = source_counts.get(source, 0) + 1
+
+    return avg_lt, std_lt, {
+        "observations": len(selected_observations),
+        "low_confidence_only": not bool(high_confidence_observations),
+        "source_counts": source_counts,
+    }
+
+
+def _get_manufactured_item_lead_time_rows(item_code: str, limit: int = LEAD_TIME_SAMPLE_LIMIT):
+    return frappe.db.sql(
+        """
+        SELECT
+            se.name AS stock_entry,
+            se.posting_date,
+            se.posting_time,
+            se.fg_completed_qty AS completed_qty,
+            wo.name AS work_order,
+            wo.production_item AS item_code,
+            p_stock_entry.planning_start AS planning_stock_entry_start,
+            p_work_order.planning_start AS planning_work_order_start,
+            timer.timer_start AS timer_start,
+            wo.start_datetime AS work_order_start_datetime,
+            wo.start_date_time AS work_order_start_date_time,
+            wo.actual_start_date AS work_order_actual_start_date,
+            wo.planned_start_date AS work_order_planned_start_date,
+            wo.creation AS work_order_creation
+        FROM `tabStock Entry` se
+        INNER JOIN `tabWork Order` wo ON wo.name = se.work_order
+        INNER JOIN `tabItem` item ON item.name = wo.production_item
+        LEFT JOIN (
+            SELECT
+                stock_entry,
+                MIN(date_de_debut) AS planning_start
+            FROM `tabPlanning`
+            WHERE docstatus < 2
+                AND IFNULL(stock_entry, "") != ""
+            GROUP BY stock_entry
+        ) p_stock_entry ON p_stock_entry.stock_entry = se.name
+        LEFT JOIN (
+            SELECT
+                work_order,
+                MIN(date_de_debut) AS planning_start
+            FROM `tabPlanning`
+            WHERE docstatus < 2
+                AND IFNULL(work_order, "") != ""
+            GROUP BY work_order
+        ) p_work_order ON p_work_order.work_order = wo.name
+        LEFT JOIN (
+            SELECT
+                tp.work_order,
+                MIN(wott.start_time) AS timer_start
+            FROM `tabTimer Production` tp
+            INNER JOIN `tabWork Order Timer Table` wott ON wott.parent = tp.name
+            WHERE IFNULL(tp.work_order, "") != ""
+                AND wott.start_time IS NOT NULL
+            GROUP BY tp.work_order
+        ) timer ON timer.work_order = wo.name
+        WHERE wo.production_item = %s
+            AND item.is_stock_item = 1
+            AND item.is_purchase_item = 0
+            AND item.disabled = 0
+            AND se.docstatus = 1
+            AND se.purpose = "Manufacture"
+            AND IFNULL(se.work_order, "") != ""
+            AND IFNULL(se.fg_completed_qty, 0) > 0
+            AND se.posting_date IS NOT NULL
+        ORDER BY se.posting_date DESC, se.posting_time DESC, se.name DESC
+        LIMIT %s
+        """,
+        (item_code, limit),
+        as_dict=True,
+    )
+
+
+def _get_manufacturing_start(row, finish_at):
+    source_groups = (
+        (("planning_stock_entry_start",), "planning_stock_entry"),
+        (("planning_work_order_start",), "planning_work_order"),
+        (("timer_start",), "timer"),
+        (
+            (
+                "work_order_start_datetime",
+                "work_order_start_date_time",
+                "work_order_actual_start_date",
+            ),
+            "work_order_actual",
+        ),
+        (("work_order_planned_start_date", "work_order_creation"), "work_order_fallback"),
+    )
+
+    for fieldnames, source in source_groups:
+        starts = [
+            _as_datetime(row.get(fieldname))
+            for fieldname in fieldnames
+            if _is_valid_manufacturing_start(_as_datetime(row.get(fieldname)), finish_at)
+        ]
+        if starts:
+            return min(starts), source
+
+    return None, None
+
+
+def _as_datetime(value):
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, date):
+        return datetime.combine(value, time.min)
+    try:
+        return get_datetime(value)
+    except Exception:
+        return None
+
+
+def _combine_date_and_time(date_value, time_value=None):
+    date_part = _as_datetime(date_value)
+    if not date_part:
+        return None
+
+    if isinstance(time_value, timedelta):
+        time_part = (datetime.min + time_value).time()
+    elif isinstance(time_value, time):
+        time_part = time_value
+    elif time_value:
+        try:
+            time_part = get_datetime("1900-01-01 {0}".format(cstr(time_value))).time()
+        except Exception:
+            time_part = time.min
+    else:
+        time_part = time.min
+
+    return datetime.combine(date_part.date(), time_part)
+
+
+def _is_valid_manufacturing_start(start_at, finish_at):
+    return bool(start_at and finish_at and start_at <= finish_at and start_at.year >= 2020)
+
+
+def _calculate_lead_time_statistics(lead_times, weights=None):
     """
     Calculates lead time statistics including mean and standard deviation.
 
     Args:
         lead_times (list): List of lead times.
+        weights (list): Optional quantity weights for each lead time.
 
     Returns:
         tuple: Mean and standard deviation of lead times.
@@ -522,9 +963,13 @@ def _calculate_lead_time_statistics(lead_times):
     # Calculate interquartile range (IQR) for outlier removal
     q1, q3 = np.percentile(lead_times, [25, 75])
     iqr = q3 - q1
-    filtered_lead_times = [
-        lt for lt in lead_times if q1 - 1.5 * iqr <= lt <= q3 + 1.5 * iqr
+    weights = [float(weight or 0) for weight in (weights or [1 for _ in lead_times])]
+    filtered = [
+        (lt, weight) for lt, weight in zip(lead_times, weights)
+        if q1 - 1.5 * iqr <= lt <= q3 + 1.5 * iqr
     ]
+    filtered_lead_times = [lt for lt, _weight in filtered]
+    filtered_weights = [weight for _lt, weight in filtered]
 
     # Handle cases with insufficient data
     if len(filtered_lead_times) == 0:
@@ -533,10 +978,25 @@ def _calculate_lead_time_statistics(lead_times):
         return filtered_lead_times[0], 0  # Single value, no variance
 
     # Calculate and return mean and standard deviation
-    mean = statistics.mean(filtered_lead_times)
-    std_dev = statistics.stdev(filtered_lead_times)
-    update_log_entry(log_id, f"[{now_datetime()}] Mean LT: {mean} and Std Dev: {std_dev}")
-    return mean, std_dev
+    weighted_mean = _weighted_mean(filtered_lead_times, filtered_weights)
+    std_dev = _weighted_std_dev(filtered_lead_times, filtered_weights, weighted_mean)
+    update_log_entry(log_id, f"[{now_datetime()}] Mean LT: {weighted_mean} and Std Dev: {std_dev}")
+    return weighted_mean, std_dev
+
+
+def _weighted_mean(values, weights):
+    total_weight = sum(weights)
+    if not total_weight:
+        return statistics.mean(values)
+    return sum(value * weight for value, weight in zip(values, weights)) / total_weight
+
+
+def _weighted_std_dev(values, weights, weighted_mean):
+    total_weight = sum(weights)
+    if not total_weight:
+        return statistics.stdev(values)
+    variance = sum(weight * ((value - weighted_mean) ** 2) for value, weight in zip(values, weights)) / total_weight
+    return math.sqrt(variance)
 
 
 def _get_monthly_outflows(item_code: str) -> list[int]:
@@ -625,7 +1085,7 @@ def _update_item(item_code: str, avg_month: int, annual: int, ss: int, ro: int, 
         "annual_outflow": annual,
         "safety_stock": ss,
         "reorder_level": ro,
-        "lead_time_days": lt
+        "lead_time_days": int(math.ceil(lt or 0))
     })
 
 # --- Purchase Item Status ---

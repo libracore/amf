@@ -43,6 +43,7 @@ doctype_js = {
     "Item": "public/js/item.js",
     "Quality Inspection": "public/js/quality_inspection.js",
     "Purchase Invoice": "public/js/purchase_invoice.js",
+    #"Purchase Order": "public/js/doctype/purchase_order_parser_warnings.js",
     "Purchase Receipt": "public/js/purchase_receipt_label.js",
     "Quotation": "public/js/quotation.js",
     "Sales Order": "public/js/sales_order.js",
@@ -117,7 +118,10 @@ doc_events = {
     },
     "Purchase Receipt": {
         "before_submit": "amf.amf.utils.purchase_receipt.assign_supplier_batches",
-        "on_submit": "amf.amf.utils.purchase_receipt.generate_qa_for_purchase_receipt",
+        "on_submit": [
+            "amf.amf.utils.purchase_receipt.generate_qa_for_purchase_receipt",
+            "amf.amf.utils.safety_stock_check.update_purchase_item_lead_times_from_receipt",
+        ],
     },
     "Project": {
         "before_insert": "amf.amf.utils.project_id.assign_project_id",
@@ -147,6 +151,7 @@ doc_events = {
         "on_submit": [
             "amf.amf.utils.custom.qr_code_to_document",
             "amf.amf.utils.stock_entry.check_rates_and_assign_on_submit",
+            "amf.amf.utils.safety_stock_check.update_manufactured_item_lead_time_from_stock_entry",
             "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
         ],
         "on_cancel": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
