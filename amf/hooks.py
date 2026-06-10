@@ -186,6 +186,7 @@ scheduler_events = {
     ],
     # "hourly": ["amf.amf.utils.document_notification.update_purchase_orders"],
     "weekly": [
+        "amf.amf.utils.safety_stock_check.run_weekly_stock_level_update",
         "amf.master_crm.contact.update_contact_statuses",
         "amf.master_crm.contact.update_organization_flags",
         # "amf.amf.utils.bom_mgt.execute_db_enqueue",
