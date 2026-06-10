@@ -42,7 +42,7 @@ def main():
 
 
 @frappe.whitelist()
-def repair_missing_batches_for_items(item_codes=None, dry_run=True, commit=False):
+def repair_missing_batches_for_items(item_codes=None, dry_run=False, commit=True):
 	"""Run the repair from a Frappe context, for example via bench execute."""
 	global ITEM_CODES
 
