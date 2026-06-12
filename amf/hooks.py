@@ -84,6 +84,9 @@ doc_events = {
         "before_save": "amf.master_crm.contact.before_save",
         "validate": "amf.master_crm.contact.validate",
     },
+    "Customer": {
+        "validate": "amf.master_crm.customer_marketing.apply_customer_marketing_values",
+    },
     "Customer Satisfaction Survey": {
         "after_insert": [
             "amf.master_crm.doctype.customer_satisfaction_survey.customer_satisfaction_survey.update_contact_csat_nps",
@@ -122,6 +125,11 @@ doc_events = {
             "amf.amf.utils.purchase_receipt.generate_qa_for_purchase_receipt",
             "amf.amf.utils.safety_stock_check.update_purchase_item_lead_times_from_receipt",
         ],
+    },
+    "Sales Order": {
+        "on_submit": "amf.master_crm.customer_marketing.sync_customer_marketing_from_sales_order",
+        "on_cancel": "amf.master_crm.customer_marketing.sync_customer_marketing_from_sales_order",
+        "on_update_after_submit": "amf.master_crm.customer_marketing.sync_customer_marketing_from_sales_order",
     },
     "Project": {
         "before_insert": "amf.amf.utils.project_id.assign_project_id",
@@ -220,6 +228,7 @@ after_install = "amf.amf.utils.project_id.after_install"
 # --------------
 after_migrate = [
     "amf.master_crm.migration.translate_customer_to_organization",
+    "amf.master_crm.customer_marketing.sync_customer_marketing_custom_fields",
     "amf.amf.utils.project_id.sync_project_id_customization",
     "amf.amf.utils.loan_order_setup.sync_loan_order_custom_fields",
     "amf.amf.utils.batch_auto_disable.sync_batch_auto_disable_custom_fields",
