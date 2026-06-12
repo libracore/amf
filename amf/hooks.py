@@ -43,6 +43,7 @@ doctype_js = {
     "Item": "public/js/item.js",
     "Quality Inspection": "public/js/quality_inspection.js",
     "Purchase Invoice": "public/js/purchase_invoice.js",
+    #"Purchase Order": "public/js/doctype/purchase_order_parser_warnings.js",
     "Purchase Receipt": "public/js/purchase_receipt_label.js",
     "Quotation": "public/js/quotation.js",
     "Sales Order": "public/js/sales_order.js",
@@ -83,6 +84,9 @@ doc_events = {
         "before_save": "amf.master_crm.contact.before_save",
         "validate": "amf.master_crm.contact.validate",
     },
+    "Customer": {
+        "validate": "amf.master_crm.customer_marketing.apply_customer_marketing_values",
+    },
     "Customer Satisfaction Survey": {
         "after_insert": [
             "amf.master_crm.doctype.customer_satisfaction_survey.customer_satisfaction_survey.update_contact_csat_nps",
@@ -117,7 +121,15 @@ doc_events = {
     },
     "Purchase Receipt": {
         "before_submit": "amf.amf.utils.purchase_receipt.assign_supplier_batches",
-        "on_submit": "amf.amf.utils.purchase_receipt.generate_qa_for_purchase_receipt",
+        "on_submit": [
+            "amf.amf.utils.purchase_receipt.generate_qa_for_purchase_receipt",
+            "amf.amf.utils.safety_stock_check.update_purchase_item_lead_times_from_receipt",
+        ],
+    },
+    "Sales Order": {
+        "on_submit": "amf.master_crm.customer_marketing.sync_customer_marketing_from_sales_order",
+        "on_cancel": "amf.master_crm.customer_marketing.sync_customer_marketing_from_sales_order",
+        "on_update_after_submit": "amf.master_crm.customer_marketing.sync_customer_marketing_from_sales_order",
     },
     "Project": {
         "before_insert": "amf.amf.utils.project_id.assign_project_id",
@@ -147,6 +159,7 @@ doc_events = {
         "on_submit": [
             "amf.amf.utils.custom.qr_code_to_document",
             "amf.amf.utils.stock_entry.check_rates_and_assign_on_submit",
+            "amf.amf.utils.safety_stock_check.update_manufactured_item_lead_time_from_stock_entry",
             "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
         ],
         "on_cancel": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
@@ -181,6 +194,7 @@ scheduler_events = {
     ],
     # "hourly": ["amf.amf.utils.document_notification.update_purchase_orders"],
     "weekly": [
+        "amf.amf.utils.safety_stock_check.run_weekly_stock_level_update",
         "amf.master_crm.contact.update_contact_statuses",
         "amf.master_crm.contact.update_organization_flags",
         # "amf.amf.utils.bom_mgt.execute_db_enqueue",
@@ -214,6 +228,7 @@ after_install = "amf.amf.utils.project_id.after_install"
 # --------------
 after_migrate = [
     "amf.master_crm.migration.translate_customer_to_organization",
+    "amf.master_crm.customer_marketing.sync_customer_marketing_custom_fields",
     "amf.amf.utils.project_id.sync_project_id_customization",
     "amf.amf.utils.loan_order_setup.sync_loan_order_custom_fields",
     "amf.amf.utils.batch_auto_disable.sync_batch_auto_disable_custom_fields",
