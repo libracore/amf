@@ -1,0 +1,1 @@
+amf.patches.v12_0.clear_stale_item_variant_attribute_links
