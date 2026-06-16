@@ -190,6 +190,7 @@ scheduler_events = {
         "amf.www.tracking.fetch_and_display_tracking_info_enqueue",
         "amf.master_crm.doctype.gravity_forms.gravity_forms.daily_sync",
         "amf.amf.utils.work_order_creation.create_work_orders_based_on_reorder_levels",
+        "amf.amf.utils.work_order_creation.plan_machining_work_orders_from_sales_orders",
         "amf.master_crm.organization.update_global_csat",
     ],
     # "hourly": ["amf.amf.utils.document_notification.update_purchase_orders"],
