@@ -1024,7 +1024,7 @@ def process_bom_and_create_work_orders(item_code, required_qty, parent_work_orde
             "parent_work_order": parent_work_order,
             "priority": priority,
             "progress": "En Attente",
-            "machine": "CMZ" if item_code.startswith("20") else "EMCO" if item_code.startswith("10") else None,
+            "machine": "CMZ" if item_code.startswith("20") else "CMZ" if item_code.startswith("10") else None,
             "drawing": drawing
         })
         work_order.insert()
