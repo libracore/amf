@@ -1,4 +1,7 @@
 from __future__ import unicode_literals
+import math
+from collections import defaultdict
+
 from amf.amf.utils.stock_summary import get_stock
 from amf.amf.utils.utilities import *
 import frappe
@@ -6,7 +9,7 @@ import json
 import frappe.utils
 from frappe import _
 from erpnext.stock.doctype.stock_entry.stock_entry import get_additional_costs
-from frappe.utils.data import flt
+from frappe.utils.data import add_days, cint, date_diff, flt, getdate, get_datetime, nowdate
 
 
 @frappe.whitelist()
@@ -286,7 +289,638 @@ def make_stock_entry(work_order_id, purpose, qty=None):
 #####################################
 ### AUTOMATIC WORK ORDER CREATION ###
 #####################################
+MACHINING_ITEM_PREFIXES = ("10", "20")
+MACHINING_ITEM_CODE_LENGTH = 6
+MACHINING_STOCK_WAREHOUSES = ("Main Stock - AMF21", "Assemblies - AMF21")
+MACHINING_WIP_WAREHOUSE = "Work In Progress - AMF21"
+MACHINING_FG_WAREHOUSE = "Quality Control - AMF21"
+MACHINING_LEAD_TIME_DAYS = 7
+MACHINING_QTY_BUFFER_FACTOR = 1.2
+AMF_DESK_BASE_URL = "https://amf.libracore.ch"
+
 TEST_MODE = False
+
+
+@frappe.whitelist()
+def plan_machining_work_orders_from_sales_orders(
+    company=None,
+    from_delivery_date=None,
+    to_delivery_date=None,
+    dry_run=0,
+    commit=1,
+):
+    """
+    Create draft Work Orders for machined BOM components required by open,
+    submitted Sales Orders.
+
+    The method:
+      1. Reads submitted Sales Order Items that still have an undelivered qty.
+      2. Traverses their BOMs and stops at six-digit item codes starting with
+         10 or 20, because those are the machining planning items.
+      3. Groups the demand by item and shipping date.
+      4. Allocates existing stock and open Work Orders before creating anything.
+      5. Inserts one draft Work Order per item/date shortage with an expected
+         date 7 days before the Sales Order shipping date.
+
+    Work Orders are intentionally not submitted.
+    """
+    dry_run = cint(dry_run)
+    commit = cint(commit)
+    sources = _get_sales_order_bom_sources(
+        company=company,
+        from_delivery_date=from_delivery_date,
+        to_delivery_date=to_delivery_date,
+    )
+    demand_map, skipped_sources = _build_machining_demand_from_sources(sources)
+    demand_rows = _get_sorted_demand_rows(demand_map)
+    item_codes = sorted({row["item_code"] for row in demand_rows})
+
+    stock_by_item = _get_stock_balance_for_items(item_codes)
+    open_work_orders_by_item = _get_open_work_orders_by_item(item_codes)
+    bom_by_item = _get_default_boms_for_items(item_codes)
+
+    created = []
+    planned = []
+    skipped = list(skipped_sources)
+    available_by_item = defaultdict(float)
+    work_order_supply_by_item = defaultdict(list)
+
+    for item_code in item_codes:
+        available_by_item[item_code] = flt(stock_by_item.get(item_code))
+        work_order_supply_by_item[item_code] = list(open_work_orders_by_item.get(item_code) or [])
+
+    for row in demand_rows:
+        item_code = row["item_code"]
+        required_qty = flt(row["qty"])
+        expected_date = row["expected_date"]
+
+        available_by_item[item_code] += _consume_due_work_order_supply(
+            work_order_supply_by_item[item_code],
+            expected_date,
+        )
+
+        shortage_qty = required_qty - available_by_item[item_code]
+        if shortage_qty <= 0:
+            available_by_item[item_code] -= required_qty
+            row.update({
+                "covered_qty": required_qty,
+                "shortage_qty": 0,
+            })
+            planned.append(_serialize_planning_row(row, None))
+            continue
+
+        available_by_item[item_code] = 0
+        row.update({
+            "covered_qty": required_qty - shortage_qty,
+            "shortage_qty": shortage_qty,
+            "work_order_qty": _get_buffered_work_order_qty(item_code, shortage_qty),
+            "priority": _get_priority_for_expected_date(expected_date),
+        })
+
+        bom_no = bom_by_item.get(item_code)
+        if not bom_no:
+            skipped.append({
+                "item_code": item_code,
+                "shipping_date": _date_to_string(row["shipping_date"]),
+                "expected_date": _date_to_string(expected_date),
+                "qty": shortage_qty,
+                "reason": _("No active submitted default BOM found for machining item"),
+            })
+            planned.append(_serialize_planning_row(row, None))
+            continue
+
+        if dry_run:
+            planned.append(_serialize_planning_row(row, None))
+            continue
+
+        try:
+            work_order = _create_draft_machining_work_order(
+                item_code=item_code,
+                qty=row["work_order_qty"],
+                bom_no=bom_no,
+                company=row["company"],
+                expected_date=expected_date,
+                shipping_date=row["shipping_date"],
+                sources=row["sources"],
+            )
+            created.append(_serialize_planning_row(row, work_order.name))
+            planned.append(_serialize_planning_row(row, work_order.name))
+        except Exception:
+            frappe.log_error(
+                frappe.get_traceback(),
+                _("Machining Sales Order planning failed for {0}").format(item_code),
+            )
+            skipped.append({
+                "item_code": item_code,
+                "shipping_date": _date_to_string(row["shipping_date"]),
+                "expected_date": _date_to_string(expected_date),
+                "qty": shortage_qty,
+                "reason": frappe.get_traceback(),
+            })
+
+    if created and commit:
+        frappe.db.commit()
+
+    return {
+        "dry_run": dry_run,
+        "source_count": len(sources),
+        "demand_count": len(demand_rows),
+        "created_count": len(created),
+        "skipped_count": len(skipped),
+        "created": created,
+        "planned": planned,
+        "skipped": skipped,
+    }
+
+
+def _get_sales_order_bom_sources(company=None, from_delivery_date=None, to_delivery_date=None):
+    conditions = [
+        "so.docstatus = 1",
+        "so.status NOT IN ('Closed', 'On Hold', 'Cancelled', 'Completed')",
+        "IFNULL(soi.qty, 0) > IFNULL(soi.delivered_qty, 0)",
+        "(so._user_tags NOT LIKE '%%template%%' OR so._user_tags IS NULL)",
+    ]
+    params = {}
+
+    if company:
+        conditions.append("so.company = %(company)s")
+        params["company"] = company
+    if from_delivery_date:
+        conditions.append("COALESCE(soi.delivery_date, so.delivery_date) >= %(from_delivery_date)s")
+        params["from_delivery_date"] = getdate(from_delivery_date)
+    if to_delivery_date:
+        conditions.append("COALESCE(soi.delivery_date, so.delivery_date) <= %(to_delivery_date)s")
+        params["to_delivery_date"] = getdate(to_delivery_date)
+
+    where_clause = " AND ".join(conditions)
+    sales_order_items = frappe.db.sql(
+        """
+        SELECT
+            so.name AS sales_order,
+            so.company AS company,
+            so.customer AS customer,
+            so.customer_name AS customer_name,
+            soi.name AS sales_order_item,
+            soi.item_code AS source_item_code,
+            soi.item_name AS source_item_name,
+            GREATEST(
+                (IFNULL(soi.qty, 0) - IFNULL(soi.delivered_qty, 0))
+                * IFNULL(soi.conversion_factor, 1),
+                0
+            ) AS source_qty,
+            COALESCE(soi.delivery_date, so.delivery_date) AS shipping_date,
+            0 AS is_packed_item
+        FROM `tabSales Order Item` soi
+        INNER JOIN `tabSales Order` so ON so.name = soi.parent
+        WHERE {where_clause}
+        """.format(where_clause=where_clause),
+        params,
+        as_dict=True,
+    )
+
+    packed_items = frappe.db.sql(
+        """
+        SELECT
+            so.name AS sales_order,
+            so.company AS company,
+            so.customer AS customer,
+            so.customer_name AS customer_name,
+            soi.name AS sales_order_item,
+            pi.item_code AS source_item_code,
+            pi.item_name AS source_item_name,
+            GREATEST(
+                (IFNULL(soi.qty, 0) - IFNULL(soi.delivered_qty, 0))
+                * (IFNULL(pi.qty, 0) / NULLIF(IFNULL(soi.qty, 0), 0)),
+                0
+            ) AS source_qty,
+            COALESCE(soi.delivery_date, so.delivery_date) AS shipping_date,
+            1 AS is_packed_item
+        FROM `tabPacked Item` pi
+        INNER JOIN `tabSales Order Item` soi ON soi.name = pi.parent_detail_docname
+        INNER JOIN `tabSales Order` so ON so.name = soi.parent
+        WHERE {where_clause}
+        """.format(where_clause=where_clause),
+        params,
+        as_dict=True,
+    )
+
+    return [
+        source for source in list(sales_order_items) + list(packed_items)
+        if flt(source.get("source_qty")) > 0 and source.get("shipping_date")
+    ]
+
+
+def _build_machining_demand_from_sources(sources):
+    demand_map = {}
+    skipped = []
+    bom_cache = {}
+
+    for source in sources:
+        source_item_code = source.get("source_item_code")
+        source_qty = flt(source.get("source_qty"))
+        shipping_date = getdate(source.get("shipping_date"))
+        if _is_machining_item_code(source_item_code):
+            _add_machining_demand(demand_map, source_item_code, source_qty, source)
+            continue
+
+        bom_no = _get_default_active_bom(source_item_code, bom_cache)
+        if not bom_no:
+            skipped.append({
+                "sales_order": source.get("sales_order"),
+                "sales_order_item": source.get("sales_order_item"),
+                "source_item_code": source_item_code,
+                "shipping_date": _date_to_string(shipping_date),
+                "reason": _("No active submitted default BOM found for Sales Order item"),
+            })
+            continue
+
+        components = _collect_machining_components_from_bom(
+            bom_no,
+            source_qty,
+            bom_cache=bom_cache,
+        )
+        if not components:
+            skipped.append({
+                "sales_order": source.get("sales_order"),
+                "sales_order_item": source.get("sales_order_item"),
+                "source_item_code": source_item_code,
+                "shipping_date": _date_to_string(shipping_date),
+                "reason": _("No 10/20 six-digit machining item found in BOM"),
+            })
+            continue
+
+        for item_code, qty in components.items():
+            component_source = dict(source)
+            component_source["component_qty"] = qty
+            component_source["source_bom"] = bom_no
+            _add_machining_demand(demand_map, item_code, qty, component_source)
+
+    return demand_map, skipped
+
+
+def _collect_machining_components_from_bom(bom_no, qty, bom_cache=None, visited=None):
+    bom_cache = bom_cache if bom_cache is not None else {}
+    visited = set(visited or [])
+    components = defaultdict(float)
+
+    if not bom_no or bom_no in visited:
+        return components
+
+    visited.add(bom_no)
+    bom_doc = frappe.get_cached_doc("BOM", bom_no)
+    bom_qty = flt(bom_doc.quantity) or 1
+
+    for row in bom_doc.items:
+        item_code = row.item_code
+        row_qty = flt(row.stock_qty or row.qty) / bom_qty * flt(qty)
+        if row_qty <= 0:
+            continue
+
+        if _is_machining_item_code(item_code):
+            components[item_code] += row_qty
+            continue
+
+        child_bom = _get_valid_child_bom(row, bom_cache)
+        if not child_bom:
+            continue
+
+        child_components = _collect_machining_components_from_bom(
+            child_bom,
+            row_qty,
+            bom_cache=bom_cache,
+            visited=visited,
+        )
+        for child_item_code, child_qty in child_components.items():
+            components[child_item_code] += child_qty
+
+    visited.remove(bom_no)
+    return components
+
+
+def _add_machining_demand(demand_map, item_code, qty, source):
+    shipping_date = getdate(source.get("shipping_date"))
+    key = (item_code, shipping_date, source.get("company"))
+    if key not in demand_map:
+        demand_map[key] = {
+            "item_code": item_code,
+            "shipping_date": shipping_date,
+            "expected_date": getdate(add_days(shipping_date, -MACHINING_LEAD_TIME_DAYS)),
+            "company": source.get("company"),
+            "qty": 0,
+            "sources": [],
+        }
+
+    demand_map[key]["qty"] += flt(qty)
+    demand_map[key]["sources"].append({
+        "sales_order": source.get("sales_order"),
+        "sales_order_item": source.get("sales_order_item"),
+        "customer": source.get("customer"),
+        "customer_name": source.get("customer_name"),
+        "source_item_code": source.get("source_item_code"),
+        "source_item_name": source.get("source_item_name"),
+        "source_qty": flt(source.get("source_qty")),
+        "component_qty": flt(qty),
+        "shipping_date": _date_to_string(shipping_date),
+        "is_packed_item": cint(source.get("is_packed_item")),
+        "source_bom": source.get("source_bom"),
+    })
+
+
+def _get_sorted_demand_rows(demand_map):
+    return sorted(
+        demand_map.values(),
+        key=lambda row: (row["item_code"], row["expected_date"], row["shipping_date"]),
+    )
+
+
+def _get_stock_balance_for_items(item_codes, warehouses=None):
+    if not item_codes:
+        return {}
+
+    warehouses = tuple(warehouses or MACHINING_STOCK_WAREHOUSES)
+    rows = frappe.db.sql(
+        """
+        SELECT item_code, SUM(actual_qty) AS actual_qty
+        FROM `tabBin`
+        WHERE item_code IN %(item_codes)s
+            AND warehouse IN %(warehouses)s
+        GROUP BY item_code
+        """,
+        {
+            "item_codes": tuple(item_codes),
+            "warehouses": warehouses,
+        },
+        as_dict=True,
+    )
+    return {row.item_code: flt(row.actual_qty) for row in rows}
+
+
+def _get_open_work_orders_by_item(item_codes):
+    if not item_codes:
+        return {}
+
+    rows = frappe.db.sql(
+        """
+        SELECT
+            name,
+            production_item,
+            GREATEST(IFNULL(qty, 0) - IFNULL(produced_qty, 0), 0) AS remaining_qty,
+            expected_delivery_date_ AS custom_expected_delivery_date,
+            expected_delivery_date,
+            DATE(planned_start_date) AS planned_start_date
+        FROM `tabWork Order`
+        WHERE production_item IN %(item_codes)s
+            AND docstatus < 2
+            AND IFNULL(status, '') NOT IN ('Completed', 'Cancelled', 'Stopped')
+            AND GREATEST(IFNULL(qty, 0) - IFNULL(produced_qty, 0), 0) > 0
+        ORDER BY
+            production_item,
+            COALESCE(expected_delivery_date_, expected_delivery_date, DATE(planned_start_date), '1900-01-01'),
+            creation
+        """,
+        {"item_codes": tuple(item_codes)},
+        as_dict=True,
+    )
+
+    grouped = defaultdict(list)
+    for row in rows:
+        due_date = row.custom_expected_delivery_date or row.expected_delivery_date or row.planned_start_date
+        grouped[row.production_item].append({
+            "work_order": row.name,
+            "remaining_qty": flt(row.remaining_qty),
+            "due_date": getdate(due_date) if due_date else None,
+        })
+
+    return grouped
+
+
+def _consume_due_work_order_supply(work_orders, expected_date):
+    supply_qty = 0
+    remaining = []
+
+    for work_order in work_orders:
+        due_date = work_order.get("due_date")
+        if due_date and due_date > expected_date:
+            remaining.append(work_order)
+            continue
+
+        supply_qty += flt(work_order.get("remaining_qty"))
+
+    work_orders[:] = remaining
+    return supply_qty
+
+
+def _get_default_boms_for_items(item_codes):
+    bom_cache = {}
+    return {
+        item_code: _get_default_active_bom(item_code, bom_cache)
+        for item_code in item_codes
+    }
+
+
+def _get_default_active_bom(item_code, bom_cache=None):
+    if not item_code:
+        return None
+
+    if bom_cache is not None and item_code in bom_cache:
+        return bom_cache[item_code]
+
+    bom_no = frappe.db.get_value(
+        "BOM",
+        {
+            "item": item_code,
+            "is_active": 1,
+            "is_default": 1,
+            "docstatus": 1,
+        },
+        "name",
+        order_by="modified desc",
+    )
+
+    if bom_cache is not None:
+        bom_cache[item_code] = bom_no
+    return bom_no
+
+
+def _get_valid_child_bom(row, bom_cache=None):
+    if row.bom_no:
+        bom_status = frappe.db.get_value(
+            "BOM",
+            row.bom_no,
+            ["is_active", "docstatus"],
+            as_dict=True,
+        )
+        if bom_status and cint(bom_status.is_active) and cint(bom_status.docstatus) == 1:
+            return row.bom_no
+
+    return _get_default_active_bom(row.item_code, bom_cache)
+
+
+def _create_draft_machining_work_order(
+    item_code,
+    qty,
+    bom_no,
+    company,
+    expected_date,
+    shipping_date,
+    sources,
+):
+    work_order = frappe.new_doc("Work Order")
+    work_order.company = company or frappe.defaults.get_user_default("Company") \
+        or frappe.db.get_single_value("Global Defaults", "default_company")
+    work_order.production_item = item_code
+    work_order.bom_no = bom_no
+    work_order.qty = _get_integer_work_order_qty(qty)
+    work_order.expected_delivery_date = expected_date
+    _set_if_field(work_order, "expected_delivery_date_", expected_date)
+    work_order.planned_start_date = get_datetime("{0} 00:00:00".format(_date_to_string(expected_date)))
+    work_order.wip_warehouse = MACHINING_WIP_WAREHOUSE
+    work_order.fg_warehouse = MACHINING_FG_WAREHOUSE
+    work_order.skip_transfer = 1
+    work_order.set_work_order_operations()
+
+    _set_if_field(work_order, "auto_gen", 1)
+    _set_if_field(work_order, "priority", _get_priority_for_expected_date(expected_date))
+    _set_if_field(work_order, "progress", "En Attente")
+    _set_if_field(work_order, "machine", _get_machine_for_machining_item(item_code))
+    _set_if_field(work_order, "assembly_specialist_start", "MBA")
+    _set_if_field(work_order, "wip_step", 1)
+    _set_if_field(work_order, "p_s_d", expected_date)
+    _set_if_field(work_order, "p_e_d", expected_date)
+    _set_if_field(work_order, "drawing", _get_default_drawing(item_code))
+    _set_if_field(work_order, "custo_name", _get_customer_names_from_sources(sources))
+    _set_if_field(
+        work_order,
+        "description",
+        _get_machining_work_order_description(item_code, sources, shipping_date, expected_date),
+    )
+    _set_if_field(
+        work_order,
+        "simple_description",
+        _get_machining_work_order_note(sources, shipping_date, expected_date),
+    )
+
+    work_order.insert(ignore_permissions=True)
+    return work_order
+
+
+def _get_buffered_work_order_qty(item_code, shortage_qty):
+    buffered_qty = flt(shortage_qty) * MACHINING_QTY_BUFFER_FACTOR
+    return _get_integer_work_order_qty(buffered_qty)
+
+
+def _get_integer_work_order_qty(qty):
+    qty = flt(qty)
+    if qty <= 0:
+        return 0
+    return int(math.ceil(qty))
+
+
+def _get_priority_for_expected_date(expected_date):
+    days_until_expected = date_diff(getdate(expected_date), getdate(nowdate()))
+    if days_until_expected <= 0:
+        return 1
+    if days_until_expected <= 7:
+        return 2
+    if days_until_expected <= 14:
+        return 3
+    if days_until_expected <= 30:
+        return 4
+    return 5
+
+
+def _get_machine_for_machining_item(item_code):
+    if item_code.startswith("20"):
+        return "CMZ"
+    if item_code.startswith("10"):
+        return "EMCO"
+    return None
+
+
+def _get_default_drawing(item_code):
+    return frappe.db.get_value(
+        "Drawing Item",
+        {
+            "parent": item_code,
+            "is_default": 1,
+            "is_active": 1,
+        },
+        "drawing",
+    )
+
+
+def _get_machining_work_order_note(sources, shipping_date, expected_date):
+    return _("Auto machining planning from submitted SOs: {0}. Customer: {1}. Shipping date: {2}. Expected machining date: {3}.").format(
+        " / ".join(_get_sales_order_links_from_sources(sources)),
+        _get_customer_names_from_sources(sources),
+        _date_to_string(shipping_date),
+        _date_to_string(expected_date),
+    )
+
+
+def _get_machining_work_order_description(item_code, sources, shipping_date, expected_date):
+    item_description = frappe.db.get_value("Item", item_code, "description") or ""
+    planning_note = _get_machining_work_order_note(sources, shipping_date, expected_date)
+    return "\n".join([value for value in (item_description, planning_note) if value])
+
+
+def _get_sales_order_links_from_sources(sources):
+    return sorted({
+        source.get("sales_order")
+        for source in sources
+        if source.get("sales_order")
+    })
+
+
+def _get_customer_names_from_sources(sources):
+    return " / ".join(sorted({
+        source.get("customer_name") or source.get("customer")
+        for source in sources
+        if source.get("customer_name") or source.get("customer")
+    }))
+
+
+def _set_if_field(doc, fieldname, value):
+    if value is not None and doc.meta.has_field(fieldname):
+        doc.set(fieldname, value)
+
+
+def _is_machining_item_code(item_code):
+    item_code = str(item_code or "")
+    return (
+        len(item_code) == MACHINING_ITEM_CODE_LENGTH
+        and item_code.isdigit()
+        and item_code.startswith(MACHINING_ITEM_PREFIXES)
+    )
+
+
+def _serialize_planning_row(row, work_order):
+    sales_orders = sorted({
+        source.get("sales_order")
+        for source in row.get("sources", [])
+        if source.get("sales_order")
+    })
+    return {
+        "work_order": work_order,
+        "item_code": row.get("item_code"),
+        "qty": _get_integer_work_order_qty(row.get("work_order_qty", row.get("shortage_qty"))),
+        "shortage_qty": flt(row.get("shortage_qty")),
+        "gross_required_qty": flt(row.get("qty")),
+        "covered_qty": flt(row.get("covered_qty")),
+        "shipping_date": _date_to_string(row.get("shipping_date")),
+        "expected_date": _date_to_string(row.get("expected_date")),
+        "priority": row.get("priority"),
+        "company": row.get("company"),
+        "customer_names": _get_customer_names_from_sources(row.get("sources", [])),
+        "sales_orders": sales_orders,
+        "sources": row.get("sources", []),
+    }
+
+
+def _date_to_string(value):
+    return getdate(value).strftime("%Y-%m-%d") if value else None
+
+
 def create_work_orders_based_on_reorder_levels():
     # Fetch all items with BOMs
     items_with_bom = frappe.db.sql("""
