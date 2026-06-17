@@ -1,0 +1,13 @@
+{
+ "creation": "2026-06-17 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Dashboard Chart Source",
+ "idx": 0,
+ "modified": "2026-06-17 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "Inventory Turnover Ratio",
+ "owner": "Administrator",
+ "source_name": "Inventory Turnover Ratio",
+ "timeseries": 0
+}
