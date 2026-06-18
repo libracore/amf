@@ -21,6 +21,12 @@ def get_data():
                         "doctype": "Item",
                         "is_query_report": True
                    },
+                #    {
+                #         "type": "page",
+                #         "name": "order_confirmation_parser",
+                #         "label": _("Order Confirmation Parser"),
+                #         "description": _("Create draft Purchase Orders from supplier order confirmation PDFs")
+                #    },
                    {
                         "type": "report",
                         "name": "On Time Delivery KPIs",
@@ -40,6 +46,13 @@ def get_data():
             "label": _("Production Tracking"),
             "icon": "octicon octicon-git-compare",
             "items": [
+                {
+                    "type": "page",
+                    "name": "dashboard",
+                    "label": _("Supply Chain and Manufacturing Dashboard"),
+                    "route": "dashboard/Supply Chain and Manufacturing",
+                    "description": _("Supply chain and manufacturing KPI dashboard")
+                },
                 {
                     "type": "report",
                     "name": "Projected Stock",
@@ -85,8 +98,14 @@ def get_data():
                     "type": "page",
                     "name": "file_uploader",
                     "label": _("PINV uploader"),
-                    "description": _("Bulk upload scanned purchase invoices")           
+                    "description": _("Bulk upload scanned purchase invoices")
                 },
+                # {
+                #     "type": "page",
+                #     "name": "pdf_text_extractor",
+                #     "label": _("PDF Text Extractor"),
+                #     "description": _("Visualize extracted text from uploaded PDFs")
+                # },
                 {
                     "type": "report",
                     "name": "General Ledger AMF",

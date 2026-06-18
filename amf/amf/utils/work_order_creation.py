@@ -297,6 +297,7 @@ MACHINING_FG_WAREHOUSE = "Quality Control - AMF21"
 MACHINING_LEAD_TIME_DAYS = 7
 MACHINING_QTY_BUFFER_FACTOR = 1.2
 AMF_DESK_BASE_URL = "https://amf.libracore.ch"
+MACHINING_PLANNING_NOTE_PREFIX = "Auto machining planning from submitted SOs:"
 
 TEST_MODE = False
 
@@ -317,10 +318,11 @@ def plan_machining_work_orders_from_sales_orders(
       1. Reads submitted Sales Order Items that still have an undelivered qty.
       2. Traverses their BOMs and stops at six-digit item codes starting with
          10 or 20, because those are the machining planning items.
-      3. Groups the demand by item and shipping date.
-      4. Allocates existing stock and open Work Orders before creating anything.
-      5. Inserts one draft Work Order per item/date shortage with an expected
-         date 7 days before the Sales Order shipping date.
+      3. Groups the demand by machining item, regardless of Sales Order dates.
+      4. Uses the shortest Sales Order shipping date for the Work Order dates.
+      5. Allocates existing stock and open non-planner Work Orders.
+      6. Creates, updates, or deletes planner-owned draft Work Orders so there
+         is only one draft Work Order per machining item.
 
     Work Orders are intentionally not submitted.
     """
@@ -334,42 +336,58 @@ def plan_machining_work_orders_from_sales_orders(
     demand_map, skipped_sources = _build_machining_demand_from_sources(sources)
     demand_rows = _get_sorted_demand_rows(demand_map)
     item_codes = sorted({row["item_code"] for row in demand_rows})
+    include_stale_managed_work_orders = not from_delivery_date and not to_delivery_date
 
     stock_by_item = _get_stock_balance_for_items(item_codes)
     open_work_orders_by_item = _get_open_work_orders_by_item(item_codes)
+    managed_work_orders_by_key = _get_managed_draft_machining_work_orders_by_key(
+        None if include_stale_managed_work_orders else item_codes,
+        company=company,
+    )
     bom_by_item = _get_default_boms_for_items(item_codes)
 
     created = []
+    updated = []
+    deleted = []
     planned = []
     skipped = list(skipped_sources)
-    available_by_item = defaultdict(float)
-    work_order_supply_by_item = defaultdict(list)
+    available_by_key = defaultdict(float)
+    work_order_supply_by_key = defaultdict(list)
 
-    for item_code in item_codes:
-        available_by_item[item_code] = flt(stock_by_item.get(item_code))
-        work_order_supply_by_item[item_code] = list(open_work_orders_by_item.get(item_code) or [])
+    for row in demand_rows:
+        key = _get_demand_key(row["item_code"], row.get("company"))
+        available_by_key[key] = flt(stock_by_item.get(row["item_code"]))
+        work_order_supply_by_key[key] = list(open_work_orders_by_item.get(key) or [])
 
     for row in demand_rows:
         item_code = row["item_code"]
+        key = _get_demand_key(item_code, row.get("company"))
         required_qty = flt(row["qty"])
         expected_date = row["expected_date"]
 
-        available_by_item[item_code] += _consume_due_work_order_supply(
-            work_order_supply_by_item[item_code],
+        available_by_key[key] += _consume_due_work_order_supply(
+            work_order_supply_by_key[key],
             expected_date,
         )
 
-        shortage_qty = required_qty - available_by_item[item_code]
+        shortage_qty = required_qty - available_by_key[key]
         if shortage_qty <= 0:
-            available_by_item[item_code] -= required_qty
+            available_by_key[key] -= required_qty
             row.update({
                 "covered_qty": required_qty,
                 "shortage_qty": 0,
+                "work_order_qty": 0,
+                "priority": None,
             })
+            deleted.extend(_delete_managed_draft_work_orders(
+                managed_work_orders_by_key.get(key) or [],
+                row,
+                dry_run=dry_run,
+            ))
             planned.append(_serialize_planning_row(row, None))
             continue
 
-        available_by_item[item_code] = 0
+        available_by_key[key] = 0
         row.update({
             "covered_qty": required_qty - shortage_qty,
             "shortage_qty": shortage_qty,
@@ -390,20 +408,38 @@ def plan_machining_work_orders_from_sales_orders(
             continue
 
         if dry_run:
+            managed_work_orders = managed_work_orders_by_key.get(key) or []
+            if managed_work_orders:
+                updated.append(_serialize_managed_work_order_action(
+                    row,
+                    managed_work_orders[0].name,
+                    "update",
+                ))
+                deleted.extend(
+                    _serialize_managed_work_order_action(row, work_order.name, "delete")
+                    for work_order in managed_work_orders[1:]
+                )
+            else:
+                created.append(_serialize_managed_work_order_action(
+                    row,
+                    None,
+                    "create",
+                ))
             planned.append(_serialize_planning_row(row, None))
             continue
 
         try:
-            work_order = _create_draft_machining_work_order(
-                item_code=item_code,
-                qty=row["work_order_qty"],
+            managed_work_orders = managed_work_orders_by_key.get(key) or []
+            work_order, action, extra_deleted = _create_or_update_draft_machining_work_order(
+                row=row,
                 bom_no=bom_no,
-                company=row["company"],
-                expected_date=expected_date,
-                shipping_date=row["shipping_date"],
-                sources=row["sources"],
+                managed_work_orders=managed_work_orders,
             )
-            created.append(_serialize_planning_row(row, work_order.name))
+            if action == "create":
+                created.append(_serialize_planning_row(row, work_order.name))
+            else:
+                updated.append(_serialize_planning_row(row, work_order.name))
+            deleted.extend(extra_deleted)
             planned.append(_serialize_planning_row(row, work_order.name))
         except Exception:
             frappe.log_error(
@@ -418,7 +454,21 @@ def plan_machining_work_orders_from_sales_orders(
                 "reason": frappe.get_traceback(),
             })
 
-    if created and commit:
+    if include_stale_managed_work_orders:
+        demand_keys = {
+            _get_demand_key(row["item_code"], row.get("company"))
+            for row in demand_rows
+        }
+        for key, managed_work_orders in managed_work_orders_by_key.items():
+            if key in demand_keys:
+                continue
+            deleted.extend(_delete_managed_draft_work_orders(
+                managed_work_orders,
+                _get_stale_managed_work_order_row(managed_work_orders),
+                dry_run=dry_run,
+            ))
+
+    if (created or updated or deleted) and commit:
         frappe.db.commit()
 
     return {
@@ -426,8 +476,12 @@ def plan_machining_work_orders_from_sales_orders(
         "source_count": len(sources),
         "demand_count": len(demand_rows),
         "created_count": len(created),
+        "updated_count": len(updated),
+        "deleted_count": len(deleted),
         "skipped_count": len(skipped),
         "created": created,
+        "updated": updated,
+        "deleted": deleted,
         "planned": planned,
         "skipped": skipped,
     }
@@ -599,7 +653,7 @@ def _collect_machining_components_from_bom(bom_no, qty, bom_cache=None, visited=
 
 def _add_machining_demand(demand_map, item_code, qty, source):
     shipping_date = getdate(source.get("shipping_date"))
-    key = (item_code, shipping_date, source.get("company"))
+    key = _get_demand_key(item_code, source.get("company"))
     if key not in demand_map:
         demand_map[key] = {
             "item_code": item_code,
@@ -609,6 +663,9 @@ def _add_machining_demand(demand_map, item_code, qty, source):
             "qty": 0,
             "sources": [],
         }
+    elif shipping_date < demand_map[key]["shipping_date"]:
+        demand_map[key]["shipping_date"] = shipping_date
+        demand_map[key]["expected_date"] = getdate(add_days(shipping_date, -MACHINING_LEAD_TIME_DAYS))
 
     demand_map[key]["qty"] += flt(qty)
     demand_map[key]["sources"].append({
@@ -659,11 +716,13 @@ def _get_open_work_orders_by_item(item_codes):
     if not item_codes:
         return {}
 
+    planning_marker = "%{0}%".format(MACHINING_PLANNING_NOTE_PREFIX)
     rows = frappe.db.sql(
         """
         SELECT
             name,
             production_item,
+            company,
             GREATEST(IFNULL(qty, 0) - IFNULL(produced_qty, 0), 0) AS remaining_qty,
             expected_delivery_date_ AS custom_expected_delivery_date,
             expected_delivery_date,
@@ -673,25 +732,93 @@ def _get_open_work_orders_by_item(item_codes):
             AND docstatus < 2
             AND IFNULL(status, '') NOT IN ('Completed', 'Cancelled', 'Stopped')
             AND GREATEST(IFNULL(qty, 0) - IFNULL(produced_qty, 0), 0) > 0
+            AND NOT (
+                docstatus = 0
+                AND (
+                    IFNULL(simple_description, '') LIKE %(planning_marker)s
+                    OR IFNULL(description, '') LIKE %(planning_marker)s
+                )
+            )
         ORDER BY
             production_item,
+            company,
             COALESCE(expected_delivery_date_, expected_delivery_date, DATE(planned_start_date), '1900-01-01'),
             creation
         """,
-        {"item_codes": tuple(item_codes)},
+        {
+            "item_codes": tuple(item_codes),
+            "planning_marker": planning_marker,
+        },
         as_dict=True,
     )
 
     grouped = defaultdict(list)
     for row in rows:
         due_date = row.custom_expected_delivery_date or row.expected_delivery_date or row.planned_start_date
-        grouped[row.production_item].append({
+        grouped[_get_demand_key(row.production_item, row.company)].append({
             "work_order": row.name,
             "remaining_qty": flt(row.remaining_qty),
             "due_date": getdate(due_date) if due_date else None,
         })
 
     return grouped
+
+
+def _get_managed_draft_machining_work_orders_by_key(item_codes=None, company=None):
+    if item_codes is not None and not item_codes:
+        return {}
+
+    planning_marker = "%{0}%".format(MACHINING_PLANNING_NOTE_PREFIX)
+    conditions = [
+        "docstatus = 0",
+        "IFNULL(status, '') NOT IN ('Completed', 'Cancelled', 'Stopped')",
+        """(
+            IFNULL(simple_description, '') LIKE %(planning_marker)s
+            OR IFNULL(description, '') LIKE %(planning_marker)s
+        )""",
+    ]
+    params = {
+        "planning_marker": planning_marker,
+    }
+
+    if item_codes is not None:
+        conditions.append("production_item IN %(item_codes)s")
+        params["item_codes"] = tuple(item_codes)
+    if company:
+        conditions.append("company = %(company)s")
+        params["company"] = company
+
+    rows = frappe.db.sql(
+        """
+        SELECT
+            name,
+            production_item,
+            company,
+            qty,
+            expected_delivery_date_ AS custom_expected_delivery_date,
+            expected_delivery_date,
+            DATE(planned_start_date) AS planned_start_date
+        FROM `tabWork Order`
+        WHERE {conditions}
+        ORDER BY
+            production_item,
+            company,
+            COALESCE(expected_delivery_date_, expected_delivery_date, DATE(planned_start_date), '1900-01-01'),
+            creation
+        """.format(conditions=" AND ".join(conditions)),
+        params,
+        as_dict=True,
+    )
+
+    grouped = defaultdict(list)
+    for row in rows:
+        grouped[_get_demand_key(row.production_item, row.company)].append(row)
+
+    return grouped
+
+
+def _get_demand_key(item_code, company):
+    return (item_code, company or "")
 
 
 def _consume_due_work_order_supply(work_orders, expected_date):
@@ -766,6 +893,63 @@ def _create_draft_machining_work_order(
     sources,
 ):
     work_order = frappe.new_doc("Work Order")
+    _apply_machining_work_order_values(
+        work_order=work_order,
+        item_code=item_code,
+        qty=qty,
+        bom_no=bom_no,
+        company=company,
+        expected_date=expected_date,
+        shipping_date=shipping_date,
+        sources=sources,
+    )
+    work_order.insert(ignore_permissions=True)
+    return work_order
+
+
+def _create_or_update_draft_machining_work_order(row, bom_no, managed_work_orders):
+    if managed_work_orders:
+        work_order = frappe.get_doc("Work Order", managed_work_orders[0].name)
+        _apply_machining_work_order_values(
+            work_order=work_order,
+            item_code=row["item_code"],
+            qty=row["work_order_qty"],
+            bom_no=bom_no,
+            company=row.get("company"),
+            expected_date=row["expected_date"],
+            shipping_date=row["shipping_date"],
+            sources=row.get("sources", []),
+        )
+        work_order.save(ignore_permissions=True)
+        deleted = _delete_managed_draft_work_orders(
+            managed_work_orders[1:],
+            row,
+            dry_run=0,
+        )
+        return work_order, "update", deleted
+
+    work_order = _create_draft_machining_work_order(
+        item_code=row["item_code"],
+        qty=row["work_order_qty"],
+        bom_no=bom_no,
+        company=row.get("company"),
+        expected_date=row["expected_date"],
+        shipping_date=row["shipping_date"],
+        sources=row.get("sources", []),
+    )
+    return work_order, "create", []
+
+
+def _apply_machining_work_order_values(
+    work_order,
+    item_code,
+    qty,
+    bom_no,
+    company,
+    expected_date,
+    shipping_date,
+    sources,
+):
     work_order.company = company or frappe.defaults.get_user_default("Company") \
         or frappe.db.get_single_value("Global Defaults", "default_company")
     work_order.production_item = item_code
@@ -788,6 +972,7 @@ def _create_draft_machining_work_order(
     _set_if_field(work_order, "p_s_d", expected_date)
     _set_if_field(work_order, "p_e_d", expected_date)
     _set_if_field(work_order, "drawing", _get_default_drawing(item_code))
+    _set_if_field(work_order, "raw_material", _get_raw_material_tag(item_code))
     _set_if_field(work_order, "custo_name", _get_customer_names_from_sources(sources))
     _set_if_field(
         work_order,
@@ -800,8 +985,49 @@ def _create_draft_machining_work_order(
         _get_machining_work_order_note(sources, shipping_date, expected_date),
     )
 
-    work_order.insert(ignore_permissions=True)
     return work_order
+
+
+def _delete_managed_draft_work_orders(managed_work_orders, row, dry_run=0):
+    deleted = []
+
+    for work_order in managed_work_orders:
+        deleted.append(_serialize_managed_work_order_action(
+            row,
+            work_order.name,
+            "delete",
+        ))
+        if not dry_run:
+            frappe.delete_doc(
+                "Work Order",
+                work_order.name,
+                force=1,
+                ignore_permissions=True,
+            )
+
+    return deleted
+
+
+def _get_stale_managed_work_order_row(managed_work_orders):
+    work_order = managed_work_orders[0]
+    expected_date = (
+        work_order.custom_expected_delivery_date
+        or work_order.expected_delivery_date
+        or work_order.planned_start_date
+    )
+
+    return {
+        "item_code": work_order.production_item,
+        "company": work_order.company,
+        "shipping_date": None,
+        "expected_date": getdate(expected_date) if expected_date else None,
+        "qty": 0,
+        "covered_qty": 0,
+        "shortage_qty": 0,
+        "work_order_qty": 0,
+        "priority": None,
+        "sources": [],
+    }
 
 
 def _get_buffered_work_order_qty(item_code, shortage_qty):
@@ -849,8 +1075,13 @@ def _get_default_drawing(item_code):
     )
 
 
+def _get_raw_material_tag(item_code):
+    return frappe.db.get_value("Item", item_code, "tag_raw_mat")
+
+
 def _get_machining_work_order_note(sources, shipping_date, expected_date):
-    return _("Auto machining planning from submitted SOs: {0}. Customer: {1}. Shipping date: {2}. Expected machining date: {3}.").format(
+    return _("{0} {1}. Customer: {2}. Shipping date: {3}. Expected machining date: {4}.").format(
+        MACHINING_PLANNING_NOTE_PREFIX,
         " / ".join(_get_sales_order_links_from_sources(sources)),
         _get_customer_names_from_sources(sources),
         _date_to_string(shipping_date),
@@ -915,6 +1146,12 @@ def _serialize_planning_row(row, work_order):
         "sales_orders": sales_orders,
         "sources": row.get("sources", []),
     }
+
+
+def _serialize_managed_work_order_action(row, work_order_name, action):
+    data = _serialize_planning_row(row, work_order_name)
+    data["action"] = action
+    return data
 
 
 def _date_to_string(value):
