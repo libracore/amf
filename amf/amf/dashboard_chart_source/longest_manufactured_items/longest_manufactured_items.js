@@ -24,7 +24,7 @@ frappe.dashboards.chart_sources["Longest Manufactured Items"] = {
 			fieldname: "limit",
 			label: __("Limit"),
 			fieldtype: "Int",
-			default: 10
+			default: 20
 		}
 	]
 };

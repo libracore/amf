@@ -12,7 +12,7 @@ from amf.amf.dashboard_chart_source.otif_by_semester.otif_by_semester import (
 )
 
 
-DEFAULT_LIMIT = 10
+DEFAULT_LIMIT = 20
 DEFAULT_SEMESTER_COUNT = 1
 CHART_COLORS = ["orange"]
 

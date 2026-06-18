@@ -31,7 +31,7 @@ frappe.dashboards.chart_sources["Planning Scrap Rate"] = {
 			fieldname: "limit",
 			label: __("Limit"),
 			fieldtype: "Int",
-			default: 10
+			default: 20
 		}
 	]
 };

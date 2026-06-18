@@ -16,7 +16,7 @@ from amf.amf.dashboard_chart_source.otif_by_semester.otif_by_semester import (
 )
 
 
-DEFAULT_LIMIT = 10
+DEFAULT_LIMIT = 20
 DEFAULT_MODE = "semester"
 DEFAULT_SEMESTER_COUNT = 8
 REFERENCE_MODE = "references"
@@ -190,12 +190,14 @@ def get_semester_index(year, semester):
 
 
 def get_reference_label(row):
-    reference = row.suivi_usinage or row.name
     item_code = row.item_code or _("No Item")
+    item_label = row.item_name or item_code
 
-    return "{0} - {1} ({2:g}/{3:g})".format(
-        reference,
-        item_code,
+    if item_code and item_label != item_code:
+        item_label = "{0} - {1}".format(item_code, item_label)
+
+    return "{0} ({1:g}/{2:g})".format(
+        item_label,
         flt(row.valid_qty),
         flt(row.scrap_qty),
     )[:80]

@@ -127,16 +127,18 @@ def sync_supply_chain_manufacturing_dashboard():
     ensure_dashboard_chart(
         LONGEST_MANUFACTURED_ITEMS_CHART,
         LONGEST_MANUFACTURED_ITEMS_SOURCE_NAME,
-        {"semester_count": 1, "limit": 10},
+        {"semester_count": 1, "limit": 20},
         width="Full",
         chart_display_type="Bar",
+        filter_overrides={"limit": 20},
     )
     ensure_dashboard_chart(
         CURRENT_PLANNING_SCRAP_RATE_CHART,
         PLANNING_SCRAP_RATE_SOURCE_NAME,
-        {"semester_count": 1, "mode": "references", "limit": 10},
+        {"semester_count": 1, "mode": "references", "limit": 20},
         width="Half",
         chart_display_type="Bar",
+        filter_overrides={"limit": 20},
     )
     ensure_dashboard_chart(
         PLANNING_SCRAP_RATE_EVOLUTION_CHART,
@@ -177,7 +179,14 @@ def ensure_dashboard_chart_source(source_name, source_folder):
     )
 
 
-def ensure_dashboard_chart(chart_name, source_name, default_filters, width="Half", chart_display_type="Line"):
+def ensure_dashboard_chart(
+    chart_name,
+    source_name,
+    default_filters,
+    width="Half",
+    chart_display_type="Line",
+    filter_overrides=None,
+):
     required_values = {
         "doctype": "Dashboard Chart",
         "chart_name": chart_name,
@@ -193,6 +202,12 @@ def ensure_dashboard_chart(chart_name, source_name, default_filters, width="Half
         if not chart.get("filters_json"):
             chart.filters_json = json.dumps(default_filters)
             changed = True
+        elif filter_overrides:
+            filters = frappe.parse_json(chart.filters_json or "{}")
+            filters_changed = update_filter_values(filters, filter_overrides)
+            if filters_changed:
+                chart.filters_json = json.dumps(filters)
+                changed = True
         if not chart.get("type"):
             chart.type = chart_display_type
             changed = True
@@ -260,6 +275,17 @@ def update_doc_values(doc, values, skip_fields=None):
             continue
         if doc.get(fieldname) != value:
             doc.set(fieldname, value)
+            changed = True
+
+    return changed
+
+
+def update_filter_values(filters, values):
+    changed = False
+
+    for fieldname, value in values.items():
+        if filters.get(fieldname) != value:
+            filters[fieldname] = value
             changed = True
 
     return changed
