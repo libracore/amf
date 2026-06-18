@@ -33,10 +33,14 @@ CURRENT_PURCHASING_AMOUNT_BY_CURRENCY_CHART = (
 PURCHASING_AMOUNT_BY_CURRENCY_EVOLUTION_CHART = (
     "Stock Item Purchase Invoice Amount by Currency by Semester"
 )
-CURRENT_STOCK_BALANCE_AMOUNT_CHART = "Stock Balance Amount Current Semester"
-STOCK_BALANCE_AMOUNT_EVOLUTION_CHART = "Stock Balance Amount by Semester"
-CURRENT_STOCK_BALANCE_QUANTITY_CHART = "Stock Balance Quantity Current Semester"
-STOCK_BALANCE_QUANTITY_EVOLUTION_CHART = "Stock Balance Quantity by Semester"
+CURRENT_NON_STOCK_PURCHASING_AMOUNT_BY_CURRENCY_CHART = (
+    "Non-Stock Item Purchase Invoice Amount by Currency Current Semester"
+)
+NON_STOCK_PURCHASING_AMOUNT_BY_CURRENCY_EVOLUTION_CHART = (
+    "Non-Stock Item Purchase Invoice Amount by Currency by Semester"
+)
+CURRENT_STOCK_BALANCE_CHART = "Stock Balance Amount and Quantity Current Semester"
+STOCK_BALANCE_EVOLUTION_CHART = "Stock Balance Amount and Quantity by Semester"
 LONGEST_MANUFACTURED_ITEMS_CHART = "Longest Manufactured Items Current Semester"
 CURRENT_PLANNING_SCRAP_RATE_CHART = "Planning Scrap Rate Current Semester"
 PLANNING_SCRAP_RATE_EVOLUTION_CHART = "Planning Scrap Rate by Semester"
@@ -50,6 +54,12 @@ LEGACY_PACKAGING_SHIPPING_ISSUES_CHARTS = (
 LEGACY_PURCHASING_AMOUNT_BY_CURRENCY_CHARTS = (
     "Purchasing Amount by Currency Current Semester",
     "Purchasing Amount by Currency by Semester",
+)
+LEGACY_STOCK_BALANCE_CHARTS = (
+    "Stock Balance Amount Current Semester",
+    "Stock Balance Amount by Semester",
+    "Stock Balance Quantity Current Semester",
+    "Stock Balance Quantity by Semester",
 )
 
 
@@ -151,40 +161,42 @@ def sync_supply_chain_manufacturing_dashboard():
     ensure_dashboard_chart(
         CURRENT_PURCHASING_AMOUNT_BY_CURRENCY_CHART,
         PURCHASING_AMOUNT_BY_CURRENCY_SOURCE_NAME,
-        {"semester_count": 1, "company": "Advanced Microfluidics SA"},
+        {"semester_count": 1, "company": "Advanced Microfluidics SA", "item_scope": "stock"},
         width="Half",
         chart_display_type="Bar",
+        filter_overrides={"item_scope": "stock"},
     )
     ensure_dashboard_chart(
         PURCHASING_AMOUNT_BY_CURRENCY_EVOLUTION_CHART,
         PURCHASING_AMOUNT_BY_CURRENCY_SOURCE_NAME,
-        {"semester_count": 8, "company": "Advanced Microfluidics SA"},
+        {"semester_count": 8, "company": "Advanced Microfluidics SA", "item_scope": "stock"},
         width="Half",
+        filter_overrides={"item_scope": "stock"},
     )
     ensure_dashboard_chart(
-        CURRENT_STOCK_BALANCE_AMOUNT_CHART,
-        STOCK_BALANCE_SOURCE_NAME,
-        {"semester_count": 1, "mode": "amount", "company": "Advanced Microfluidics SA"},
-        width="Half",
-        chart_display_type="Bar",
-    )
-    ensure_dashboard_chart(
-        STOCK_BALANCE_AMOUNT_EVOLUTION_CHART,
-        STOCK_BALANCE_SOURCE_NAME,
-        {"semester_count": 8, "mode": "amount", "company": "Advanced Microfluidics SA"},
-        width="Half",
-    )
-    ensure_dashboard_chart(
-        CURRENT_STOCK_BALANCE_QUANTITY_CHART,
-        STOCK_BALANCE_SOURCE_NAME,
-        {"semester_count": 1, "mode": "quantity", "company": "Advanced Microfluidics SA"},
+        CURRENT_NON_STOCK_PURCHASING_AMOUNT_BY_CURRENCY_CHART,
+        PURCHASING_AMOUNT_BY_CURRENCY_SOURCE_NAME,
+        {"semester_count": 1, "company": "Advanced Microfluidics SA", "item_scope": "non_stock"},
         width="Half",
         chart_display_type="Bar",
     )
     ensure_dashboard_chart(
-        STOCK_BALANCE_QUANTITY_EVOLUTION_CHART,
+        NON_STOCK_PURCHASING_AMOUNT_BY_CURRENCY_EVOLUTION_CHART,
+        PURCHASING_AMOUNT_BY_CURRENCY_SOURCE_NAME,
+        {"semester_count": 8, "company": "Advanced Microfluidics SA", "item_scope": "non_stock"},
+        width="Half",
+    )
+    ensure_dashboard_chart(
+        CURRENT_STOCK_BALANCE_CHART,
         STOCK_BALANCE_SOURCE_NAME,
-        {"semester_count": 8, "mode": "quantity", "company": "Advanced Microfluidics SA"},
+        {"semester_count": 1, "mode": "combined", "company": "Advanced Microfluidics SA"},
+        width="Half",
+        chart_display_type="Bar",
+    )
+    ensure_dashboard_chart(
+        STOCK_BALANCE_EVOLUTION_CHART,
+        STOCK_BALANCE_SOURCE_NAME,
+        {"semester_count": 8, "mode": "combined", "company": "Advanced Microfluidics SA"},
         width="Half",
     )
     ensure_dashboard_chart(
@@ -222,6 +234,7 @@ def sync_supply_chain_manufacturing_dashboard():
         width="Half",
     )
     ensure_dashboard()
+    remove_legacy_stock_balance_charts()
     remove_legacy_purchasing_amount_by_currency()
     remove_legacy_packaging_shipping_issues()
 
@@ -302,10 +315,10 @@ def ensure_dashboard():
         PURCHASE_PRICE_RATIO_EVOLUTION_CHART,
         CURRENT_PURCHASING_AMOUNT_BY_CURRENCY_CHART,
         PURCHASING_AMOUNT_BY_CURRENCY_EVOLUTION_CHART,
-        CURRENT_STOCK_BALANCE_AMOUNT_CHART,
-        STOCK_BALANCE_AMOUNT_EVOLUTION_CHART,
-        CURRENT_STOCK_BALANCE_QUANTITY_CHART,
-        STOCK_BALANCE_QUANTITY_EVOLUTION_CHART,
+        CURRENT_NON_STOCK_PURCHASING_AMOUNT_BY_CURRENCY_CHART,
+        NON_STOCK_PURCHASING_AMOUNT_BY_CURRENCY_EVOLUTION_CHART,
+        CURRENT_STOCK_BALANCE_CHART,
+        STOCK_BALANCE_EVOLUTION_CHART,
         LONGEST_MANUFACTURED_ITEMS_CHART,
         CURRENT_PLANNING_SCRAP_RATE_CHART,
         PLANNING_SCRAP_RATE_EVOLUTION_CHART,
@@ -327,6 +340,7 @@ def ensure_dashboard():
     extra_charts = [chart for chart in existing_charts if chart not in required_charts]
     extra_charts = [chart for chart in extra_charts if chart not in LEGACY_PACKAGING_SHIPPING_ISSUES_CHARTS]
     extra_charts = [chart for chart in extra_charts if chart not in LEGACY_PURCHASING_AMOUNT_BY_CURRENCY_CHARTS]
+    extra_charts = [chart for chart in extra_charts if chart not in LEGACY_STOCK_BALANCE_CHARTS]
     dashboard.set("charts", [])
     for chart_name in required_charts + extra_charts:
         dashboard.append("charts", {"chart": chart_name})
@@ -379,6 +393,13 @@ def remove_legacy_packaging_shipping_issues():
 
 def remove_legacy_purchasing_amount_by_currency():
     for chart_name in LEGACY_PURCHASING_AMOUNT_BY_CURRENCY_CHARTS:
+        if frappe.db.exists("Dashboard Chart", chart_name):
+            frappe.delete_doc("Dashboard Chart", chart_name, ignore_permissions=True, force=True)
+            frappe.cache().delete_key("chart-data:{0}".format(chart_name))
+
+
+def remove_legacy_stock_balance_charts():
+    for chart_name in LEGACY_STOCK_BALANCE_CHARTS:
         if frappe.db.exists("Dashboard Chart", chart_name):
             frappe.delete_doc("Dashboard Chart", chart_name, ignore_permissions=True, force=True)
             frappe.cache().delete_key("chart-data:{0}".format(chart_name))

@@ -7,8 +7,8 @@ frappe.dashboards.chart_sources["Stock Balance by Semester"] = {
 			fieldname: "mode",
 			label: __("Mode"),
 			fieldtype: "Select",
-			options: "amount\nquantity",
-			default: "amount"
+			options: "combined\namount\nquantity",
+			default: "combined"
 		},
 		{
 			fieldname: "semester_count",

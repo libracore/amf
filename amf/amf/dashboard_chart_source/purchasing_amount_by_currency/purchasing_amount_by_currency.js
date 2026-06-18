@@ -26,6 +26,13 @@ frappe.dashboards.chart_sources["Purchasing Amount by Currency"] = {
 			fieldtype: "Link",
 			options: "Company",
 			default: "Advanced Microfluidics SA"
+		},
+		{
+			fieldname: "item_scope",
+			label: __("Item Scope"),
+			fieldtype: "Select",
+			options: "stock\nnon_stock",
+			default: "stock"
 		}
 	]
 };

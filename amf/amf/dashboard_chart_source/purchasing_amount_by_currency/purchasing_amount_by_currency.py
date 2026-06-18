@@ -18,6 +18,8 @@ from amf.amf.dashboard_chart_source.otif_by_semester.otif_by_semester import (
 
 DEFAULT_COMPANY = "Advanced Microfluidics SA"
 DEFAULT_SEMESTER_COUNT = 8
+STOCK_ITEM_SCOPE = "stock"
+NON_STOCK_ITEM_SCOPE = "non_stock"
 CURRENCIES = ("USD", "EUR", "CHF")
 CHART_COLORS = ["green", "blue", "red"]
 
@@ -53,6 +55,9 @@ def normalize_filters(filters=None):
     filters = frappe._dict(filters or {})
     filters.semester_count = max(1, cint(filters.get("semester_count") or DEFAULT_SEMESTER_COUNT))
     filters.company = filters.get("company") or DEFAULT_COMPANY
+    filters.item_scope = filters.get("item_scope") or STOCK_ITEM_SCOPE
+    if filters.item_scope not in (STOCK_ITEM_SCOPE, NON_STOCK_ITEM_SCOPE):
+        filters.item_scope = STOCK_ITEM_SCOPE
     filters.to_date = getdate(filters.get("to_date") or today())
 
     if filters.get("from_date"):
@@ -126,6 +131,8 @@ def get_semester_index(year, semester):
 
 
 def get_purchase_invoice_amount_rows(filters):
+    is_stock_item = 1 if filters.item_scope == STOCK_ITEM_SCOPE else 0
+
     return frappe.db.sql(
         """
         SELECT
@@ -147,7 +154,7 @@ def get_purchase_invoice_amount_rows(filters):
             AND pi.posting_date BETWEEN %(from_date)s AND %(to_date)s
             AND pi.company = %(company)s
             AND pi.currency IN %(currencies)s
-            AND IFNULL(item.is_stock_item, 0) = 1
+            AND IFNULL(item.is_stock_item, 0) = %(is_stock_item)s
             AND IFNULL(pii.item_code, '') != ''
         GROUP BY year, semester, pi.currency
         """,
@@ -156,6 +163,7 @@ def get_purchase_invoice_amount_rows(filters):
             "to_date": filters.to_date,
             "company": filters.company,
             "currencies": CURRENCIES,
+            "is_stock_item": is_stock_item,
         },
         as_dict=True,
     )

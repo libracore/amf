@@ -18,6 +18,7 @@ from amf.amf.dashboard_chart_source.otif_by_semester.otif_by_semester import (
 
 AMOUNT_MODE = "amount"
 QUANTITY_MODE = "quantity"
+COMBINED_MODE = "combined"
 DEFAULT_COMPANY = "Advanced Microfluidics SA"
 DEFAULT_SEMESTER_COUNT = 8
 STOCK_VALUE_COLOR = "green"
@@ -30,19 +31,11 @@ def get(chart_name=None, chart=None, no_cache=None):
     chart = _get_chart(chart_name, chart)
     filters = normalize_filters(frappe.parse_json(chart.filters_json or "{}"))
     rows = get_stock_balance_by_semester(filters)
-    fieldname = "balance_qty" if filters.mode == QUANTITY_MODE else "balance_value"
-    dataset_name = _("Stock Balance Qty") if filters.mode == QUANTITY_MODE else _("Stock Balance Amount")
-    colors = [STOCK_QTY_COLOR] if filters.mode == QUANTITY_MODE else [STOCK_VALUE_COLOR]
 
     return {
         "labels": [row["label"] for row in rows],
-        "datasets": [
-            {
-                "name": dataset_name,
-                "values": [row[fieldname] for row in rows],
-            }
-        ],
-        "colors": colors,
+        "datasets": get_datasets(rows, filters.mode),
+        "colors": get_colors(filters.mode),
     }
 
 
@@ -61,9 +54,9 @@ def _get_chart(chart_name=None, chart=None):
 
 def normalize_filters(filters=None):
     filters = frappe._dict(filters or {})
-    filters.mode = filters.get("mode") or AMOUNT_MODE
-    if filters.mode not in (AMOUNT_MODE, QUANTITY_MODE):
-        filters.mode = AMOUNT_MODE
+    filters.mode = filters.get("mode") or COMBINED_MODE
+    if filters.mode not in (COMBINED_MODE, AMOUNT_MODE, QUANTITY_MODE):
+        filters.mode = COMBINED_MODE
 
     filters.semester_count = max(1, cint(filters.get("semester_count") or DEFAULT_SEMESTER_COUNT))
     filters.company = filters.get("company") or DEFAULT_COMPANY
@@ -80,6 +73,33 @@ def normalize_filters(filters=None):
         frappe.throw(_("From Date cannot be after To Date"))
 
     return filters
+
+
+def get_datasets(rows, mode):
+    datasets = []
+
+    if mode in (COMBINED_MODE, AMOUNT_MODE):
+        datasets.append({
+            "name": _("Stock Balance Amount"),
+            "values": [row["balance_value"] for row in rows],
+        })
+
+    if mode in (COMBINED_MODE, QUANTITY_MODE):
+        datasets.append({
+            "name": _("Stock Balance Qty"),
+            "values": [row["balance_qty"] for row in rows],
+        })
+
+    return datasets
+
+
+def get_colors(mode):
+    if mode == AMOUNT_MODE:
+        return [STOCK_VALUE_COLOR]
+    if mode == QUANTITY_MODE:
+        return [STOCK_QTY_COLOR]
+
+    return [STOCK_VALUE_COLOR, STOCK_QTY_COLOR]
 
 
 def get_stock_balance_by_semester(filters=None):
