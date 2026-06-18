@@ -45,8 +45,14 @@ doctype_js = {
     "Purchase Invoice": "public/js/purchase_invoice.js",
     #"Purchase Order": "public/js/doctype/purchase_order_parser_warnings.js",
     "Purchase Receipt": "public/js/purchase_receipt_label.js",
-    "Quotation": "public/js/quotation.js",
-    "Sales Order": "public/js/sales_order.js",
+    "Quotation": [
+        "public/js/quotation.js",
+        "public/js/quotation_sales_order_accessories.js",
+    ],
+    "Sales Order": [
+        "public/js/sales_order.js",
+        "public/js/quotation_sales_order_accessories.js",
+    ],
     "Stock Entry": "public/js/stock_entry.js",
     "Work Order": "public/js/work_order.js",
 }
