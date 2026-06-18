@@ -139,7 +139,116 @@
         });
     }
 
-    function make_accessory_dialog_data(item_names_by_code) {
+    function get_price_list_context_key(frm) {
+        return [
+            frm.doc.selling_price_list || "",
+            frm.doc.customer || frm.doc.party_name || "",
+            frm.doc.quotation_to || "",
+            frm.doc.customer_group || "",
+            frm.doc.territory || "",
+            frm.doc.currency || "",
+            frm.doc.price_list_currency || "",
+            flt(frm.doc.conversion_rate),
+            flt(frm.doc.plc_conversion_rate),
+            frm.doc.company || "",
+            frm.doc.transaction_date || frm.doc.posting_date || ""
+        ].join("|");
+    }
+
+    function get_child_item_doctype(frm) {
+        return frm.doc.doctype + " Item";
+    }
+
+    function make_accessory_price_list_args(frm) {
+        var child_doctype = get_child_item_doctype(frm);
+        var items = [];
+
+        $.each(ACCESSORY_ITEM_CODES, function (idx, item_code) {
+            items.push({
+                doctype: child_doctype,
+                name: "accessory-default-" + idx,
+                child_docname: "accessory-default-" + idx,
+                item_code: item_code,
+                qty: 1,
+                conversion_factor: 1,
+                parenttype: frm.doc.doctype,
+                parent: frm.doc.name
+            });
+        });
+
+        return {
+            items: items,
+            customer: frm.doc.customer || frm.doc.party_name,
+            quotation_to: frm.doc.quotation_to,
+            customer_group: frm.doc.customer_group,
+            territory: frm.doc.territory,
+            currency: frm.doc.currency,
+            conversion_rate: frm.doc.conversion_rate,
+            price_list: frm.doc.selling_price_list,
+            selling_price_list: frm.doc.selling_price_list,
+            price_list_currency: frm.doc.price_list_currency,
+            plc_conversion_rate: frm.doc.plc_conversion_rate,
+            company: frm.doc.company,
+            transaction_date: frm.doc.transaction_date || frm.doc.posting_date,
+            campaign: frm.doc.campaign,
+            sales_partner: frm.doc.sales_partner,
+            ignore_pricing_rule: frm.doc.ignore_pricing_rule,
+            doctype: frm.doc.doctype,
+            name: frm.doc.name,
+            is_return: cint(frm.doc.is_return),
+            update_stock: 0
+        };
+    }
+
+    function fetch_accessory_price_list_rates(frm) {
+        var price_list = frm.doc.selling_price_list;
+        var context_key = get_price_list_context_key(frm);
+
+        if (!price_list) {
+            return Promise.resolve({});
+        }
+
+        if (
+            frm._accessory_price_rate_cache &&
+            frm._accessory_price_rate_cache.key === context_key
+        ) {
+            return Promise.resolve(frm._accessory_price_rate_cache.rates);
+        }
+
+        return new Promise(function (resolve) {
+            var rates_by_code = {};
+            var request = frappe.call({
+                method: "erpnext.stock.get_item_details.apply_price_list",
+                args: {
+                    args: make_accessory_price_list_args(frm)
+                },
+                callback: function (response) {
+                    response = response || {};
+
+                    if (!response.exc && response.message && response.message.children) {
+                        $.each(response.message.children, function (idx, child) {
+                            var item_code = ACCESSORY_ITEM_CODES[idx];
+                            rates_by_code[item_code] = flt(child.price_list_rate || child.rate);
+                        });
+                    }
+
+                    frm._accessory_price_rate_cache = {
+                        key: context_key,
+                        rates: rates_by_code
+                    };
+                    resolve(rates_by_code);
+                }
+            });
+
+            if (request && request.fail) {
+                request.fail(function () {
+                    resolve(rates_by_code);
+                });
+            }
+        });
+    }
+
+    function make_accessory_dialog_data(item_names_by_code, rates_by_code) {
         var rows = [];
 
         $.each(ACCESSORY_ITEM_CODES, function (idx, item_code) {
@@ -148,7 +257,7 @@
                 item_code: item_code,
                 item_name: item_names_by_code[item_code] || item_code,
                 qty: 0,
-                rate: 0
+                rate: flt(rates_by_code[item_code])
             });
         });
 
@@ -194,17 +303,48 @@
         return html.join("");
     }
 
+    function set_child_value_if_exists(row, fieldname, value) {
+        if (frappe.meta.has_field(row.doctype, fieldname)) {
+            return frappe.model.set_value(row.doctype, row.name, fieldname, value);
+        }
+
+        return Promise.resolve();
+    }
+
     function make_add_accessory_task(row, accessory, item_code) {
         return function () {
+            var qty = flt(accessory.qty) || 1;
+            var rate = flt(accessory.rate);
+            var item_name = accessory.item_name || item_code;
+
             return frappe.run_serially([
                 function () {
                     return frappe.model.set_value(row.doctype, row.name, "item_code", item_code);
                 },
                 function () {
-                    return frappe.model.set_value(row.doctype, row.name, "qty", flt(accessory.qty) || 1);
+                    return frappe.after_ajax();
                 },
                 function () {
-                    return frappe.model.set_value(row.doctype, row.name, "rate", flt(accessory.rate));
+                    return set_child_value_if_exists(row, "qty", qty);
+                },
+                function () {
+                    return set_child_value_if_exists(row, "price_list_rate", rate);
+                },
+                function () {
+                    return set_child_value_if_exists(row, "rate", rate);
+                },
+                function () {
+                    if (!row.item_name) {
+                        return set_child_value_if_exists(row, "item_name", item_name);
+                    }
+                },
+                function () {
+                    if (!row.description) {
+                        return set_child_value_if_exists(row, "description", item_name);
+                    }
+                },
+                function () {
+                    return frappe.after_ajax();
                 }
             ]);
         };
@@ -264,9 +404,12 @@
         }
 
         frm._accessory_review_dialog_open = true;
-        frm._accessory_review_dialog_promise = fetch_accessory_item_names(frm).then(function (item_names_by_code) {
+        frm._accessory_review_dialog_promise = Promise.all([
+            fetch_accessory_item_names(frm),
+            fetch_accessory_price_list_rates(frm)
+        ]).then(function (defaults) {
             return new Promise(function (resolve, reject) {
-                var dialog_data = make_accessory_dialog_data(item_names_by_code);
+                var dialog_data = make_accessory_dialog_data(defaults[0], defaults[1]);
                 var dialog = new frappe.ui.Dialog({
                     title: __("Accessory Review"),
                     size: "large",
