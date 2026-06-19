@@ -51,7 +51,7 @@ doctype_js = {
     ],
     "Sales Order": [
         "public/js/sales_order.js",
-        # "public/js/quotation_sales_order_accessories.js",
+        "public/js/quotation_sales_order_accessories.js",
     ],
     "Stock Entry": "public/js/stock_entry.js",
     "Work Order": "public/js/work_order.js",
