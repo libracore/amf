@@ -5,7 +5,7 @@ from collections import OrderedDict
 import frappe
 from frappe import _
 from frappe.core.page.dashboard.dashboard import cache_source
-from frappe.utils import cint, getdate, today
+from frappe.utils import add_days, cint, cstr, flt, getdate, today
 
 from amf.amf.dashboard_chart_source.otif_by_semester.otif_by_semester import (
     add_semesters,
@@ -14,16 +14,22 @@ from amf.amf.dashboard_chart_source.otif_by_semester.otif_by_semester import (
     get_semester_label_from_parts,
     get_semester_start,
 )
-from amf.amf.report.inventory_turnover.inventory_turnover import (
-    calculate_inventory_turnover_ratio,
-    extract_cogs,
-    extract_inventory_data,
-)
 
 
 DEFAULT_COMPANY = "Advanced Microfluidics SA"
 DEFAULT_SEMESTER_COUNT = 8
-CHART_COLORS = ["green"]
+
+PRODUCT_RANGES = OrderedDict([
+    ("RVM", {"account_number": "4003", "color": "red"}),
+    ("Valve Head", {"account_number": "4009", "color": "yellow"}),
+    ("SPM", {"account_number": "4002", "color": "blue"}),
+    ("LSP", {"account_number": "4001", "color": "orange"}),
+    ("UFM", {"account_number": "4000", "color": "green"}),
+])
+RANGE_BY_ACCOUNT_NUMBER = {
+    values["account_number"]: product_range
+    for product_range, values in PRODUCT_RANGES.items()
+}
 
 
 @frappe.whitelist()
@@ -37,11 +43,12 @@ def get(chart_name=None, chart=None, no_cache=None):
         "labels": [row["label"] for row in rows],
         "datasets": [
             {
-                "name": _("Inventory Turnover"),
-                "values": [row["inventory_turnover_ratio"] for row in rows],
+                "name": product_range,
+                "values": [row["ranges"][product_range]["turnover"] for row in rows],
             }
+            for product_range in PRODUCT_RANGES
         ],
-        "colors": CHART_COLORS,
+        "colors": [values["color"] for values in PRODUCT_RANGES.values()],
     }
 
 
@@ -80,23 +87,25 @@ def normalize_filters(filters=None):
 def get_inventory_turnover_by_semester(filters=None):
     filters = normalize_filters(filters)
     buckets = get_empty_semester_buckets(filters.from_date, filters.to_date)
+    snapshots = get_inventory_snapshots(filters, buckets)
 
     for bucket in buckets.values():
         period_from_date = max(bucket["from_date"], filters.from_date)
         period_to_date = min(bucket["to_date"], filters.to_date)
-        cogs = extract_cogs(period_from_date, period_to_date, filters.company)
-        opening_inventory, closing_inventory = extract_inventory_data(
-            period_from_date,
-            period_to_date,
-            filters.company,
-        )
-        bucket["cogs"] = cogs
-        bucket["opening_inventory"] = opening_inventory
-        bucket["closing_inventory"] = closing_inventory
-        bucket["inventory_turnover_ratio"] = round(
-            calculate_inventory_turnover_ratio(cogs, opening_inventory, closing_inventory),
-            2,
-        )
+        opening_date = getdate(add_days(period_from_date, -1))
+
+        for product_range in PRODUCT_RANGES:
+            bucket["ranges"][product_range]["opening_inventory"] = snapshots[opening_date][product_range]
+            bucket["ranges"][product_range]["closing_inventory"] = snapshots[period_to_date][product_range]
+
+    for row in get_cogs_rows(filters):
+        label = get_semester_label_from_parts(row.year, row.semester)
+        product_range = RANGE_BY_ACCOUNT_NUMBER.get(cstr(row.account_number))
+        if label in buckets and product_range:
+            buckets[label]["ranges"][product_range]["cogs"] += flt(row.cogs)
+
+    for bucket in buckets.values():
+        calculate_turnover(bucket)
 
     return list(buckets.values())
 
@@ -115,15 +124,129 @@ def get_empty_semester_buckets(from_date, to_date):
             "semester": semester,
             "from_date": get_semester_start(year, semester),
             "to_date": get_semester_end(year, semester),
-            "cogs": 0.0,
-            "opening_inventory": 0.0,
-            "closing_inventory": 0.0,
-            "inventory_turnover_ratio": 0.0,
+            "ranges": get_empty_range_data(),
         }
         year, semester = add_semesters(year, semester, 1)
 
     return buckets
 
 
+def get_empty_range_data():
+    return {
+        product_range: {
+            "cogs": 0.0,
+            "opening_inventory": 0.0,
+            "closing_inventory": 0.0,
+            "average_inventory": 0.0,
+            "turnover": 0.0,
+        }
+        for product_range in PRODUCT_RANGES
+    }
+
+
 def get_semester_index(year, semester):
     return (cint(year) * 2) + (cint(semester) - 1)
+
+
+def get_cogs_rows(filters):
+    return frappe.db.sql(
+        """
+        SELECT
+            account.account_number,
+            YEAR(gl.posting_date) AS year,
+            CASE WHEN MONTH(gl.posting_date) <= 6 THEN 1 ELSE 2 END AS semester,
+            SUM(IFNULL(gl.debit, 0) - IFNULL(gl.credit, 0)) AS cogs
+        FROM `tabGL Entry` gl
+        INNER JOIN `tabAccount` account ON account.name = gl.account
+        WHERE gl.company = %(company)s
+            AND account.company = %(company)s
+            AND gl.posting_date BETWEEN %(from_date)s AND %(to_date)s
+            AND account.account_number IN %(account_numbers)s
+        GROUP BY account.account_number, year, semester
+        """,
+        {
+            "company": filters.company,
+            "from_date": filters.from_date,
+            "to_date": filters.to_date,
+            "account_numbers": get_account_numbers(),
+        },
+        as_dict=True,
+    )
+
+
+def get_inventory_snapshots(filters, buckets):
+    snapshot_dates = set()
+    for bucket in buckets.values():
+        period_from_date = max(bucket["from_date"], filters.from_date)
+        period_to_date = min(bucket["to_date"], filters.to_date)
+        snapshot_dates.add(getdate(add_days(period_from_date, -1)))
+        snapshot_dates.add(period_to_date)
+
+    daily_rows = get_inventory_movement_rows(filters)
+    balances = {product_range: 0.0 for product_range in PRODUCT_RANGES}
+    snapshots = {}
+    row_index = 0
+
+    for snapshot_date in sorted(snapshot_dates):
+        while row_index < len(daily_rows) and getdate(daily_rows[row_index].posting_date) <= snapshot_date:
+            row = daily_rows[row_index]
+            product_range = RANGE_BY_ACCOUNT_NUMBER.get(cstr(row.account_number))
+            if product_range:
+                balances[product_range] += flt(row.stock_value_difference)
+            row_index += 1
+
+        snapshots[snapshot_date] = balances.copy()
+
+    return snapshots
+
+
+def get_inventory_movement_rows(filters):
+    return frappe.db.sql(
+        """
+        SELECT
+            sle.posting_date,
+            account.account_number,
+            SUM(IFNULL(sle.stock_value_difference, 0)) AS stock_value_difference
+        FROM `tabStock Ledger Entry` sle
+        INNER JOIN (
+            SELECT
+                parent AS item_code,
+                MAX(expense_account) AS expense_account
+            FROM `tabItem Default`
+            WHERE parenttype = 'Item'
+                AND company = %(company)s
+            GROUP BY parent
+        ) item_default ON item_default.item_code = sle.item_code
+        INNER JOIN `tabAccount` account
+            ON account.name = item_default.expense_account
+            AND account.company = %(company)s
+        WHERE sle.docstatus < 2
+            AND sle.company = %(company)s
+            AND sle.posting_date <= %(to_date)s
+            AND account.account_number IN %(account_numbers)s
+        GROUP BY sle.posting_date, account.account_number
+        ORDER BY sle.posting_date, account.account_number
+        """,
+        {
+            "company": filters.company,
+            "to_date": filters.to_date,
+            "account_numbers": get_account_numbers(),
+        },
+        as_dict=True,
+    )
+
+
+def get_account_numbers():
+    return tuple(values["account_number"] for values in PRODUCT_RANGES.values())
+
+
+def calculate_turnover(bucket):
+    for product_range in PRODUCT_RANGES:
+        data = bucket["ranges"][product_range]
+        data["average_inventory"] = (
+            data["opening_inventory"] + data["closing_inventory"]
+        ) / 2.0
+        data["turnover"] = round(
+            data["cogs"] / data["average_inventory"],
+            2,
+        ) if data["average_inventory"] else 0.0
