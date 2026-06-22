@@ -22,6 +22,7 @@ app_include_js = [
     "/assets/amf/js/amf_templates.min.js",
     "/assets/amf/js/amf_common.js",
     "/assets/amf/js/common.js",
+    "/assets/amf/js/dashboard_chart_colors.js",
 ]
 
 web_include_css = [
