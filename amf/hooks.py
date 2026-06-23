@@ -245,5 +245,6 @@ after_migrate = [
     "amf.amf.utils.batch_auto_disable.sync_batch_auto_disable_custom_fields",
     "amf.amf.utils.batch_naming.sync_supplier_batch_custom_fields",
     "amf.amf.utils.item_reporting.sync_item_reporting_custom_fields",
+    "amf.amf.utils.quotation_product_definition.sync_quotation_product_definition_custom_fields",
     "amf.amf.utils.kpi_dashboard.sync_supply_chain_manufacturing_dashboard",
 ]
