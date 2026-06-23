@@ -123,6 +123,7 @@ frappe.ui.form.on("Delivery Note", {
     },
     refresh: function (frm) {
         sync_delivery_note_customs_identifiers(frm);
+        add_loan_order_get_items_buttons(frm);
 
         // attach tooltip for EUR.1 form
         const description = "Fill out a paper EUR.1 form and place it on the package if the following criteria are met:\n\n"
@@ -154,6 +155,101 @@ frappe.ui.form.on("Delivery Note", {
         }
     }
 });
+
+function add_loan_order_get_items_buttons(frm) {
+    if (frm.doc.docstatus !== 0) {
+        return;
+    }
+
+    if (!frm.doc.is_return) {
+        frm.add_custom_button(__("Loan Order"), function () {
+            open_loan_order_items_dialog(
+                frm,
+                "amf.amf.doctype.loan_order.loan_order.make_outward_delivery_note_for_mapping",
+                ["Submitted", "Partly Loaned"]
+            );
+        }, __("Get items from"));
+    }
+
+    frm.add_custom_button(__("Loan Order Return"), function () {
+        open_loan_order_items_dialog(
+            frm,
+            "amf.amf.doctype.loan_order.loan_order.make_return_delivery_note_for_mapping",
+            ["Partly Loaned", "On Loan", "Overdue", "Partly Returned"],
+            {
+                outward_delivery_note: ["!=", ""]
+            }
+        );
+    }, __("Get items from"));
+}
+
+function open_loan_order_items_dialog(frm, method, statuses, extraFilters) {
+    const setters = [{
+        fieldtype: "Link",
+        label: __("Company"),
+        fieldname: "company",
+        options: "Company",
+        default: frm.doc.company || undefined
+    }];
+
+    let dialog = new frappe.ui.form.MultiSelectDialog({
+        doctype: "Loan Order",
+        target: frm,
+        date_field: "transaction_date",
+        setters: setters,
+        get_query: function () {
+            let filters = Object.assign({
+                docstatus: 1,
+                status: ["in", statuses]
+            }, extraFilters || {});
+
+            if (frm.doc.company) {
+                filters.company = frm.doc.company;
+            }
+
+            return { filters: filters };
+        },
+        action: function (selections) {
+            if (!selections.length) {
+                frappe.msgprint(__("Please select a Loan Order"));
+                return;
+            }
+
+            if (selections.length > 1) {
+                frappe.msgprint(__("Select only one Loan Order per Delivery Note."));
+                return;
+            }
+
+            dialog.dialog.hide();
+            map_loan_order_to_delivery_note(frm, method, selections[0]);
+        }
+    });
+}
+
+function map_loan_order_to_delivery_note(frm, method, loanOrder) {
+    if ($.isArray(frm.doc.items)) {
+        frm.doc.items = frm.doc.items.filter(function (row) {
+            return row.item_code;
+        });
+    }
+
+    frappe.call({
+        type: "POST",
+        method: method,
+        args: {
+            source_name: loanOrder,
+            target_doc: frm.doc
+        },
+        freeze: true,
+        callback: function (r) {
+            if (!r.exc) {
+                frappe.model.sync(r.message);
+                frm.dirty();
+                frm.refresh();
+            }
+        }
+    });
+}
 
 // // Client Script | Doctype: Delivery Note (ERPNext v12)
 // // Purpose: Set Delivery Note Item.customs_tariff_number_ based on destination country and item category
