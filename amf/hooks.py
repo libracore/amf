@@ -163,9 +163,13 @@ doc_events = {
         # Order matters: enrich values first, then apply stock/rate override.
         "before_save": [
             "amf.amf.utils.stock_entry.stock_entry_before_save",
+            "amf.amf.utils.work_order_scrap.prepare_dynamic_usage_scrap_rows",
             "amf.amf.utils.stock_entry.get_stock_and_rate_override",
         ],
-        "before_submit": "amf.amf.utils.stock_entry.stock_entry_before_submit",
+        "before_submit": [
+            "amf.amf.utils.work_order_scrap.prepare_dynamic_usage_scrap_rows",
+            "amf.amf.utils.stock_entry.stock_entry_before_submit",
+        ],
         "on_submit": [
             "amf.amf.utils.custom.qr_code_to_document",
             "amf.amf.utils.stock_entry.check_rates_and_assign_on_submit",
@@ -246,5 +250,6 @@ after_migrate = [
     "amf.amf.utils.batch_naming.sync_supplier_batch_custom_fields",
     "amf.amf.utils.item_reporting.sync_item_reporting_custom_fields",
     "amf.amf.utils.quotation_product_definition.sync_quotation_product_definition_custom_fields",
+    "amf.amf.utils.work_order_scrap.sync_work_order_usage_scrap_custom_fields",
     "amf.amf.utils.kpi_dashboard.sync_supply_chain_manufacturing_dashboard",
 ]
