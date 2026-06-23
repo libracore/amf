@@ -44,8 +44,8 @@ STOCK_BALANCE_EVOLUTION_CHART = "Stock Balance Amount and Quantity by Semester"
 LONGEST_MANUFACTURED_ITEMS_CHART = "Longest Manufactured Items Current Semester"
 CURRENT_PLANNING_SCRAP_RATE_CHART = "Planning Scrap Rate Current Semester"
 PLANNING_SCRAP_RATE_EVOLUTION_CHART = "Planning Scrap Rate by Semester"
-CURRENT_INVENTORY_TURNOVER_CHART = "Inventory Turnover Current Semester"
-INVENTORY_TURNOVER_EVOLUTION_CHART = "Inventory Turnover by Semester"
+CURRENT_INVENTORY_TURNOVER_CHART = "Inventory Turnover by Product Range Current Semester"
+INVENTORY_TURNOVER_EVOLUTION_CHART = "Inventory Turnover by Product Range by Semester"
 LEGACY_PACKAGING_SHIPPING_ISSUES_SOURCE_NAME = "Packaging & Shipping Issues"
 LEGACY_PACKAGING_SHIPPING_ISSUES_CHARTS = (
     "Packaging & Shipping Issues Current Semester",
@@ -60,6 +60,10 @@ LEGACY_STOCK_BALANCE_CHARTS = (
     "Stock Balance Amount by Semester",
     "Stock Balance Quantity Current Semester",
     "Stock Balance Quantity by Semester",
+)
+LEGACY_INVENTORY_TURNOVER_CHARTS = (
+    "Inventory Turnover Current Semester",
+    "Inventory Turnover by Semester",
 )
 
 
@@ -226,6 +230,7 @@ def sync_supply_chain_manufacturing_dashboard():
         INVENTORY_TURNOVER_SOURCE_NAME,
         {"semester_count": 1, "company": "Advanced Microfluidics SA"},
         width="Half",
+        chart_display_type="Bar",
     )
     ensure_dashboard_chart(
         INVENTORY_TURNOVER_EVOLUTION_CHART,
@@ -234,6 +239,7 @@ def sync_supply_chain_manufacturing_dashboard():
         width="Half",
     )
     ensure_dashboard()
+    remove_legacy_inventory_turnover_charts()
     remove_legacy_stock_balance_charts()
     remove_legacy_purchasing_amount_by_currency()
     remove_legacy_packaging_shipping_issues()
@@ -341,6 +347,7 @@ def ensure_dashboard():
     extra_charts = [chart for chart in extra_charts if chart not in LEGACY_PACKAGING_SHIPPING_ISSUES_CHARTS]
     extra_charts = [chart for chart in extra_charts if chart not in LEGACY_PURCHASING_AMOUNT_BY_CURRENCY_CHARTS]
     extra_charts = [chart for chart in extra_charts if chart not in LEGACY_STOCK_BALANCE_CHARTS]
+    extra_charts = [chart for chart in extra_charts if chart not in LEGACY_INVENTORY_TURNOVER_CHARTS]
     dashboard.set("charts", [])
     for chart_name in required_charts + extra_charts:
         dashboard.append("charts", {"chart": chart_name})
@@ -400,6 +407,13 @@ def remove_legacy_purchasing_amount_by_currency():
 
 def remove_legacy_stock_balance_charts():
     for chart_name in LEGACY_STOCK_BALANCE_CHARTS:
+        if frappe.db.exists("Dashboard Chart", chart_name):
+            frappe.delete_doc("Dashboard Chart", chart_name, ignore_permissions=True, force=True)
+            frappe.cache().delete_key("chart-data:{0}".format(chart_name))
+
+
+def remove_legacy_inventory_turnover_charts():
+    for chart_name in LEGACY_INVENTORY_TURNOVER_CHARTS:
         if frappe.db.exists("Dashboard Chart", chart_name):
             frappe.delete_doc("Dashboard Chart", chart_name, ignore_permissions=True, force=True)
             frappe.cache().delete_key("chart-data:{0}".format(chart_name))

@@ -1,7 +1,9 @@
 frappe
+google-auth
 qrcode
 reportlab
 treepoem
 weasyprint
 pylibdmtx
 tqdm
+pymupdf4llm

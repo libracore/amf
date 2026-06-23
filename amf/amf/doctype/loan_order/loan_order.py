@@ -4,6 +4,8 @@
 
 from __future__ import unicode_literals
 
+import json
+
 import erpnext
 import frappe
 from erpnext.stock import get_warehouse_account_map
@@ -11,6 +13,7 @@ from erpnext.stock.get_item_details import get_conversion_factor
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint, flt, getdate, nowdate, nowtime
+from six import string_types
 
 
 LOAN_MOVEMENT_OUTWARD = "Outward"
@@ -334,6 +337,28 @@ def make_return_delivery_note(source_name):
 
 
 @frappe.whitelist()
+def make_outward_delivery_note_for_mapping(source_name, target_doc=None):
+	return make_delivery_note_for_mapping(source_name, target_doc, LOAN_MOVEMENT_OUTWARD)
+
+
+@frappe.whitelist()
+def make_return_delivery_note_for_mapping(source_name, target_doc=None):
+	return make_delivery_note_for_mapping(source_name, target_doc, LOAN_MOVEMENT_RETURN)
+
+
+def make_delivery_note_for_mapping(source_name, target_doc, movement):
+	loan_order = get_submitted_loan_order(source_name)
+	delivery_note = get_target_delivery_note(target_doc)
+
+	validate_delivery_note_mapping_source(loan_order, movement, delivery_note)
+	validate_delivery_note_mapping_target(delivery_note, loan_order, movement)
+
+	loan_order.validate_neutral_stock_accounts(movement)
+	populate_delivery_note_from_loan_order(delivery_note, loan_order, movement)
+	return delivery_note
+
+
+@frappe.whitelist()
 def refresh_loan_order_status(source_name):
 	loan_order = frappe.get_doc("Loan Order", source_name)
 	loan_order.check_permission("read")
@@ -347,6 +372,7 @@ def update_linked_loan_order(doc, method=None):
 		return
 
 	loan_order = frappe.get_doc("Loan Order", loan_order_name)
+	update_loan_order_delivery_note_link(doc, loan_order)
 	loan_order.sync_status(update=True)
 
 
@@ -375,6 +401,83 @@ def ensure_no_active_alternative(loan_order, fieldname, doctype):
 	existing = get_active_linked_document(loan_order, fieldname, doctype)
 	if existing:
 		frappe.throw(_("{0} {1} is already linked to this Loan Order.").format(existing["doctype"], existing["name"]))
+
+
+def get_delivery_note_link_field(movement):
+	if movement == LOAN_MOVEMENT_OUTWARD:
+		return "outward_delivery_note"
+	if movement == LOAN_MOVEMENT_RETURN:
+		return "return_delivery_note"
+	return None
+
+
+def update_loan_order_delivery_note_link(delivery_note, loan_order):
+	if delivery_note.doctype != "Delivery Note" or cint(delivery_note.docstatus) == 2:
+		return
+
+	link_field = get_delivery_note_link_field(delivery_note.get("loan_order_movement"))
+	if not link_field:
+		return
+
+	current = loan_order.get(link_field)
+	if current == delivery_note.name:
+		return
+
+	if current:
+		current_docstatus = frappe.db.get_value("Delivery Note", current, "docstatus")
+		if current_docstatus is not None and cint(current_docstatus) != 2:
+			frappe.throw(_("Delivery Note {0} is already linked to this Loan Order.").format(current))
+
+	loan_order.db_set(link_field, delivery_note.name, update_modified=False)
+	loan_order.set(link_field, delivery_note.name)
+
+
+def get_target_delivery_note(target_doc=None):
+	if not target_doc:
+		return frappe.new_doc("Delivery Note")
+	if isinstance(target_doc, string_types):
+		target_doc = json.loads(target_doc)
+	return frappe.get_doc(target_doc)
+
+
+def validate_delivery_note_mapping_source(loan_order, movement, delivery_note):
+	if movement == LOAN_MOVEMENT_OUTWARD:
+		ensure_no_active_alternative(loan_order, "outward_stock_entry", "Stock Entry")
+	elif movement == LOAN_MOVEMENT_RETURN:
+		ensure_no_active_alternative(loan_order, "return_stock_entry", "Stock Entry")
+		loan_order.sync_status(update=True)
+
+		if not loan_order.outward_delivery_note or not frappe.db.exists("Delivery Note", loan_order.outward_delivery_note):
+			frappe.throw(_("A return Delivery Note can only be created after an outward Delivery Note."))
+
+		if cint(frappe.db.get_value("Delivery Note", loan_order.outward_delivery_note, "docstatus")) != 1:
+			frappe.throw(_("Submit the outward Delivery Note before creating the return Delivery Note."))
+	else:
+		frappe.throw(_("Unsupported Loan Order movement {0}.").format(movement))
+
+	existing = get_active_linked_document(loan_order, get_delivery_note_link_field(movement), "Delivery Note")
+	if existing and existing.get("name") != delivery_note.get("name"):
+		frappe.throw(_("Delivery Note {0} is already linked to this Loan Order.").format(existing["name"]))
+
+
+def validate_delivery_note_mapping_target(delivery_note, loan_order, movement):
+	if delivery_note.doctype != "Delivery Note":
+		frappe.throw(_("Target document must be a Delivery Note."))
+
+	if cint(delivery_note.docstatus) != 0:
+		frappe.throw(_("Items can only be fetched into a draft Delivery Note."))
+
+	if delivery_note.get("loan_order") and delivery_note.get("loan_order") != loan_order.name:
+		frappe.throw(_("This Delivery Note is already linked to Loan Order {0}.").format(delivery_note.loan_order))
+
+	if delivery_note.get("loan_order_movement") and delivery_note.get("loan_order_movement") != movement:
+		frappe.throw(_("This Delivery Note is already marked as a {0} Loan Order movement.").format(delivery_note.loan_order_movement))
+
+	for row in delivery_note.get("items"):
+		if row.get("item_code"):
+			frappe.throw(_("Select only one Loan Order per Delivery Note. Use a new Delivery Note for another source."))
+
+	delivery_note.set("items", [])
 
 
 def build_stock_entry(loan_order, movement):
@@ -427,17 +530,22 @@ def build_stock_entry(loan_order, movement):
 
 
 def build_delivery_note(loan_order, movement):
+	delivery_note = frappe.new_doc("Delivery Note")
+	populate_delivery_note_from_loan_order(delivery_note, loan_order, movement)
+	return delivery_note
+
+
+def populate_delivery_note_from_loan_order(delivery_note, loan_order, movement):
 	rows = get_transfer_rows(loan_order, movement)
 	if not rows:
 		frappe.throw(_("There are no quantities to transfer."))
 
 	customer = get_delivery_note_customer(loan_order)
-	delivery_note = frappe.new_doc("Delivery Note")
 	delivery_note.company = loan_order.company
 	delivery_note.customer = customer
 	delivery_note.currency = loan_order.currency
-	delivery_note.posting_date = nowdate()
-	delivery_note.posting_time = nowtime()
+	delivery_note.posting_date = delivery_note.posting_date or nowdate()
+	delivery_note.posting_time = delivery_note.posting_time or nowtime()
 	delivery_note.set_posting_time = 1
 	delivery_note.ignore_pricing_rule = 1
 	delivery_note.remarks = get_movement_remarks(loan_order, movement)
@@ -449,6 +557,9 @@ def build_delivery_note(loan_order, movement):
 		delivery_note.is_return = 1
 		delivery_note.return_against = loan_order.outward_delivery_note
 		delivery_note.issue_credit_note = 0
+	else:
+		delivery_note.is_return = 0
+		delivery_note.return_against = None
 
 	for row in rows:
 		source, target = get_transfer_warehouses(row, movement)

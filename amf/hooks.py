@@ -22,6 +22,7 @@ app_include_js = [
     "/assets/amf/js/amf_templates.min.js",
     "/assets/amf/js/amf_common.js",
     "/assets/amf/js/common.js",
+    "/assets/amf/js/dashboard_chart_colors.js",
 ]
 
 web_include_css = [
@@ -103,7 +104,10 @@ doc_events = {
             "amf.amf.utils.delivery_note_api.before_save_dn",
         ],
         "before_update_after_submit": "amf.amf.utils.delivery_note_api.preserve_submitted_customs_identifiers",
-        "after_insert": "amf.amf.utils.delivery_note_api.auto_gen_qa_inspection",
+        "after_insert": [
+            "amf.amf.utils.delivery_note_api.auto_gen_qa_inspection",
+            "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
+        ],
         "before_submit": "amf.amf.utils.delivery_note_api.check_qa_inspections_status",
         "on_submit": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
         "on_cancel": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
@@ -159,9 +163,13 @@ doc_events = {
         # Order matters: enrich values first, then apply stock/rate override.
         "before_save": [
             "amf.amf.utils.stock_entry.stock_entry_before_save",
+            "amf.amf.utils.work_order_scrap.prepare_dynamic_usage_scrap_rows",
             "amf.amf.utils.stock_entry.get_stock_and_rate_override",
         ],
-        "before_submit": "amf.amf.utils.stock_entry.stock_entry_before_submit",
+        "before_submit": [
+            "amf.amf.utils.work_order_scrap.prepare_dynamic_usage_scrap_rows",
+            "amf.amf.utils.stock_entry.stock_entry_before_submit",
+        ],
         "on_submit": [
             "amf.amf.utils.custom.qr_code_to_document",
             "amf.amf.utils.stock_entry.check_rates_and_assign_on_submit",
@@ -241,5 +249,7 @@ after_migrate = [
     "amf.amf.utils.batch_auto_disable.sync_batch_auto_disable_custom_fields",
     "amf.amf.utils.batch_naming.sync_supplier_batch_custom_fields",
     "amf.amf.utils.item_reporting.sync_item_reporting_custom_fields",
+    "amf.amf.utils.quotation_product_definition.sync_quotation_product_definition_custom_fields",
+    "amf.amf.utils.work_order_scrap.sync_work_order_usage_scrap_custom_fields",
     "amf.amf.utils.kpi_dashboard.sync_supply_chain_manufacturing_dashboard",
 ]

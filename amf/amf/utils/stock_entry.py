@@ -341,21 +341,25 @@ def _set_expense_and_cost_center(doc):
 def _set_warehouse_defaults(doc, log_id):
     if not doc.work_order:
         return
-    prod = frappe.db.get_value("Work Order", doc.work_order, "production_item") or ""
-    wip_step = frappe.db.get_value("Work Order", doc.work_order, "wip_step") or ""
-    if not prod or prod.startswith(("10", "20")):
+    work_order = frappe.db.get_value(
+        "Work Order",
+        doc.work_order,
+        ["production_item", "wip_step", "skip_transfer"],
+        as_dict=True,
+    ) or {}
+    prod = work_order.get("production_item") or ""
+    use_wip_source = _uses_wip_raw_material_source(work_order)
+
+    if not prod:
         return
     
     src = tgt = None
 
-    if doc.purpose == "Manufacture" and not wip_step:
-        doc.from_warehouse, doc.to_warehouse = WH_TRANSFER, WH_MANUFACTURE
-        src, tgt = WH_TRANSFER, WH_MANUFACTURE
-        update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: 'manufacture' src={src}, tgt={tgt}<br>")
-    elif doc.purpose == "Manufacture" and wip_step:
-        doc.from_warehouse = doc.to_warehouse = WH_MANUFACTURE
-        src = tgt = WH_MANUFACTURE
-        update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: 'manufacture skip wip' src={src}, tgt={tgt}<br>")
+    if doc.purpose == "Manufacture":
+        src = WH_TRANSFER if use_wip_source else WH_MANUFACTURE
+        tgt = WH_MANUFACTURE
+        doc.from_warehouse, doc.to_warehouse = src, tgt
+        update_log_entry(log_id, f"[{now_datetime()}] Warehouse Defaults: 'manufacture' raw src={src}, finished tgt={tgt}, use_wip_source={use_wip_source}<br>")
     elif doc.purpose == "Material Transfer for Manufacture":
         doc.from_warehouse, doc.to_warehouse = WH_MANUFACTURE, WH_TRANSFER
         src, tgt = WH_MANUFACTURE, WH_TRANSFER
@@ -372,27 +376,78 @@ def _set_warehouse_defaults(doc, log_id):
         update_log_entry(log_id, f"[{now_datetime()}] No Warehouse Defaults: return<br>")
         return
 
-    # Apply to each row, skipping last row for Manufacture purpose
-    last_idx = len(doc.items) - 1
+    finished_good_row = _get_finished_good_row_for_warehouse_defaults(doc, prod) if doc.purpose == "Manufacture" else None
+
     for idx, row in enumerate(doc.items):
-        # Manufacture: split source/target across rows
+        if _is_dynamic_usage_scrap_row(row):
+            update_log_entry(log_id, f"[{now_datetime()}] Row {idx+1} - dynamic scrap row skipped<br>")
+            continue
+
         if doc.purpose == "Manufacture":
-            if idx < last_idx:
+            if _is_same_stock_entry_detail(row, finished_good_row):
+                if not row.manual_source_warehouse_selection:
+                    row.s_warehouse = None
+                    update_log_entry(log_id, f"[{now_datetime()}] Finished row - s_warehouse cleared<br>")
+                if not row.manual_target_warehouse_selection:
+                    row.t_warehouse = tgt
+                    update_log_entry(log_id, f"[{now_datetime()}] Finished row - t_warehouse set to {tgt}<br>")
+            elif _is_incoming_only_row(row):
+                update_log_entry(log_id, f"[{now_datetime()}] Row {idx+1} - incoming-only row preserved<br>")
+            else:
                 if not row.manual_source_warehouse_selection:
                     row.s_warehouse = src
                     update_log_entry(log_id, f"[{now_datetime()}] Row {idx+1} - s_warehouse set to {src}<br>")
-            else:
                 if not row.manual_target_warehouse_selection:
-                    row.t_warehouse = tgt
-                    update_log_entry(log_id, f"[{now_datetime()}] Last row - t_warehouse set to {tgt}<br>")
+                    row.t_warehouse = None
+                    update_log_entry(log_id, f"[{now_datetime()}] Row {idx+1} - t_warehouse cleared<br>")
         else:
-            # Other purposes: apply whichever is set
             if src and not row.manual_source_warehouse_selection:
                 row.s_warehouse = src
                 update_log_entry(log_id, f"[{now_datetime()}] Row {idx+1} - s_warehouse set to {src}<br>")
+            elif not src and not row.manual_source_warehouse_selection:
+                row.s_warehouse = None
+                update_log_entry(log_id, f"[{now_datetime()}] Row {idx+1} - s_warehouse cleared<br>")
+
             if tgt and not row.manual_target_warehouse_selection:
                 row.t_warehouse = tgt
                 update_log_entry(log_id, f"[{now_datetime()}] Row {idx+1} - t_warehouse set to {tgt}<br>")
+            elif not tgt and not row.manual_target_warehouse_selection:
+                row.t_warehouse = None
+                update_log_entry(log_id, f"[{now_datetime()}] Row {idx+1} - t_warehouse cleared<br>")
+
+
+def _get_finished_good_row_for_warehouse_defaults(doc, production_item):
+    rows = [row for row in doc.items or [] if not _is_dynamic_usage_scrap_row(row)]
+
+    production_rows = [row for row in rows if row.item_code == production_item]
+    for row in production_rows:
+        if _is_incoming_or_unset_row(row):
+            return row
+
+    if production_rows:
+        return production_rows[-1]
+
+    incoming_rows = [row for row in rows if _is_incoming_only_row(row)]
+    if incoming_rows:
+        return incoming_rows[-1]
+
+    return rows[-1] if rows else None
+
+
+def _is_incoming_only_row(row):
+    return bool(row.t_warehouse and not row.s_warehouse)
+
+
+def _is_incoming_or_unset_row(row):
+    return bool(not row.s_warehouse or row.t_warehouse)
+
+
+def _is_same_stock_entry_detail(row, other_row):
+    return bool(other_row and (row is other_row or (row.name and row.name == other_row.name)))
+
+
+def _uses_wip_raw_material_source(work_order):
+    return cint(work_order.get("wip_step")) == 1 or cint(work_order.get("skip_transfer")) == 1
 
 
 def _handle_manufacture_batch(doc, log_id):
@@ -1324,7 +1379,8 @@ def _recalculate_stock_entry_amounts_from_existing_rates(stock_entry, balance_va
         if row.s_warehouse and not row.t_warehouse:
             raw_material_cost += flt(row.basic_amount)
         elif row.t_warehouse and _is_scrap_row(stock_entry, row):
-            scrap_material_cost += flt(row.basic_amount)
+            if not _is_dynamic_usage_scrap_row(row):
+                scrap_material_cost += flt(row.basic_amount)
         elif row.t_warehouse:
             finished_good_rows.append(row)
 
@@ -1668,12 +1724,24 @@ def _is_finished_good_row(stock_entry, row, production_item=None):
 
 
 def _is_scrap_row(stock_entry, row):
-    if not stock_entry.bom_no or not row.t_warehouse:
+    if not row.t_warehouse:
+        return False
+    if _is_dynamic_usage_scrap_row(row):
+        return True
+    if not stock_entry.bom_no:
         return False
     return bool(frappe.db.exists(
         "BOM Scrap Item",
         {"parent": stock_entry.bom_no, "item_code": row.item_code},
     ))
+
+
+def _is_dynamic_usage_scrap_row(row):
+    try:
+        from amf.amf.utils.work_order_scrap import is_dynamic_usage_scrap_row
+        return is_dynamic_usage_scrap_row(row)
+    except Exception:
+        return False
 
 
 def _get_doc_precision(doc, fieldname, default=6):
@@ -2088,11 +2156,8 @@ def set_basic_rate_override(doc, force=False, update_finished_item_rate=True, ra
 
     for d in doc.get("items"):
 
-        # Detect scrap item from BOM Scrap table
-        is_scrap = frappe.db.exists(
-            "BOM Scrap Item",
-            {"parent": doc.bom_no, "item_code": d.item_code}
-        )# or d.t_warehouse in ["Scrap - AMF21","Rework - AMF21"] :
+        is_scrap = _is_scrap_row(doc, d)
+        is_dynamic_scrap = _is_dynamic_usage_scrap_row(d)
 
         # DO NOT propagate FG rate to scrap
         if d.t_warehouse and not is_scrap:
@@ -2115,7 +2180,7 @@ def set_basic_rate_override(doc, force=False, update_finished_item_rate=True, ra
                 raw_material_cost += flt(d.basic_amount)
 
         # SCRAP ITEMS (patched)
-        if is_scrap: 
+        if is_scrap:
             scrap_rate = flt(
                 frappe.db.get_value(
                     "BOM Scrap Item",
@@ -2140,18 +2205,15 @@ def set_basic_rate_override(doc, force=False, update_finished_item_rate=True, ra
             )
             update_log_entry(
                 log_id, f"[{now_datetime()}] Scrap Item {d.item_code}: basic_rate set to {d.basic_rate}, basic_amount set to {d.basic_amount}<br>")   
-            scrap_material_cost += d.basic_amount
+            if not is_dynamic_scrap:
+                scrap_material_cost += d.basic_amount
 
     # FINISHED GOOD RATE CALCULATION
     number_of_fg_items = len([t.t_warehouse for t in doc.get("items") if t.t_warehouse])
     if (fg_basic_rate == 0.0 and number_of_fg_items == 1) or update_finished_item_rate:
         if doc.purpose in ["Manufacture", "Repack"]:
             for d in doc.get("items"):
-                 # Detect scrap item from BOM Scrap table
-                is_scrap = frappe.db.exists(
-                    "BOM Scrap Item",
-                    {"parent": doc.bom_no, "item_code": d.item_code}
-                )
+                is_scrap = _is_scrap_row(doc, d)
                 
                 if d.transfer_qty and (d.bom_no or d.t_warehouse) and not is_scrap:
                     d.basic_rate = flt((raw_material_cost - scrap_material_cost) / flt(d.transfer_qty), d.precision("basic_rate"))
