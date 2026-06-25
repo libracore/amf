@@ -1,0 +1,234 @@
+{
+ "creation": "2026-06-24 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "company",
+  "ai_section",
+  "enable_ai_insights",
+  "openai_api_key",
+  "openai_api_key_configured",
+  "clear_openai_api_key",
+  "openai_api_key_encrypted",
+  "ai_model",
+  "ai_reasoning_effort",
+  "column_break_ai",
+  "ai_prompt_version",
+  "ai_minimum_confidence",
+  "ai_max_insights",
+  "ai_timeout_seconds",
+  "ai_controls_section",
+  "anonymize_external_parties",
+  "include_issue_free_text",
+  "require_human_approval",
+  "fallback_to_rule_based_report",
+  "output_section",
+  "generate_english",
+  "generate_french",
+  "generate_markdown",
+  "generate_pdf",
+  "email_section",
+  "send_email",
+  "email_recipients",
+  "email_subject_prefix"
+ ],
+ "fields": [
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enable Monthly Generation"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "ai_section",
+   "fieldtype": "Section Break",
+   "label": "AI-Assisted Insights"
+  },
+  {
+   "default": "1",
+   "description": "Generate evidence-backed bilingual insights using the OpenAI Responses API.",
+   "fieldname": "enable_ai_insights",
+   "fieldtype": "Check",
+   "label": "Enable AI Insights"
+  },
+  {
+   "description": "Enter a new key to replace the stored key. The value is encrypted before it is written to the database and is never displayed again.",
+   "fieldname": "openai_api_key",
+   "fieldtype": "Long Text",
+   "label": "OpenAI API Key (New Value)",
+   "no_copy": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "openai_api_key_configured",
+   "fieldtype": "Check",
+   "label": "OpenAI API Key Configured",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "clear_openai_api_key",
+   "fieldtype": "Check",
+   "label": "Clear Stored OpenAI API Key"
+  },
+  {
+   "fieldname": "openai_api_key_encrypted",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Encrypted OpenAI API Key",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "default": "gpt-5.5",
+   "fieldname": "ai_model",
+   "fieldtype": "Data",
+   "label": "AI Model"
+  },
+  {
+   "default": "medium",
+   "fieldname": "ai_reasoning_effort",
+   "fieldtype": "Select",
+   "label": "Reasoning Effort",
+   "options": "low\nmedium\nhigh"
+  },
+  {
+   "fieldname": "column_break_ai",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "operations-v1",
+   "fieldname": "ai_prompt_version",
+   "fieldtype": "Data",
+   "label": "Prompt Version"
+  },
+  {
+   "default": "65",
+   "description": "Insights below this confidence are discarded before they reach the report.",
+   "fieldname": "ai_minimum_confidence",
+   "fieldtype": "Percent",
+   "label": "Minimum Confidence"
+  },
+  {
+   "default": "8",
+   "fieldname": "ai_max_insights",
+   "fieldtype": "Int",
+   "label": "Maximum Insights"
+  },
+  {
+   "default": "120",
+   "fieldname": "ai_timeout_seconds",
+   "fieldtype": "Int",
+   "label": "API Timeout (Seconds)"
+  },
+  {
+   "fieldname": "ai_controls_section",
+   "fieldtype": "Section Break",
+   "label": "AI Privacy and Control"
+  },
+  {
+   "default": "1",
+   "description": "Replace customer, supplier and transaction identifiers with stable aliases before transmission.",
+   "fieldname": "anonymize_external_parties",
+   "fieldtype": "Check",
+   "label": "Anonymize External Parties"
+  },
+  {
+   "default": "0",
+   "description": "Opt in to sending Issue root-cause free text. Status, age, type and linkage metrics are included without it.",
+   "fieldname": "include_issue_free_text",
+   "fieldtype": "Check",
+   "label": "Include Issue Root-Cause Text"
+  },
+  {
+   "default": "1",
+   "description": "Keep AI content out of generated files and email until a manager approves it.",
+   "fieldname": "require_human_approval",
+   "fieldtype": "Check",
+   "label": "Require Human Approval"
+  },
+  {
+   "default": "1",
+   "description": "Complete the deterministic report even when AI generation fails.",
+   "fieldname": "fallback_to_rule_based_report",
+   "fieldtype": "Check",
+   "label": "Fallback to Rule-Based Report"
+  },
+  {
+   "fieldname": "output_section",
+   "fieldtype": "Section Break",
+   "label": "Output"
+  },
+  {
+   "default": "1",
+   "fieldname": "generate_english",
+   "fieldtype": "Check",
+   "label": "Generate English"
+  },
+  {
+   "default": "1",
+   "fieldname": "generate_french",
+   "fieldtype": "Check",
+   "label": "Generate French"
+  },
+  {
+   "default": "1",
+   "fieldname": "generate_markdown",
+   "fieldtype": "Check",
+   "label": "Generate Markdown"
+  },
+  {
+   "default": "1",
+   "fieldname": "generate_pdf",
+   "fieldtype": "Check",
+   "label": "Generate PDF"
+  },
+  {
+   "fieldname": "email_section",
+   "fieldtype": "Section Break",
+   "label": "Email Distribution"
+  },
+  {
+   "default": "0",
+   "fieldname": "send_email",
+   "fieldtype": "Check",
+   "label": "Send Automatically"
+  },
+  {
+   "description": "Comma-separated email addresses.",
+   "fieldname": "email_recipients",
+   "fieldtype": "Small Text",
+   "label": "Email Recipients"
+  },
+  {
+   "default": "[AMF Operations]",
+   "fieldname": "email_subject_prefix",
+   "fieldtype": "Data",
+   "label": "Email Subject Prefix"
+  }
+ ],
+ "issingle": 1,
+ "modified": "2026-06-25 00:10:00.000000",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "Operations KPI Report Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "track_changes": 1
+}
