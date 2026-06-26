@@ -219,14 +219,15 @@ scheduler_events = {
     ],
     "monthly_long": [
         "amf.amf.utils.bom_hierarchy_sync.enqueue_sync_latest_bom_hierarchy_for_all_items",
+        #"amf.amf.utils.monthly_operations_report.generate_previous_month_report",
     ],
 }
 
 # Override Methods
 # ------------------------------
-# override_whitelisted_methods = {
-#     "frappe.desk.link_preview.get_preview_data": "amf.amf.link_preview.get_preview_data",
-# }
+override_whitelisted_methods = {
+    "frappe.desk.form.save.savedocs": "amf.amf.utils.delivery_note_save.savedocs",
+}
 
 # override_whitelisted_methods.update({
 #     "frappe.desk.doctype.event.event.get_events": "amf.event.get_events"

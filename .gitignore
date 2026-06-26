@@ -130,3 +130,5 @@ amf/public/js/doctype/purchase_order_parser_warnings.js
 amf/public/js/doctype/purchase_order_parser_warnings.js
 requirements.txt
 requirements.txt
+amf/public/js/stock_entry_backup.js
+README.md
