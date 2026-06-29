@@ -9,7 +9,10 @@ with bilingual, evidence-backed OpenAI insights.
 
 Configuration:
 
-1. Install `requirements.txt` and run `bench --site <site> migrate`.
+1. Install `requirements.txt` in the target bench Python environment, then
+   run `bench --site <site> migrate` and `bench restart`.
+   Example from the bench root:
+   `./env/bin/pip install -r apps/amf/requirements.txt`.
 2. Enter the API key in the Single `Operations KPI Report Settings` DocType.
    AMF encrypts it with the site's encryption key into a Long Text field,
    avoiding Frappe v12's short `__Auth.password` column. The key is never

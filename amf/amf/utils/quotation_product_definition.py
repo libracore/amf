@@ -21,7 +21,7 @@ QUOTATION_PRODUCT_DEFINITION_FIELDS = {
             "fieldname": "choice",
             "fieldtype": "Section Break",
             "label": "Product Definition",
-            "insert_after": "items_section",
+            "insert_after": "details",
             "collapsible": 0,
         },
         {
@@ -34,6 +34,8 @@ QUOTATION_PRODUCT_DEFINITION_FIELDS = {
             "fieldname": "section_break_48",
             "fieldtype": "Section Break",
             "insert_after": "product_definition_helper",
+            "hidden": 1,
+            "print_hide": 1,
         },
         {
             "fieldname": "rvm",
