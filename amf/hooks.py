@@ -258,5 +258,6 @@ after_migrate = [
     "amf.amf.utils.item_reporting.sync_item_reporting_custom_fields",
     "amf.amf.utils.quotation_product_definition.sync_quotation_product_definition_custom_fields",
     "amf.amf.utils.work_order_scrap.sync_work_order_usage_scrap_custom_fields",
+    "amf.amf.utils.sales_order_otif.sync_sales_order_otif_custom_fields",
     "amf.amf.utils.kpi_dashboard.sync_supply_chain_manufacturing_dashboard",
 ]

@@ -33,6 +33,7 @@ from amf.amf.dashboard_chart_source.purchased_item_price_ratio.purchased_item_pr
 from amf.amf.report.on_time_delivery_kpis.on_time_delivery_kpis import (
     get_data as get_otd_rows,
 )
+from amf.amf.utils.sales_order_otif import get_skip_otif_kpi_condition
 
 
 REPORT_DOCTYPE = "Operations KPI Report"
@@ -441,6 +442,10 @@ def finalize_otif_breakdown(values):
 
 
 def get_strict_otif(period_start, period_end):
+    skip_otif_kpi_condition = get_skip_otif_kpi_condition("so")
+    if skip_otif_kpi_condition:
+        skip_otif_kpi_condition = "AND {0}".format(skip_otif_kpi_condition)
+
     rows = frappe.db.sql(
         """
         SELECT
@@ -504,7 +509,8 @@ def get_strict_otif(period_start, period_end):
                 NULLIF(soi.stock_qty, 0),
                 soi.qty * IFNULL(soi.conversion_factor, 1)
             ) > 0
-        """,
+            {skip_otif_kpi_condition}
+        """.format(skip_otif_kpi_condition=skip_otif_kpi_condition),
         {
             "period_start": period_start,
             "period_end": period_end,
