@@ -114,11 +114,17 @@ doc_events = {
     },
     "Item": {
         "onload": "amf.amf.utils.item_costing.populate_item_batch_costing_table",
+        "before_insert": "amf.amf.utils.item_batch_setup.apply_batch_tracking_rule",
         "validate": [
+            "amf.amf.utils.item_batch_setup.apply_batch_tracking_rule",
             "amf.amf.utils.bom_mgt.sync_item_bom_fields",
             "amf.amf.utils.item_reporting.apply_item_reporting_fields",
         ],
-        "after_insert": "amf.amf.utils.custom.qr_code_to_document",
+        "after_insert": [
+            "amf.amf.utils.custom.qr_code_to_document",
+            "amf.amf.utils.item_batch_setup.ensure_default_batch_for_item",
+        ],
+        "on_update": "amf.amf.utils.item_batch_setup.ensure_default_batch_for_item",
     },
     "Lead": {
         "after_insert": [
