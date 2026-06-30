@@ -11,7 +11,6 @@ from datetime import date, datetime
 from frappe.utils import cint, flt
 
 from amf.amf.utils.openai_credentials import get_openai_api_key
-from amf.amf.utils.operations_ai_schemas import OperationsInsights, model_to_dict
 
 
 DEFAULT_MODEL = "gpt-5.5"
@@ -36,12 +35,7 @@ def generate_ai_insights(kpi_data, settings):
             "Settings or through OPENAI_API_KEY."
         )
 
-    try:
-        from openai import OpenAI
-    except ImportError:
-        raise AIConfigurationError(
-            "The openai Python package is not installed. Install the AMF requirements."
-        )
+    OpenAI, OperationsInsights, model_to_dict = load_ai_dependencies()
 
     payload = build_ai_payload(
         kpi_data,
@@ -127,6 +121,26 @@ def generate_ai_insights(kpi_data, settings):
         ).hexdigest(),
         "insights": insight_data,
     }
+
+
+def load_ai_dependencies():
+    try:
+        from openai import OpenAI
+        from amf.amf.utils.operations_ai_schemas import (
+            OperationsInsights,
+            model_to_dict,
+        )
+    except ImportError as exc:
+        missing_module = getattr(exc, "name", None) or str(exc)
+        raise AIConfigurationError(
+            "AI insights require the AMF Python dependencies, including "
+            "'openai' and 'pydantic'. Missing module: {0}. Install them in "
+            "the target bench with './env/bin/pip install -r "
+            "apps/amf/requirements.txt', then run 'bench restart'.".format(
+                missing_module
+            )
+        )
+    return OpenAI, OperationsInsights, model_to_dict
 
 
 def build_developer_prompt(

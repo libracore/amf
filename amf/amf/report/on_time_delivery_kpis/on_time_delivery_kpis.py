@@ -4,6 +4,9 @@
 from __future__ import unicode_literals
 import frappe
 from frappe import _
+from frappe.utils import cint
+
+from amf.amf.utils.sales_order_otif import get_skip_otif_kpi_condition
 
 
 def execute(filters=None):
@@ -34,13 +37,8 @@ def get_columns():
     ]
     
 def get_data(filters):
-    
-    extra_filters = ""
-    if filters.item_group:
-        extra_filters += """ AND i.item_group = "{}" """.format(filters.item_group)
-    if not filters.include_rd:
-        extra_filters += """ AND (so.sales_order_type IS NULL OR so.sales_order_type NOT IN ('R&D', 'Hybrid')) """
-    extra_filters += """ AND dn.is_return != 1 """  # Exclude delivery note returns
+    filters = frappe._dict(filters or {})
+    conditions, params = get_conditions(filters)
     sql_query = """
 SELECT
 	dn.name as "DN",
@@ -65,26 +63,17 @@ JOIN `tabSales Order` AS so ON dni.against_sales_order = so.name
 JOIN `tabItem` AS i ON dni.item_code = i.name
 JOIN `tabSales Order Item` AS soi ON dni.so_detail = soi.name
 
-WHERE dni.item_code NOT RLIKE '^Di-'
-    AND dni.item_code NOT RLIKE '^ENC-'
-    AND dn.docstatus = 1
-    AND soi.delivery_date BETWEEN "{from_date}" AND "{to_date}"
-    {extra_filters}
+WHERE {conditions}
 
 ORDER BY dn.posting_date DESC
-    """.format(from_date=filters.from_date, to_date=filters.to_date, extra_filters=extra_filters)
+    """.format(conditions="\n    AND ".join(conditions))
 
-    data = frappe.db.sql(sql_query, as_dict=True)
+    data = frappe.db.sql(sql_query, params, as_dict=True)
     return data
 
-def get_chart(filters):    
-   
-    extra_filters = ""
-    if filters.item_group:
-        extra_filters += """ AND i.item_group = "{}" """.format(filters.item_group)
-    if not filters.include_rd:
-        extra_filters += """ AND (so.sales_order_type IS NULL OR so.sales_order_type NOT IN ('R&D', 'Hybrid')) """
-    extra_filters += """ AND dn.is_return != 1 """  # Exclude delivery note returns
+def get_chart(filters):
+    filters = frappe._dict(filters or {})
+    conditions, params = get_conditions(filters)
     sql_query = """
 SELECT
 	`month`,
@@ -117,18 +106,14 @@ FROM (
   JOIN `tabItem` AS i ON dni.item_code = i.name
   JOIN `tabSales Order Item` AS soi ON dni.so_detail = soi.name
 
-  WHERE dni.item_code NOT RLIKE '^Di-'
-    AND dni.item_code NOT RLIKE '^ENC-'
-    AND dn.docstatus = 1
-    AND soi.delivery_date BETWEEN "{from_date}" AND "{to_date}"
-    {extra_filters}
+  WHERE {conditions}
 ) as sd -- shipping delays
 
 GROUP BY `Month`
 ORDER BY `Month` ASC
-    """.format(from_date=filters.from_date, to_date=filters.to_date, extra_filters=extra_filters)
+    """.format(conditions="\n    AND ".join(conditions))
     
-    data = frappe.db.sql(sql_query, as_dict=True)
+    data = frappe.db.sql(sql_query, params, as_dict=True)
     
     months = [row['month'] for row in data]
     
@@ -171,3 +156,32 @@ ORDER BY `Month` ASC
         "height": 400,
     }
     return chart
+
+
+def get_conditions(filters):
+    conditions = [
+        "dni.item_code NOT RLIKE '^Di-'",
+        "dni.item_code NOT RLIKE '^ENC-'",
+        "dn.docstatus = 1",
+        "IFNULL(dn.is_return, 0) != 1",
+        "soi.delivery_date BETWEEN %(from_date)s AND %(to_date)s",
+    ]
+    params = {
+        "from_date": filters.get("from_date"),
+        "to_date": filters.get("to_date"),
+    }
+
+    if filters.get("item_group"):
+        conditions.append("i.item_group = %(item_group)s")
+        params["item_group"] = filters.get("item_group")
+
+    if not cint(filters.get("include_rd")):
+        conditions.append(
+            "(so.sales_order_type IS NULL OR so.sales_order_type NOT IN ('R&D', 'Hybrid'))"
+        )
+
+    skip_otif_kpi_condition = get_skip_otif_kpi_condition("so")
+    if skip_otif_kpi_condition:
+        conditions.append(skip_otif_kpi_condition)
+
+    return conditions, params

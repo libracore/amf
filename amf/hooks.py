@@ -52,7 +52,7 @@ doctype_js = {
     ],
     "Sales Order": [
         "public/js/sales_order.js",
-        "public/js/quotation_sales_order_accessories.js",
+        #"public/js/quotation_sales_order_accessories.js",
     ],
     "Stock Entry": "public/js/stock_entry.js",
     "Work Order": "public/js/work_order.js",
@@ -114,11 +114,17 @@ doc_events = {
     },
     "Item": {
         "onload": "amf.amf.utils.item_costing.populate_item_batch_costing_table",
+        "before_insert": "amf.amf.utils.item_batch_setup.apply_batch_tracking_rule",
         "validate": [
+            "amf.amf.utils.item_batch_setup.apply_batch_tracking_rule",
             "amf.amf.utils.bom_mgt.sync_item_bom_fields",
             "amf.amf.utils.item_reporting.apply_item_reporting_fields",
         ],
-        "after_insert": "amf.amf.utils.custom.qr_code_to_document",
+        "after_insert": [
+            "amf.amf.utils.custom.qr_code_to_document",
+            "amf.amf.utils.item_batch_setup.ensure_default_batch_for_item",
+        ],
+        "on_update": "amf.amf.utils.item_batch_setup.ensure_default_batch_for_item",
     },
     "Lead": {
         "after_insert": [
@@ -252,5 +258,6 @@ after_migrate = [
     "amf.amf.utils.item_reporting.sync_item_reporting_custom_fields",
     "amf.amf.utils.quotation_product_definition.sync_quotation_product_definition_custom_fields",
     "amf.amf.utils.work_order_scrap.sync_work_order_usage_scrap_custom_fields",
+    "amf.amf.utils.sales_order_otif.sync_sales_order_otif_custom_fields",
     "amf.amf.utils.kpi_dashboard.sync_supply_chain_manufacturing_dashboard",
 ]

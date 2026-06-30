@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from amf.amf.utils.openai_credentials import (
@@ -13,6 +14,7 @@ from amf.amf.utils.operations_ai_insights import (
     build_ai_payload,
     flatten_leaf_values,
     generate_ai_insights,
+    load_ai_dependencies,
     normalize_evidence_path,
     resolve_evidence_path,
     validate_ai_output,
@@ -198,6 +200,28 @@ class OperationsAIInsightsTest(unittest.TestCase):
         with patch.dict("os.environ", {"OPENAI_API_KEY": ""}):
             with self.assertRaises(AIConfigurationError):
                 generate_ai_insights(self.data, Settings())
+
+    def test_missing_pydantic_dependency_reports_actionable_error(self):
+        import builtins
+
+        real_import = builtins.__import__
+
+        def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+            if name == "openai":
+                return SimpleNamespace(OpenAI=object)
+            if name == "amf.amf.utils.operations_ai_schemas":
+                error = ModuleNotFoundError("No module named 'pydantic'")
+                error.name = "pydantic"
+                raise error
+            return real_import(name, globals, locals, fromlist, level)
+
+        with patch("builtins.__import__", side_effect=fake_import):
+            with self.assertRaises(AIConfigurationError) as context:
+                load_ai_dependencies()
+
+        message = str(context.exception)
+        self.assertIn("pydantic", message)
+        self.assertIn("pip install -r apps/amf/requirements.txt", message)
 
     def test_long_api_key_is_encrypted_outside_auth_table(self):
         class Settings(dict):
