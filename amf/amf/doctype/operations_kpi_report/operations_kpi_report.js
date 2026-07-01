@@ -3,6 +3,9 @@ frappe.ui.form.on('Operations KPI Report', {
         if (frm.is_new() && frm.doc.generate_ai_insights === undefined) {
             frm.set_value('generate_ai_insights', 1);
         }
+        if (frm.is_new() && !frm.doc.report_mode) {
+            frm.set_value('report_mode', 'Single Period');
+        }
     },
 
     refresh: function(frm) {
@@ -117,12 +120,67 @@ frappe.ui.form.on('Operations KPI Report', {
                 frm.set_value('reporting_semester', month <= 6 ? 'H1' : 'H2');
             }
         }
+        set_default_comparison_period(frm);
+    },
+
+    reporting_month: function(frm) {
+        set_default_comparison_period(frm);
+    },
+
+    reporting_year: function(frm) {
+        set_default_comparison_period(frm);
+    },
+
+    reporting_semester: function(frm) {
+        set_default_comparison_period(frm);
+    },
+
+    report_mode: function(frm) {
+        set_period_field_visibility(frm);
+        set_default_comparison_period(frm);
     }
 });
 
 function set_period_field_visibility(frm) {
     const is_semester = frm.doc.period_type === 'Semester';
+    const is_comparative = frm.doc.report_mode === 'Comparative';
     frm.toggle_display('reporting_month', !is_semester);
     frm.toggle_display('reporting_year', is_semester);
     frm.toggle_display('reporting_semester', is_semester);
+    frm.toggle_display('comparison_month', is_comparative && !is_semester);
+    frm.toggle_display('comparison_year', is_comparative && is_semester);
+    frm.toggle_display('comparison_semester', is_comparative && is_semester);
+    frm.toggle_display('comparison_period_start', is_comparative);
+    frm.toggle_display('comparison_period_end', is_comparative);
+}
+
+function set_default_comparison_period(frm) {
+    if (frm.doc.report_mode !== 'Comparative') {
+        return;
+    }
+    if (frm.doc.period_type === 'Semester') {
+        if (!frm.doc.reporting_year || !frm.doc.reporting_semester) {
+            return;
+        }
+        let comparison_year = Number(frm.doc.reporting_year);
+        let comparison_semester = 'H1';
+        if (frm.doc.reporting_semester === 'H1') {
+            comparison_year -= 1;
+            comparison_semester = 'H2';
+        }
+        if (!frm.doc.comparison_year) {
+            frm.set_value('comparison_year', comparison_year);
+        }
+        if (!frm.doc.comparison_semester) {
+            frm.set_value('comparison_semester', comparison_semester);
+        }
+        return;
+    }
+    if (!frm.doc.reporting_month || frm.doc.comparison_month) {
+        return;
+    }
+    frm.set_value(
+        'comparison_month',
+        frappe.datetime.add_months(frm.doc.reporting_month, -1)
+    );
 }

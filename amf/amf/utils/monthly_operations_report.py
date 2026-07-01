@@ -117,6 +117,58 @@ def generate_current_semester_report(force=False, source="Manual"):
     return generate_report(doc.name, force=force)
 
 
+def generate_previous_month_comparison_report(force=False, source="Manual"):
+    settings = get_settings()
+    period_end = add_days(get_first_day(today()), -1)
+    period_start = get_first_day(period_end)
+    comparison_month = get_first_day(add_months(period_start, -1))
+    doc = get_or_create_report(
+        company=settings.company,
+        reporting_month=period_start,
+        period_type="Monthly",
+        report_mode="Comparative",
+        comparison_month=comparison_month,
+        source=source,
+        settings=settings,
+    )
+    if doc.status in ("Completed", "Completed with Warnings") and not force:
+        return {"name": doc.name, "status": doc.status, "skipped": True}
+    return generate_report(doc.name, force=force)
+
+
+def generate_previous_semester_comparison_report(force=False, source="Manual"):
+    settings = get_settings()
+    current_date = getdate(today())
+    current_semester_start = date(
+        current_date.year,
+        1 if current_date.month <= 6 else 7,
+        1,
+    )
+    period_end = add_days(current_semester_start, -1)
+    period_start = date(
+        period_end.year,
+        1 if period_end.month <= 6 else 7,
+        1,
+    )
+    comparison_month = date(
+        add_days(period_start, -1).year,
+        1 if add_days(period_start, -1).month <= 6 else 7,
+        1,
+    )
+    doc = get_or_create_report(
+        company=settings.company,
+        reporting_month=period_start,
+        period_type="Semester",
+        report_mode="Comparative",
+        comparison_month=comparison_month,
+        source=source,
+        settings=settings,
+    )
+    if doc.status in ("Completed", "Completed with Warnings") and not force:
+        return {"name": doc.name, "status": doc.status, "skipped": True}
+    return generate_report(doc.name, force=force)
+
+
 def get_settings():
     settings = frappe.get_single(SETTINGS_DOCTYPE)
     if not settings.company:
@@ -128,19 +180,28 @@ def get_or_create_report(
     company,
     reporting_month,
     period_type="Monthly",
+    report_mode="Single Period",
+    comparison_month=None,
     source="Manual",
     settings=None,
 ):
     reporting_month = get_first_day(getdate(reporting_month))
-    existing_name = frappe.db.get_value(
-        REPORT_DOCTYPE,
-        {
-            "company": company,
-            "reporting_month": reporting_month,
-            "period_type": period_type,
-        },
-        "name",
-    )
+    report_mode = report_mode or "Single Period"
+    filters = {
+        "company": company,
+        "reporting_month": reporting_month,
+        "period_type": period_type,
+    }
+    if report_mode == "Comparative":
+        comparison_month = get_first_day(
+            getdate(comparison_month or add_months(reporting_month, -1))
+        )
+        filters["report_mode"] = "Comparative"
+        filters["comparison_month"] = comparison_month
+    else:
+        filters["report_mode"] = "Single Period"
+
+    existing_name = frappe.db.get_value(REPORT_DOCTYPE, filters, "name")
     if existing_name:
         doc = frappe.get_doc(REPORT_DOCTYPE, existing_name)
     else:
@@ -150,6 +211,8 @@ def get_or_create_report(
                 "company": company,
                 "reporting_month": reporting_month,
                 "period_type": period_type,
+                "report_mode": report_mode,
+                "comparison_month": comparison_month,
                 "source": source,
             }
         )
@@ -186,6 +249,24 @@ def generate_report(report_name, force=False):
             period_start=getdate(doc.period_start),
             period_end=getdate(doc.period_end),
             period_type=doc.period_type,
+            report_mode=doc.get("report_mode") or "Single Period",
+            comparison_start=(
+                getdate(doc.comparison_period_start)
+                if doc.get("report_mode") == "Comparative"
+                and doc.get("comparison_period_start")
+                else None
+            ),
+            comparison_end=(
+                getdate(doc.comparison_period_end)
+                if doc.get("report_mode") == "Comparative"
+                and doc.get("comparison_period_end")
+                else None
+            ),
+            comparison_label=(
+                get_comparison_period_label(doc)
+                if doc.get("report_mode") == "Comparative"
+                else None
+            ),
         )
 
         ai_result = None
@@ -199,13 +280,18 @@ def generate_report(report_name, force=False):
                 ai_result = generate_ai_insights(data, settings)
                 if not cint(settings.get("require_human_approval", 1)):
                     ai_insights_for_report = ai_result["insights"]
-            except Exception:
-                ai_error = frappe.get_traceback()
+            except Exception as exc:
+                if exc.__class__.__name__ == "AITimeoutError":
+                    ai_error = str(exc)
+                else:
+                    ai_error = frappe.get_traceback()
                 if not cint(settings.get("fallback_to_rule_based_report", 1)):
                     raise
                 warnings.append(
-                    "AI insight generation failed; the deterministic report was "
-                    "completed without AI content."
+                    "AI insight generation failed: {0}. The deterministic "
+                    "report was completed without AI content.".format(
+                        ai_error.splitlines()[0]
+                    )
                 )
 
         english_markdown = (
@@ -293,7 +379,16 @@ def generate_report(report_name, force=False):
         raise
 
 
-def collect_report_data(company, period_start, period_end, period_type="Monthly"):
+def collect_report_data(
+    company,
+    period_start,
+    period_end,
+    period_type="Monthly",
+    report_mode="Single Period",
+    comparison_start=None,
+    comparison_end=None,
+    comparison_label=None,
+):
     period_start = getdate(period_start)
     period_end = getdate(period_end)
     if period_type == "Semester":
@@ -309,11 +404,12 @@ def collect_report_data(company, period_start, period_end, period_type="Monthly"
         period_label = period_start.strftime("%Y-%m")
     semester_start = date(period_start.year, 1 if period_start.month <= 6 else 7, 1)
 
-    return {
+    data = {
         "scope": {
             "company": company,
             "currency": frappe.db.get_value("Company", company, "default_currency") or "CHF",
             "period_type": period_type,
+            "report_mode": report_mode or "Single Period",
             "period_start": period_start,
             "period_end": period_end,
             "period_label": period_label,
@@ -332,6 +428,70 @@ def collect_report_data(company, period_start, period_end, period_type="Monthly"
         "machining": collect_machining(period_start, period_end, semester_start),
         "shipping": collect_shipping_issues(period_start, period_end),
         "procurement": collect_procurement_prices(period_start, period_end),
+    }
+    if report_mode == "Comparative" and comparison_start and comparison_end:
+        comparison_data = collect_report_data(
+            company=company,
+            period_start=getdate(comparison_start),
+            period_end=getdate(comparison_end),
+            period_type=period_type,
+            report_mode="Single Period",
+        )
+        data["comparison"] = build_comparison_snapshot(
+            primary_data=data,
+            comparison_data=comparison_data,
+            comparison_label=comparison_label,
+        )
+        data["scope"]["comparison_period_start"] = getdate(comparison_start)
+        data["scope"]["comparison_period_end"] = getdate(comparison_end)
+        data["scope"]["comparison_period_label"] = data["comparison"]["comparison_label"]
+    else:
+        data["comparison"] = {"enabled": False}
+    return data
+
+
+def build_comparison_snapshot(primary_data, comparison_data, comparison_label=None):
+    primary_metrics = extract_comparison_metrics(primary_data)
+    comparison_metrics = extract_comparison_metrics(comparison_data)
+    deltas = {}
+    for key, value in primary_metrics.items():
+        deltas[key] = rounded(flt(value) - flt(comparison_metrics.get(key)), 2)
+
+    return {
+        "enabled": True,
+        "primary_label": primary_data["scope"]["period_label"],
+        "primary_start": primary_data["scope"]["period_start"],
+        "primary_end": primary_data["scope"]["period_end"],
+        "comparison_label": comparison_label or comparison_data["scope"]["period_label"],
+        "comparison_start": comparison_data["scope"]["period_start"],
+        "comparison_end": comparison_data["scope"]["period_end"],
+        "primary_metrics": primary_metrics,
+        "comparison_metrics": comparison_metrics,
+        "deltas": deltas,
+    }
+
+
+def extract_comparison_metrics(data):
+    machining = data["machining"]["current"]
+    shipping = data["shipping"]
+    procurement = data["procurement"]
+    strict = data["otif"]["strict"]
+    return {
+        "otif_rate_points": data["otif"]["current"]["rate"],
+        "strict_otif_rate_points": strict["rate"],
+        "open_shortfall_lines": strict["open_shortfall_lines"],
+        "open_shortfall_qty": strict["open_shortfall_qty"],
+        "plug_internal_ratio_points": machining["families"]["plugs"]["internal_ratio"],
+        "seat_internal_ratio_points": machining["families"]["seats"]["internal_ratio"],
+        "machining_valid_qty": machining["valid_qty"],
+        "machining_scrap_qty": machining["scrap_qty"],
+        "machining_scrap_rate_points": machining["scrap_rate"],
+        "shipping_issue_count": shipping["issue_count"],
+        "shipping_issue_rate": shipping["issue_rate_per_100_delivery_notes"],
+        "procurement_price_ratio_points": procurement["ratio_percent"],
+        "weighted_purchase_price_ratio_points": procurement["weighted_ratio_percent"],
+        "purchase_price_impact": procurement["estimated_price_impact"],
+        "procurement_anomaly_count": procurement["anomaly_count"],
     }
 
 
@@ -1005,32 +1165,45 @@ def is_semester_report(data):
     return data.get("scope", {}).get("period_type") == "Semester"
 
 
+def is_comparative_report(data):
+    return bool(data.get("comparison", {}).get("enabled"))
+
+
 def period_terms(data, language="en"):
     semester = is_semester_report(data)
+    comparative = is_comparative_report(data)
     if language == "fr":
         return {
             "title": (
-                "Rapport semestriel de performance opérationnelle"
+                "Rapport comparatif semestriel de performance opérationnelle"
+                if semester and comparative
+                else "Rapport comparatif mensuel de performance opérationnelle"
+                if comparative
+                else "Rapport semestriel de performance opérationnelle"
                 if semester
                 else "Rapport mensuel de performance opérationnelle"
             ),
-            "result": "Résultat semestriel" if semester else "Résultat mensuel",
-            "current": "semestre" if semester else "mois",
-            "previous": "semestre précédent" if semester else "mois précédent",
+            "result": "Période principale" if comparative else "Résultat semestriel" if semester else "Résultat mensuel",
+            "current": "période principale" if comparative else "semestre" if semester else "mois",
+            "previous": "période de comparaison" if comparative else "semestre précédent" if semester else "mois précédent",
             "end": "fin du semestre" if semester else "fin du mois",
-            "snapshot": "semestriel" if semester else "mensuel",
+            "snapshot": "comparatif semestriel" if semester and comparative else "comparatif mensuel" if comparative else "semestriel" if semester else "mensuel",
         }
     return {
         "title": (
-            "Semester Operations Performance Report"
+            "Comparative Semester Operations Performance Report"
+            if semester and comparative
+            else "Comparative Monthly Operations Performance Report"
+            if comparative
+            else "Semester Operations Performance Report"
             if semester
             else "Monthly Operations Performance Report"
         ),
-        "result": "Semester result" if semester else "Monthly result",
-        "current": "semester" if semester else "month",
-        "previous": "previous semester" if semester else "previous month",
+        "result": "Primary period" if comparative else "Semester result" if semester else "Monthly result",
+        "current": "primary period" if comparative else "semester" if semester else "month",
+        "previous": "comparison period" if comparative else "previous semester" if semester else "previous month",
         "end": "semester-end" if semester else "month-end",
-        "snapshot": "semester" if semester else "monthly",
+        "snapshot": "comparative semester" if semester and comparative else "comparative monthly" if comparative else "semester" if semester else "monthly",
     }
 
 
@@ -1105,6 +1278,7 @@ def render_english_report(data, ai_insights=None):
             "",
         ]
     )
+    lines.extend(render_english_comparison(data))
     lines.extend(render_english_otif(data))
     lines.extend(render_english_machining(data))
     lines.extend(render_english_shipping(data))
@@ -1125,18 +1299,28 @@ def get_english_executive_findings(data):
     findings = []
     terms = period_terms(data, "en")
 
-    change = otif["change_vs_previous_points"]
-    if change is None:
-        change_text = "No comparable delivered rows were available for the {0}.".format(
-            terms["previous"]
-        )
-    else:
+    if is_comparative_report(data):
+        comparison = data["comparison"]
+        change = comparison["deltas"]["otif_rate_points"]
         direction = "improved" if change >= 0 else "declined"
-        change_text = "The rate {0} by {1:.1f} points versus the {2}.".format(
+        change_text = "Versus {0}, the rate {1} by {2:.1f} points.".format(
+            comparison["comparison_label"],
             direction,
             abs(change),
-            terms["previous"],
         )
+    else:
+        change = otif["change_vs_previous_points"]
+        if change is None:
+            change_text = "No comparable delivered rows were available for the {0}.".format(
+                terms["previous"]
+            )
+        else:
+            direction = "improved" if change >= 0 else "declined"
+            change_text = "The rate {0} by {1:.1f} points versus the {2}.".format(
+                direction,
+                abs(change),
+                terms["previous"],
+            )
     findings.append(
         "1. **Delivery performance:** the delivered-line rate was **{0:.1f}%** and strict OTIF was **{1:.1f}%**. {2}".format(
             otif["current"]["rate"],
@@ -1151,30 +1335,82 @@ def get_english_executive_findings(data):
             terms["end"],
         )
     )
+    scrap_comparison = "."
+    shipping_comparison = "."
+    procurement_comparison = "."
+    if is_comparative_report(data):
+        deltas = data["comparison"]["deltas"]
+        scrap_comparison = " ({0} vs comparison).".format(
+            format_delta(deltas["machining_scrap_rate_points"], "%", 1)
+        )
+        shipping_comparison = " ({0} vs comparison).".format(
+            format_delta(deltas["shipping_issue_count"], "", 0)
+        )
+        procurement_comparison = " ({0} weighted-ratio points vs comparison).".format(
+            format_delta(deltas["weighted_purchase_price_ratio_points"], "", 1)
+        )
     findings.append(
-        "3. **Machining:** plugs were {0:.1f}% internal and valve seats were {1:.1f}% internal. The combined scrap rate was **{2:.1f}%**.".format(
+        "3. **Machining:** plugs were {0:.1f}% internal and valve seats were {1:.1f}% internal. The combined scrap rate was **{2:.1f}%**{3}".format(
             machining["families"]["plugs"]["internal_ratio"],
             machining["families"]["seats"]["internal_ratio"],
             machining["scrap_rate"],
+            scrap_comparison,
         )
     )
     findings.append(
-        "4. **Shipping control:** {0} packaging/shipping issues were opened, including {1} unresolved issues older than {2} days.".format(
+        "4. **Shipping control:** {0} packaging/shipping issues were opened, including {1} unresolved issues older than {2} days{3}".format(
             shipping["issue_count"],
             shipping["overdue_open_count"],
             ISSUE_AGE_TARGET_DAYS,
+            shipping_comparison,
         )
     )
     findings.append(
-        "5. **Procurement:** the arithmetic price ratio was **{0:.1f}%**, the weighted ratio was **{1:.1f}%**, and the estimated impact on latest quantities was **{2} {3:,.2f}**. {4} statistical anomalies require classification.".format(
+        "5. **Procurement:** the arithmetic price ratio was **{0:.1f}%**, the weighted ratio was **{1:.1f}%**, and the estimated impact on latest quantities was **{2} {3:,.2f}**. {4} statistical anomalies require classification{5}".format(
             procurement["ratio_percent"],
             procurement["weighted_ratio_percent"],
             data["scope"]["currency"],
             procurement["estimated_price_impact"],
             procurement["anomaly_count"],
+            procurement_comparison,
         )
     )
     return findings
+
+
+def render_english_comparison(data):
+    if not is_comparative_report(data):
+        return []
+
+    comparison = data["comparison"]
+    primary = comparison["primary_metrics"]
+    baseline = comparison["comparison_metrics"]
+    deltas = comparison["deltas"]
+    lines = [
+        "## Comparative Evolution",
+        "",
+        "This view compares **{0}** with **{1}**. Positive deltas mean the primary period is above the comparison period.".format(
+            comparison["primary_label"],
+            comparison["comparison_label"],
+        ),
+        "",
+        "| KPI | {0} | {1} | Delta |".format(
+            comparison["primary_label"],
+            comparison["comparison_label"],
+        ),
+        "|---|---:|---:|---:|",
+    ]
+    for key, label, suffix, digits in comparison_metric_rows("en"):
+        lines.append(
+            "| {0} | {1} | {2} | {3} |".format(
+                label,
+                format_metric(primary.get(key), suffix, digits),
+                format_metric(baseline.get(key), suffix, digits),
+                format_delta(deltas.get(key), suffix, digits),
+            )
+        )
+    lines.append("")
+    return lines
 
 
 def render_english_otif(data):
@@ -1620,6 +1856,7 @@ def render_french_report(data, ai_insights=None):
             "",
         ]
     )
+    lines.extend(render_french_comparison(data))
     lines.extend(render_french_otif(data))
     lines.extend(render_french_machining(data))
     lines.extend(render_french_shipping(data))
@@ -1638,17 +1875,41 @@ def get_french_executive_findings(data):
     shipping = data["shipping"]
     procurement = data["procurement"]
     terms = period_terms(data, "fr")
-    change = otif["change_vs_previous_points"]
-    if change is None:
-        change_text = "Aucune ligne livrée comparable n'était disponible pour le {0}.".format(
-            terms["previous"]
-        )
-    else:
+    if is_comparative_report(data):
+        comparison = data["comparison"]
+        change = comparison["deltas"]["otif_rate_points"]
         direction = "progressé" if change >= 0 else "reculé"
-        change_text = "Le taux a {0} de {1:.1f} points par rapport au {2}.".format(
+        change_text = "Par rapport à {0}, le taux a {1} de {2:.1f} points.".format(
+            comparison["comparison_label"],
             direction,
             abs(change),
-            terms["previous"],
+        )
+    else:
+        change = otif["change_vs_previous_points"]
+        if change is None:
+            change_text = "Aucune ligne livrée comparable n'était disponible pour le {0}.".format(
+                terms["previous"]
+            )
+        else:
+            direction = "progressé" if change >= 0 else "reculé"
+            change_text = "Le taux a {0} de {1:.1f} points par rapport au {2}.".format(
+                direction,
+                abs(change),
+                terms["previous"],
+            )
+    scrap_comparison = "."
+    shipping_comparison = "."
+    procurement_comparison = "."
+    if is_comparative_report(data):
+        deltas = data["comparison"]["deltas"]
+        scrap_comparison = " ({0} par rapport à la comparaison).".format(
+            format_delta(deltas["machining_scrap_rate_points"], "%", 1)
+        )
+        shipping_comparison = " ({0} par rapport à la comparaison).".format(
+            format_delta(deltas["shipping_issue_count"], "", 0)
+        )
+        procurement_comparison = " ({0} points de ratio pondéré par rapport à la comparaison).".format(
+            format_delta(deltas["weighted_purchase_price_ratio_points"], "", 1)
         )
     return [
         "1. **Performance de livraison :** le taux de lignes livrées à temps est de **{0:.1f}%** et l'OTIF strict de **{1:.1f}%**. {2}".format(
@@ -1661,24 +1922,62 @@ def get_french_executive_findings(data):
             strict["open_shortfall_qty"],
             terms["end"],
         ),
-        "3. **Usinage :** les plugs sont produits à {0:.1f}% en interne et les sièges à {1:.1f}% en interne. Le taux de rebut combiné est de **{2:.1f}%**.".format(
+        "3. **Usinage :** les plugs sont produits à {0:.1f}% en interne et les sièges à {1:.1f}% en interne. Le taux de rebut combiné est de **{2:.1f}%**{3}".format(
             machining["families"]["plugs"]["internal_ratio"],
             machining["families"]["seats"]["internal_ratio"],
             machining["scrap_rate"],
+            scrap_comparison,
         ),
-        "4. **Maîtrise des expéditions :** {0} problèmes d'emballage ou d'expédition ont été ouverts, dont {1} non résolus depuis plus de {2} jours.".format(
+        "4. **Maîtrise des expéditions :** {0} problèmes d'emballage ou d'expédition ont été ouverts, dont {1} non résolus depuis plus de {2} jours{3}".format(
             shipping["issue_count"],
             shipping["overdue_open_count"],
             ISSUE_AGE_TARGET_DAYS,
+            shipping_comparison,
         ),
-        "5. **Achats :** le ratio arithmétique est de **{0:.1f}%**, le ratio pondéré de **{1:.1f}%** et l'impact estimé sur les dernières quantités de **{2} {3:,.2f}**. {4} anomalies statistiques doivent être classées.".format(
+        "5. **Achats :** le ratio arithmétique est de **{0:.1f}%**, le ratio pondéré de **{1:.1f}%** et l'impact estimé sur les dernières quantités de **{2} {3:,.2f}**. {4} anomalies statistiques doivent être classées{5}".format(
             procurement["ratio_percent"],
             procurement["weighted_ratio_percent"],
             data["scope"]["currency"],
             procurement["estimated_price_impact"],
             procurement["anomaly_count"],
+            procurement_comparison,
         ),
     ]
+
+
+def render_french_comparison(data):
+    if not is_comparative_report(data):
+        return []
+
+    comparison = data["comparison"]
+    primary = comparison["primary_metrics"]
+    baseline = comparison["comparison_metrics"]
+    deltas = comparison["deltas"]
+    lines = [
+        "## Évolution comparative",
+        "",
+        "Cette vue compare **{0}** avec **{1}**. Les écarts positifs indiquent que la période principale est au-dessus de la période de comparaison.".format(
+            comparison["primary_label"],
+            comparison["comparison_label"],
+        ),
+        "",
+        "| KPI | {0} | {1} | Écart |".format(
+            comparison["primary_label"],
+            comparison["comparison_label"],
+        ),
+        "|---|---:|---:|---:|",
+    ]
+    for key, label, suffix, digits in comparison_metric_rows("fr"):
+        lines.append(
+            "| {0} | {1} | {2} | {3} |".format(
+                label,
+                format_metric(primary.get(key), suffix, digits),
+                format_metric(baseline.get(key), suffix, digits),
+                format_delta(deltas.get(key), suffix, digits),
+            )
+        )
+    lines.append("")
+    return lines
 
 
 def render_french_otif(data):
@@ -2358,7 +2657,7 @@ def create_report_files(doc, english_markdown, french_markdown, settings, warnin
         "french_markdown_file": None,
         "french_pdf_file": None,
     }
-    period = get_report_period_label(doc).replace("-", "_")
+    period = get_report_period_label(doc).replace("-", "_").replace(" ", "_")
     base_name = "operations_report_{0}".format(period)
 
     for language, content, prefix in (
@@ -2379,7 +2678,12 @@ def create_report_files(doc, english_markdown, french_markdown, settings, warnin
 
         if cint(settings.generate_pdf):
             try:
-                html = build_pdf_html(content, language, doc.period_type)
+                html = build_pdf_html(
+                    content,
+                    language,
+                    doc.period_type,
+                    doc.get("report_mode") or "Single Period",
+                )
                 pdf_content = get_pdf(
                     html,
                     options={
@@ -2410,17 +2714,31 @@ def create_report_files(doc, english_markdown, french_markdown, settings, warnin
     return updates
 
 
-def build_pdf_html(markdown_content, language, period_type="Monthly"):
+def build_pdf_html(
+    markdown_content,
+    language,
+    period_type="Monthly",
+    report_mode="Single Period",
+):
     semester = period_type == "Semester"
+    comparative = report_mode == "Comparative"
     if language == "french":
         title = (
-            "Rapport semestriel de performance opérationnelle"
+            "Rapport comparatif semestriel de performance opérationnelle"
+            if semester and comparative
+            else "Rapport comparatif mensuel de performance opérationnelle"
+            if comparative
+            else "Rapport semestriel de performance opérationnelle"
             if semester
             else "Rapport mensuel de performance opérationnelle"
         )
     else:
         title = (
-            "Semester Operations Performance Report"
+            "Comparative Semester Operations Performance Report"
+            if semester and comparative
+            else "Comparative Monthly Operations Performance Report"
+            if comparative
+            else "Semester Operations Performance Report"
             if semester
             else "Monthly Operations Performance Report"
         )
@@ -2506,7 +2824,10 @@ def email_report(report_name, force=False):
             attachments.append({"fid": file_id})
 
     prefix = settings.email_subject_prefix or "[AMF Operations]"
+    comparative = (doc.get("report_mode") or "Single Period") == "Comparative"
     period_kind = "Semester" if doc.period_type == "Semester" else "Monthly"
+    if comparative:
+        period_kind = "Comparative " + period_kind
     period_label = get_report_period_label(doc)
     subject = "{0} {1} KPI Report - {2}".format(
         prefix,
@@ -2544,8 +2865,18 @@ def email_report(report_name, force=False):
 
 def get_report_period_label(doc):
     if doc.period_type == "Semester":
-        return "{0}-{1}".format(doc.reporting_year, doc.reporting_semester)
-    return getdate(doc.reporting_month).strftime("%Y-%m")
+        primary_label = "{0}-{1}".format(doc.reporting_year, doc.reporting_semester)
+    else:
+        primary_label = getdate(doc.reporting_month).strftime("%Y-%m")
+    if (doc.get("report_mode") or "Single Period") == "Comparative":
+        return "{0} vs {1}".format(primary_label, get_comparison_period_label(doc))
+    return primary_label
+
+
+def get_comparison_period_label(doc):
+    if doc.period_type == "Semester":
+        return "{0}-{1}".format(doc.comparison_year, doc.comparison_semester)
+    return getdate(doc.comparison_month).strftime("%Y-%m")
 
 
 def parse_recipients(value):
@@ -2554,6 +2885,58 @@ def parse_recipients(value):
         for recipient in re.split(r"[,;\n]+", value or "")
         if recipient.strip()
     ]
+
+
+def comparison_metric_rows(language="en"):
+    if language == "fr":
+        return [
+            ("otif_rate_points", "Taux de lignes livrées à temps", "%", 1),
+            ("strict_otif_rate_points", "OTIF strict", "%", 1),
+            ("open_shortfall_lines", "Lignes échues ouvertes", "", 0),
+            ("open_shortfall_qty", "Quantité échue ouverte", "", 1),
+            ("plug_internal_ratio_points", "Usinage interne des plugs", "%", 1),
+            ("seat_internal_ratio_points", "Usinage interne des sièges", "%", 1),
+            ("machining_valid_qty", "Quantité d'usinage validée", "", 1),
+            ("machining_scrap_rate_points", "Taux de rebut d'usinage", "%", 1),
+            ("shipping_issue_count", "Issues emballage/expédition", "", 0),
+            ("shipping_issue_rate", "Issues pour 100 Delivery Notes", "", 2),
+            ("weighted_purchase_price_ratio_points", "Ratio d'achat pondéré", "%", 1),
+            ("purchase_price_impact", "Impact estimé des prix", "", 2),
+            ("procurement_anomaly_count", "Anomalies d'achat", "", 0),
+        ]
+    return [
+        ("otif_rate_points", "On-time delivered-line rate", "%", 1),
+        ("strict_otif_rate_points", "Strict OTIF", "%", 1),
+        ("open_shortfall_lines", "Open overdue lines", "", 0),
+        ("open_shortfall_qty", "Open overdue quantity", "", 1),
+        ("plug_internal_ratio_points", "Plug internal machining", "%", 1),
+        ("seat_internal_ratio_points", "Valve-seat internal machining", "%", 1),
+        ("machining_valid_qty", "Accepted machining quantity", "", 1),
+        ("machining_scrap_rate_points", "Machining scrap rate", "%", 1),
+        ("shipping_issue_count", "Packaging/shipping issues", "", 0),
+        ("shipping_issue_rate", "Issues per 100 Delivery Notes", "", 2),
+        ("weighted_purchase_price_ratio_points", "Weighted purchase ratio", "%", 1),
+        ("purchase_price_impact", "Estimated price impact", "", 2),
+        ("procurement_anomaly_count", "Procurement anomalies", "", 0),
+    ]
+
+
+def format_metric(value, suffix="", digits=1):
+    value = flt(value)
+    if digits == 0:
+        formatted = "{0:,.0f}".format(value)
+    else:
+        formatted = "{0:,.{1}f}".format(value, digits)
+    return "{0}{1}".format(formatted, suffix)
+
+
+def format_delta(value, suffix="", digits=1):
+    value = flt(value)
+    if digits == 0:
+        formatted = "{0:+,.0f}".format(value)
+    else:
+        formatted = "{0:+,.{1}f}".format(value, digits)
+    return "{0}{1}".format(formatted, suffix)
 
 
 def kpi_assessment(value, target, higher_is_better=True):

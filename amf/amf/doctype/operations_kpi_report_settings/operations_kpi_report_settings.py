@@ -58,6 +58,16 @@ def generate_previous_month_now():
 
 
 @frappe.whitelist()
+def generate_previous_month_comparison_now():
+    frappe.only_for("System Manager")
+    from amf.amf.utils.monthly_operations_report import (
+        generate_previous_month_comparison_report,
+    )
+
+    return generate_previous_month_comparison_report(force=True, source="Manual")
+
+
+@frappe.whitelist()
 def generate_previous_semester_now():
     frappe.only_for("System Manager")
     from amf.amf.utils.monthly_operations_report import (
@@ -65,6 +75,16 @@ def generate_previous_semester_now():
     )
 
     return generate_previous_semester_report(force=True, source="Manual")
+
+
+@frappe.whitelist()
+def generate_previous_semester_comparison_now():
+    frappe.only_for("System Manager")
+    from amf.amf.utils.monthly_operations_report import (
+        generate_previous_semester_comparison_report,
+    )
+
+    return generate_previous_semester_comparison_report(force=True, source="Manual")
 
 
 @frappe.whitelist()

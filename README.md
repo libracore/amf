@@ -24,6 +24,16 @@ Configuration:
 4. Generate a monthly or semester report. Validated AI output is stored on the report
    for review but is excluded from files and email until approved.
 
+For reliable monthly and comparative reports, keep AI reasoning on `low`, use a
+timeout close to `600` seconds, and limit the maximum insights to about `10`.
+Higher reasoning with the maximum `15` insights can exceed the OpenAI read
+timeout on larger KPI snapshots.
+
+Reports can run in `Single Period` or `Comparative` mode. Comparative mode
+keeps the primary month/semester calculations intact, adds a selected comparison
+month/semester, stores primary-versus-comparison KPI deltas in the snapshot, and
+asks the AI to prioritize evidence-backed evolution insights.
+
 The KPI calculations remain authoritative. The AI receives a bounded snapshot,
 external parties and transaction identifiers are aliased by default, API
 storage is disabled with `store=False`, Issue root-cause free text is excluded
