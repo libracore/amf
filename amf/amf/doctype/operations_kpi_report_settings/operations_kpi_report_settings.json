@@ -95,7 +95,7 @@
    "label": "AI Model"
   },
   {
-   "default": "medium",
+   "default": "low",
    "fieldname": "ai_reasoning_effort",
    "fieldtype": "Select",
    "label": "Reasoning Effort",
@@ -119,13 +119,13 @@
    "label": "Minimum Confidence"
   },
   {
-   "default": "8",
+   "default": "10",
    "fieldname": "ai_max_insights",
    "fieldtype": "Int",
    "label": "Maximum Insights"
   },
   {
-   "default": "120",
+   "default": "600",
    "fieldname": "ai_timeout_seconds",
    "fieldtype": "Int",
    "label": "API Timeout (Seconds)"

@@ -11,12 +11,20 @@
   "source",
   "company",
   "period_type",
+  "report_mode",
   "column_break_period",
   "reporting_month",
   "reporting_year",
   "reporting_semester",
   "period_start",
   "period_end",
+  "comparison_section",
+  "comparison_month",
+  "comparison_year",
+  "comparison_semester",
+  "column_break_comparison",
+  "comparison_period_start",
+  "comparison_period_end",
   "generated_on",
   "generated_by",
   "kpi_section",
@@ -126,6 +134,15 @@
    "reqd": 1
   },
   {
+   "default": "Single Period",
+   "fieldname": "report_mode",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Report Mode",
+   "options": "Single Period\nComparative",
+   "reqd": 1
+  },
+  {
    "fieldname": "column_break_period",
    "fieldtype": "Column Break"
   },
@@ -161,6 +178,50 @@
    "fieldname": "period_end",
    "fieldtype": "Date",
    "label": "Period End",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.report_mode=='Comparative'",
+   "fieldname": "comparison_section",
+   "fieldtype": "Section Break",
+   "label": "Comparison Period"
+  },
+  {
+   "depends_on": "eval:doc.report_mode=='Comparative' && doc.period_type=='Monthly'",
+   "fieldname": "comparison_month",
+   "fieldtype": "Date",
+   "label": "Comparison Month"
+  },
+  {
+   "depends_on": "eval:doc.report_mode=='Comparative' && doc.period_type=='Semester'",
+   "fieldname": "comparison_year",
+   "fieldtype": "Int",
+   "label": "Comparison Year"
+  },
+  {
+   "depends_on": "eval:doc.report_mode=='Comparative' && doc.period_type=='Semester'",
+   "fieldname": "comparison_semester",
+   "fieldtype": "Select",
+   "label": "Comparison Semester",
+   "options": "H1\nH2"
+  },
+  {
+   "depends_on": "eval:doc.report_mode=='Comparative'",
+   "fieldname": "column_break_comparison",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.report_mode=='Comparative'",
+   "fieldname": "comparison_period_start",
+   "fieldtype": "Date",
+   "label": "Comparison Period Start",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.report_mode=='Comparative'",
+   "fieldname": "comparison_period_end",
+   "fieldtype": "Date",
+   "label": "Comparison Period End",
    "read_only": 1
   },
   {
@@ -499,7 +560,7 @@
    "read_only": 1
   }
  ],
- "modified": "2026-06-25 00:10:00.000000",
+ "modified": "2026-07-01 00:10:00.000000",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Operations KPI Report",
@@ -571,7 +632,7 @@
    "share": 1
   }
  ],
- "search_fields": "report_title,company,period_type,reporting_month,status",
+ "search_fields": "report_title,company,period_type,report_mode,reporting_month,status",
  "sort_field": "reporting_month",
  "sort_order": "DESC",
  "title_field": "report_title",

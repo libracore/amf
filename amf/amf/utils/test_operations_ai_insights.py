@@ -11,6 +11,8 @@ from amf.amf.utils.openai_credentials import (
 )
 from amf.amf.utils.operations_ai_insights import (
     AIConfigurationError,
+    AITimeoutError,
+    build_developer_prompt,
     build_ai_payload,
     flatten_leaf_values,
     generate_ai_insights,
@@ -192,6 +194,16 @@ class OperationsAIInsightsTest(unittest.TestCase):
         parsed = OperationsInsights(**self._structured_output())
         self.assertEqual(len(parsed.insights), 1)
 
+    def test_developer_prompt_formats_without_literal_brace_errors(self):
+        prompt = build_developer_prompt(
+            "operations-test",
+            max_insights=8,
+            minimum_confidence=0.65,
+        )
+        self.assertIn("operations-test", prompt)
+        self.assertIn("comparison.deltas.otif_rate_points", prompt)
+        self.assertIn("executive_summary_en", prompt)
+
     def test_missing_api_key_fails_before_any_external_call(self):
         class Settings(dict):
             def get_password(self, *args, **kwargs):
@@ -200,6 +212,50 @@ class OperationsAIInsightsTest(unittest.TestCase):
         with patch.dict("os.environ", {"OPENAI_API_KEY": ""}):
             with self.assertRaises(AIConfigurationError):
                 generate_ai_insights(self.data, Settings())
+
+    def test_openai_timeout_is_reported_with_operational_settings(self):
+        class APITimeoutError(Exception):
+            pass
+
+        class FakeResponses(object):
+            def parse(self, **kwargs):
+                raise APITimeoutError("Request timed out.")
+
+        class FakeOpenAI(object):
+            init_kwargs = {}
+
+            def __init__(self, **kwargs):
+                FakeOpenAI.init_kwargs = kwargs
+                self.responses = FakeResponses()
+
+        class Settings(dict):
+            __getattr__ = dict.get
+
+        settings = Settings(
+            ai_model="gpt-test",
+            ai_reasoning_effort="high",
+            ai_timeout_seconds=42,
+            ai_max_insights=15,
+            ai_minimum_confidence=65,
+            anonymize_external_parties=1,
+            include_issue_free_text=0,
+        )
+
+        with patch(
+            "amf.amf.utils.operations_ai_insights.get_openai_api_key",
+            return_value="sk-test",
+        ), patch(
+            "amf.amf.utils.operations_ai_insights.load_ai_dependencies",
+            return_value=(FakeOpenAI, OperationsInsights, lambda value: value),
+        ):
+            with self.assertRaises(AITimeoutError) as context:
+                generate_ai_insights(self.data, settings)
+
+        self.assertEqual(FakeOpenAI.init_kwargs["max_retries"], 0)
+        message = str(context.exception)
+        self.assertIn("42 seconds", message)
+        self.assertIn("reasoning=high", message)
+        self.assertIn("max_insights=15", message)
 
     def test_missing_pydantic_dependency_reports_actionable_error(self):
         import builtins

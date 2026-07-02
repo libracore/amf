@@ -136,7 +136,10 @@ doc_events = {
         "validate": "amf.amf.utils.purchase_invoice.apply_default_cost_center",
     },
     "Purchase Receipt": {
-        "before_submit": "amf.amf.utils.purchase_receipt.assign_supplier_batches",
+        "before_submit": [
+            "amf.amf.utils.purchase_receipt_gl_override.install_purchase_receipt_gl_override",
+            "amf.amf.utils.purchase_receipt.assign_supplier_batches",
+        ],
         "on_submit": [
             "amf.amf.utils.purchase_receipt.generate_qa_for_purchase_receipt",
             "amf.amf.utils.safety_stock_check.update_purchase_item_lead_times_from_receipt",

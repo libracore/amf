@@ -28,6 +28,8 @@ class OperationsKPIReport(Document):
             self.company = frappe.defaults.get_global_default("company")
         if not self.period_type:
             self.period_type = "Monthly"
+        if not self.report_mode:
+            self.report_mode = "Single Period"
 
         if self.period_type == "Semester":
             reference = getdate(self.reporting_month or nowdate())
@@ -59,9 +61,14 @@ class OperationsKPIReport(Document):
             self.reporting_year = None
             self.reporting_semester = None
 
-        self.report_title = _("Operations KPI Report - {0}").format(
-            self.get_period_label()
+        self.set_comparison_period_defaults()
+
+        title = (
+            _("Operations KPI Comparative Report - {0}")
+            if self.report_mode == "Comparative"
+            else _("Operations KPI Report - {0}")
         )
+        self.report_title = title.format(self.get_period_label().replace("_vs_", " vs "))
         if not self.status:
             self.status = "Draft"
         if not self.source:
@@ -74,13 +81,70 @@ class OperationsKPIReport(Document):
                 "Pending" if self.generate_ai_insights else "Disabled"
             )
 
+    def set_comparison_period_defaults(self):
+        if self.report_mode != "Comparative":
+            self.comparison_month = None
+            self.comparison_year = None
+            self.comparison_semester = None
+            self.comparison_period_start = None
+            self.comparison_period_end = None
+            return
+
+        if self.period_type == "Semester":
+            if not self.comparison_year or not self.comparison_semester:
+                comparison_start = add_days(self.period_start, -1)
+                self.comparison_year = comparison_start.year
+                self.comparison_semester = (
+                    "H1" if comparison_start.month <= 6 else "H2"
+                )
+            start_month = 1 if self.comparison_semester == "H1" else 7
+            self.comparison_period_start = date(
+                int(self.comparison_year),
+                start_month,
+                1,
+            )
+            self.comparison_period_end = (
+                date(int(self.comparison_year), 6, 30)
+                if self.comparison_semester == "H1"
+                else date(int(self.comparison_year), 12, 31)
+            )
+            self.comparison_month = self.comparison_period_start
+        else:
+            if not self.comparison_month:
+                self.comparison_month = get_first_day(add_days(self.period_start, -1))
+            comparison_month = getdate(self.comparison_month)
+            self.comparison_month = get_first_day(comparison_month)
+            self.comparison_period_start = self.comparison_month
+            self.comparison_period_end = get_last_day(comparison_month)
+            self.comparison_year = None
+            self.comparison_semester = None
+
+        if self.comparison_period_start > getdate(nowdate()):
+            frappe.throw(_("A comparison period cannot start in the future."))
+        if getdate(self.comparison_period_start) == getdate(self.period_start):
+            frappe.throw(_("The comparison period must differ from the primary period."))
+
     def get_period_label(self):
+        label = self.get_primary_period_label()
+        if self.report_mode == "Comparative":
+            label = "{0}_vs_{1}".format(label, self.get_comparison_period_label())
+        return label
+
+    def get_primary_period_label(self):
         if self.period_type == "Semester":
             return "{0}-{1}".format(
                 self.reporting_year,
                 self.reporting_semester,
             )
         return getdate(self.reporting_month).strftime("%Y-%m")
+
+    def get_comparison_period_label(self):
+        if self.period_type == "Semester":
+            return "{0}-{1}".format(
+                self.comparison_year,
+                self.comparison_semester,
+            )
+        return getdate(self.comparison_month).strftime("%Y-%m")
 
 
 @frappe.whitelist()
