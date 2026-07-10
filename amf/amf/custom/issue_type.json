@@ -1,0 +1,30 @@
+{
+ "custom_fields": [
+  {
+   "dt": "Issue Type",
+   "fieldname": "process",
+   "fieldtype": "Select",
+   "label": "Process",
+   "options": "\nManagement Process & Quality\nMarketing, Sales & Customer Support\nResearch & Development\nProcurement\nManufacturing\nPackaging & Shipping\nMaintenance\nInformation System",
+   "insert_after": "description",
+   "in_standard_filter": 1,
+   "name": "Issue Type-process",
+   "idx": 1
+  },
+  {
+   "dt": "Issue Type",
+   "fieldname": "process_owner",
+   "fieldtype": "Link",
+   "label": "Process Owner",
+   "options": "User",
+   "insert_after": "process",
+   "in_standard_filter": 1,
+   "name": "Issue Type-process_owner",
+   "idx": 2
+  }
+ ],
+ "custom_perms": [],
+ "doctype": "Issue Type",
+ "property_setters": [],
+ "sync_on_migrate": 1
+}

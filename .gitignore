@@ -132,3 +132,5 @@ requirements.txt
 requirements.txt
 amf/public/js/stock_entry_backup.js
 README.md
+amf/docs/amf_issue_test_management_readme.md
+amf/amf/custom/issue.json
