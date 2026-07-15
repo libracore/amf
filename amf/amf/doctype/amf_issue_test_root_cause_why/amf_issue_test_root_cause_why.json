@@ -1,0 +1,70 @@
+{
+ "creation": "2026-07-07 00:00:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "cause_type",
+  "why_question",
+  "cause_statement",
+  "evidence",
+  "validated",
+  "is_root_cause"
+ ],
+ "fields": [
+  {
+   "columns": 2,
+   "fieldname": "cause_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Cause Type",
+   "options": "\nSymptom\nDirect Cause\nProcess Cause\nEscape Cause\nSystem Cause"
+  },
+  {
+   "columns": 2,
+   "fieldname": "why_question",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Why Question"
+  },
+  {
+   "columns": 4,
+   "fieldname": "cause_statement",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Cause Statement"
+  },
+  {
+   "fieldname": "evidence",
+   "fieldtype": "Text",
+   "label": "Evidence / Observation"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "validated",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Validated"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "is_root_cause",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Root Cause"
+  }
+ ],
+ "istable": 1,
+ "modified": "2026-07-09 00:00:00",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "AMF Issue Test Root Cause Why",
+ "owner": "Administrator",
+ "permissions": [],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

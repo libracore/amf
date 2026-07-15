@@ -42,6 +42,8 @@ doctype_js = {
     #    "public/js/delivery_note_submit_readiness.js",
     ],
     "Item": "public/js/item.js",
+    #"Issue": "public/js/doctype/issue.js",
+    "Issue Type": "public/js/doctype/issue_type.js",
     "Quality Inspection": "public/js/quality_inspection.js",
     "Purchase Invoice": "public/js/purchase_invoice.js",
     #"Purchase Order": "public/js/doctype/purchase_order_parser_warnings.js",
@@ -126,6 +128,9 @@ doc_events = {
         ],
         "on_update": "amf.amf.utils.item_batch_setup.ensure_default_batch_for_item",
     },
+    "AMF Issue Test": {
+        "validate": "amf.amf.utils.amf_issue_test_management.validate_issue_management",
+    },
     "Lead": {
         "after_insert": [
             "amf.amf.utils.lead_customization.create_address_from_lead",
@@ -191,6 +196,8 @@ doc_events = {
         "before_save": "amf.amf.doctype.timer_production.timer_production.timer_before_save",
     },
     "Work Order": {
+        # Frappe V12 runs on_update after both insert and update, i.e. after save.
+        "on_update": "amf.amf.utils.work_order_estimated_time.update_work_order_estimated_time",
         "after_insert": "amf.amf.utils.on_work_order_submit.generate_wo_qr",
     },
 
@@ -261,6 +268,9 @@ after_migrate = [
     "amf.amf.utils.item_reporting.sync_item_reporting_custom_fields",
     "amf.amf.utils.quotation_product_definition.sync_quotation_product_definition_custom_fields",
     "amf.amf.utils.work_order_scrap.sync_work_order_usage_scrap_custom_fields",
+    "amf.amf.utils.work_order_estimated_time.sync_work_order_estimated_time_custom_fields",
+    "amf.amf.utils.work_order_estimated_time.sync_all_work_order_estimated_times",
     "amf.amf.utils.sales_order_otif.sync_sales_order_otif_custom_fields",
+    "amf.amf.utils.amf_issue_test_management.clear_amf_issue_test_management_meta_cache",
     "amf.amf.utils.kpi_dashboard.sync_supply_chain_manufacturing_dashboard",
 ]

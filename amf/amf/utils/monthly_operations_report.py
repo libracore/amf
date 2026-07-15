@@ -864,6 +864,9 @@ def collect_shipping_issues(period_start, period_end):
         "process_owner",
         "priority",
         "priority_result",
+        "root_cause_statement",
+        "root_cause_category",
+        "root_cause_analysis_status",
         "root_cause_description",
         "root_cause_description_issue",
     ]
@@ -931,8 +934,11 @@ def collect_shipping_issues(period_start, period_end):
                 "priority": row.get("priority_result") or row.get("priority"),
                 "resolved": resolved,
                 "age_days": age,
+                "root_cause_category": row.get("root_cause_category"),
+                "root_cause_analysis_status": row.get("root_cause_analysis_status"),
                 "root_cause": clean_text(
-                    row.get("root_cause_description_issue")
+                    row.get("root_cause_statement")
+                    or row.get("root_cause_description_issue")
                     or row.get("root_cause_description")
                 ),
             }
