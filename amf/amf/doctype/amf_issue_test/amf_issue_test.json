@@ -58,6 +58,8 @@
   "containment_section",
   "immediate_containment_action",
   "column_break_49",
+  "containment_owner",
+  "containment_due_date",
   "service_level_section",
   "service_level_agreement",
   "response_by",
@@ -146,9 +148,7 @@
   "section_break_1",
   "section_break_31",
   "communication",
-  "email_reminder",
-  "containment_owner",
-  "containment_due_date"
+  "email_reminder"
  ],
  "fields": [
   {
