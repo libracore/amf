@@ -230,6 +230,7 @@ SalesOrderStockProjection.prototype.render_results = function() {
 			'<div><strong>' + esc(__("How this projection works")) + '</strong>' +
 			'<span>' + esc((this.data.methodology || {}).bom || "") + ' ' +
 				esc((this.data.methodology || {}).allocation || "") + ' ' +
+				esc((this.data.methodology || {}).warehouse_scope || "") + ' ' +
 				esc(__("Actual stock is used for allocation; reserved stock is shown separately to avoid counting Sales Order demand twice.")) + '</span></div>' +
 		'</section>' +
 		'<section class="sosp-data-card">' +
@@ -239,6 +240,7 @@ SalesOrderStockProjection.prototype.render_results = function() {
 					tab("items", __("Sold Items"), items.length) +
 					tab("allocation", __("Priority Allocation"), demand_lines.length) +
 					tab("shortages", __("Shortages"), shortages.length + component_shortages.length) +
+					tab("shortage_groups", __("Shortages by Item Group"), component_shortages.length) +
 				'</div>' +
 				'<div class="sosp-tools">' +
 					'<div class="sosp-search-wrap"><span class="octicon octicon-search"></span>' +
@@ -254,6 +256,7 @@ SalesOrderStockProjection.prototype.render_results = function() {
 			'<div class="sosp-panel" data-panel="items">' + this.render_items(items, false) + '</div>' +
 			'<div class="sosp-panel" data-panel="allocation">' + this.render_allocation(demand_lines) + '</div>' +
 			'<div class="sosp-panel" data-panel="shortages">' + this.render_items(shortage_roots, true) + '</div>' +
+			'<div class="sosp-panel" data-panel="shortage_groups">' + this.render_shortages_by_group(component_shortages) + '</div>' +
 		'</section>' +
 		'<div class="sosp-footnote">' +
 			'<span class="octicon octicon-git-compare"></span> ' +
@@ -353,8 +356,11 @@ SalesOrderStockProjection.prototype.render_items = function(items, shortages_onl
 			var stock = (self.data.stock_by_item || {})[row.item_code] || {};
 			var group = "item:" + row.item_code;
 			var search = item_search(row);
+			var material_display = self.get_material_display(row.item_code, shortages_only);
+			var collapsed_note = shortages_only && material_display.collapsed ?
+				__("{0} available BOM rows collapsed", [material_display.collapsed]) : "";
 			var html = '<tr class="sosp-root-row"' + tree_attributes(group, search) + '>' +
-				'<td class="sosp-item-column">' + tree_item_identity(row, 0, "sold") + '</td>' +
+				'<td class="sosp-item-column">' + tree_item_identity(row, 0, "sold", collapsed_note) + '</td>' +
 				'<td class="text-right sosp-qty"><strong>' + format_qty(row.demand_qty) + '</strong><small>' + esc(row.stock_uom || "") + '</small></td>' +
 				'<td class="text-right sosp-positive">' + format_qty(row.allocated_qty) + '</td>' +
 				'<td class="text-right ' + gap_class(row) + '"><strong>' + format_qty(row.shortage_qty) + '</strong></td>' +
@@ -364,11 +370,11 @@ SalesOrderStockProjection.prototype.render_items = function(items, shortages_onl
 				warehouse_cells(warehouses, stock, self.metric) +
 			'</tr>';
 
-			self.aggregate_materials_for_item(row.item_code).forEach(function(material) {
+			material_display.rows.forEach(function(material) {
 				var material_stock = (self.data.stock_by_item || {})[material.item_code] || {};
 				html += '<tr class="sosp-hierarchy-row ' + (material.is_sub_assembly ? 'sosp-subassembly-row' : 'sosp-component-row') + '"' +
 					tree_attributes(group, material_search(material)) + '>' +
-					'<td class="sosp-item-column">' + tree_item_identity(material, material.level, material_type(material)) + '</td>' +
+					'<td class="sosp-item-column">' + tree_item_identity(material, material.display_level, material_type(material)) + '</td>' +
 					'<td class="text-right sosp-qty"><strong>' + format_qty(material.demand_qty) + '</strong><small>' + esc(material.stock_uom || "") + '</small></td>' +
 					'<td class="text-right sosp-positive">' + format_qty(material.allocated_qty) + '</td>' +
 					'<td class="text-right ' + gap_class(material) + '"><strong>' + format_qty(material.shortage_qty) + '</strong></td>' +
@@ -381,6 +387,64 @@ SalesOrderStockProjection.prototype.render_items = function(items, shortages_onl
 			return html;
 		}).join("") +
 		'</tbody></table></div>';
+};
+
+
+SalesOrderStockProjection.prototype.render_shortages_by_group = function(parts) {
+	if (!parts.length) {
+		return '<div class="sosp-all-clear"><span class="octicon octicon-check"></span><h4>' + esc(__("No material shortages")) + '</h4><p>' + esc(__("All net BOM material demand is covered by usable stock.")) + '</p></div>';
+	}
+
+	var grouped = {};
+	parts.forEach(function(row) {
+		var group_name = row.item_group || __("No Item Group");
+		var group_key = "group:" + group_name;
+		if (!grouped[group_key]) {
+			grouped[group_key] = {
+				name: group_name,
+				parts: [],
+				build_count: 0,
+				blocking_count: 0
+			};
+		}
+		grouped[group_key].parts.push(row);
+		if (row.is_sub_assembly && row.status === "build_required") {
+			grouped[group_key].build_count += 1;
+		} else {
+			grouped[group_key].blocking_count += 1;
+		}
+	});
+
+	var status_order = { shortage: 0, partial: 1, build_required: 2, non_stock: 3 };
+	var groups = Object.keys(grouped).map(function(key) { return grouped[key]; });
+	groups.sort(function(a, b) { return a.name.localeCompare(b.name); });
+	groups.forEach(function(group, group_index) {
+		group.key = "shortage-group-" + group_index;
+		group.parts.sort(function(a, b) {
+			var a_order = status_order[a.status] === undefined ? 9 : status_order[a.status];
+			var b_order = status_order[b.status] === undefined ? 9 : status_order[b.status];
+			var status_difference = a_order - b_order;
+			if (status_difference) { return status_difference; }
+			var shortage_difference = Number(b.shortage_qty || 0) - Number(a.shortage_qty || 0);
+			return shortage_difference || String(a.item_code).localeCompare(String(b.item_code));
+		});
+	});
+
+	return '<div class="sosp-group-summary"><span class="octicon octicon-list-unordered"></span><strong>' +
+		esc(__("{0} shortage parts across {1} item groups", [parts.length, groups.length])) +
+		'</strong><small>' + esc(__("Each column represents one Item Group. Scrap warehouse quantities are excluded.")) + '</small></div>' +
+		'<div class="sosp-group-table-scroll"><table class="sosp-group-table">' +
+			'<thead><tr>' + groups.map(function(group) {
+				return '<th data-group-key="' + group.key + '"><div><strong>' + esc(group.name) + '</strong>' +
+					'<span>' + esc(__("{0} parts", [group.parts.length])) + '</span>' +
+					'<small>' + esc(__("{0} need build · {1} blocking", [group.build_count, group.blocking_count])) + '</small></div></th>';
+			}).join("") + '</tr></thead>' +
+			'<tbody><tr>' + groups.map(function(group) {
+				return '<td class="sosp-group-column" data-group-key="' + group.key + '" data-search="' + esc(group.name.toLowerCase()) + '">' +
+					'<div class="sosp-group-parts">' + group.parts.map(render_group_shortage_part).join("") + '</div></td>';
+			}).join("") + '</tr></tbody>' +
+		'</table></div>' +
+		'<div class="sosp-group-no-match" style="display:none"><span class="octicon octicon-search"></span> ' + esc(__("No shortage parts match this search.")) + '</div>';
 };
 
 
@@ -483,6 +547,35 @@ SalesOrderStockProjection.prototype.aggregate_materials_for_item = function(item
 };
 
 
+SalesOrderStockProjection.prototype.get_material_display = function(item_code, shortages_only) {
+	var all_rows = this.aggregate_materials_for_item(item_code);
+	if (!shortages_only) {
+		all_rows.forEach(function(row) { row.display_level = row.level; });
+		return { rows: all_rows, collapsed: 0 };
+	}
+
+	var rows = all_rows.filter(function(row) {
+		return Number(row.shortage_qty || 0) > 0.000001 ||
+			Number(row.build_required_qty || 0) > 0.000001;
+	});
+	var visible_depths = {};
+	rows.forEach(function(row) {
+		var path = row.path || [];
+		var parent_depth = 0;
+		for (var length = path.length - 1; length > 1; length--) {
+			var parent_key = path.slice(0, length).join("\u001f");
+			if (visible_depths[parent_key]) {
+				parent_depth = visible_depths[parent_key];
+				break;
+			}
+		}
+		row.display_level = parent_depth + 1;
+		visible_depths[path.join("\u001f")] = row.display_level;
+	});
+	return { rows: rows, collapsed: all_rows.length - rows.length };
+};
+
+
 SalesOrderStockProjection.prototype.update_active_tab = function() {
 	var active = this.active_tab;
 	this.$results.find(".sosp-tab").each(function() {
@@ -502,6 +595,10 @@ SalesOrderStockProjection.prototype.update_active_tab = function() {
 SalesOrderStockProjection.prototype.apply_search = function() {
 	var query = this.search_text;
 	var $active_panel = this.$results.find('.sosp-panel[data-panel="' + this.active_tab + '"]');
+	if (this.active_tab === "shortage_groups") {
+		this.apply_group_search($active_panel, query);
+		return;
+	}
 	var $rows = $active_panel.find("tbody tr");
 	var matching_groups = {};
 	$rows.each(function() {
@@ -514,6 +611,28 @@ SalesOrderStockProjection.prototype.apply_search = function() {
 		var group = String($(this).attr("data-tree-group") || "");
 		$(this).toggle(!query || Boolean(matching_groups[group]));
 	});
+};
+
+
+SalesOrderStockProjection.prototype.apply_group_search = function($panel, query) {
+	var visible_groups = 0;
+	$panel.find(".sosp-group-column").each(function() {
+		var $column = $(this);
+		var key = $column.attr("data-group-key");
+		var group_matches = Boolean(query) && String($column.attr("data-search") || "").indexOf(query) !== -1;
+		var visible_parts = 0;
+		$column.find(".sosp-group-part").each(function() {
+			var matches = !query || group_matches || String($(this).attr("data-search") || "").indexOf(query) !== -1;
+			$(this).toggle(matches);
+			if (matches) { visible_parts += 1; }
+		});
+		var show_group = !query || group_matches || visible_parts > 0;
+		$column.toggle(show_group);
+		$panel.find('.sosp-group-table th[data-group-key="' + key + '"]').toggle(show_group);
+		if (show_group) { visible_groups += 1; }
+	});
+	$panel.find(".sosp-group-table-scroll").toggle(visible_groups > 0);
+	$panel.find(".sosp-group-no-match").toggle(visible_groups === 0);
 };
 
 
@@ -530,6 +649,29 @@ function render_order_material_row(row, group) {
 		'<td class="text-right ' + projected_class(row) + '">' + format_qty(row.total_projected_qty) + '</td>' +
 		'<td></td>' +
 	'</tr>';
+}
+
+
+function render_group_shortage_part(row) {
+	var type = material_type(row);
+	var search = [row.item_code, row.item_name, row.reference_code, row.item_group, row.status,
+		type, (row.orders || []).join(" "), (row.sold_items || []).join(" ")].join(" ").toLowerCase();
+	return '<article class="sosp-group-part ' + type + '" data-search="' + esc(search) + '">' +
+		'<div class="sosp-group-part-head"><span class="sosp-avatar ' + type + '">' + esc(initials(row.item_name || row.item_code)) + '</span><div>' +
+			'<a href="#" class="sosp-item-link" data-item-code="' + esc(row.item_code) + '">' + esc(row.item_code) + '</a>' +
+			'<small>' + esc(row.item_name || row.item_code) + '</small>' +
+			(row.reference_code ? '<em>' + esc(row.reference_code) + '</em>' : '') +
+		'</div></div>' +
+		'<div class="sosp-group-part-status">' + status_pill(row.status, false) + type_detail(row, type) + '</div>' +
+		'<div class="sosp-group-part-metrics">' +
+			'<span class="shortage"><small>' + esc(__("Short / build")) + '</small><strong>' + format_qty(row.shortage_qty) + ' ' + esc(row.stock_uom || "") + '</strong></span>' +
+			'<span><small>' + esc(__("Net demand")) + '</small><strong>' + format_qty(row.demand_qty) + '</strong></span>' +
+			'<span><small>' + esc(__("From stock")) + '</small><strong>' + format_qty(row.allocated_qty) + '</strong></span>' +
+			'<span class="' + projected_class(row) + '"><small>' + esc(__("ERP projected")) + '</small><strong>' + format_qty(row.total_projected_qty) + '</strong></span>' +
+		'</div>' +
+		'<div class="sosp-group-part-foot"><span class="octicon octicon-file-directory"></span> ' +
+			esc(__("{0} orders · {1} sold items", [row.order_count || 0, row.sold_item_count || 0])) + '</div>' +
+	'</article>';
 }
 
 

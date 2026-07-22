@@ -267,6 +267,213 @@
 	overflow: auto;
 }
 
+.sosp-group-summary {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	padding: 11px 13px;
+	border-bottom: 1px solid #e5eaf1;
+	background: #f8faff;
+	color: #4d5d78;
+	font-size: 11px;
+}
+
+.sosp-group-summary > span {
+	color: #5274bb;
+}
+
+.sosp-group-summary small {
+	margin-left: auto;
+	color: #8995a7;
+	font-size: 9px;
+}
+
+.sosp-group-table-scroll {
+	max-height: 690px;
+	overflow: auto;
+}
+
+.sosp-group-table {
+	width: max-content;
+	min-width: 100%;
+	border-collapse: separate;
+	border-spacing: 0;
+	table-layout: fixed;
+}
+
+.sosp-group-table th,
+.sosp-group-table td {
+	width: 300px;
+	min-width: 300px;
+	max-width: 300px;
+	border-right: 1px solid #e5eaf1;
+}
+
+.sosp-group-table th:last-child,
+.sosp-group-table td:last-child {
+	border-right: 0;
+}
+
+.sosp-group-table th {
+	position: sticky;
+	top: 0;
+	z-index: 3;
+	padding: 11px 12px;
+	border-bottom: 1px solid #dfe5ed;
+	background: #f4f7fb;
+	text-align: left;
+}
+
+.sosp-group-table th > div {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 2px 8px;
+}
+
+.sosp-group-table th strong {
+	overflow: hidden;
+	color: #354563;
+	font-size: 11px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.sosp-group-table th span {
+	align-self: center;
+	padding: 2px 7px;
+	border-radius: 9px;
+	background: #e6ecf6;
+	color: #64738b;
+	font-size: 8px;
+}
+
+.sosp-group-table th small {
+	grid-column: 1 / -1;
+	color: #a06417;
+	font-size: 9px;
+}
+
+.sosp-group-table td {
+	padding: 9px;
+	background: #fafbfd;
+	vertical-align: top;
+}
+
+.sosp-group-parts {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.sosp-group-part {
+	padding: 10px;
+	border: 1px solid #e1e7ef;
+	border-left: 3px solid #d0645f;
+	border-radius: 8px;
+	background: #fff;
+	box-shadow: 0 2px 7px rgba(35, 56, 91, 0.04);
+}
+
+.sosp-group-part.assembly {
+	border-left-color: #8064c1;
+}
+
+.sosp-group-part-head {
+	display: flex;
+	align-items: center;
+	min-width: 0;
+}
+
+.sosp-group-part-head > div {
+	display: flex;
+	min-width: 0;
+	flex-direction: column;
+}
+
+.sosp-group-part-head a {
+	overflow: hidden;
+	color: #2d57a5;
+	font-size: 11px;
+	font-weight: 700;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.sosp-group-part-head small,
+.sosp-group-part-head em {
+	overflow: hidden;
+	color: #7d889b;
+	font-size: 9px;
+	font-style: normal;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.sosp-group-part-head em {
+	color: #8a70bf;
+}
+
+.sosp-group-part-status {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 5px;
+	margin-top: 8px;
+}
+
+.sosp-group-part-status .sosp-mini-link {
+	display: inline-block;
+	max-width: 100px;
+	margin-top: 0;
+}
+
+.sosp-group-part-metrics {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 6px;
+	margin-top: 9px;
+}
+
+.sosp-group-part-metrics > span {
+	display: flex;
+	padding: 6px 7px;
+	border-radius: 6px;
+	background: #f5f7fa;
+	flex-direction: column;
+}
+
+.sosp-group-part-metrics > .shortage {
+	background: #fff1f0;
+	color: #b9433e;
+}
+
+.sosp-group-part.assembly .sosp-group-part-metrics > .shortage {
+	background: #f3efff;
+	color: #6e50b2;
+}
+
+.sosp-group-part-metrics small {
+	color: #8a95a6;
+	font-size: 8px;
+}
+
+.sosp-group-part-metrics strong {
+	font-size: 10px;
+	font-variant-numeric: tabular-nums;
+}
+
+.sosp-group-part-foot {
+	margin-top: 8px;
+	color: #929cac;
+	font-size: 8px;
+}
+
+.sosp-group-no-match {
+	padding: 60px 20px;
+	color: #8b96a7;
+	text-align: center;
+}
+
 .sosp-table {
 	width: max-content;
 	min-width: 100%;

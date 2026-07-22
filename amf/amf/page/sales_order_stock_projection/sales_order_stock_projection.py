@@ -85,6 +85,7 @@ def get_dashboard(company=None, to_date=None, customer=None, include_on_hold=0):
 			"available": _("Available stock is actual stock minus ERPNext reserved stock."),
 			"projected": _("Projected stock is ERPNext Bin projected quantity and includes expected supply and existing commitments."),
 			"bom": _("Finished-goods stock is consumed first. Only uncovered quantities are exploded; sub-assembly stock is consumed before its child components are required."),
+			"warehouse_scope": _("Scrap warehouses are excluded because their quantities represent waste rather than usable inventory."),
 		},
 	}
 

@@ -24,6 +24,7 @@ WAREHOUSE_SECTION_ORDER = {
 	"External Warehouse": 2,
 	"Other": 3,
 }
+SCRAP_WAREHOUSE_LABEL = "scrap"
 
 
 @frappe.whitelist()
@@ -524,8 +525,26 @@ def _get_warehouse_section(warehouse, warehouse_map):
 	return "Other"
 
 
+def _is_scrap_warehouse(warehouse, warehouse_map):
+	"""Return True for a Scrap warehouse or any leaf below a Scrap warehouse group."""
+	current = warehouse
+	visited = set()
+	while current and current.name not in visited:
+		visited.add(current.name)
+		warehouse_name = cstr(current.warehouse_name).strip().lower()
+		document_name = cstr(current.name).strip().lower()
+		if (
+			warehouse_name == SCRAP_WAREHOUSE_LABEL
+			or document_name == SCRAP_WAREHOUSE_LABEL
+			or document_name.startswith(SCRAP_WAREHOUSE_LABEL + " - ")
+		):
+			return True
+		current = warehouse_map.get(current.parent_warehouse)
+	return False
+
+
 def get_stock_snapshot(item_codes):
-	"""Return stock by item/warehouse, totals, and operationally ordered warehouses."""
+	"""Return usable stock by warehouse, excluding Scrap waste stock from all values."""
 	item_codes = sorted(set(cstr(item_code) for item_code in item_codes if item_code))
 	bin_rows = []
 	for item_chunk in _chunks(item_codes, 300):
@@ -556,7 +575,11 @@ def get_stock_snapshot(item_codes):
 	warehouse_map = {
 		name: all_warehouse_map[name]
 		for name in warehouse_names
-		if name in all_warehouse_map and not cint(all_warehouse_map[name].is_group)
+		if (
+			name in all_warehouse_map
+			and not cint(all_warehouse_map[name].is_group)
+			and not _is_scrap_warehouse(all_warehouse_map[name], all_warehouse_map)
+		)
 	}
 
 	for warehouse in warehouse_map.values():

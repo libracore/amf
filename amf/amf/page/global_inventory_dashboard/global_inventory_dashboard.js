@@ -472,7 +472,7 @@ GlobalInventoryDashboard.prototype.render_results = function() {
 			'<div class="gid-tab-panel" data-panel="shortages">' + this.render_requirements_table(this.data.shortages || [], true) + '</div>' +
 		'</section>' +
 		'<div class="gid-stock-note"><span class="octicon octicon-info"></span> ' +
-			esc(__("Available stock is actual stock minus reserved stock. Consolidated demand is gross BOM demand and does not consume on-hand sub-assemblies before evaluating their children.")) +
+			esc(__("Available stock is actual stock minus reserved stock. Scrap warehouses are excluded because they contain waste, not usable inventory. Consolidated demand is gross BOM demand and does not consume on-hand sub-assemblies before evaluating their children.")) +
 		'</div>'
 	);
 
