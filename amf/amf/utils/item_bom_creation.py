@@ -7,6 +7,8 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
+from amf.amf.utils.item_learned_defaults import build_item_description
+
 
 ITEM_GROUP_RULES = {
 	"Plug": {
@@ -327,7 +329,13 @@ def _ensure_component_item(upper_item, context):
 			row.item_name = component.item_name
 			row.reference_code = component.reference_code
 
-	component.description = _get_component_description(upper_item, component)
+	component.description = build_item_description(
+		item_code=component.item_code,
+		item_name=component.item_name,
+		item_group=component.item_group,
+		item_type=component.item_type,
+		reference_code=component.reference_code,
+	)
 	component.insert(ignore_permissions=True)
 	return component, True
 
@@ -351,15 +359,6 @@ def _get_component_reference_code(reference_code):
 	if reference_code.upper().endswith(".ASM"):
 		return reference_code[:-4]
 	return reference_code
-
-
-def _get_component_description(upper_item, component_item):
-	description = upper_item.get("description") or upper_item.item_name
-	description = description.replace(upper_item.item_code, component_item.item_code)
-	upper_reference = upper_item.get("reference_code") or ""
-	if upper_reference and component_item.reference_code:
-		description = description.replace(upper_reference, component_item.reference_code)
-	return description
 
 
 def _ensure_bom(item, materials):

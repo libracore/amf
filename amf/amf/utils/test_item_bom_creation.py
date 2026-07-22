@@ -123,6 +123,7 @@ class TestItemBomCreation(unittest.TestCase):
 			name=None,
 			item_code=upper.item_code,
 			item_name=upper.item_name,
+			item_group="Plug",
 			item_type="Sub-Assembly",
 			reference_code=upper.reference_code,
 			reference_name="110042: " + upper.item_name,

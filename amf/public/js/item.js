@@ -1,5 +1,6 @@
 const BOM_MANAGED_ITEM_GROUPS = ["Plug", "Valve Seat", "Valve Head"];
 const BOM_CREATION_ITEM_GROUPS = ["Plug", "Valve Seat"];
+const LEARNED_DEFAULT_ITEM_GROUPS = ["Plug", "Valve Seat", "Valve Head", "Product"];
 const SPARE_PART_PREFIXES = ["30"];
 const RVM_PREFIXES = ["41", "42", "43", "44", "4D", "51", "52", "53", "54", "5D"];
 const SPM_STD_PREFIXES = ["45", "46", "47", "48", "55", "56", "57", "58"];
@@ -101,11 +102,9 @@ function applyBomManagedDefaults(frm, itemGroup) {
     if (itemGroup === "Valve Head") {
         frm.set_value("is_sales_item", 1);
         frm.set_value("sales_uom", "Nos");
-        frm.set_value("customs_tariff_number", "8481 80 90 05");
     } else {
         frm.set_value("is_sales_item", 0);
         frm.set_value("sales_uom", "");
-        frm.set_value("customs_tariff_number", "");
     }
 }
 
@@ -217,6 +216,90 @@ function updateItemReportingFields(frm) {
     if (frm.fields_dict.product_variant) {
         frm.set_value("product_variant", getProductVariant(productLine, frm.doc.item_code, frm.doc.item_name));
     }
+}
+
+function applyLearnedItemDefaults(frm) {
+    if (!frm.is_new() || !LEARNED_DEFAULT_ITEM_GROUPS.includes(frm.doc.item_group)) {
+        return Promise.resolve({});
+    }
+
+    return new Promise(function (resolve, reject) {
+        frappe.call({
+            method: "amf.amf.utils.item_learned_defaults.get_new_item_learned_defaults",
+            args: {
+                item_code: frm.doc.item_code,
+                item_name: frm.doc.item_name,
+                item_group: frm.doc.item_group,
+                item_type: frm.doc.item_type,
+                reference_code: frm.doc.reference_code,
+            },
+            callback: function (r) {
+                if (r.exc) {
+                    reject();
+                    return;
+                }
+
+                const defaults = r.message || {};
+                const updates = [];
+                [
+                    "description",
+                    "weight_per_unit",
+                    "weight_uom",
+                    "has_batch_no",
+                    "customs_tariff_number",
+                ].forEach(function (fieldname) {
+                    if (frm.fields_dict[fieldname]
+                        && Object.prototype.hasOwnProperty.call(defaults, fieldname)
+                        && frm.doc[fieldname] !== defaults[fieldname]) {
+                        updates.push(frm.set_value(fieldname, defaults[fieldname]));
+                    }
+                });
+                Promise.all(updates)
+                    .then(function () {
+                        resolve(defaults);
+                    })
+                    .catch(reject);
+            },
+            error: reject,
+        });
+    });
+}
+
+function fillLearnedItemDefaultsFromButton(frm) {
+    if (!LEARNED_DEFAULT_ITEM_GROUPS.includes(frm.doc.item_group)) {
+        frappe.msgprint(__("Select Plug, Valve Seat, Valve Head, or Product as the Item Group first."));
+        return;
+    }
+    if (!frm.doc.item_code || !frm.doc.item_name) {
+        frappe.msgprint(__("Set the Item Code and Item Name before filling the learned fields."));
+        return;
+    }
+
+    prepareSubAssemblyIdentifiers(frm)
+        .then(function () {
+            return applyLearnedItemDefaults(frm);
+        })
+        .then(function (defaults) {
+            updateTagRawMatRequirement(frm);
+            frappe.msgprint({
+                title: __("Learned Item Fields Applied"),
+                indicator: "green",
+                message: [
+                    __("Description: updated"),
+                    __("Weight: {0} {1}", [
+                        frappe.utils.escape_html(String(defaults.weight_per_unit || 0)),
+                        frappe.utils.escape_html(defaults.weight_uom || ""),
+                    ]),
+                    __("Customs Tariff Number: {0}", [
+                        frappe.utils.escape_html(defaults.customs_tariff_number || ""),
+                    ]),
+                    __("Batch Tracking: {0}", [defaults.has_batch_no ? __("Enabled") : __("Disabled")]),
+                ].join("<br>"),
+            });
+        })
+        .catch(function () {
+            // Frappe displays the server-side error message.
+        });
 }
 
 function applyBomManagedSuggestion(frm, suggestion) {
@@ -675,6 +758,9 @@ frappe.ui.form.on("Item", {
 
         frm.add_custom_button(__("Suggest BOM Code"), function () {
             showBomManagedItemDialog(frm);
+        });
+        frm.add_custom_button(__("Fill Learned Fields"), function () {
+            fillLearnedItemDefaultsFromButton(frm);
         });
 
         if (!frm.__bom_managed_dialog_shown && !frm.doc.item_code) {

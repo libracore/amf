@@ -11,6 +11,7 @@ from amf.amf.utils.batch_naming import make_internal_production_batch_id
 
 
 TARGET_ITEM_PREFIXES = ("10", "11", "20", "21", "30")
+TARGET_ITEM_GROUPS = ("Plug", "Valve Seat", "Valve Head")
 TARGET_ITEM_CODE_PATTERN = r"^({0})[0-9]{{4}}$".format("|".join(TARGET_ITEM_PREFIXES))
 TARGET_ITEM_CODE_RE = re.compile(TARGET_ITEM_CODE_PATTERN)
 
@@ -238,7 +239,10 @@ def _validate_requested_items_exist(item_codes, rows):
 
 def _doc_matches_batch_rule(doc):
 	item_code = _doc_get(doc, "item_code") or _doc_get(doc, "name")
-	return is_target_item_code(item_code) and cint(_doc_get(doc, "is_stock_item"))
+	item_group = cstr(_doc_get(doc, "item_group")).strip()
+	return (
+		is_target_item_code(item_code) or item_group in TARGET_ITEM_GROUPS
+	) and cint(_doc_get(doc, "is_stock_item"))
 
 
 def _create_batch_for_item(item_name, item_code=None, reference_doctype=None, reference_name=None):

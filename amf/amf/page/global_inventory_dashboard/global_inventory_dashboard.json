@@ -1,0 +1,32 @@
+{
+ "content": null,
+ "creation": "2026-07-22 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2026-07-22 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "global-inventory-dashboard",
+ "owner": "Administrator",
+ "page_name": "global-inventory-dashboard",
+ "roles": [
+  {
+   "role": "Stock User"
+  },
+  {
+   "role": "Stock Manager"
+  },
+  {
+   "role": "Manufacturing User"
+  },
+  {
+   "role": "Manufacturing Manager"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Global Inventory Dashboard"
+}
