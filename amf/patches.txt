@@ -1,2 +1,3 @@
 amf.patches.v12_0.clear_stale_item_variant_attribute_links
 amf.patches.v12_0.ensure_target_item_batch_setup
+amf.patches.v12_0.create_leave_events_retroactively

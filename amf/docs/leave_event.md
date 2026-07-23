@@ -36,6 +36,12 @@ Existing eligible Leave Applications can be processed idempotently with
 `amf.amf.utils.leave_event.backfill_leave_events`. Running it again updates
 changed Events and does not create duplicates.
 
+On deployment, `bench migrate` runs
+`amf.patches.v12_0.create_leave_events_retroactively` from `patches.txt`. The
+patch first installs the required custom fields/category, then reconciles every
+`Pending HR Approval` and `Approved` Leave Application. It is safe to execute
+again because each Leave Application has one unique linked Event.
+
 ## Step two
 
 Google Calendar publication must be implemented separately. The generated Event
