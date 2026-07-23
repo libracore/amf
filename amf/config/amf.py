@@ -56,6 +56,12 @@ def get_data():
             "items": [
                 {
                     "type": "page",
+                    "name": "component-drawing-register",
+                    "label": _("Component Drawing Register"),
+                    "description": _("View default drawings, versions and revisions for six-digit 10/20 components")
+                },
+                {
+                    "type": "page",
                     "name": "global-inventory-dashboard",
                     "label": _("Global Inventory Dashboard"),
                     "description": _("Explore recursive BOM requirements and stock availability by warehouse")
