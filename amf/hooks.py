@@ -72,6 +72,12 @@ doctype_list_js = {
 # ---------------
 
 doc_events = {
+    "Leave Application": {
+        "on_update": "amf.amf.utils.leave_event.sync_leave_event",
+        "on_update_after_submit": "amf.amf.utils.leave_event.sync_leave_event",
+        "on_cancel": "amf.amf.utils.leave_event.sync_leave_event",
+        "on_trash": "amf.amf.utils.leave_event.sync_leave_event",
+    },
     "Batch": {
         "autoname": "amf.amf.utils.batch_naming.apply_amf_batch_autoname",
         "after_insert": "amf.amf.utils.barcode.after_insert_handler",
@@ -259,6 +265,7 @@ after_install = "amf.amf.utils.project_id.after_install"
 # Migration Hook
 # --------------
 after_migrate = [
+    "amf.amf.utils.leave_event.setup_leave_event_integration",
     "amf.master_crm.migration.translate_customer_to_organization",
     "amf.master_crm.customer_marketing.sync_customer_marketing_custom_fields",
     "amf.amf.utils.project_id.sync_project_id_customization",
