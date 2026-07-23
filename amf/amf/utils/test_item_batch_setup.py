@@ -42,6 +42,19 @@ class TestItemBatchSetup(unittest.TestCase):
 
 		self.assertEqual(doc.has_batch_no, 1)
 
+	def test_apply_batch_tracking_rule_forces_managed_item_group(self):
+		for item_group in ("Plug", "Valve Seat", "Valve Head"):
+			doc = FakeDoc(
+				item_code="CUSTOM-001",
+				item_group=item_group,
+				is_stock_item=1,
+				has_batch_no=0,
+			)
+
+			item_batch_setup.apply_batch_tracking_rule(doc)
+
+			self.assertEqual(doc.has_batch_no, 1)
+
 	def test_apply_batch_tracking_rule_ignores_non_matching_item(self):
 		doc = FakeDoc(item_code="120001", is_stock_item=1, has_batch_no=0)
 

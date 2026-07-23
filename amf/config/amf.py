@@ -9,6 +9,14 @@ def get_data():
             "items": [
                    {
                         "type": "report",
+                        "name": "Sales Dashboard",
+                        "label": _("Sales Dashboard"),
+                        "doctype": "Sales Order",
+                        "is_query_report": True,
+                        "description": _("Monthly order intake, forecast, scheduled delivery and invoicing in CHF")
+                   },
+                   {
+                        "type": "report",
                         "name": "Orders to Fulfill",
                         "label": _("Orders to Fulfill"),
                         "doctype": "Sales Order",
@@ -46,6 +54,24 @@ def get_data():
             "label": _("Production Tracking"),
             "icon": "octicon octicon-git-compare",
             "items": [
+                {
+                    "type": "page",
+                    "name": "component-drawing-register",
+                    "label": _("Component Drawing Register"),
+                    "description": _("View default drawings, versions and revisions for six-digit 10/20 components")
+                },
+                {
+                    "type": "page",
+                    "name": "global-inventory-dashboard",
+                    "label": _("Global Inventory Dashboard"),
+                    "description": _("Explore recursive BOM requirements and stock availability by warehouse")
+                },
+                {
+                    "type": "page",
+                    "name": "sales-order-stock-projection",
+                    "label": _("Sales Order Stock Projection"),
+                    "description": _("Project submitted Sales Order availability and shortages by delivery priority")
+                },
                 {
                     "type": "page",
                     "name": "dashboard",
