@@ -130,9 +130,13 @@ def sync_leave_event(doc, method=None):
 
 @frappe.whitelist()
 def backfill_leave_events():
-	"""Create or update Events for every currently eligible Leave Application."""
+	"""System Manager entry point for the idempotent Event reconciliation."""
 	frappe.only_for("System Manager")
+	return reconcile_leave_events()
 
+
+def reconcile_leave_events():
+	"""Create or update Events for every currently eligible Leave Application."""
 	leave_applications = frappe.get_all(
 		"Leave Application",
 		filters={

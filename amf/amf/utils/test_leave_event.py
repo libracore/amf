@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from amf.amf.utils import leave_event
+from amf.patches.v12_0 import create_leave_events_retroactively
 
 
 class FakeDoc(SimpleNamespace):
@@ -270,7 +271,7 @@ class TestLeaveEvent(unittest.TestCase):
 			ignore_missing=True,
 		)
 
-	def test_backfill_processes_every_eligible_leave_idempotently(self):
+	def test_reconciliation_processes_every_eligible_leave_idempotently(self):
 		rows = [
 			SimpleNamespace(name="HR-LAP-2026-00001"),
 			SimpleNamespace(name="HR-LAP-2026-00002"),
@@ -285,8 +286,6 @@ class TestLeaveEvent(unittest.TestCase):
 		)
 
 		with patch.object(
-			leave_event.frappe, "only_for"
-		) as only_for, patch.object(
 			leave_event.frappe, "get_all", return_value=rows
 		) as get_all, patch.object(
 			leave_event.frappe,
@@ -297,7 +296,7 @@ class TestLeaveEvent(unittest.TestCase):
 			"upsert_leave_event",
 			side_effect=lambda leave: next(results),
 		):
-			counts = leave_event.backfill_leave_events()
+			counts = leave_event.reconcile_leave_events()
 
 		self.assertEqual(
 			counts,
@@ -308,11 +307,51 @@ class TestLeaveEvent(unittest.TestCase):
 				"unchanged": 1,
 			},
 		)
-		only_for.assert_called_once_with("System Manager")
 		self.assertEqual(
 			get_all.call_args.kwargs["filters"]["workflow_state"],
 			["in", leave_event.EVENT_STATES],
 		)
+
+	def test_whitelisted_backfill_requires_system_manager(self):
+		expected = {
+			"eligible": 3,
+			"created": 3,
+			"updated": 0,
+			"unchanged": 0,
+		}
+		with patch.object(
+			leave_event.frappe, "only_for"
+		) as only_for, patch.object(
+			leave_event,
+			"reconcile_leave_events",
+			return_value=expected,
+		) as reconcile:
+			result = leave_event.backfill_leave_events()
+
+		self.assertEqual(result, expected)
+		only_for.assert_called_once_with("System Manager")
+		reconcile.assert_called_once_with()
+
+	def test_retroactive_patch_installs_metadata_then_reconciles(self):
+		expected = {
+			"eligible": 3,
+			"created": 3,
+			"updated": 0,
+			"unchanged": 0,
+		}
+		with patch.object(
+			create_leave_events_retroactively,
+			"setup_leave_event_integration",
+		) as setup, patch.object(
+			create_leave_events_retroactively,
+			"reconcile_leave_events",
+			return_value=expected,
+		) as reconcile:
+			result = create_leave_events_retroactively.execute()
+
+		self.assertEqual(result, expected)
+		setup.assert_called_once_with()
+		reconcile.assert_called_once_with()
 
 
 if __name__ == "__main__":
