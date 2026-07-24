@@ -17,18 +17,25 @@ from frappe.utils import cint, cstr, get_datetime, getdate
 LEAVE_EVENT_FIELD = "amf_leave_event"
 EVENT_LEAVE_FIELD = "amf_leave_application"
 
-# Department approval moves the current workflow to Pending HR Approval.
-# Approved remains eligible so a later workflow transition does not remove the
-# already-created company calendar entry.
-EVENT_STATES = ("Pending HR Approval", "Approved")
+# Employee submission moves the workflow to Pending Dept Approval. The same
+# Event remains linked as department and HR approval progress.
+EVENT_STATES = (
+	"Pending Dept Approval",
+	"Pending HR Approval",
+	"Approved",
+)
+PENDING_DEPARTMENT_STATE = "Pending Dept Approval"
 OUT_OF_OFFICE_CATEGORY = "Out of Office"
+SICK_LEAVE_TYPE = "Jour de maladie"
+PRIVATE_OUT_OF_OFFICE_COLOR = "#64748B"
 
 LEAVE_TYPE_COLORS = {
 	"Jour autorisé": "#F59E0B",
 	"Jour de congé": "#2563EB",
 	"Jour de congé mat/paternité": "#8B5CF6",
-	"Jour de congé non-payé": "#64748B",
-	"Jour de maladie": "#DC2626",
+	"Jour de congé non-payé": PRIVATE_OUT_OF_OFFICE_COLOR,
+	# Sickness is intentionally indistinguishable from another generic absence.
+	SICK_LEAVE_TYPE: PRIVATE_OUT_OF_OFFICE_COLOR,
 	"Jour de repos": "#16A34A",
 	"Jour de repos compensatoire": "#0D9488",
 	"Jours de congé - cadres": "#4F46E5",
@@ -130,9 +137,13 @@ def sync_leave_event(doc, method=None):
 
 @frappe.whitelist()
 def backfill_leave_events():
-	"""Create or update Events for every currently eligible Leave Application."""
+	"""System Manager entry point for the idempotent Event reconciliation."""
 	frappe.only_for("System Manager")
+	return reconcile_leave_events()
 
+
+def reconcile_leave_events():
+	"""Create or update Events for every currently eligible Leave Application."""
 	leave_applications = frappe.get_all(
 		"Leave Application",
 		filters={
@@ -168,7 +179,7 @@ def should_have_leave_event(leave):
 
 
 def build_leave_event_values(leave):
-	"""Build privacy-safe values using ERPNext's inclusive all-day end date."""
+	"""Build privacy-safe values with a noon end time for half-day leave."""
 	raw_from_date = _doc_value(leave, "from_date")
 	raw_to_date = _doc_value(leave, "to_date")
 	if not raw_from_date or not raw_to_date:
@@ -186,10 +197,19 @@ def build_leave_event_values(leave):
 		_doc_value(leave, "employee_name") or _doc_value(leave, "employee")
 	).strip()
 	leave_type = cstr(_doc_value(leave, "leave_type")).strip()
-	subject_type = leave_type or OUT_OF_OFFICE_CATEGORY
-	if cint(_doc_value(leave, "half_day")):
-		subject_type = "{0} (half day)".format(subject_type)
-	subject = "{0} \u2013 {1}".format(employee_name, subject_type)[:140]
+	workflow_state = cstr(_doc_value(leave, "workflow_state")).strip()
+	half_day = cint(_doc_value(leave, "half_day"))
+	half_day_date = (
+		getdate(_doc_value(leave, "half_day_date"))
+		if _doc_value(leave, "half_day_date")
+		else from_date
+	)
+	end_time = "12:00:00" if half_day else "23:59:59"
+	subject = get_leave_event_subject(
+		employee_name,
+		leave_type,
+		half_day=half_day,
+	)
 
 	employee = cstr(_doc_value(leave, "employee")).strip()
 	participants = []
@@ -210,18 +230,56 @@ def build_leave_event_values(leave):
 			"{0} 00:00:00".format(from_date.isoformat())
 		),
 		"ends_on": get_datetime(
-			"{0} 23:59:59".format(to_date.isoformat())
+			"{0} {1}".format(to_date.isoformat(), end_time)
 		),
 		"all_day": 1,
 		"status": "Open",
 		"send_reminder": 0,
 		"repeat_this_event": 0,
-		"description": "",
+		"description": get_leave_event_description(
+			half_day,
+			half_day_date,
+			pending_department_approval=(
+				workflow_state == PENDING_DEPARTMENT_STATE
+			),
+		),
 		"event_participants": participants,
 		EVENT_LEAVE_FIELD: _doc_value(leave, "name"),
 		# Google publication is deliberately a separate second step.
 		"sync_with_google_calendar": 0,
 	}
+
+
+def get_leave_event_subject(employee_name, leave_type, half_day=False):
+	employee_name = cstr(employee_name).strip()
+	leave_type = cstr(leave_type).strip()
+
+	if leave_type == SICK_LEAVE_TYPE:
+		# Do not expose health information publicly.
+		subject = "{0} - OoO".format(employee_name)
+		if cint(half_day):
+			subject = "{0} (½ day)".format(subject)
+		return subject[:140]
+
+	subject_type = leave_type or OUT_OF_OFFICE_CATEGORY
+	if cint(half_day):
+		subject_type = "{0} (½ day)".format(subject_type)
+	return "{0} \u2013 {1}".format(employee_name, subject_type)[:140]
+
+
+def get_leave_event_description(
+	half_day,
+	half_day_date,
+	pending_department_approval=False,
+):
+	lines = []
+	if pending_department_approval:
+		lines.append("Pending department approval.")
+	if cint(half_day):
+		lines.append(
+			"Half day on {0}.".format(getdate(half_day_date).isoformat())
+		)
+	return "\n".join(lines)
 
 
 def get_leave_type_color(leave_type):

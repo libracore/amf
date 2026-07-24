@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from amf.amf.utils import leave_event
+from amf.patches.v12_0 import create_leave_events_retroactively
 
 
 class FakeDoc(SimpleNamespace):
@@ -30,6 +31,7 @@ def make_leave(**overrides):
 		"from_date": "2026-08-03",
 		"to_date": "2026-08-05",
 		"half_day": 0,
+		"half_day_date": None,
 		"workflow_state": "Pending HR Approval",
 		"status": "Open",
 		"docstatus": 0,
@@ -41,6 +43,11 @@ def make_leave(**overrides):
 
 class TestLeaveEvent(unittest.TestCase):
 	def test_pending_hr_approval_creates_event_without_waiting_for_hr(self):
+		self.assertTrue(
+			leave_event.should_have_leave_event(
+				make_leave(workflow_state="Pending Dept Approval")
+			)
+		)
 		self.assertTrue(leave_event.should_have_leave_event(make_leave()))
 		self.assertTrue(
 			leave_event.should_have_leave_event(
@@ -55,7 +62,7 @@ class TestLeaveEvent(unittest.TestCase):
 	def test_unapproved_rejected_and_cancelled_leave_have_no_event(self):
 		self.assertFalse(
 			leave_event.should_have_leave_event(
-				make_leave(workflow_state="Pending Dept Approval")
+				make_leave(workflow_state="Draft")
 			)
 		)
 		self.assertFalse(
@@ -114,30 +121,103 @@ class TestLeaveEvent(unittest.TestCase):
 				from_date="2026-08-03",
 				to_date="2026-08-03",
 				half_day=1,
+				half_day_date="2026-08-03",
 			)
 		)
 
 		self.assertEqual(
 			values["subject"],
-			"Jane Example \u2013 Jour de congé (half day)",
+			"Jane Example \u2013 Jour de congé (½ day)",
+		)
+		self.assertEqual(
+			values["description"], "Half day on 2026-08-03."
+		)
+		self.assertEqual(
+			str(values["ends_on"]), "2026-08-03 12:00:00"
 		)
 
-	def test_each_known_leave_type_has_a_stable_distinct_color(self):
+	def test_multi_day_leave_with_half_day_ends_at_noon(self):
+		values = leave_event.build_leave_event_values(
+			make_leave(
+				from_date="2026-08-03",
+				to_date="2026-08-05",
+				half_day=1,
+				half_day_date="2026-08-05",
+			)
+		)
+
+		self.assertEqual(
+			str(values["starts_on"]), "2026-08-03 00:00:00"
+		)
+		self.assertEqual(
+			str(values["ends_on"]), "2026-08-05 12:00:00"
+		)
+
+	def test_known_leave_types_have_stable_colors(self):
 		colors = {
 			leave_event.get_leave_type_color(leave_type)
 			for leave_type in leave_event.LEAVE_TYPE_COLORS
 		}
 
-		self.assertEqual(
-			len(colors), len(leave_event.LEAVE_TYPE_COLORS)
-		)
+		self.assertGreater(len(colors), 1)
+		self.assertTrue(all(color.startswith("#") for color in colors))
 		self.assertEqual(
 			leave_event.get_leave_type_color("Jour de maladie"),
-			"#DC2626",
+			leave_event.PRIVATE_OUT_OF_OFFICE_COLOR,
 		)
 		self.assertEqual(
 			leave_event.get_leave_type_color("Future leave type"),
 			leave_event.get_leave_type_color("Future leave type"),
+		)
+
+	def test_sickness_subject_and_color_do_not_expose_health_details(self):
+		values = leave_event.build_leave_event_values(
+			make_leave(
+				leave_type="Jour de maladie",
+				half_day=1,
+				half_day_date="2026-08-04",
+			)
+		)
+
+		self.assertEqual(
+			values["subject"], "Jane Example - OoO (½ day)"
+		)
+		self.assertEqual(
+			values["description"], "Half day on 2026-08-04."
+		)
+		self.assertEqual(
+			values["color"],
+			leave_event.PRIVATE_OUT_OF_OFFICE_COLOR,
+		)
+		self.assertNotIn("maladie", values["subject"].lower())
+		self.assertIn("½ day", values["subject"].lower())
+
+	def test_pending_department_approval_has_provisional_description(self):
+		values = leave_event.build_leave_event_values(
+			make_leave(workflow_state="Pending Dept Approval")
+		)
+		half_day_values = leave_event.build_leave_event_values(
+			make_leave(
+				workflow_state="Pending Dept Approval",
+				half_day=1,
+				half_day_date="2026-08-04",
+			)
+		)
+
+		self.assertEqual(
+			values["description"], "Pending department approval."
+		)
+		self.assertEqual(
+			half_day_values["description"],
+			"Pending department approval.\nHalf day on 2026-08-04.",
+		)
+
+	def test_full_day_description_remains_blank(self):
+		values = leave_event.build_leave_event_values(make_leave())
+
+		self.assertEqual(values["description"], "")
+		self.assertEqual(
+			str(values["ends_on"]), "2026-08-05 23:59:59"
 		)
 
 	def test_out_of_office_category_preserves_standard_options(self):
@@ -270,7 +350,7 @@ class TestLeaveEvent(unittest.TestCase):
 			ignore_missing=True,
 		)
 
-	def test_backfill_processes_every_eligible_leave_idempotently(self):
+	def test_reconciliation_processes_every_eligible_leave_idempotently(self):
 		rows = [
 			SimpleNamespace(name="HR-LAP-2026-00001"),
 			SimpleNamespace(name="HR-LAP-2026-00002"),
@@ -285,8 +365,6 @@ class TestLeaveEvent(unittest.TestCase):
 		)
 
 		with patch.object(
-			leave_event.frappe, "only_for"
-		) as only_for, patch.object(
 			leave_event.frappe, "get_all", return_value=rows
 		) as get_all, patch.object(
 			leave_event.frappe,
@@ -297,7 +375,7 @@ class TestLeaveEvent(unittest.TestCase):
 			"upsert_leave_event",
 			side_effect=lambda leave: next(results),
 		):
-			counts = leave_event.backfill_leave_events()
+			counts = leave_event.reconcile_leave_events()
 
 		self.assertEqual(
 			counts,
@@ -308,11 +386,51 @@ class TestLeaveEvent(unittest.TestCase):
 				"unchanged": 1,
 			},
 		)
-		only_for.assert_called_once_with("System Manager")
 		self.assertEqual(
 			get_all.call_args.kwargs["filters"]["workflow_state"],
 			["in", leave_event.EVENT_STATES],
 		)
+
+	def test_whitelisted_backfill_requires_system_manager(self):
+		expected = {
+			"eligible": 3,
+			"created": 3,
+			"updated": 0,
+			"unchanged": 0,
+		}
+		with patch.object(
+			leave_event.frappe, "only_for"
+		) as only_for, patch.object(
+			leave_event,
+			"reconcile_leave_events",
+			return_value=expected,
+		) as reconcile:
+			result = leave_event.backfill_leave_events()
+
+		self.assertEqual(result, expected)
+		only_for.assert_called_once_with("System Manager")
+		reconcile.assert_called_once_with()
+
+	def test_retroactive_patch_installs_metadata_then_reconciles(self):
+		expected = {
+			"eligible": 3,
+			"created": 3,
+			"updated": 0,
+			"unchanged": 0,
+		}
+		with patch.object(
+			create_leave_events_retroactively,
+			"setup_leave_event_integration",
+		) as setup, patch.object(
+			create_leave_events_retroactively,
+			"reconcile_leave_events",
+			return_value=expected,
+		) as reconcile:
+			result = create_leave_events_retroactively.execute()
+
+		self.assertEqual(result, expected)
+		setup.assert_called_once_with()
+		reconcile.assert_called_once_with()
 
 
 if __name__ == "__main__":
