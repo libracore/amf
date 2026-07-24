@@ -22,13 +22,16 @@ EVENT_LEAVE_FIELD = "amf_leave_application"
 # already-created company calendar entry.
 EVENT_STATES = ("Pending HR Approval", "Approved")
 OUT_OF_OFFICE_CATEGORY = "Out of Office"
+SICK_LEAVE_TYPE = "Jour de maladie"
+PRIVATE_OUT_OF_OFFICE_COLOR = "#64748B"
 
 LEAVE_TYPE_COLORS = {
 	"Jour autorisé": "#F59E0B",
 	"Jour de congé": "#2563EB",
 	"Jour de congé mat/paternité": "#8B5CF6",
-	"Jour de congé non-payé": "#64748B",
-	"Jour de maladie": "#DC2626",
+	"Jour de congé non-payé": PRIVATE_OUT_OF_OFFICE_COLOR,
+	# Sickness is intentionally indistinguishable from another generic absence.
+	SICK_LEAVE_TYPE: PRIVATE_OUT_OF_OFFICE_COLOR,
 	"Jour de repos": "#16A34A",
 	"Jour de repos compensatoire": "#0D9488",
 	"Jours de congé - cadres": "#4F46E5",
@@ -190,10 +193,11 @@ def build_leave_event_values(leave):
 		_doc_value(leave, "employee_name") or _doc_value(leave, "employee")
 	).strip()
 	leave_type = cstr(_doc_value(leave, "leave_type")).strip()
-	subject_type = leave_type or OUT_OF_OFFICE_CATEGORY
-	if cint(_doc_value(leave, "half_day")):
-		subject_type = "{0} (half day)".format(subject_type)
-	subject = "{0} \u2013 {1}".format(employee_name, subject_type)[:140]
+	subject = get_leave_event_subject(
+		employee_name,
+		leave_type,
+		half_day=cint(_doc_value(leave, "half_day")),
+	)
 
 	employee = cstr(_doc_value(leave, "employee")).strip()
 	participants = []
@@ -226,6 +230,20 @@ def build_leave_event_values(leave):
 		# Google publication is deliberately a separate second step.
 		"sync_with_google_calendar": 0,
 	}
+
+
+def get_leave_event_subject(employee_name, leave_type, half_day=False):
+	employee_name = cstr(employee_name).strip()
+	leave_type = cstr(leave_type).strip()
+
+	if leave_type == SICK_LEAVE_TYPE:
+		# Do not expose health information or even half-day detail publicly.
+		return "{0} - OoO".format(employee_name)[:140]
+
+	subject_type = leave_type or OUT_OF_OFFICE_CATEGORY
+	if cint(half_day):
+		subject_type = "{0} (half day)".format(subject_type)
+	return "{0} \u2013 {1}".format(employee_name, subject_type)[:140]
 
 
 def get_leave_type_color(leave_type):

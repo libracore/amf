@@ -27,6 +27,11 @@ Event remains active if the Leave Application later reaches `Approved`.
 - Description: blank
 - Google synchronization: disabled
 
+For `Jour de maladie`, the public subject is privacy-safe:
+`{Employee Name} - OoO`. The description is blank, half-day detail is hidden,
+and a neutral color shared with another generic absence is used so the Event
+does not disclose sickness indirectly.
+
 The Leave Application and Event contain read-only links to each other. The Event
 is updated instead of duplicated when dates or the employee name change.
 Rejection, cancellation, or deletion of the Leave Application removes the

@@ -123,23 +123,39 @@ class TestLeaveEvent(unittest.TestCase):
 			"Jane Example \u2013 Jour de congé (half day)",
 		)
 
-	def test_each_known_leave_type_has_a_stable_distinct_color(self):
+	def test_known_leave_types_have_stable_colors(self):
 		colors = {
 			leave_event.get_leave_type_color(leave_type)
 			for leave_type in leave_event.LEAVE_TYPE_COLORS
 		}
 
-		self.assertEqual(
-			len(colors), len(leave_event.LEAVE_TYPE_COLORS)
-		)
+		self.assertGreater(len(colors), 1)
+		self.assertTrue(all(color.startswith("#") for color in colors))
 		self.assertEqual(
 			leave_event.get_leave_type_color("Jour de maladie"),
-			"#DC2626",
+			leave_event.PRIVATE_OUT_OF_OFFICE_COLOR,
 		)
 		self.assertEqual(
 			leave_event.get_leave_type_color("Future leave type"),
 			leave_event.get_leave_type_color("Future leave type"),
 		)
+
+	def test_sickness_subject_and_color_do_not_expose_health_details(self):
+		values = leave_event.build_leave_event_values(
+			make_leave(
+				leave_type="Jour de maladie",
+				half_day=1,
+			)
+		)
+
+		self.assertEqual(values["subject"], "Jane Example - OoO")
+		self.assertEqual(values["description"], "")
+		self.assertEqual(
+			values["color"],
+			leave_event.PRIVATE_OUT_OF_OFFICE_COLOR,
+		)
+		self.assertNotIn("maladie", values["subject"].lower())
+		self.assertNotIn("half", values["subject"].lower())
 
 	def test_out_of_office_category_preserves_standard_options(self):
 		self.assertEqual(
