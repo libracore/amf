@@ -8,7 +8,7 @@ from amf.amf.utils.leave_event import (
 
 def execute():
 	"""
-	Create native Events for department- and HR-approved leave applications.
+	Create native Events for submitted and approved leave applications.
 
 	The patch is safe to run again: setup is idempotent and reconciliation
 	updates the unique linked Event instead of creating duplicates.

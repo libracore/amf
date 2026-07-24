@@ -31,6 +31,7 @@ def make_leave(**overrides):
 		"from_date": "2026-08-03",
 		"to_date": "2026-08-05",
 		"half_day": 0,
+		"half_day_date": None,
 		"workflow_state": "Pending HR Approval",
 		"status": "Open",
 		"docstatus": 0,
@@ -42,6 +43,11 @@ def make_leave(**overrides):
 
 class TestLeaveEvent(unittest.TestCase):
 	def test_pending_hr_approval_creates_event_without_waiting_for_hr(self):
+		self.assertTrue(
+			leave_event.should_have_leave_event(
+				make_leave(workflow_state="Pending Dept Approval")
+			)
+		)
 		self.assertTrue(leave_event.should_have_leave_event(make_leave()))
 		self.assertTrue(
 			leave_event.should_have_leave_event(
@@ -56,7 +62,7 @@ class TestLeaveEvent(unittest.TestCase):
 	def test_unapproved_rejected_and_cancelled_leave_have_no_event(self):
 		self.assertFalse(
 			leave_event.should_have_leave_event(
-				make_leave(workflow_state="Pending Dept Approval")
+				make_leave(workflow_state="Draft")
 			)
 		)
 		self.assertFalse(
@@ -115,12 +121,36 @@ class TestLeaveEvent(unittest.TestCase):
 				from_date="2026-08-03",
 				to_date="2026-08-03",
 				half_day=1,
+				half_day_date="2026-08-03",
 			)
 		)
 
 		self.assertEqual(
 			values["subject"],
-			"Jane Example \u2013 Jour de congé (half day)",
+			"Jane Example \u2013 Jour de congé (½ day)",
+		)
+		self.assertEqual(
+			values["description"], "Half day on 2026-08-03."
+		)
+		self.assertEqual(
+			str(values["ends_on"]), "2026-08-03 12:00:00"
+		)
+
+	def test_multi_day_leave_with_half_day_ends_at_noon(self):
+		values = leave_event.build_leave_event_values(
+			make_leave(
+				from_date="2026-08-03",
+				to_date="2026-08-05",
+				half_day=1,
+				half_day_date="2026-08-05",
+			)
+		)
+
+		self.assertEqual(
+			str(values["starts_on"]), "2026-08-03 00:00:00"
+		)
+		self.assertEqual(
+			str(values["ends_on"]), "2026-08-05 12:00:00"
 		)
 
 	def test_known_leave_types_have_stable_colors(self):
@@ -145,17 +175,50 @@ class TestLeaveEvent(unittest.TestCase):
 			make_leave(
 				leave_type="Jour de maladie",
 				half_day=1,
+				half_day_date="2026-08-04",
 			)
 		)
 
-		self.assertEqual(values["subject"], "Jane Example - OoO")
-		self.assertEqual(values["description"], "")
+		self.assertEqual(
+			values["subject"], "Jane Example - OoO (½ day)"
+		)
+		self.assertEqual(
+			values["description"], "Half day on 2026-08-04."
+		)
 		self.assertEqual(
 			values["color"],
 			leave_event.PRIVATE_OUT_OF_OFFICE_COLOR,
 		)
 		self.assertNotIn("maladie", values["subject"].lower())
-		self.assertNotIn("half", values["subject"].lower())
+		self.assertIn("½ day", values["subject"].lower())
+
+	def test_pending_department_approval_has_provisional_description(self):
+		values = leave_event.build_leave_event_values(
+			make_leave(workflow_state="Pending Dept Approval")
+		)
+		half_day_values = leave_event.build_leave_event_values(
+			make_leave(
+				workflow_state="Pending Dept Approval",
+				half_day=1,
+				half_day_date="2026-08-04",
+			)
+		)
+
+		self.assertEqual(
+			values["description"], "Pending department approval."
+		)
+		self.assertEqual(
+			half_day_values["description"],
+			"Pending department approval.\nHalf day on 2026-08-04.",
+		)
+
+	def test_full_day_description_remains_blank(self):
+		values = leave_event.build_leave_event_values(make_leave())
+
+		self.assertEqual(values["description"], "")
+		self.assertEqual(
+			str(values["ends_on"]), "2026-08-05 23:59:59"
+		)
 
 	def test_out_of_office_category_preserves_standard_options(self):
 		self.assertEqual(
