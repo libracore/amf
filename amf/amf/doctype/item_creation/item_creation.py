@@ -54,6 +54,7 @@ BOM_MANAGED_PREFIXES = {
 }
 
 RESERVED_BOM_MANAGED_PREFIXES = ("10", "11", "20", "21", "30")
+REUSABLE_COMPONENT_GROUPS = ("Plug", "Valve Seat")
 MIN_BOM_MANAGED_SUFFIX = 1
 MAX_BOM_MANAGED_SUFFIX = 9999
 
@@ -103,6 +104,28 @@ def get_bom_managed_family_codes(suffix):
     }
 
 
+def get_sub_assembly_item_code_for_component(item_group, component_item_code):
+    normalized_group = normalize_bom_managed_group(item_group)
+    if normalized_group not in REUSABLE_COMPONENT_GROUPS:
+        raise ValueError(_("Only Plug and Valve Seat components can be reused for a sub-assembly."))
+
+    component_item_code = (component_item_code or "").strip()
+    component_prefix = BOM_MANAGED_PREFIXES[normalized_group]["component"]
+    sub_assembly_prefix = BOM_MANAGED_PREFIXES[normalized_group]["sub-assembly"]
+    if (
+        len(component_item_code) != 6
+        or not component_item_code.startswith(component_prefix)
+        or not component_item_code[2:].isdigit()
+    ):
+        raise ValueError(
+            _("Component Item Code must start with {0} and contain exactly six digits.").format(
+                component_prefix
+            )
+        )
+
+    return "{0}{1}".format(sub_assembly_prefix, component_item_code[2:])
+
+
 def get_next_available_bom_managed_suffix(existing_codes):
     occupied_codes = {
         item_code for item_code in (existing_codes or [])
@@ -142,32 +165,197 @@ def get_highest_bom_managed_suffix(existing_codes=None):
 
 
 @frappe.whitelist()
-def suggest_bom_managed_item_code(item_group, item_type=None, has_bom=None):
+def get_reusable_bom_managed_components(item_group, tag_raw_mat=None, limit=20):
+    try:
+        normalized_group = normalize_bom_managed_group(item_group)
+        if normalized_group not in REUSABLE_COMPONENT_GROUPS:
+            return []
+        return _get_reusable_bom_managed_components(normalized_group, tag_raw_mat, limit)
+    except ValueError as exc:
+        frappe.throw(str(exc))
+
+
+@frappe.whitelist()
+def suggest_bom_managed_item_code(
+    item_group,
+    item_type=None,
+    has_bom=None,
+    tag_raw_mat=None,
+    reuse_component_item=None,
+):
     try:
         normalized_group = normalize_bom_managed_group(item_group)
         variant = normalize_bom_managed_variant(normalized_group, item_type=item_type, has_bom=has_bom)
-        suffix = get_next_available_bom_managed_suffix(get_existing_bom_managed_item_codes())
-        family_codes = get_bom_managed_family_codes(suffix)
         suggested_item_type = "Sub-Assembly" if variant == "sub-assembly" else "Component"
+        reusable_components = []
+        selected_component = None
+        tag_raw_mat = (tag_raw_mat or "").strip()
+
+        if variant == "sub-assembly" and normalized_group in REUSABLE_COMPONENT_GROUPS:
+            reusable_components = _get_reusable_bom_managed_components(normalized_group, tag_raw_mat)
+
+        if reuse_component_item:
+            if not (variant == "sub-assembly" and normalized_group in REUSABLE_COMPONENT_GROUPS):
+                raise ValueError(_("An existing component can only be reused for Plug and Valve Seat sub-assemblies."))
+
+            selected_component = _get_reusable_component_details(normalized_group, reuse_component_item)
+            if tag_raw_mat and selected_component.get("tag_raw_mat") and tag_raw_mat != selected_component.get("tag_raw_mat"):
+                raise ValueError(
+                    _("Component Item {0} uses Raw Material Tag {1}, not {2}.").format(
+                        selected_component.get("item_code"),
+                        selected_component.get("tag_raw_mat"),
+                        tag_raw_mat,
+                    )
+                )
+
+            suffix = selected_component["family_suffix"]
+            tag_raw_mat = selected_component.get("tag_raw_mat") or tag_raw_mat
+        else:
+            suffix = get_next_available_bom_managed_suffix(get_existing_bom_managed_item_codes())
+
+        family_codes = get_bom_managed_family_codes(suffix)
+        item_code = build_bom_managed_item_code(
+            normalized_group,
+            suffix,
+            item_type=suggested_item_type,
+            has_bom=has_bom,
+        )
 
         return {
             "item_group": normalized_group,
             "item_type": suggested_item_type if normalized_group != "Valve Head" else "Sub-Assembly",
             "family_suffix": suffix,
-            "item_code": build_bom_managed_item_code(
-                normalized_group,
-                suffix,
-                item_type=suggested_item_type,
-                has_bom=has_bom,
-            ),
+            "item_code": item_code,
             "family_codes": family_codes,
-            "reserved_codes": get_reserved_bom_managed_codes_for_suffix(suffix),
-            "rule": _(
-                "The next suffix is accepted only when 10/11/20/21/30 with the same last 4 digits are all still unused."
+            "reserved_codes": _get_reserved_codes_for_suggestion(
+                suffix, normalized_group, variant, selected_component
             ),
+            "tag_raw_mat": tag_raw_mat,
+            "reuse_component_item": selected_component.get("item_code") if selected_component else "",
+            "reuse_component_item_name": selected_component.get("item_name") if selected_component else "",
+            "reuse_sub_assembly_item_code": item_code if selected_component else "",
+            "reuse_candidates": reusable_components,
+            "rule": _get_bom_managed_suggestion_rule(selected_component),
         }
     except ValueError as exc:
         frappe.throw(str(exc))
+
+
+def _get_reserved_codes_for_suggestion(suffix, item_group, variant, selected_component=None):
+    if selected_component:
+        return [
+            selected_component["item_code"],
+            build_bom_managed_item_code(item_group, suffix, has_bom=1),
+        ]
+    return get_reserved_bom_managed_codes_for_suffix(suffix)
+
+
+def _get_bom_managed_suggestion_rule(selected_component=None):
+    if selected_component:
+        return _(
+            "The sub-assembly reuses the suffix from existing component Item {0}."
+        ).format(selected_component["item_code"])
+    return _(
+        "The next suffix is accepted only when 10/11/20/21/30 with the same last 4 digits are all still unused."
+    )
+
+
+def _get_reusable_component_details(item_group, component_item_code):
+    component_item_code = (component_item_code or "").strip()
+    sub_assembly_item_code = get_sub_assembly_item_code_for_component(item_group, component_item_code)
+    values = frappe.db.get_value(
+        "Item",
+        component_item_code,
+        ["item_code", "item_name", "item_group", "tag_raw_mat", "reference_code", "disabled"],
+        as_dict=True,
+    )
+    if not values:
+        raise ValueError(_("Component Item {0} does not exist.").format(component_item_code))
+    if values.get("item_group") != item_group:
+        raise ValueError(
+            _("Component Item {0} belongs to Item Group {1}, not {2}.").format(
+                component_item_code,
+                values.get("item_group"),
+                item_group,
+            )
+        )
+    if values.get("disabled"):
+        raise ValueError(_("Component Item {0} is disabled.").format(component_item_code))
+    if not (values.get("tag_raw_mat") or "").strip():
+        raise ValueError(_("Component Item {0} has no Raw Material Tag.").format(component_item_code))
+    if frappe.db.exists("Item", sub_assembly_item_code):
+        raise ValueError(
+            _("Sub-assembly Item {0} already exists for component Item {1}.").format(
+                sub_assembly_item_code,
+                component_item_code,
+            )
+        )
+
+    return {
+        "item_code": values.get("item_code") or component_item_code,
+        "item_name": values.get("item_name") or "",
+        "tag_raw_mat": (values.get("tag_raw_mat") or "").strip(),
+        "reference_code": values.get("reference_code") or "",
+        "family_suffix": component_item_code[2:],
+        "sub_assembly_item_code": sub_assembly_item_code,
+    }
+
+
+def _get_reusable_bom_managed_components(item_group, tag_raw_mat=None, limit=20):
+    component_prefix = BOM_MANAGED_PREFIXES[item_group]["component"]
+    sub_assembly_prefix = BOM_MANAGED_PREFIXES[item_group]["sub-assembly"]
+    tag_raw_mat = (tag_raw_mat or "").strip()
+    limit = max(1, min(int(limit or 20), 50))
+    conditions = [
+        "component.item_group = %(item_group)s",
+        "IFNULL(component.disabled, 0) = 0",
+        "component.item_code REGEXP %(component_pattern)s",
+        "IFNULL(component.tag_raw_mat, '') != ''",
+        """
+        NOT EXISTS (
+            SELECT 1
+            FROM `tabItem` sub_assembly
+            WHERE sub_assembly.item_code = CONCAT(%(sub_assembly_prefix)s, SUBSTRING(component.item_code, 3))
+        )
+        """,
+    ]
+    values = {
+        "item_group": item_group,
+        "component_pattern": "^{0}[0-9]{{4}}$".format(component_prefix),
+        "sub_assembly_prefix": sub_assembly_prefix,
+    }
+    if tag_raw_mat:
+        conditions.append("component.tag_raw_mat = %(tag_raw_mat)s")
+        values["tag_raw_mat"] = tag_raw_mat
+
+    rows = frappe.db.sql(
+        """
+        SELECT
+            component.item_code,
+            component.item_name,
+            component.tag_raw_mat,
+            component.reference_code,
+            CONCAT(%(sub_assembly_prefix)s, SUBSTRING(component.item_code, 3)) AS sub_assembly_item_code
+        FROM `tabItem` component
+        WHERE {conditions}
+        ORDER BY component.modified DESC, component.item_code DESC
+        LIMIT {limit}
+        """.format(conditions=" AND ".join(conditions), limit=limit),
+        values,
+        as_dict=True,
+    )
+
+    return [
+        {
+            "item_code": row.get("item_code"),
+            "item_name": row.get("item_name") or "",
+            "tag_raw_mat": (row.get("tag_raw_mat") or "").strip(),
+            "reference_code": row.get("reference_code") or "",
+            "family_suffix": row.get("item_code", "")[2:],
+            "sub_assembly_item_code": row.get("sub_assembly_item_code") or "",
+        }
+        for row in rows
+    ]
 
 @frappe.whitelist()
 def populate_fields(head_name):

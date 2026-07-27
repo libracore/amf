@@ -221,17 +221,51 @@ class TestItemBomCreation(unittest.TestCase):
 		self.assertEqual(plan["accessory_item"], "SPL.3013")
 		self.assertEqual(plan["accessory_qty"], 0)
 
+	def test_sub_assembly_plan_reuses_existing_component_bom_without_raw_material(self):
+		context = {
+			"item_code": "210082",
+			"item_group": "Valve Seat",
+			"layer": "sub_assembly",
+			"component_item_code": "200082",
+			"component_item_exists": True,
+			"tag_raw_mat": "PEEK",
+			"rule": item_bom_creation.ITEM_GROUP_RULES["Valve Seat"],
+		}
+
+		def existing_bom(item_code):
+			return "BOM-200082-001" if item_code == "200082" else ""
+
+		with patch.object(item_bom_creation, "_get_creation_context", return_value=context), \
+			patch.object(item_bom_creation, "get_raw_material_candidates") as get_candidates, \
+			patch.object(item_bom_creation, "_get_existing_bom", side_effect=existing_bom), \
+			patch.object(item_bom_creation, "_validate_accessory_item"):
+			plan = item_bom_creation.get_bom_creation_plan(
+				"210082",
+				"Valve Seat",
+				"PEEK",
+				item_name="SEAT-D-1-8-100-C",
+			)
+
+		get_candidates.assert_not_called()
+		self.assertFalse(plan["needs_raw_material"])
+		self.assertEqual(plan["component_bom"], "BOM-200082-001")
+		self.assertEqual(plan["raw_material"], "")
+		self.assertEqual(plan["raw_material_candidates"], [])
+
 	def test_sub_assembly_creates_component_bom_before_upper_bom(self):
 		upper = FakeItem(name="110042", item_name="PLUG-D-1-8-100-U")
 		component = FakeItem(name="100042")
 		context = {
 			"item_group": "Plug",
+			"tag_raw_mat": "PTFE",
 			"rule": item_bom_creation.ITEM_GROUP_RULES["Plug"],
 		}
 
 		with patch.object(item_bom_creation, "_validate_accessory_item"), \
 			patch.object(item_bom_creation, "_ensure_component_item", return_value=(component, True)), \
 			patch.object(item_bom_creation, "_validate_component_item"), \
+			patch.object(item_bom_creation, "_get_existing_bom", return_value=""), \
+			patch.object(item_bom_creation, "_validate_raw_material"), \
 			patch.object(
 				item_bom_creation,
 				"_ensure_bom",
@@ -260,6 +294,47 @@ class TestItemBomCreation(unittest.TestCase):
 		)
 		self.assertEqual(result["upper_bom"], "BOM-110042-001")
 
+	def test_sub_assembly_reuses_existing_component_bom_without_raw_material(self):
+		upper = FakeItem(name="210082", item_name="SEAT-D-1-8-100-C")
+		component = FakeItem(name="200082")
+		context = {
+			"item_group": "Valve Seat",
+			"tag_raw_mat": "PEEK",
+			"rule": item_bom_creation.ITEM_GROUP_RULES["Valve Seat"],
+		}
+
+		with patch.object(item_bom_creation, "_validate_accessory_item"), \
+			patch.object(item_bom_creation, "_ensure_component_item", return_value=(component, False)), \
+			patch.object(item_bom_creation, "_validate_component_item"), \
+			patch.object(item_bom_creation, "_get_existing_bom", return_value="BOM-200082-001"), \
+			patch.object(item_bom_creation, "_validate_raw_material") as validate_raw_material, \
+			patch.object(
+				item_bom_creation,
+				"_ensure_bom",
+				return_value=("BOM-210082-001", True),
+			) as ensure_bom:
+			result = item_bom_creation._create_sub_assembly_chain(
+				upper,
+				context,
+				raw_material="",
+			)
+
+		validate_raw_material.assert_not_called()
+		ensure_bom.assert_called_once_with(
+			upper,
+			[
+				{
+					"item_code": "200082",
+					"qty": 1,
+					"bom_no": "BOM-200082-001",
+				},
+				{"item_code": "SPL.3039", "qty": 2.0},
+			],
+		)
+		self.assertEqual(result["component_bom"], "BOM-200082-001")
+		self.assertFalse(result["component_bom_created"])
+		self.assertEqual(result["upper_bom"], "BOM-210082-001")
+
 	def test_component_creation_only_creates_base_bom(self):
 		item = FakeItem(
 			name="200042",
@@ -280,6 +355,7 @@ class TestItemBomCreation(unittest.TestCase):
 			patch.object(item_bom_creation, "_lock_item"), \
 			patch.object(item_bom_creation, "_get_creation_context", return_value=context), \
 			patch.object(item_bom_creation, "_validate_raw_material"), \
+			patch.object(item_bom_creation, "_get_existing_bom", return_value=""), \
 			patch.object(item_bom_creation, "_ensure_bom", return_value=("BOM-200042-001", True)) as ensure_bom, \
 			patch.object(item_bom_creation, "_create_sub_assembly_chain") as create_upper:
 			result = item_bom_creation.create_item_boms_after_save(
