@@ -130,9 +130,7 @@ doc_events = {
         ],
         "after_insert": [
             "amf.amf.utils.custom.qr_code_to_document",
-            "amf.amf.utils.item_batch_setup.ensure_default_batch_for_item",
         ],
-        "on_update": "amf.amf.utils.item_batch_setup.ensure_default_batch_for_item",
     },
     "AMF Issue Test": {
         "validate": "amf.amf.utils.amf_issue_test_management.validate_issue_management",
