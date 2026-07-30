@@ -4,6 +4,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from amf import hooks
 from amf.amf.utils import item_batch_setup
 
 
@@ -68,6 +69,24 @@ class TestItemBatchSetup(unittest.TestCase):
 		item_batch_setup.apply_batch_tracking_rule(doc)
 
 		self.assertEqual(doc.has_batch_no, 0)
+
+	def test_item_hooks_do_not_create_default_batch_automatically(self):
+		item_hooks = hooks.doc_events["Item"]
+		registered_paths = []
+		for event_handlers in item_hooks.values():
+			if isinstance(event_handlers, (list, tuple)):
+				registered_paths.extend(event_handlers)
+			else:
+				registered_paths.append(event_handlers)
+
+		self.assertIn(
+			"amf.amf.utils.item_batch_setup.apply_batch_tracking_rule",
+			registered_paths,
+		)
+		self.assertNotIn(
+			"amf.amf.utils.item_batch_setup.ensure_default_batch_for_item",
+			registered_paths,
+		)
 
 	def test_ensure_default_batch_creates_batch_for_matching_item_without_batch(self):
 		doc = FakeDoc(name="100001", item_code="100001", is_stock_item=1, disabled=0)

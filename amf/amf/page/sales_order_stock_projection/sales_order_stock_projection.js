@@ -61,6 +61,9 @@ SalesOrderStockProjection.prototype.make = function() {
 	this.page.add_inner_button(__("Global Inventory"), function() {
 		frappe.set_route("global-inventory-dashboard");
 	});
+	this.page.add_inner_button(__("Inventory Planning"), function() {
+		frappe.set_route("inventory-planning");
+	});
 
 	this.$dashboard = $(
 		'<div class="sales-order-stock-projection">' +

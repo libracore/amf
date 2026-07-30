@@ -122,6 +122,12 @@ def get_data():
             "items": [
                 {
                     "type": "page",
+                    "name": "bank-reconciliation-automation",
+                    "label": _("Bank Reconciliation Automation"),
+                    "description": _("Validate PostFinance CSV movements and create invoice-linked Payment Entries")
+                },
+                {
+                    "type": "page",
                     "name": "file_uploader",
                     "label": _("PINV uploader"),
                     "description": _("Bulk upload scanned purchase invoices")

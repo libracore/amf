@@ -1,0 +1,715 @@
+.bra-page {
+	--bra-ink: #172033;
+	--bra-muted: #667085;
+	--bra-line: #e4e8f0;
+	--bra-panel: #fff;
+	--bra-blue: #3157d5;
+	--bra-blue-soft: #eef2ff;
+	--bra-green: #1e8058;
+	--bra-green-soft: #eaf8f1;
+	--bra-amber: #a96511;
+	--bra-amber-soft: #fff6e4;
+	--bra-violet: #6d4fc0;
+	--bra-violet-soft: #f2efff;
+	color: var(--bra-ink);
+	padding: 6px 0 42px;
+}
+
+.bra-hero {
+	align-items: center;
+	background:
+		radial-gradient(circle at 88% 10%, rgba(137, 172, 255, .24), transparent 31%),
+		linear-gradient(125deg, #162449, #263e78 62%, #3563b7);
+	border-radius: 16px;
+	box-shadow: 0 16px 44px rgba(31, 50, 96, .16);
+	color: #fff;
+	display: flex;
+	justify-content: space-between;
+	margin-bottom: 18px;
+	min-height: 168px;
+	overflow: hidden;
+	padding: 30px 34px;
+	position: relative;
+}
+
+.bra-hero:after {
+	border: 1px solid rgba(255, 255, 255, .13);
+	border-radius: 50%;
+	content: "";
+	height: 230px;
+	position: absolute;
+	right: -58px;
+	top: -124px;
+	width: 230px;
+}
+
+.bra-hero-copy {
+	max-width: 760px;
+	position: relative;
+	z-index: 1;
+}
+
+.bra-eyebrow {
+	color: #c8d6ff;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 1.7px;
+	margin-bottom: 9px;
+	text-transform: uppercase;
+}
+
+.bra-eyebrow .octicon {
+	margin-right: 6px;
+}
+
+.bra-hero h2 {
+	color: #fff;
+	font-size: 28px;
+	font-weight: 700;
+	letter-spacing: -.5px;
+	margin: 0 0 8px;
+}
+
+.bra-hero p {
+	color: rgba(255, 255, 255, .76);
+	font-size: 14px;
+	line-height: 1.55;
+	margin: 0;
+}
+
+.bra-safety {
+	align-items: center;
+	background: rgba(255, 255, 255, .1);
+	border: 1px solid rgba(255, 255, 255, .18);
+	border-radius: 12px;
+	display: flex;
+	flex: 0 0 auto;
+	gap: 11px;
+	margin-left: 28px;
+	padding: 13px 16px;
+	position: relative;
+	z-index: 1;
+}
+
+.bra-safety > .octicon {
+	color: #acd0ff;
+	font-size: 22px;
+}
+
+.bra-safety strong,
+.bra-safety small {
+	display: block;
+}
+
+.bra-safety strong {
+	color: #fff;
+	font-size: 12px;
+}
+
+.bra-safety small {
+	color: rgba(255, 255, 255, .64);
+	font-size: 10px;
+	margin-top: 2px;
+}
+
+.bra-panel {
+	background: var(--bra-panel);
+	border: 1px solid var(--bra-line);
+	border-radius: 13px;
+	box-shadow: 0 7px 22px rgba(23, 32, 51, .04);
+	margin-bottom: 16px;
+	padding: 18px;
+}
+
+.bra-panel-heading {
+	align-items: center;
+	display: flex;
+	justify-content: space-between;
+	margin-bottom: 16px;
+}
+
+.bra-panel-heading > div:first-child {
+	align-items: center;
+	display: flex;
+	gap: 11px;
+}
+
+.bra-panel-heading h3 {
+	font-size: 15px;
+	font-weight: 700;
+	margin: 0 0 3px;
+}
+
+.bra-panel-heading p {
+	color: var(--bra-muted);
+	font-size: 11px;
+	margin: 0;
+}
+
+.bra-step {
+	align-items: center;
+	background: var(--bra-blue-soft);
+	border-radius: 9px;
+	color: var(--bra-blue);
+	display: flex;
+	flex: 0 0 34px;
+	font-size: 14px;
+	font-weight: 700;
+	height: 34px;
+	justify-content: center;
+}
+
+.bra-account-grid {
+	display: grid;
+	gap: 12px;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.bra-account-card {
+	border: 1px solid var(--bra-line);
+	border-radius: 11px;
+	min-width: 0;
+	padding: 14px;
+}
+
+.bra-account-card.is-ready {
+	border-color: #c8e8d9;
+}
+
+.bra-account-card.is-missing {
+	border-color: #f0d49d;
+}
+
+.bra-account-top {
+	align-items: center;
+	display: flex;
+	justify-content: space-between;
+}
+
+.bra-currency {
+	background: var(--bra-blue-soft);
+	border-radius: 6px;
+	color: var(--bra-blue);
+	font-size: 11px;
+	font-weight: 800;
+	letter-spacing: .6px;
+	padding: 4px 7px;
+}
+
+.bra-account-state {
+	color: var(--bra-green);
+	font-size: 10px;
+	font-weight: 700;
+}
+
+.is-missing .bra-account-state {
+	color: var(--bra-amber);
+}
+
+.bra-account-state .octicon {
+	margin-right: 3px;
+}
+
+.bra-iban {
+	font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: .25px;
+	margin: 13px 0;
+}
+
+.bra-account-card dl {
+	display: grid;
+	gap: 5px 10px;
+	grid-template-columns: 72px minmax(0, 1fr);
+	margin: 0;
+}
+
+.bra-account-card dt {
+	color: var(--bra-muted);
+	font-size: 9px;
+	font-weight: 600;
+}
+
+.bra-account-card dd {
+	font-size: 10px;
+	margin: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.bra-account-issues {
+	color: var(--bra-amber);
+	font-size: 9px;
+	margin: 10px 0 0;
+	padding-left: 16px;
+}
+
+.bra-dropzone {
+	align-items: center;
+	background: #fafbfe;
+	border: 1.5px dashed #bac5d8;
+	border-radius: 11px;
+	cursor: pointer;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	min-height: 142px;
+	outline: none;
+	padding: 24px;
+	text-align: center;
+	transition: border-color .15s, background .15s, transform .15s;
+}
+
+.bra-dropzone:hover,
+.bra-dropzone:focus,
+.bra-dropzone.is-dragging {
+	background: var(--bra-blue-soft);
+	border-color: var(--bra-blue);
+	transform: translateY(-1px);
+}
+
+.bra-dropzone.has-file {
+	min-height: 105px;
+}
+
+.bra-upload-icon {
+	color: var(--bra-blue);
+	font-size: 27px;
+	margin-bottom: 9px;
+}
+
+.bra-dropzone strong {
+	font-size: 12px;
+}
+
+.bra-dropzone > span:last-child {
+	color: var(--bra-muted);
+	font-size: 10px;
+	margin-top: 4px;
+}
+
+.bra-file-row {
+	align-items: center;
+	background: #f7f9fc;
+	border: 1px solid var(--bra-line);
+	border-radius: 9px;
+	justify-content: space-between;
+	margin-top: 10px;
+	padding: 10px 12px;
+}
+
+.bra-file-row > div {
+	align-items: center;
+	display: flex;
+	gap: 9px;
+	min-width: 0;
+}
+
+.bra-file-row > div > .octicon {
+	color: var(--bra-blue);
+	font-size: 18px;
+}
+
+.bra-file-row strong,
+.bra-file-row small {
+	display: block;
+}
+
+.bra-file-row strong {
+	font-size: 11px;
+}
+
+.bra-file-row small {
+	color: var(--bra-muted);
+	font-size: 9px;
+	margin-top: 2px;
+}
+
+.bra-result-panel {
+	padding: 0;
+}
+
+.bra-result-heading {
+	margin: 0;
+	padding: 18px;
+}
+
+.bra-net-lines {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	justify-content: flex-end;
+}
+
+.bra-net-lines span {
+	background: #f5f7fa;
+	border-radius: 7px;
+	color: var(--bra-muted);
+	font-size: 9px;
+	padding: 6px 8px;
+}
+
+.bra-net-lines strong {
+	color: var(--bra-ink);
+	margin-right: 3px;
+}
+
+.bra-kpis {
+	border-bottom: 1px solid var(--bra-line);
+	border-top: 1px solid var(--bra-line);
+	display: grid;
+	grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.bra-kpi {
+	align-items: center;
+	border-right: 1px solid var(--bra-line);
+	display: flex;
+	gap: 9px;
+	min-width: 0;
+	padding: 13px 14px;
+}
+
+.bra-kpi:last-child {
+	border-right: 0;
+}
+
+.bra-kpi-icon {
+	align-items: center;
+	background: #f2f4f7;
+	border-radius: 8px;
+	color: var(--bra-muted);
+	display: flex;
+	flex: 0 0 32px;
+	height: 32px;
+	justify-content: center;
+}
+
+.bra-kpi.is-blue .bra-kpi-icon {
+	background: var(--bra-blue-soft);
+	color: var(--bra-blue);
+}
+
+.bra-kpi.is-green .bra-kpi-icon {
+	background: var(--bra-green-soft);
+	color: var(--bra-green);
+}
+
+.bra-kpi.is-violet .bra-kpi-icon {
+	background: var(--bra-violet-soft);
+	color: var(--bra-violet);
+}
+
+.bra-kpi.is-amber .bra-kpi-icon {
+	background: var(--bra-amber-soft);
+	color: var(--bra-amber);
+}
+
+.bra-kpi strong,
+.bra-kpi span {
+	display: block;
+}
+
+.bra-kpi strong {
+	font-size: 18px;
+	line-height: 1;
+}
+
+.bra-kpi div span {
+	color: var(--bra-muted);
+	font-size: 9px;
+	line-height: 1.2;
+	margin-top: 4px;
+}
+
+.bra-method-note {
+	align-items: center;
+	background: #f8faff;
+	border-bottom: 1px solid var(--bra-line);
+	color: #53627a;
+	display: flex;
+	font-size: 10px;
+	gap: 8px;
+	padding: 10px 18px;
+}
+
+.bra-method-note .octicon {
+	color: var(--bra-blue);
+}
+
+.bra-toolbar {
+	align-items: center;
+	display: flex;
+	justify-content: space-between;
+	padding: 12px 14px;
+}
+
+.bra-filters,
+.bra-actions {
+	align-items: center;
+	display: flex;
+	gap: 6px;
+}
+
+.bra-status-filter {
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: 7px;
+	color: var(--bra-muted);
+	font-size: 9px;
+	font-weight: 600;
+	padding: 5px 7px;
+}
+
+.bra-status-filter:hover {
+	background: #f6f7f9;
+}
+
+.bra-status-filter.is-active {
+	background: var(--bra-blue-soft);
+	border-color: #d9e0ff;
+	color: var(--bra-blue);
+}
+
+.bra-status-filter span {
+	background: rgba(23, 32, 51, .07);
+	border-radius: 8px;
+	margin-left: 4px;
+	padding: 1px 5px;
+}
+
+.bra-selected-count {
+	color: var(--bra-muted);
+	font-size: 9px;
+	margin-right: 3px;
+}
+
+.bra-table-wrap {
+	border-top: 1px solid var(--bra-line);
+	overflow-x: auto;
+}
+
+.bra-table {
+	margin: 0;
+	min-width: 1180px;
+	table-layout: fixed;
+}
+
+.bra-table thead th {
+	background: #fafbfc;
+	border-bottom: 1px solid var(--bra-line) !important;
+	color: #687387;
+	font-size: 8px;
+	font-weight: 700;
+	letter-spacing: .4px;
+	padding: 9px 7px !important;
+	text-transform: uppercase;
+}
+
+.bra-table th:nth-child(1) { width: 34px; }
+.bra-table th:nth-child(2) { width: 42px; }
+.bra-table th:nth-child(3) { width: 118px; }
+.bra-table th:nth-child(4) { width: 135px; }
+.bra-table th:nth-child(5) { width: 150px; }
+.bra-table th:nth-child(6) { width: 105px; }
+.bra-table th:nth-child(7) { width: 245px; }
+.bra-table th:nth-child(8) { width: 215px; }
+
+.bra-table td {
+	border-top: 0 !important;
+	font-size: 10px;
+	padding: 9px 7px 4px !important;
+	vertical-align: top !important;
+}
+
+.bra-data-row td {
+	border-top: 1px solid var(--bra-line) !important;
+}
+
+.bra-data-row:first-child td {
+	border-top: 0 !important;
+}
+
+.bra-table td small {
+	color: var(--bra-muted);
+	display: block;
+	font-size: 8px;
+	line-height: 1.35;
+	margin-top: 3px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.bra-row-number {
+	color: var(--bra-muted);
+	font-family: "SFMono-Regular", Consolas, monospace;
+	font-size: 9px;
+}
+
+.bra-status {
+	align-items: center;
+	border-radius: 10px;
+	display: inline-flex;
+	font-size: 8px;
+	font-weight: 700;
+	gap: 4px;
+	padding: 3px 7px;
+	white-space: nowrap;
+}
+
+.bra-status.is-ready {
+	background: var(--bra-green-soft);
+	color: var(--bra-green);
+}
+
+.bra-status.is-existing {
+	background: var(--bra-violet-soft);
+	color: var(--bra-violet);
+}
+
+.bra-status.is-review {
+	background: var(--bra-amber-soft);
+	color: var(--bra-amber);
+}
+
+.bra-status.is-ignored {
+	background: #f2f4f7;
+	color: var(--bra-muted);
+}
+
+.bra-reference,
+.bra-ledger {
+	display: block;
+	line-height: 1.35;
+	overflow-wrap: anywhere;
+}
+
+.bra-reference {
+	font-family: "SFMono-Regular", Consolas, monospace;
+	font-size: 8.5px;
+}
+
+.bra-detail-row td {
+	border-bottom: 1px solid var(--bra-line);
+	padding-bottom: 8px !important;
+	padding-top: 0 !important;
+}
+
+.bra-row-detail {
+	align-items: flex-start;
+	color: var(--bra-muted);
+	display: flex;
+	font-size: 8.5px;
+	gap: 12px;
+	justify-content: space-between;
+}
+
+.bra-row-messages {
+	color: var(--bra-amber);
+	margin: 0;
+	padding-left: 14px;
+}
+
+.bra-ok-text {
+	color: var(--bra-green);
+}
+
+.bra-ok-text .octicon {
+	margin-right: 3px;
+}
+
+.bra-row-detail details {
+	flex: 0 0 180px;
+}
+
+.bra-row-detail summary {
+	cursor: pointer;
+	text-align: right;
+}
+
+.bra-row-detail details p {
+	background: #f7f8fa;
+	border-radius: 6px;
+	color: #536074;
+	line-height: 1.45;
+	margin: 5px 0 0;
+	padding: 8px;
+	text-align: left;
+}
+
+.bra-analysis-loading,
+.bra-loading,
+.bra-empty {
+	align-items: center;
+	color: var(--bra-muted);
+	display: flex;
+	font-size: 11px;
+	justify-content: center;
+	min-height: 90px;
+	padding: 20px;
+}
+
+.bra-analysis-loading {
+	background: var(--bra-panel);
+	border: 1px solid var(--bra-line);
+	border-radius: 12px;
+	gap: 9px;
+}
+
+.bra-analysis-loading .octicon {
+	animation: bra-spin 1s linear infinite;
+	color: var(--bra-blue);
+	font-size: 18px;
+}
+
+.bra-muted {
+	color: var(--bra-muted);
+}
+
+@keyframes bra-spin {
+	to { transform: rotate(360deg); }
+}
+
+@media (max-width: 1050px) {
+	.bra-kpis {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+
+	.bra-kpi:nth-child(3) {
+		border-right: 0;
+	}
+
+	.bra-kpi:nth-child(-n+3) {
+		border-bottom: 1px solid var(--bra-line);
+	}
+}
+
+@media (max-width: 800px) {
+	.bra-hero {
+		align-items: flex-start;
+		flex-direction: column;
+		padding: 24px;
+	}
+
+	.bra-safety {
+		margin: 18px 0 0;
+	}
+
+	.bra-account-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.bra-toolbar {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 10px;
+	}
+
+	.bra-filters {
+		flex-wrap: wrap;
+	}
+}
+

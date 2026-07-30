@@ -134,3 +134,7 @@ amf/public/js/stock_entry_backup.js
 README.md
 amf/docs/amf_issue_test_management_readme.md
 amf/amf/custom/issue.json
+amf/amf/report/sales_dashboard/__init__.py
+amf/amf/report/sales_dashboard/sales_dashboard.js
+amf/amf/report/sales_dashboard/sales_dashboard.json
+amf/amf/report/sales_dashboard/sales_dashboard.py

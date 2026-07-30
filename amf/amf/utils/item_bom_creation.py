@@ -40,24 +40,31 @@ def get_bom_creation_plan(
 ):
 	"""Build the plan displayed before the new Item is saved."""
 	context = _get_creation_context(item_code, item_group, tag_raw_mat)
-	candidates = get_raw_material_candidates(context["tag_raw_mat"])
-	if not candidates:
-		frappe.throw(
-			_("No enabled Raw Material Item has Raw Material Tag {0}.").format(
-				frappe.bold(context["tag_raw_mat"])
-			)
-		)
+	component_bom = _get_existing_bom(context["component_item_code"])
+	needs_raw_material = not bool(component_bom)
+	candidates = []
+	selected_raw_material = ""
 
-	candidate_names = [row["name"] for row in candidates]
-	if raw_material and raw_material not in candidate_names:
-		frappe.throw(
-			_("Raw Material {0} does not match Raw Material Tag {1}.").format(
-				frappe.bold(raw_material),
-				frappe.bold(context["tag_raw_mat"]),
+	if needs_raw_material:
+		candidates = get_raw_material_candidates(context["tag_raw_mat"])
+		if not candidates:
+			frappe.throw(
+				_("No enabled Raw Material Item has Raw Material Tag {0}.").format(
+					frappe.bold(context["tag_raw_mat"])
+				)
 			)
-		)
 
-	selected_raw_material = raw_material or (candidate_names[0] if len(candidate_names) == 1 else "")
+		candidate_names = [row["name"] for row in candidates]
+		if raw_material and raw_material not in candidate_names:
+			frappe.throw(
+				_("Raw Material {0} does not match Raw Material Tag {1}.").format(
+					frappe.bold(raw_material),
+					frappe.bold(context["tag_raw_mat"]),
+				)
+			)
+
+		selected_raw_material = raw_material or (candidate_names[0] if len(candidate_names) == 1 else "")
+
 	rule = context["rule"]
 	plan = {
 		"item_code": context["item_code"],
@@ -66,7 +73,8 @@ def get_bom_creation_plan(
 		"is_sub_assembly": context["layer"] == "sub_assembly",
 		"component_item_code": context["component_item_code"],
 		"component_item_exists": context["component_item_exists"],
-		"component_bom": _get_existing_bom(context["component_item_code"]),
+		"component_bom": component_bom,
+		"needs_raw_material": needs_raw_material,
 		"tag_raw_mat": context["tag_raw_mat"],
 		"raw_material_qty": rule["raw_material_qty"],
 		"raw_material": selected_raw_material,
@@ -91,7 +99,7 @@ def get_bom_creation_plan(
 @frappe.whitelist()
 def create_item_boms_after_save(
 	item_code,
-	raw_material,
+	raw_material=None,
 	accessory_item=None,
 	accessory_qty=None,
 ):
@@ -109,15 +117,12 @@ def create_item_boms_after_save(
 		item.item_group,
 		item.get("tag_raw_mat"),
 	)
-	_validate_raw_material(raw_material, context["tag_raw_mat"])
 
 	if context["layer"] == "component":
-		bom_name, bom_created = _ensure_bom(
+		bom_name, bom_created = _ensure_component_raw_material_bom(
 			item,
-			[{
-				"item_code": raw_material,
-				"qty": context["rule"]["raw_material_qty"],
-			}],
+			context,
+			raw_material,
 		)
 		return {
 			"layer": "component",
@@ -153,12 +158,10 @@ def _create_sub_assembly_chain(
 	component_item, component_item_created = _ensure_component_item(upper_item, context)
 	_validate_component_item(component_item, context)
 
-	component_bom, component_bom_created = _ensure_bom(
+	component_bom, component_bom_created = _ensure_component_raw_material_bom(
 		component_item,
-		[{
-			"item_code": raw_material,
-			"qty": rule["raw_material_qty"],
-		}],
+		context,
+		raw_material,
 	)
 	upper_bom, upper_bom_created = _ensure_bom(
 		upper_item,
@@ -184,6 +187,21 @@ def _create_sub_assembly_chain(
 		"upper_bom": upper_bom,
 		"upper_bom_created": upper_bom_created,
 	}
+
+
+def _ensure_component_raw_material_bom(component_item, context, raw_material):
+	existing_bom = _get_existing_bom(component_item.name)
+	if existing_bom:
+		return existing_bom, False
+
+	_validate_raw_material(raw_material, context["tag_raw_mat"])
+	return _ensure_bom(
+		component_item,
+		[{
+			"item_code": raw_material,
+			"qty": context["rule"]["raw_material_qty"],
+		}],
+	)
 
 
 def _get_creation_context(item_code, item_group, tag_raw_mat):

@@ -209,6 +209,10 @@ def _build_component_description(
 		_description_line("Item Name", item_name),
 		_description_line("Item Group", item_group),
 		_description_line("R&D Code", reference_code),
+	])
+	if _is_sub_assembly_layer(item_code, item_type, reference_code):
+		lines.append("<b>SUB-ASSEMBLY</b><br>")
+	lines.extend([
 		_description_line("Valve Type", VALVE_TYPE_MAP.get(parts[1], parts[1])),
 		_description_line("Number of Stages", parts[2]),
 		_description_line("Number of Ports", parts[3]),
@@ -217,6 +221,14 @@ def _build_component_description(
 	material_label = "Plug Material" if item_group == "Plug" else "Valve Material"
 	lines.append(_description_line(material_label, MATERIAL_MAP.get(parts[5], parts[5])))
 	return "".join(lines)
+
+
+def _is_sub_assembly_layer(item_code, item_type, reference_code):
+	return (
+		cstr(item_type).strip().lower().replace("_", "-") in ("sub-assembly", "sub assembly")
+		or (len(item_code) >= 2 and item_code[1] == "1")
+		or cstr(reference_code).strip().upper().endswith(".ASM")
+	)
 
 
 def _build_valve_head_description(item_name):

@@ -1,0 +1,217 @@
+.link-preview-popover.amf-item-preview-popover {
+    border: 0;
+    border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(23, 43, 77, 0.18);
+    max-width: min(410px, calc(100vw - 24px));
+}
+
+.link-preview-popover.amf-item-preview-popover .popover-content {
+    padding: 0;
+}
+
+.amf-item-preview {
+    color: #172b4d;
+    min-width: 360px;
+}
+
+.amf-item-preview__header {
+    align-items: flex-start;
+    display: flex;
+    gap: 14px;
+    justify-content: space-between;
+    padding: 15px 16px 12px;
+}
+
+.amf-item-preview__identity {
+    min-width: 0;
+}
+
+.amf-item-preview__name,
+.amf-item-preview__code {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.amf-item-preview__name {
+    color: #172b4d;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.amf-item-preview__code {
+    color: #2b47d9;
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.amf-item-preview__group {
+    color: #6b778c;
+    display: block;
+    font-size: 11px;
+    margin-top: 3px;
+}
+
+.amf-item-preview__status {
+    background: #f4f5f7;
+    border-radius: 999px;
+    color: #5e6c84;
+    flex: none;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+    padding: 6px 8px;
+    text-transform: uppercase;
+}
+
+.amf-item-preview__status.is-positive {
+    background: #e3fcef;
+    color: #006644;
+}
+
+.amf-item-preview__status.is-warning {
+    background: #fffae6;
+    color: #974f0c;
+}
+
+.amf-item-preview__status.is-negative,
+.amf-item-preview__status.is-disabled {
+    background: #ffebe6;
+    color: #bf2600;
+}
+
+.amf-item-preview__metrics {
+    display: grid;
+    gap: 1px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    background: #dfe1e6;
+    border-bottom: 1px solid #dfe1e6;
+    border-top: 1px solid #dfe1e6;
+}
+
+.amf-item-preview__metric {
+    background: #fff;
+    min-width: 0;
+    padding: 12px 11px 11px;
+}
+
+.amf-item-preview__metric-label {
+    color: #6b778c;
+    display: block;
+    font-size: 10px;
+    line-height: 1.2;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.amf-item-preview__metric strong {
+    color: #172b4d;
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+.amf-item-preview__metric.is-positive strong {
+    color: #00875a;
+}
+
+.amf-item-preview__metric.is-warning strong {
+    color: #b76e00;
+}
+
+.amf-item-preview__metric.is-negative strong {
+    color: #de350b;
+}
+
+.amf-item-preview__uom {
+    color: #8993a4;
+    font-size: 10px;
+    margin-left: 2px;
+}
+
+.amf-item-preview__flow {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 10px 16px;
+}
+
+.amf-item-preview__flow span {
+    color: #6b778c;
+    font-size: 10px;
+    min-width: 0;
+}
+
+.amf-item-preview__flow strong {
+    color: #42526e;
+    display: block;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.amf-item-preview__notice {
+    background: #f4f5f7;
+    border-bottom: 1px solid #dfe1e6;
+    border-top: 1px solid #dfe1e6;
+    color: #5e6c84;
+    font-size: 12px;
+    padding: 13px 16px;
+}
+
+.amf-item-preview__footer {
+    align-items: center;
+    border-top: 1px solid #ebecf0;
+    display: flex;
+    font-size: 11px;
+    gap: 12px;
+    justify-content: space-between;
+    padding: 10px 16px;
+}
+
+.amf-item-preview__footer > * {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.amf-item-preview__footer .fa {
+    margin-right: 3px;
+}
+
+.amf-item-preview__open {
+    flex: none;
+}
+
+.amf-item-preview__open .fa {
+    margin-left: 3px;
+    margin-right: 0;
+}
+
+@media (max-width: 420px) {
+    .amf-item-preview {
+        min-width: calc(100vw - 48px);
+    }
+
+    .amf-item-preview__header,
+    .amf-item-preview__footer {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .amf-item-preview__metric {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    .amf-item-preview__flow {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+}
