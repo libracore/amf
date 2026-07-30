@@ -159,6 +159,9 @@ doc_events = {
         "on_cancel": "amf.master_crm.customer_marketing.sync_customer_marketing_from_sales_order",
         "on_update_after_submit": "amf.master_crm.customer_marketing.sync_customer_marketing_from_sales_order",
     },
+    "Sales Invoice": {
+        "validate": "amf.amf.utils.sales_invoice_total_ht.apply_sales_invoice_total_ht",
+    },
     "Project": {
         "before_insert": "amf.amf.utils.project_id.assign_project_id",
     },
@@ -276,6 +279,7 @@ after_migrate = [
     "amf.amf.utils.work_order_estimated_time.sync_work_order_estimated_time_custom_fields",
     "amf.amf.utils.work_order_estimated_time.sync_all_work_order_estimated_times",
     "amf.amf.utils.sales_order_otif.sync_sales_order_otif_custom_fields",
+    "amf.amf.utils.sales_invoice_total_ht.sync_sales_invoice_total_ht_customization",
     "amf.amf.utils.amf_issue_test_management.clear_amf_issue_test_management_meta_cache",
     "amf.amf.utils.kpi_dashboard.sync_supply_chain_manufacturing_dashboard",
 ]
