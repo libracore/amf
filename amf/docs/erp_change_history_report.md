@@ -1,10 +1,10 @@
 # ERP Change History Report
 
-Generated on: 2026-07-29
+Generated on: 2026-07-30
 
 ## Scope
 
-This document summarizes the main ERP changes developed in the AMF custom app from the beginning of the recorded development history to 2026-07-29.
+This document summarizes the main ERP changes developed in the AMF custom app from the beginning of the recorded development history to 2026-07-30.
 
 The report is based on the `apps/amf` git history, which starts on 2022-09-19, and on the current AMF app structure, including custom DocTypes, reports, pages, hooks and documentation.
 
@@ -238,6 +238,7 @@ The main evolution areas are:
 
 #### Q3 2026 To Date
 
+- Purchase Order Cash Forecast report added to support procurement cash planning by combining unbilled Purchase Order commitments and unpaid supplier invoices linked to Purchase Orders, with cumulative one-month, one-quarter and one-year views in CHF, EUR and USD plus a detailed drill-down view.
 - Purchase receipt return support updated.
 - Issue management functionality added or expanded.
 - Estimated manufacturing time added to Work Orders.
@@ -329,7 +330,7 @@ The main evolution areas are:
 
 The current AMF custom app includes custom objects for planning, item creation, global quality inspection, timer production, DHL tracking, loan orders, issue management, Document AI imports, HS codes, customer feedback, CRM forms, Brevo campaigns, sales actions and satisfaction surveys.
 
-The current report catalog includes operational reports for inventory turnover, stock and revenue, produced and delivered items, purchased versus manufactured items, delivered items, purchase order items, late purchases, projected stock, sales dashboards, quotation dashboards, manufacturing yield, machined parts, item margins, no-price items, leave balances, AMF general ledger and Sales Order to Delivery Note lead time.
+The current report catalog includes operational reports for inventory turnover, stock and revenue, produced and delivered items, purchased versus manufactured items, delivered items, purchase order items, late purchases, purchase order cash forecasting, projected stock, sales dashboards, quotation dashboards, manufacturing yield, machined parts, item margins, no-price items, leave balances, AMF general ledger and Sales Order to Delivery Note lead time.
 
 The current page catalog includes inventory planning, sales order stock projection, logistics tracking, global inventory dashboard, component drawing register, bank reconciliation automation, order confirmation parsing, PDF text extraction and file upload tools.
 
