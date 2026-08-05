@@ -1,14 +1,14 @@
 # AMF ERP Release Notes
 
-Generated on: 2026-07-31
+Generated on: 2026-08-05
 
-Change history through: 2026-07-30
+Change history through: 2026-08-05
 
 Live system: [AMF ERP Desk](https://amf.libracore.ch/desk#)
 
-Latest release: `v2026.07.1`
+Latest release: `v2026.08.1`
 
-Release status: Published
+Release status: Ready for validation
 
 Release audience: AMF ERP users, department leads, management, operations, finance, logistics, quality, sales and support teams.
 
@@ -16,7 +16,7 @@ Release audience: AMF ERP users, department leads, management, operations, finan
 
 This document is the business-facing release notes and change history for the AMF ERP custom app.
 
-It summarizes the main ERP changes developed in the AMF custom app from the beginning of the recorded development history to 2026-07-30. The report is based on the `apps/amf` git history, which starts on 2022-09-19, and on the current AMF app structure, including custom DocTypes, reports, pages, hooks and documentation.
+It summarizes the main ERP changes developed in the AMF custom app from the beginning of the recorded development history to 2026-08-05. The report is based on the `apps/amf` git history, which starts on 2022-09-19, and on the current AMF app structure, including custom DocTypes, reports, pages, hooks and documentation.
 
 This is intentionally not a technical commit-by-commit changelog. It is a release communication document for the main modifications, novelties and functional areas added over time. Standard Frappe and ERPNext framework changes are not listed unless they were reflected in AMF custom development.
 
@@ -47,7 +47,8 @@ Historical development milestones already recorded in the project, such as `v0.4
 
 | Release | Status | Period | Main Focus |
 | --- | --- | --- | --- |
-| `v2026.07.1` | Published, latest | 2026 Q3 to date | Procurement cash forecast, global inventory dashboard, issue management, item dashboards, component drawing register, bank reconciliation automation and serial-number tools. |
+| `v2026.08.1` | Ready for validation, latest | 2026 Q3 to date | Tool-only maintenance planning, maintenance history, preventive maintenance dashboard, automatic Item maintenance summaries and P202-O BOM creation. |
+| `v2026.07.1` | Published | 2026 Q3 | Procurement cash forecast, global inventory dashboard, issue management, item dashboards, component drawing register, bank reconciliation automation and serial-number tools. |
 | `v2026.06.0` | Superseded | 2026 Q2 | Loan Orders, landed cost behavior, work order automation, KPI dashboards, procurement tools and AI-assisted reporting. |
 | `v2026.03.0` | Superseded | 2026 Q1 | Swiss VAT handling, customs mapping, planning quantities, batch quantity retrieval and costing support. |
 | `v0.7.0` | Superseded | 2025 Q4 | Production Tracking, Timer Production, automatic Quality Inspections, drawing-based QA and HS Code support. |
@@ -56,63 +57,71 @@ Historical development milestones already recorded in the project, such as `v0.4
 | `v0.4.0` | Superseded | 2024 Q3 | Master CRM, Sales Actions, campaign lists, Gravity Forms, Brevo integration and CRM analytics. |
 | Foundation releases | Superseded | 2022-2024 | Core reporting, planning, labels, QR codes, inventory visibility, logistics, purchasing and CRM foundations. |
 
-## Latest Release: `v2026.07.1`
+## Latest Release: `v2026.08.1`
 
-Release date: 2026-07-30
+Release date: 2026-08-05
+
+Release status: Ready for validation
 
 Live version: [https://amf.libracore.ch/desk#](https://amf.libracore.ch/desk#)
 
 ### Summary
 
-This release extends the AMF ERP with stronger procurement cash planning, inventory visibility, manufacturing preparation, issue handling, drawing traceability and administrative automation. It continues the 2026 direction of improving operational dashboards, finance support, compliance-oriented data, production planning and management reporting.
+This release adds a dedicated Tool Maintenance workflow inside AMF ERP and includes BOM creation support for P202-O products. Maintenance information is now attached directly to Item records when the Item Group is `Tool`, and the ERP includes dedicated maintenance plans, intervention logs and a maintenance planner page for daily follow-up.
+
+The release is designed so maintenance status stays current when tools, plans or maintenance logs change. New Tool items are initialized automatically, recurring plans recalculate their next due date after interventions, completed one-time plans close automatically, and Item maintenance summary fields are refreshed through document hooks and a scheduled daily sync.
+
+For product master data, the release also creates submitted default BOMs for the P202-O `4D` item family from validated P201-O/`42` BOM templates, with the body component updated to the P202-O body item.
 
 ### Highlights
 
-- Added Purchase Order Cash Forecast reporting for procurement and finance planning.
-- Expanded Global Inventory Dashboard, procurement tools and stock analysis logic.
-- Added or improved issue management functionality for operational follow-up.
-- Added estimated manufacturing time support on Work Orders.
-- Updated item dashboards and Item Creation tooling.
-- Added Component Drawing Register support.
-- Updated Delivery Note, purchase receipt return and leave entry behavior.
-- Added or improved bank reconciliation automation and serial-number mixer work.
-- Added Sales Invoice trend reporting updates.
+- Added a Tool-only maintenance section on Item records.
+- Added Tool Maintenance Plan and Tool Maintenance Log DocTypes.
+- Added the Tool Maintenance planner page at `/app/tool-maintenance`.
+- Added Item form actions for Maintenance Planner, New Maintenance Plan and Log Intervention.
+- Added BOM creation for P202-O products in the `4D` item family.
+- Imported safe tool metadata from the maintenance spreadsheet where item matching was unambiguous.
+- Added automatic refresh behavior when a Tool item, maintenance plan or maintenance log is created, changed, completed, moved or deleted.
+- Added safeguards so Tool items with existing maintenance records cannot be silently moved out of the Tool item group.
+- Added daily maintenance summary refresh so due and overdue statuses age correctly over time.
 
 ### Change Notes
 
 | Area | Change | Brief Explanation |
 | --- | --- | --- |
-| Procurement and finance | Purchase Order Cash Forecast report added. | Supports cash planning by combining unbilled Purchase Order commitments and unpaid supplier invoices linked to Purchase Orders, with cumulative views for one month, one quarter and one year in CHF, EUR and USD plus drill-down detail. |
-| Inventory and procurement | Global Inventory Dashboard, procurement tools and stock analysis algorithms added. | Gives procurement and operations better visibility into stock, availability, shortages and replenishment decisions. |
-| Manufacturing | Estimated manufacturing time added to Work Orders. | Improves production planning, capacity discussion and manufacturing expectation management. |
-| Quality and support | Issue management functionality added or expanded. | Helps teams register, follow up and manage operational or quality-related issues more consistently. |
-| Item and engineering data | Item dashboards, item creation tools and Component Drawing Register added or updated. | Improves item maintenance, drawing traceability and engineering-to-production visibility. |
-| Logistics and warehouse | Delivery Note behavior and purchase receipt return support updated. | Improves handling of delivery and receipt workflows where corrections or return flows are needed. |
-| Administration | Leave entry behavior updated. | Keeps administrative workflows aligned with current operating needs. |
-| Finance operations | Bank reconciliation automation added or improved. | Reduces manual reconciliation work and supports cleaner finance follow-up. |
-| Serial-number operations | Serial-number mixer work added. | Supports operational handling where serial-number combinations or corrections are needed. |
-| Sales reporting | Sales Invoice trend reporting updated. | Improves management visibility into invoicing trends and sales performance. |
+| Item master data | Tool-only maintenance fields added to Item. | Displays maintenance fields only for items in Item Group `Tool`, including serial number, equipment type, ownership, location, responsible employee, required PPE, calibration procedure, instructions, last maintenance, next maintenance, status and open/overdue plan counts. |
+| Maintenance planning | Tool Maintenance Plan DocType added. | Lets users define preventive maintenance requirements for tools, including frequency, due dates, responsibility, status and plan instructions. |
+| Maintenance execution | Tool Maintenance Log DocType added. | Records completed interventions, links work back to the related Tool item and maintenance plan, and updates last/next maintenance information. |
+| Maintenance dashboard | Tool Maintenance page added. | Provides a dedicated planning page for reviewing Tool maintenance status, due and overdue work, plans and intervention history. |
+| Product master data | P202-O BOM creation added. | Creates submitted default BOMs for P202-O `4D` finished goods from matching P201-O/`42` BOM templates and replaces the source body component with the P202-O body item `5D1000`. |
+| ERP automation | Maintenance summaries refresh automatically. | Item maintenance summary fields are updated after Tool saves, plan changes and log changes, plus a scheduled daily refresh keeps due and overdue status current. |
+| Data migration | Spreadsheet data mapped into Tool Item fields where safe. | Maintenance-related metadata from the spreadsheet was imported only when the Tool item match was unambiguous; conflicting or stale reused item codes were left untouched for manual review. |
+| Data protection | Item Group changes are guarded. | A Tool item with existing maintenance plans or logs cannot be moved out of Item Group `Tool` without first resolving the linked maintenance history. |
 
 ### User Impact
 
 - No separate user installation action is required.
 - Users should continue working in the live ERP system at [https://amf.libracore.ch/desk#](https://amf.libracore.ch/desk#).
-- Department leads should review new or changed reports that affect their workflows.
-- Procurement and finance users should validate forecast figures against known Purchase Orders and supplier invoices during initial use.
-- Production users should review estimated manufacturing time on Work Orders where available.
-- Support, quality and operations users should use the updated issue management flow for new cases.
+- Maintenance-relevant fields appear on Item records only when the item belongs to Item Group `Tool`.
+- New Tool items receive a maintenance summary automatically when saved.
+- Maintenance users can create plans and log interventions from the Tool Item form or from the Tool Maintenance planner page.
+- Recurring plans calculate their next due date from the latest completed intervention.
+- Overdue and due statuses are visible both on Tool Item records and in the dedicated planner.
+- P202-O `4D` products can receive validated default BOMs based on the corresponding P201-O product structure.
 
 ### Validation Notes
 
 Recommended post-release checks:
 
-- Open the live ERP desk and confirm access for the affected user groups.
-- Validate Purchase Order Cash Forecast totals in CHF, EUR and USD against known open commitments.
-- Review Global Inventory Dashboard figures for high-volume and critical items.
-- Confirm estimated manufacturing time is visible where expected on Work Orders.
-- Test issue creation and follow-up for one representative operational case.
-- Confirm Delivery Note and purchase receipt return behavior on a non-critical example.
-- Review bank reconciliation automation output before relying on it for month-end work.
+- Open a Tool item and confirm the maintenance section is visible.
+- Open a non-Tool item and confirm the maintenance section is hidden.
+- Create a new Tool item and confirm the maintenance status initializes to `No Plan`.
+- Create a maintenance plan for a Tool item and confirm the Item summary counts update.
+- Log a completed intervention and confirm last maintenance, next maintenance and plan status update.
+- Test one recurring plan and confirm the next due date moves according to the configured frequency.
+- Confirm the Tool Maintenance page opens at [https://amf.libracore.ch/desk#tool-maintenance](https://amf.libracore.ch/desk#tool-maintenance).
+- Review the spreadsheet import exceptions before manually entering maintenance data for conflicted item codes.
+- Review a representative P202-O `4D` item and confirm its submitted default BOM uses body item `5D1000` with the expected remaining components from the corresponding P201-O template.
 
 ## Executive Summary
 
@@ -121,6 +130,7 @@ Since the beginning of development, the AMF ERP has evolved from a custom report
 The main evolution areas are:
 
 - Production planning, Work Order automation and manufacturing follow-up.
+- Tool maintenance planning, preventive maintenance status and intervention history.
 - Item, BOM and product master creation and maintenance.
 - QR code, barcode, label and production sticker generation.
 - Inventory visibility, safety stock, stock forecasting and replenishment support.
@@ -136,7 +146,21 @@ The main evolution areas are:
 
 ### 2026 - Advanced Planning, Finance, Compliance, Dashboards And AI Reporting
 
-#### `v2026.07.1` - 2026 Q3 To Date - Latest
+#### `v2026.08.1` - 2026 Q3 To Date - Latest
+
+- Tool Maintenance workflow added for items in Item Group `Tool`.
+- Tool-only maintenance fields added to Item records, including equipment details, responsibility, safety information, instructions, dates, status and summary counts.
+- Tool Maintenance Plan DocType added for preventive and one-time maintenance planning.
+- Tool Maintenance Log DocType added for intervention history and completion tracking.
+- Tool Maintenance planner page added at `/app/tool-maintenance` for operational follow-up.
+- Item form buttons added for Maintenance Planner, New Maintenance Plan and Log Intervention.
+- P202-O BOM creation added for six-character `4D` items, using validated P201-O/`42` BOM templates and replacing the source body with item `5D1000`.
+- Maintenance spreadsheet metadata imported into Tool Item fields where item matching was safe and unambiguous.
+- Automatic lifecycle updates added so Tool item summaries refresh when tools, plans or logs are created, edited, completed, moved or deleted.
+- Daily maintenance summary refresh added so due and overdue status remains current as dates age.
+- Safeguard added to prevent moving Tool items with maintenance records out of Item Group `Tool`.
+
+#### `v2026.07.1` - 2026 Q3
 
 - Purchase Order Cash Forecast report added to support procurement cash planning by combining unbilled Purchase Order commitments and unpaid supplier invoices linked to Purchase Orders, with cumulative one-month, one-quarter and one-year views in CHF, EUR and USD plus a detailed drill-down view.
 - Purchase receipt return support updated.
@@ -360,8 +384,10 @@ The main evolution areas are:
 
 - Production Master Planner, planning pages and planning DocType enhancements.
 - Work Order creation, assignment, serial-number behavior and automation.
+- P202-O BOM creation for the `4D` finished goods family.
 - Production tracking with operator timers and Work Order QR access.
 - Estimated manufacturing time and production cost/time tracking support.
+- Tool maintenance planning, due-date tracking and intervention history.
 - Machining reports and production stickers.
 
 ### Inventory, Stock And Procurement
@@ -375,9 +401,10 @@ The main evolution areas are:
 ### Item, BOM And Product Master
 
 - Item Master, Product Master and Item Creation workflows.
-- BOM creation, BOM child updates, pump BOM updates and recursive BOM updates.
+- BOM creation, P202-O BOM creation, BOM child updates, pump BOM updates and recursive BOM updates.
 - Item valuation from BOM costs.
 - Drawing match and component drawing register support.
+- Tool-only Item maintenance fields and automatic maintenance summaries.
 - Item pricing and item category controls.
 
 ### Logistics And Delivery
@@ -403,6 +430,7 @@ The main evolution areas are:
 - Global Quality Inspection and related inspection tables.
 - Automatic Quality Inspection generation for batches and Work Orders.
 - Drawing-based inspection support.
+- Preventive Tool maintenance plans and maintenance intervention history.
 - Customer Feedback and satisfaction scoring.
 - Issue management workflows and ISO-oriented documentation.
 - Root cause and quality investigation support.
@@ -429,15 +457,15 @@ The main evolution areas are:
 - Custom pages, common JavaScript utilities and UI refinements added.
 - Barcode, DataMatrix, QR code and label infrastructure expanded.
 - Web pages for planning, item information, logistics and document tooling added.
-- Hooks, migrations, settings DocTypes and background utilities added to automate operational behavior.
+- Hooks, migrations, settings DocTypes and background utilities added to automate operational behavior, including Tool maintenance lifecycle updates.
 
 ## Current Main Custom Objects
 
-The current AMF custom app includes custom objects for planning, item creation, global quality inspection, timer production, DHL tracking, loan orders, issue management, Document AI imports, HS codes, customer feedback, CRM forms, Brevo campaigns, sales actions and satisfaction surveys.
+The current AMF custom app includes custom objects for planning, item creation, Tool Maintenance Plans, Tool Maintenance Logs, global quality inspection, timer production, DHL tracking, loan orders, issue management, Document AI imports, HS codes, customer feedback, CRM forms, Brevo campaigns, sales actions and satisfaction surveys.
 
 The current report catalog includes operational reports for inventory turnover, stock and revenue, produced and delivered items, purchased versus manufactured items, delivered items, purchase order items, late purchases, purchase order cash forecasting, projected stock, sales dashboards, quotation dashboards, manufacturing yield, machined parts, item margins, no-price items, leave balances, AMF general ledger and Sales Order to Delivery Note lead time.
 
-The current page catalog includes inventory planning, sales order stock projection, logistics tracking, global inventory dashboard, component drawing register, bank reconciliation automation, order confirmation parsing, PDF text extraction and file upload tools.
+The current page catalog includes inventory planning, sales order stock projection, logistics tracking, global inventory dashboard, Tool Maintenance, component drawing register, bank reconciliation automation, order confirmation parsing, PDF text extraction and file upload tools.
 
 ## Release Maintenance Workflow
 
@@ -466,79 +494,50 @@ This document should remain high level. Technical implementation details, indivi
 
 ## Format d'email pour l'entreprise
 
-### Email de la dernière version - prêt à envoyer
+### Email de la dernière version - prêt à valider
 
-Objet: AMF ERP - Version v2026.07.1 - Mises à jour opérations et reporting de juillet 2026
+Objet: AMF ERP - Version v2026.08.1 - Maintenance outils et BOM P202-O
 
 Bonjour à toutes et à tous,
 
-La dernière version AMF ERP, v2026.07.1, est maintenant disponible dans le système live:
+La dernière version AMF ERP, v2026.08.1, est prête pour validation dans le système live:
 
 AMF ERP live
 https://amf.libracore.ch/desk#
 
-Cette version concerne principalement la planification de trésorerie achats, la visibilité stock, le suivi des incidents, la préparation de fabrication, la traçabilité des dessins et l'automatisation administrative.
+Cette version concerne principalement la planification de maintenance des outils directement dans l'ERP et la création de BOM pour les produits P202-O.
 
 Principaux changements:
 
-Purchase Order Cash Forecast
-https://amf.libracore.ch/desk#query-report/Purchase%20Order%20Cash%20Forecast
-Disponible pour la planification achats et finance.
+Tool Maintenance
+https://amf.libracore.ch/desk#tool-maintenance
+Une nouvelle page permet de suivre les plans de maintenance, les interventions, les échéances et les retards pour les outils.
 
-Global Inventory Dashboard
-https://amf.libracore.ch/desk#global-inventory-dashboard
-Les outils d'approvisionnement et la visibilité stock ont été étendus.
-
-Issue Management
-https://amf.libracore.ch/desk#List/Issue/List
-La gestion des incidents a été ajoutée ou améliorée.
-
-Estimated Manufacturing Time On Work Orders
-https://amf.libracore.ch/desk#List/Work%20Order/List
-Le temps de fabrication estimé est maintenant disponible lorsque la configuration le permet.
-
-Item Creation Tools
-https://amf.libracore.ch/desk#List/Item%20Creation/List
-Les outils de création d'articles ont été mis à jour.
-
-Item Dashboards
+Articles de type Tool
 https://amf.libracore.ch/desk#List/Item/List
-Les tableaux de bord articles ont été mis à jour.
+Une section maintenance est maintenant affichée uniquement pour les articles dont le groupe est Tool.
 
-Component Drawing Register
-https://amf.libracore.ch/desk#component-drawing-register
-Le registre des dessins composants a été mis à jour.
+Tool Maintenance Plans
+https://amf.libracore.ch/desk#List/Tool%20Maintenance%20Plan/List
+Les plans de maintenance permettent de définir les fréquences, les prochaines échéances, les responsables et les instructions.
 
-Delivery Notes
-https://amf.libracore.ch/desk#List/Delivery%20Note/List
-Le comportement des bons de livraison a été mis à jour.
+Tool Maintenance Logs
+https://amf.libracore.ch/desk#List/Tool%20Maintenance%20Log/List
+Les interventions réalisées peuvent être enregistrées et reliées au plan et à l'outil concerné.
 
-Purchase Receipt Returns
-https://amf.libracore.ch/desk#List/Purchase%20Receipt/List
-Les retours de réception d'achat ont été mis à jour.
+BOM P202-O
+https://amf.libracore.ch/desk#List/BOM/List
+Les BOM des produits P202-O de la famille 4D peuvent être créés à partir des modèles P201-O correspondants, avec le composant body adapté.
 
-Leave Entries
-https://amf.libracore.ch/desk#List/Leave%20Application/List
-Les saisies d'absence ont été mises à jour.
-
-Bank Reconciliation Automation
-https://amf.libracore.ch/desk#bank-reconciliation-automation
-L'automatisation du rapprochement bancaire a été améliorée.
-
-Serial Number Tools
-https://amf.libracore.ch/desk#List/Serial%20No/List
-Les outils de numéros de série ont été améliorés.
-
-Sales Invoice Trends
-https://amf.libracore.ch/desk#query-report/Sales%20Invoice%20Trends
-Le rapport de tendance des factures de vente a été amélioré.
+Mise à jour automatique
+Les statuts de maintenance sont recalculés automatiquement lors des changements d'outil, de plan ou d'intervention, ainsi qu'une fois par jour.
 
 Ce que cela signifie pour vous:
 
-- Merci de continuer à utiliser le système AMF ERP live via le lien ci-dessus.
-- Les responsables de département sont invités à vérifier les rapports et les flux de travail qui concernent leur équipe.
-- Les utilisateurs achats et finance sont invités à valider le nouveau rapport de prévision de trésorerie lors des premières utilisations.
-- Les utilisateurs production sont invités à vérifier les temps de fabrication estimés sur les ordres de fabrication lorsque ces informations sont disponibles.
+- Les responsables maintenance et production sont invités à valider quelques outils représentatifs avant communication générale.
+- Les responsables produit ou production sont invités à vérifier une BOM P202-O représentative avant utilisation opérationnelle.
+- Les utilisateurs peuvent créer un plan de maintenance ou enregistrer une intervention depuis la fiche article Tool ou depuis la nouvelle page Tool Maintenance.
+- Les articles qui ne sont pas dans le groupe Tool ne sont pas concernés par cette nouvelle section.
 - Merci de signaler tout comportement inattendu via le canal de support interne habituel.
 
 Bonne journée,
