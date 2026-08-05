@@ -1,0 +1,257 @@
+{
+ "autoname": "naming_series:",
+ "creation": "2026-08-05 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "status",
+  "closed_on_completion",
+  "item_section",
+  "item_code",
+  "item_name",
+  "column_break_item",
+  "responsible",
+  "plan_section",
+  "maintenance_type",
+  "activity",
+  "procedure",
+  "schedule_section",
+  "next_due_date",
+  "warning_days",
+  "column_break_schedule",
+  "frequency_value",
+  "frequency_unit",
+  "completion_section",
+  "last_completed_on",
+  "last_log",
+  "notes",
+  "source_reference"
+ ],
+ "fields": [
+  {
+   "default": "TMP-.YYYY.-.#####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "TMP-.YYYY.-.#####",
+   "reqd": 1
+  },
+  {
+   "default": "Active",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Active\nPaused\nClosed",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "closed_on_completion",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Closed Automatically on Completion",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "item_section",
+   "fieldtype": "Section Break",
+   "label": "Tool"
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Item Code",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "item_code.item_name",
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_item",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "responsible",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Responsible",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "plan_section",
+   "fieldtype": "Section Break",
+   "label": "Maintenance Activity"
+  },
+  {
+   "fieldname": "maintenance_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Maintenance Type",
+   "options": "Maintenance\nInspection\nCalibration\nSafety Check\nCleaning\nRepair\nModification\nCommissioning\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "activity",
+   "fieldtype": "Data",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "label": "Activity",
+   "reqd": 1
+  },
+  {
+   "fieldname": "procedure",
+   "fieldtype": "Small Text",
+   "label": "Procedure / Instructions"
+  },
+  {
+   "fieldname": "schedule_section",
+   "fieldtype": "Section Break",
+   "label": "Schedule"
+  },
+  {
+   "fieldname": "next_due_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Next Due Date",
+   "reqd": 1
+  },
+  {
+   "default": "30",
+   "description": "The dashboard marks this plan Due Soon this many days before its due date.",
+   "fieldname": "warning_days",
+   "fieldtype": "Int",
+   "label": "Warning Days"
+  },
+  {
+   "fieldname": "column_break_schedule",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "frequency_value",
+   "fieldtype": "Int",
+   "label": "Repeat Every"
+  },
+  {
+   "fieldname": "frequency_unit",
+   "fieldtype": "Select",
+   "label": "Frequency Unit",
+   "options": "\nDays\nWeeks\nMonths\nYears"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "completion_section",
+   "fieldtype": "Section Break",
+   "label": "Last Completion"
+  },
+  {
+   "fieldname": "last_completed_on",
+   "fieldtype": "Date",
+   "label": "Last Completed On",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_log",
+   "fieldtype": "Link",
+   "label": "Last Maintenance Log",
+   "no_copy": 1,
+   "options": "Tool Maintenance Log",
+   "read_only": 1
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "source_reference",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Import Source Reference",
+   "no_copy": 1,
+   "read_only": 1
+  }
+ ],
+ "modified": "2026-08-05 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "Tool Maintenance Plan",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing User",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Quality Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "item_code,item_name,activity",
+ "sort_field": "next_due_date",
+ "sort_order": "ASC",
+ "title_field": "activity",
+ "track_changes": 1
+}

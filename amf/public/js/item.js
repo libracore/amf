@@ -23,6 +23,53 @@ const CUSTOM_PRODUCT_LINE_RULES = [
     ["CUSTOM CONFIGURATION", "Custom System"],
     ["CUSTOM", "Custom System"],
 ];
+const TOOL_MAINTENANCE_ITEM_GROUP = "Tool";
+const TOOL_MAINTENANCE_FIELDS = [
+    "tool_maintenance_section",
+    "tool_serial_number",
+    "tool_equipment_type",
+    "tool_ownership",
+    "tool_location",
+    "tool_maintenance_column_break",
+    "tool_responsible",
+    "tool_required_ppe",
+    "tool_calibration_procedure",
+    "tool_maintenance_instructions",
+    "tool_maintenance_summary_section",
+    "tool_last_maintenance_date",
+    "tool_next_maintenance_date",
+    "tool_maintenance_status",
+    "tool_maintenance_summary_column_break",
+    "tool_open_maintenance_plans",
+    "tool_overdue_maintenance_plans",
+];
+
+function setupToolMaintenance(frm) {
+    const isTool = frm.doc.item_group === TOOL_MAINTENANCE_ITEM_GROUP;
+    ["Maintenance Planner", "New Maintenance Plan", "Log Intervention"].forEach(function (label) {
+        frm.remove_custom_button(__(label), __("Maintenance"));
+    });
+    TOOL_MAINTENANCE_FIELDS.forEach(function (fieldname) {
+        if (frm.fields_dict[fieldname]) {
+            frm.toggle_display(fieldname, isTool);
+        }
+    });
+
+    if (!isTool || frm.is_new()) {
+        return;
+    }
+
+    frm.add_custom_button(__("Maintenance Planner"), function () {
+        frappe.route_options = {item_code: frm.doc.name};
+        frappe.set_route("tool-maintenance");
+    }, __("Maintenance"));
+    frm.add_custom_button(__("New Maintenance Plan"), function () {
+        frappe.new_doc("Tool Maintenance Plan", {item_code: frm.doc.name});
+    }, __("Maintenance"));
+    frm.add_custom_button(__("Log Intervention"), function () {
+        frappe.new_doc("Tool Maintenance Log", {item_code: frm.doc.name});
+    }, __("Maintenance"));
+}
 
 function isBomManagedItemGroup(itemGroup) {
     return BOM_MANAGED_ITEM_GROUPS.includes(itemGroup);
@@ -991,6 +1038,7 @@ function showBomManagedItemDialog(frm) {
 frappe.ui.form.on("Item", {
     refresh: function (frm) {
         updateTagRawMatRequirement(frm);
+        setupToolMaintenance(frm);
         if (frm.is_new()) {
             updateItemReportingFields(frm);
         }
@@ -1027,6 +1075,7 @@ frappe.ui.form.on("Item", {
             frm.__bom_accessory_qty = "";
         }
         updateTagRawMatRequirement(frm);
+        setupToolMaintenance(frm);
     },
 
     tag_raw_mat: function (frm) {

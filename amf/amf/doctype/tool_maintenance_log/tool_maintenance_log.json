@@ -1,0 +1,219 @@
+{
+ "autoname": "naming_series:",
+ "creation": "2026-08-05 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "item_section",
+  "item_code",
+  "item_name",
+  "column_break_item",
+  "maintenance_plan",
+  "intervention_section",
+  "intervention_type",
+  "intervention",
+  "intervention_date",
+  "column_break_intervention",
+  "responsible",
+  "performed_by",
+  "next_due_date",
+  "evidence_section",
+  "record_reference",
+  "attachment",
+  "remarks",
+  "source_reference"
+ ],
+ "fields": [
+  {
+   "default": "TML-.YYYY.-.#####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "TML-.YYYY.-.#####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "item_section",
+   "fieldtype": "Section Break",
+   "label": "Tool"
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Item Code",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "item_code.item_name",
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_item",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "maintenance_plan",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Maintenance Plan",
+   "options": "Tool Maintenance Plan"
+  },
+  {
+   "fieldname": "intervention_section",
+   "fieldtype": "Section Break",
+   "label": "Intervention"
+  },
+  {
+   "fieldname": "intervention_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Intervention Type",
+   "options": "Maintenance\nInspection\nCalibration\nSafety Check\nCleaning\nRepair\nModification\nCommissioning\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "intervention",
+   "fieldtype": "Small Text",
+   "in_global_search": 1,
+   "label": "Intervention",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "intervention_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Intervention Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_intervention",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "responsible",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Responsible Employee",
+   "options": "Employee"
+  },
+  {
+   "description": "Free-text technician, supplier or external company from the intervention record.",
+   "fieldname": "performed_by",
+   "fieldtype": "Data",
+   "label": "Performed By"
+  },
+  {
+   "description": "When a linked recurring plan is used, this date overrides its calculated next due date.",
+   "fieldname": "next_due_date",
+   "fieldtype": "Date",
+   "label": "Next Due Date"
+  },
+  {
+   "fieldname": "evidence_section",
+   "fieldtype": "Section Break",
+   "label": "Evidence and Notes"
+  },
+  {
+   "fieldname": "record_reference",
+   "fieldtype": "Data",
+   "label": "Record / Service Report Reference"
+  },
+  {
+   "fieldname": "attachment",
+   "fieldtype": "Attach",
+   "label": "Attachment"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "source_reference",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Import Source Reference",
+   "no_copy": 1,
+   "read_only": 1
+  }
+ ],
+ "modified": "2026-08-05 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "Tool Maintenance Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing User",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Quality Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "item_code,item_name,intervention,record_reference",
+ "sort_field": "intervention_date",
+ "sort_order": "DESC",
+ "title_field": "intervention",
+ "track_changes": 1
+}
