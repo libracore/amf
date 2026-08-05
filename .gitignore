@@ -138,3 +138,7 @@ amf/amf/report/sales_dashboard/__init__.py
 amf/amf/report/sales_dashboard/sales_dashboard.js
 amf/amf/report/sales_dashboard/sales_dashboard.json
 amf/amf/report/sales_dashboard/sales_dashboard.py
+amf/amf/report/purchase_order_cash_forecast/__init__.py
+amf/amf/report/purchase_order_cash_forecast/purchase_order_cash_forecast.js
+amf/amf/report/purchase_order_cash_forecast/purchase_order_cash_forecast.json
+amf/amf/report/purchase_order_cash_forecast/purchase_order_cash_forecast.py

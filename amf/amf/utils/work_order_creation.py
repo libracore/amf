@@ -965,10 +965,10 @@ def _apply_machining_work_order_values(
 
     _set_if_field(work_order, "auto_gen", 1)
     _set_if_field(work_order, "priority", _get_priority_for_expected_date(expected_date))
-    _set_if_field(work_order, "progress", "En Attente")
     _set_if_field(work_order, "machine", _get_machine_for_machining_item(item_code))
     _set_if_field(work_order, "assembly_specialist_start", "MBA")
     _set_if_field(work_order, "wip_step", 1)
+    _set_if_field(work_order, "skip_transfer", 1)
     _set_if_field(work_order, "p_s_d", expected_date)
     _set_if_field(work_order, "p_e_d", expected_date)
     _set_if_field(work_order, "drawing", _get_default_drawing(item_code))

@@ -127,7 +127,9 @@ doc_events = {
             "amf.amf.utils.item_batch_setup.apply_batch_tracking_rule",
             "amf.amf.utils.bom_mgt.sync_item_bom_fields",
             "amf.amf.utils.item_reporting.apply_item_reporting_fields",
+            "amf.amf.utils.tool_maintenance.validate_tool_item_group_change",
         ],
+        "on_update": "amf.amf.utils.tool_maintenance.sync_tool_item_after_save",
         "after_insert": [
             "amf.amf.utils.custom.qr_code_to_document",
         ],
@@ -223,6 +225,7 @@ scheduler_events = {
     "daily": [
         "amf.amf.utils.batch_auto_disable.sync_all_batch_disabled_states",
         "amf.amf.utils.item_image.update_item_images",
+        "amf.amf.utils.tool_maintenance.sync_all_tool_maintenance_summaries",
         "amf.amf.utils.capacity.update_capacity_utilization_rate",
         "amf.www.tracking.fetch_and_display_tracking_info_enqueue",
         "amf.master_crm.doctype.gravity_forms.gravity_forms.daily_sync",
@@ -278,6 +281,7 @@ after_migrate = [
     "amf.amf.utils.work_order_scrap.sync_work_order_usage_scrap_custom_fields",
     "amf.amf.utils.work_order_estimated_time.sync_work_order_estimated_time_custom_fields",
     "amf.amf.utils.work_order_estimated_time.sync_all_work_order_estimated_times",
+    "amf.amf.utils.tool_maintenance.sync_tool_maintenance_custom_fields",
     "amf.amf.utils.sales_order_otif.sync_sales_order_otif_custom_fields",
     "amf.amf.utils.sales_invoice_total_ht.sync_sales_invoice_total_ht_customization",
     "amf.amf.utils.amf_issue_test_management.clear_amf_issue_test_management_meta_cache",

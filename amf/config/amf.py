@@ -56,6 +56,12 @@ def get_data():
             "items": [
                 {
                     "type": "page",
+                    "name": "tool-maintenance",
+                    "label": _("Tool Maintenance"),
+                    "description": _("Plan Tool maintenance and review due dates and intervention history")
+                },
+                {
+                    "type": "page",
                     "name": "component-drawing-register",
                     "label": _("Component Drawing Register"),
                     "description": _("View default drawings, versions and revisions for six-digit 10/20 components")
