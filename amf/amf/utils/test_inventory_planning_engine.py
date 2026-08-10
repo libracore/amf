@@ -10,6 +10,7 @@ from amf.amf.utils.inventory_planning_engine import (
 	build_recommendation,
 	calculate_inventory_policy,
 	project_inventory,
+	replenishment_field_values,
 	remaining_work_order_demand,
 	winsorize_demand,
 )
@@ -140,6 +141,26 @@ class TestInventoryPlanningCalculations(unittest.TestCase):
 
 		self.assertEqual(recommendation["recommended_qty"], 25)
 		self.assertTrue(recommendation["expedite"])
+
+	def test_replenishment_fields_use_forecast_and_observed_annual_outflow(self):
+		values = replenishment_field_values(
+			{
+				"safety_stock": 41.2,
+				"reorder_level": 58.1,
+				"lead_time_days": 79.1,
+				"recommended_qty": 51,
+			},
+			{"forecast_daily": 0.2074, "raw_total": 71},
+		)
+
+		self.assertEqual(values, {
+			"average_monthly_outflow": 7,
+			"annual_outflow": 71,
+			"safety_stock": 42,
+			"reorder_level": 59,
+			"lead_time_days": 80,
+			"reorder": 1,
+		})
 
 
 if __name__ == "__main__":

@@ -365,9 +365,15 @@ from statistics import mean, stdev
 from typing import Optional
 import numpy as np
 from frappe.core.doctype.communication.email import make
-from frappe.utils import cstr, get_datetime
+from frappe.utils import cstr, get_datetime, get_url
 from amf.amf.utils.stock_entry import _get_or_create_log, update_log_entry
 from amf.amf.utils.stock_entry import now_datetime
+from amf.amf.utils.inventory_planning_engine import InventoryPlanningEngine
+from amf.amf.utils.inventory_planning_email import (
+    actionable_report_items,
+    build_report_summary,
+    build_weekly_safety_stock_email,
+)
 
 # Constants
 SERVICE_LEVEL_Z = 1.64  # Z-score for 95% service level
@@ -529,13 +535,178 @@ def check_stock_levels(test_mode=0, dry_run=0, send_email=1, recompute_lead_time
 
 
 def run_weekly_stock_level_update():
-    """Scheduled weekly refresh of safety stock, reorder levels, and reorder flags."""
-    return check_stock_levels(
-        dry_run=0,
-        send_email=0,
-        recompute_lead_time=0,
-        verbose_log=0,
+    """Refresh replenishment data, suppliers, and the weekly shortage email."""
+    from amf.amf.utils.item_supplier_sync import (
+        sync_item_suppliers_from_purchase_orders,
     )
+
+    engine = InventoryPlanningEngine()
+    snapshot = engine.build_replenishment_snapshot()
+    replenishment = _apply_replenishment_snapshot(
+        engine,
+        snapshot,
+        dry_run=False,
+    )
+    item_suppliers = sync_item_suppliers_from_purchase_orders(dry_run=0)
+    email = _send_weekly_safety_stock_report(
+        snapshot["items"],
+        company=engine.company,
+        generated_at=snapshot["generated_at"],
+        horizon_days=engine.horizon_days,
+    )
+
+    return {
+        "replenishment": replenishment,
+        "item_suppliers": item_suppliers,
+        "email": email,
+    }
+
+
+@frappe.whitelist()
+def recalculate_item_replenishment_fields(
+    dry_run=0,
+    item_code=None,
+    company=None,
+    service_level=95,
+    lookback_days=365,
+    horizon_days=90,
+    review_period_days=30,
+):
+    """
+    Recalculate and optionally persist the statistical replenishment fields.
+
+    Purchase UOM, minimum order quantity, purchase flags, supplier/customer data,
+    and last purchase rate remain master/transaction data. The planning model uses
+    minimum order quantity when recommending supply, but does not infer or replace it.
+    """
+    dry_run = _is_truthy(dry_run)
+    engine = InventoryPlanningEngine(
+        company=company,
+        item_code=item_code,
+        service_level=service_level,
+        lookback_days=lookback_days,
+        horizon_days=horizon_days,
+        review_period_days=review_period_days,
+    )
+    snapshot = engine.build_replenishment_snapshot()
+    return _apply_replenishment_snapshot(engine, snapshot, dry_run=dry_run)
+
+
+def _apply_replenishment_snapshot(engine, snapshot, dry_run=False):
+    proposed_updates = snapshot["updates"]
+    result = {
+        "dry_run": dry_run,
+        "company": engine.company,
+        "items_checked": len(proposed_updates),
+        "items_updated": 0,
+        "items_unchanged": 0,
+        "updated_fields": [
+            "average_monthly_outflow",
+            "annual_outflow",
+            "safety_stock",
+            "reorder_level",
+            "lead_time_days",
+            "reorder",
+        ],
+        "preserved_fields": [
+            "is_purchase_item",
+            "purchase_uom",
+            "min_order_qty",
+            "last_purchase_rate",
+            "is_customer_provided_item",
+            "customer",
+            "delivered_by_supplier",
+            "country_of_origin",
+            "customs_tariff_number",
+        ],
+        "changes": [],
+    }
+
+    try:
+        for proposed in proposed_updates:
+            changed_values = _get_changed_replenishment_values(
+                proposed["old"], proposed["new"]
+            )
+            if not changed_values:
+                result["items_unchanged"] += 1
+                continue
+
+            result["items_updated"] += 1
+            result["changes"].append({
+                "item_code": proposed["item_code"],
+                "old": {
+                    fieldname: proposed["old"].get(fieldname)
+                    for fieldname in changed_values
+                },
+                "new": changed_values,
+                "risk": proposed["risk"],
+                "confidence": proposed["confidence"],
+                "lead_time_source": proposed["lead_time_source"],
+                "recommended_qty": proposed["recommended_qty"],
+            })
+            if not dry_run:
+                frappe.db.set_value(
+                    "Item",
+                    proposed["item_code"],
+                    changed_values,
+                )
+
+        if not dry_run:
+            frappe.db.commit()
+    except Exception:
+        if not dry_run:
+            frappe.db.rollback()
+        frappe.log_error(
+            frappe.get_traceback(),
+            "Weekly Item Replenishment Update Failed",
+        )
+        raise
+
+    return result
+
+
+def _send_weekly_safety_stock_report(items, company, generated_at, horizon_days=90):
+    actionable_items = actionable_report_items(items)
+    summary = build_report_summary(actionable_items)
+    if not actionable_items:
+        return {
+            "sent": False,
+            "reason": "No items require replenishment",
+            "item_count": 0,
+        }
+
+    content = build_weekly_safety_stock_email(
+        actionable_items,
+        company=company,
+        generated_at=generated_at,
+        horizon_days=horizon_days,
+        report_url=get_url("desk#inventory-planning"),
+    )
+    make(
+        recipients="alexandre.ringwald@amf.ch",
+        cc="alexandre.trachsel@amf.ch",
+        subject="Safety Stock Report",
+        content=content,
+        communication_medium="Email",
+        send_email=True,
+    )
+    return {
+        "sent": True,
+        "item_count": summary["item_count"],
+        "group_count": summary["group_count"],
+        "critical_count": summary["critical_count"],
+        "expedite_count": summary["expedite_count"],
+        "shortage_qty": summary["shortage_qty"],
+        "recommended_qty": summary["recommended_qty"],
+    }
+
+
+def _get_changed_replenishment_values(old_values, new_values):
+    return {
+        fieldname: new_value
+        for fieldname, new_value in new_values.items()
+        if abs(float(old_values.get(fieldname) or 0) - float(new_value or 0)) > 0.0001
+    }
 
 
 @frappe.whitelist()

@@ -153,7 +153,6 @@ doc_events = {
         ],
         "on_submit": [
             "amf.amf.utils.purchase_receipt.generate_qa_for_purchase_receipt",
-            "amf.amf.utils.safety_stock_check.update_purchase_item_lead_times_from_receipt",
         ],
     },
     "Sales Order": {
@@ -196,7 +195,6 @@ doc_events = {
         "on_submit": [
             "amf.amf.utils.custom.qr_code_to_document",
             "amf.amf.utils.stock_entry.check_rates_and_assign_on_submit",
-            "amf.amf.utils.safety_stock_check.update_manufactured_item_lead_time_from_stock_entry",
             "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
         ],
         "on_cancel": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",

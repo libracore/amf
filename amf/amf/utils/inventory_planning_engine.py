@@ -92,21 +92,13 @@ class InventoryPlanningEngine(object):
 		self.lead_observations = defaultdict(list)
 		self.events = defaultdict(list)
 		self.analysis_details = {}
+		self._inputs_loaded = False
 
 	def build(self, include_detail=False):
-		self.warehouses = get_usable_warehouses(self.company)
-		self.items = self._get_items()
-		self.item_map = {item.name: item for item in self.items}
-		item_codes = list(self.item_map.keys())
+		self._load_inputs()
 
-		if not item_codes:
+		if not self.items:
 			return self._empty_result()
-
-		self._load_historical_demand(item_codes)
-		self._load_historical_supply(item_codes)
-		self.stock_positions = self._get_stock_positions(item_codes)
-		self._load_lead_profiles(item_codes)
-		self._load_future_events(item_codes)
 
 		rows = []
 		global_risk_curve = [
@@ -155,6 +147,57 @@ class InventoryPlanningEngine(object):
 			),
 			"methodology": get_methodology(),
 		}
+
+	def build_replenishment_updates(self):
+		"""Build Item field updates from the same model used by the planning page."""
+		return self.build_replenishment_snapshot()["updates"]
+
+	def build_replenishment_snapshot(self):
+		"""Build Item updates and their matching analysis rows in one model pass."""
+		self._load_inputs()
+		updates = []
+		analysis_rows = []
+		for item in self.items:
+			row, detail = self._analyse_item(item)
+			analysis_rows.append(row)
+			new_values = replenishment_field_values(row, detail["demand_profile"])
+			old_values = {
+				fieldname: item.get(fieldname)
+				for fieldname in new_values
+			}
+			updates.append({
+				"item_code": item.name,
+				"old": old_values,
+				"new": new_values,
+				"risk": row["risk"],
+				"confidence": row["confidence"],
+				"lead_time_source": row["lead_time_source"],
+				"recommended_qty": row["recommended_qty"],
+			})
+		return {
+			"updates": updates,
+			"items": analysis_rows,
+			"generated_at": cstr(now_datetime()),
+		}
+
+	def _load_inputs(self):
+		if self._inputs_loaded:
+			return
+
+		self.warehouses = get_usable_warehouses(self.company)
+		self.items = self._get_items()
+		self.item_map = {item.name: item for item in self.items}
+		item_codes = list(self.item_map.keys())
+		self._inputs_loaded = True
+
+		if not item_codes:
+			return
+
+		self._load_historical_demand(item_codes)
+		self._load_historical_supply(item_codes)
+		self.stock_positions = self._get_stock_positions(item_codes)
+		self._load_lead_profiles(item_codes)
+		self._load_future_events(item_codes)
 
 	def get_filters(self):
 		return {
@@ -1247,6 +1290,24 @@ def calculate_inventory_policy(demand_profile, lead_profile, z_score, review_per
 		"order_up_to_level": order_up_to_level,
 		"variance_during_lead_time": variance,
 		"z_score": flt(z_score),
+	}
+
+
+def replenishment_field_values(analysis_row, demand_profile):
+	"""Translate an item analysis into the calculated fields stored on Item."""
+	return {
+		"average_monthly_outflow": math.ceil(
+			max(flt(demand_profile.get("forecast_daily")), 0.0) * 30.0
+		),
+		"annual_outflow": math.ceil(
+			max(flt(demand_profile.get("raw_total")), 0.0)
+		),
+		"safety_stock": math.ceil(max(flt(analysis_row.get("safety_stock")), 0.0)),
+		"reorder_level": math.ceil(max(flt(analysis_row.get("reorder_level")), 0.0)),
+		"lead_time_days": max(
+			int(math.ceil(flt(analysis_row.get("lead_time_days")))), 1
+		),
+		"reorder": int(flt(analysis_row.get("recommended_qty")) > 0),
 	}
 
 
