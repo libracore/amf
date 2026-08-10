@@ -16,10 +16,17 @@ class TestInventoryPlanningEmail(unittest.TestCase):
 		self.items = [
 			_report_item("RAW-1", "Raw Material", 100, 120),
 			_report_item("SEAT-1", "Valve Seat", 40, 45),
+			_report_item("BODY-1", "Body", 30, 35),
 			_report_item("PART-LOW", "Part", 4, 8),
+			_report_item("CABLE-1", "Cables", 7, 9),
+			_report_item("BOARD-1", "Electronic boards", 6, 8),
+			_report_item("ASSEMBLY-1", "Assembly", 5, 7),
 			_report_item("PLUG-1", "Plug", 12, 15),
+			_report_item("HEAD-1", "Valve Head", 11, 13),
 			_report_item("PART-HIGH", "Part", 9, 11),
 			_report_item("PART-BREACH", "Part", 0, 5, shortage_date=None),
+			_report_item("PRODUCT-1", "Product", 500, 500),
+			_report_item("PLUNGER-1", "Plungers", 400, 400),
 			_report_item("IGNORE", "Part", 50, 0),
 		]
 
@@ -32,27 +39,41 @@ class TestInventoryPlanningEmail(unittest.TestCase):
 				"PART-HIGH",
 				"PART-LOW",
 				"PART-BREACH",
+				"CABLE-1",
+				"BOARD-1",
+				"ASSEMBLY-1",
 				"PLUG-1",
 				"SEAT-1",
+				"HEAD-1",
+				"BODY-1",
 				"RAW-1",
 			],
 		)
 
-	def test_groups_follow_part_plug_valve_seat_then_alphabetical(self):
+	def test_groups_follow_requested_priority_then_alphabetical(self):
 		grouped = group_report_items(self.items)
 
 		self.assertEqual(
 			list(grouped.keys()),
-			["Part", "Plug", "Valve Seat", "Raw Material"],
+			[
+				"Part", "Cables", "Electronic boards", "Assembly", "Plug",
+				"Valve Seat", "Valve Head", "Body", "Raw Material",
+			],
 		)
+
+	def test_product_and_plunger_groups_are_excluded(self):
+		rows = actionable_report_items(self.items)
+
+		self.assertNotIn("PRODUCT-1", [row["item_code"] for row in rows])
+		self.assertNotIn("PLUNGER-1", [row["item_code"] for row in rows])
 
 	def test_summary_uses_only_actionable_rows(self):
 		summary = build_report_summary(self.items)
 
-		self.assertEqual(summary["item_count"], 6)
-		self.assertEqual(summary["critical_count"], 5)
-		self.assertEqual(summary["shortage_qty"], 165)
-		self.assertEqual(summary["recommended_qty"], 204)
+		self.assertEqual(summary["item_count"], 11)
+		self.assertEqual(summary["critical_count"], 10)
+		self.assertEqual(summary["shortage_qty"], 224)
+		self.assertEqual(summary["recommended_qty"], 276)
 
 	def test_email_escapes_item_content_and_includes_projection_columns(self):
 		items = [_report_item("A<1", "Part", 5, 8, item_name="Seat & plug")]
@@ -69,6 +90,10 @@ class TestInventoryPlanningEmail(unittest.TestCase):
 		self.assertIn("Seat &amp; plug", html)
 		self.assertIn("Min. projected", html)
 		self.assertIn("Safety / ROP", html)
+		self.assertIn("Potential replenish", html)
+		self.assertIn("2026-08-18", html)
+		self.assertNotIn("Items to replenish", html)
+		self.assertNotIn(">Action<", html)
 		self.assertIn("Open Inventory Planning", html)
 
 
@@ -92,6 +117,8 @@ def _report_item(
 		"reorder_level": 10,
 		"shortage_date": shortage_date,
 		"safety_breach_date": "2026-08-15",
+		"potential_replenish_date": "2026-08-18",
+		"potential_replenish_overdue": False,
 		"risk": "critical" if shortage_date else "watch",
 		"expedite": bool(shortage_date),
 		"action": "Expedite purchase" if shortage_date else "Create Purchase Order",

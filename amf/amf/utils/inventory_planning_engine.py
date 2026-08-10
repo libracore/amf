@@ -91,6 +91,7 @@ class InventoryPlanningEngine(object):
 		self.lead_profiles = {}
 		self.lead_observations = defaultdict(list)
 		self.events = defaultdict(list)
+		self.purchase_order_schedule_dates = {}
 		self.analysis_details = {}
 		self._inputs_loaded = False
 
@@ -675,6 +676,10 @@ class InventoryPlanningEngine(object):
 				as_dict=True,
 			)
 			for row in rows:
+				schedule_date = getdate(row.due_date)
+				current_date = self.purchase_order_schedule_dates.get(row.item_code)
+				if not current_date or schedule_date < current_date:
+					self.purchase_order_schedule_dates[row.item_code] = schedule_date
 				self._add_event(
 					row.item_code,
 					row.due_date,
@@ -963,6 +968,7 @@ class InventoryPlanningEngine(object):
 			- flt(stock.get("reserved_subcontract_qty"))
 		)
 
+		potential_replenish_date = self.purchase_order_schedule_dates.get(item.name)
 		row = {
 			"item_code": item.name,
 			"item_name": item.item_name or item.name,
@@ -1001,6 +1007,10 @@ class InventoryPlanningEngine(object):
 			"shortage_qty": projection["shortage_qty"],
 			"recommended_qty": recommendation["recommended_qty"],
 			"recommended_order_date": recommendation["recommended_order_date"],
+			"potential_replenish_date": potential_replenish_date,
+			"potential_replenish_overdue": bool(
+				potential_replenish_date and potential_replenish_date < self.today
+			),
 			"expedite": recommendation["expedite"],
 			"action": recommendation["action"],
 		}

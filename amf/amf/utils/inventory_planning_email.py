@@ -7,16 +7,43 @@ from html import escape
 from frappe.utils import cstr, flt
 
 
-REPORT_GROUP_PRIORITY = ("Part", "Plug", "Valve Seat")
+REPORT_GROUP_PRIORITY = (
+	"Part",
+	"Cables",
+	"Electronic Boards",
+	"Assembly",
+	"Plug",
+	"Valve Seat",
+	"Valve Head",
+	"Body",
+)
+_EXCLUDED_REPORT_GROUPS = {
+	"poduct",
+	"poducts",
+	"product",
+	"products",
+	"plunger",
+	"plungers",
+}
 _REPORT_GROUP_ALIASES = {
 	"part": "Part",
 	"parts": "Part",
+	"cable": "Cables",
+	"cables": "Cables",
+	"electronic board": "Electronic Boards",
+	"electronic boards": "Electronic Boards",
+	"assembly": "Assembly",
+	"assemblies": "Assembly",
 	"plug": "Plug",
 	"plugs": "Plug",
 	"seat": "Valve Seat",
 	"seats": "Valve Seat",
 	"valve seat": "Valve Seat",
 	"valve seats": "Valve Seat",
+	"valve head": "Valve Head",
+	"valve heads": "Valve Head",
+	"body": "Body",
+	"bodies": "Body",
 }
 
 
@@ -25,6 +52,7 @@ def actionable_report_items(items):
 	rows = [
 		item for item in (items or [])
 		if flt(item.get("recommended_qty")) > 0
+		and _normalized_group_name(item) not in _EXCLUDED_REPORT_GROUPS
 	]
 	return sorted(rows, key=_report_item_sort_key)
 
@@ -61,7 +89,6 @@ def build_weekly_safety_stock_email(
 ):
 	"""Render an email-client-friendly weekly inventory shortage report."""
 	grouped = group_report_items(items)
-	summary = build_report_summary(items)
 	report_button = ""
 	if report_url:
 		report_button = (
@@ -104,25 +131,24 @@ def build_weekly_safety_stock_email(
 		'<div style="background:#ffffff;border:1px solid #dbe3ef;border-top:0;'
 		'border-radius:0 0 12px 12px;padding:24px;">'
 		'<div style="font-size:14px;line-height:1.6;color:#475569;margin-bottom:18px;">'
-		'Items requiring replenishment are grouped by Item Group. Priority starts with '
-		'<strong style="color:#1e293b;">Part</strong>, '
-		'<strong style="color:#1e293b;">Plug</strong>, and '
-		'<strong style="color:#1e293b;">Valve Seat</strong>; within every group, '
+		'Items requiring replenishment are grouped in this priority: '
+		'<strong style="color:#1e293b;">Part, Cables, Electronic Boards, Assembly, '
+		'Plug, Seat, Valve Head, and Body</strong>. Within every group, '
 		'items are sorted by projected shortage from highest to lowest.</div>'
-		'{summary_cards}'
 		'{sections}'
 		'<div style="margin-top:22px;padding-top:15px;border-top:1px solid #e2e8f0;'
 		'font-size:11px;line-height:1.55;color:#64748b;">'
 		'Generated {generated_at}. Shortage is the largest negative balance in the firm '
 		'projection. Soft supply from Material Requests and unlinked Plannings does not '
-		"hide a shortage. Quantities are expressed in each item's stock UOM.</div>"
+		'hide a shortage. Potential replenish is the earliest outstanding submitted PO '
+		"line schedule date; it is not a confirmed receipt date. Quantities are expressed "
+		"in each item's stock UOM.</div>"
 		'</div></div></div>'
 	).format(
 		styles=_email_styles(),
 		company=_html(company),
 		horizon=int(horizon_days or 90),
 		button=report_button,
-		summary_cards=_render_summary_cards(summary),
 		sections=sections,
 		generated_at=_html(generated_at),
 	)
@@ -173,30 +199,8 @@ def _report_item_sort_key(item):
 	)
 
 
-def _render_summary_cards(summary):
-	return (
-		'<table role="presentation" cellspacing="0" cellpadding="0" border="0" '
-		'width="100%" style="margin:0 0 24px 0;table-layout:fixed;">'
-		'<tr>{0}{1}{2}{3}</tr></table>'
-	).format(
-		_summary_card(summary["item_count"], "Items to replenish", "#1d4ed8", True),
-		_summary_card(summary["critical_count"], "Forecast stockouts", "#dc2626"),
-		_summary_card(_format_qty(summary["shortage_qty"]), "Projected shortage", "#c2410c"),
-		_summary_card(summary["expedite_count"], "Expedite now", "#7c3aed", False, True),
-	)
-
-
-def _summary_card(value, label, color, first=False, last=False):
-	left_padding = "0" if first else "6px"
-	right_padding = "0" if last else "6px"
-	return (
-		'<td width="25%" style="padding-left:{0};padding-right:{1};vertical-align:top;">'
-		'<div style="border:1px solid #e2e8f0;border-radius:9px;padding:14px 12px;'
-		'background:#f8fafc;min-height:54px;">'
-		'<div style="font-size:22px;line-height:1;font-weight:750;color:{2};">{3}</div>'
-		'<div style="font-size:11px;line-height:1.3;color:#64748b;margin-top:7px;">{4}</div>'
-		'</div></td>'
-	).format(left_padding, right_padding, color, _html(value), _html(label))
+def _normalized_group_name(item):
+	return cstr(item.get("item_group")).strip().lower()
 
 
 def _render_group_section(group_name, rows, item_url_builder):
@@ -223,14 +227,14 @@ def _render_group_section(group_name, rows, item_url_builder):
 		shortage=_format_qty(group_shortage),
 		replenishment=_format_qty(group_replenishment),
 		headers="".join([
-			_table_header("Item", "26%"),
-			_table_header("On hand", "9%", True),
+			_table_header("Item", "24%"),
+			_table_header("On hand", "8%", True),
 			_table_header("Min. projected", "11%", True),
 			_table_header("Shortage", "9%", True),
-			_table_header("Replenish", "9%", True),
-			_table_header("Safety / ROP", "11%", True),
-			_table_header("Risk date", "12%"),
-			_table_header("Action", "13%"),
+			_table_header("Replenish", "10%", True),
+			_table_header("Safety / ROP", "12%", True),
+			_table_header("Risk date", "13%"),
+			_table_header("Potential replenish", "13%"),
 		]),
 		body=body,
 	)
@@ -258,12 +262,26 @@ def _render_item_row(item, index, item_url_builder):
 	risk_date = item.get("shortage_date") or item.get("safety_breach_date")
 	risk_label = "Stockout" if item.get("shortage_date") else "Safety breach"
 	risk_class = {"critical": "r", "action": "w"}.get(risk, "v")
+	replenish_date = item.get("potential_replenish_date")
+	if replenish_date:
+		replenish_class = "x" if item.get("potential_replenish_overdue") else ""
+		replenish_note = (
+			"Overdue PO schedule"
+			if item.get("potential_replenish_overdue")
+			else "PO schedule date"
+		)
+		replenish_cell = '<td><b class="{0}">{1}</b><i>{2}</i></td>'.format(
+			replenish_class, _html(replenish_date), replenish_note
+		)
+	else:
+		replenish_cell = '<td><span style="color:#94a3b8;">No open PO</span></td>'
 	return (
 		'<tr><td>{code}<i>{name}</i></td>'
 		'{actual}{minimum}{shortage}{recommended}'
 		'<td>{safety}<i>ROP {rop}</i></td>'
 		'<td><b class="{risk_class}">{risk_label}</b><i>{risk_date}</i></td>'
-		'<td>{action}</td></tr>'
+		'{replenish_cell}'
+		'</tr>'
 	).format(
 		code=item_code_html,
 		name=_html(item_name),
@@ -276,7 +294,7 @@ def _render_item_row(item, index, item_url_builder):
 		risk_class=risk_class,
 		risk_label=_html(risk_label),
 		risk_date=_html(risk_date or "Within horizon"),
-		action=_html(item.get("action") or "Replenish"),
+		replenish_cell=replenish_cell,
 	)
 
 
