@@ -907,12 +907,6 @@ def import_composite_items_and_boms(
                 ]
                 
                 # if 2nd digit X is '8' or 'C', tack on C100 and C101
-                if X in ('6', '8', 'A', 'C'):
-                    bom_items.extend([
-                        {"item_code": "RVM.1204-HV", "qty": 1, "uom": "Nos"},
-                    ])
-
-                # if 2nd digit X is '8' or 'C', tack on C100 and C101
                 if X in ('8', 'B', 'C'):
                     bom_items.extend([
                         {"item_code": "C100", "qty": 1, "uom": "Nos"},

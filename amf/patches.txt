@@ -4,3 +4,4 @@ amf.patches.v12_0.create_leave_events_retroactively
 amf.patches.v12_0.disable_serial_numbers_for_item_330001
 amf.patches.v12_0.create_boms_for_4d_items
 amf.patches.v12_0.activate_receipt_batching_for_item_70e000
+amf.patches.v12_0.repair_4b_4c_bom_family_coherence_2026
