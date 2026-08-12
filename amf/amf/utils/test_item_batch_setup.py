@@ -21,8 +21,13 @@ class TestItemBatchSetup(unittest.TestCase):
 		for item_code in ("100001", "110001", "200001", "210001", "300001"):
 			self.assertTrue(item_batch_setup.is_target_item_code(item_code))
 
-		for item_code in ("120001", "310001", "10001", "1000010", "10A001", ""):
+		for item_code in ("70E000", "120001", "310001", "10001", "1000010", "10A001", ""):
 			self.assertFalse(item_batch_setup.is_target_item_code(item_code))
+
+	def test_receipt_batch_item_code_is_explicit_special_case(self):
+		self.assertTrue(item_batch_setup.is_receipt_batch_item_code("70E000"))
+		self.assertTrue(item_batch_setup.is_receipt_batch_item_code("70e000"))
+		self.assertFalse(item_batch_setup.is_receipt_batch_item_code("700000"))
 
 	def test_parse_item_codes_splits_and_deduplicates_codes(self):
 		self.assertEqual(
@@ -42,6 +47,20 @@ class TestItemBatchSetup(unittest.TestCase):
 		item_batch_setup.apply_batch_tracking_rule(doc)
 
 		self.assertEqual(doc.has_batch_no, 1)
+
+	def test_apply_batch_tracking_rule_sets_receipt_batch_flags_for_70e000(self):
+		doc = FakeDoc(
+			item_code="70E000",
+			item_group="Syringe",
+			is_stock_item=1,
+			has_batch_no=0,
+			create_new_batch=0,
+		)
+
+		item_batch_setup.apply_batch_tracking_rule(doc)
+
+		self.assertEqual(doc.has_batch_no, 1)
+		self.assertEqual(doc.create_new_batch, 1)
 
 	def test_apply_batch_tracking_rule_forces_managed_item_group(self):
 		for item_group in ("Plug", "Valve Seat", "Valve Head"):

@@ -334,7 +334,7 @@ InventoryPlanningPage.prototype.export_csv = function() {
 		"Risk", "Item", "Item Name", "Supply Mode", "Actual", "Free",
 		"Firm Supply", "Firm Demand", "Daily Forecast", "Lead Time",
 		"Safety Stock", "Reorder Level", "Minimum Projected",
-		"Shortage Date", "Recommended Qty", "Action", "Confidence"
+		"Shortage Date", "Potential Replenish Date", "Recommended Qty", "Action", "Confidence"
 	];
 	var body = rows.map(function(row) {
 		return [
@@ -342,6 +342,7 @@ InventoryPlanningPage.prototype.export_csv = function() {
 			row.actual_qty, row.free_qty, row.firm_supply_qty, row.firm_demand_qty,
 			row.forecast_daily, row.lead_time_days, row.safety_stock,
 			row.reorder_level, row.minimum_projected_qty, row.shortage_date || "",
+			row.potential_replenish_date || "",
 			row.recommended_qty, row.action, row.confidence
 		];
 	});
@@ -413,6 +414,7 @@ function render_item_table(rows) {
 			'<th class="text-right">' + esc(__("SS / reorder")) + '</th>' +
 			'<th class="text-right">' + esc(__("Projection low")) + '</th>' +
 			'<th>' + esc(__("First risk")) + '</th>' +
+			'<th>' + esc(__("Potential replenish")) + '</th>' +
 			'<th>' + esc(__("Recommendation")) + '</th>' +
 		'</tr></thead><tbody>' +
 		rows.map(render_item_row).join("") +
@@ -458,6 +460,10 @@ function render_item_row(row) {
 		'<td>' + (first_risk ? '<strong class="ip-date">' + format_date(first_risk) + '</strong><small class="ip-cell-note">' +
 			esc(row.shortage_date ? __("Stockout") : __("Safety breach")) + '</small>' :
 			'<span class="ip-no-risk"><span class="octicon octicon-check"></span> ' + esc(__("Covered")) + '</span>') + '</td>' +
+		'<td>' + (row.potential_replenish_date ? '<strong class="ip-date">' +
+			format_date(row.potential_replenish_date) + '</strong><small class="ip-cell-note">' +
+			esc(row.potential_replenish_overdue ? __("Overdue open PO") : __("Earliest open PO")) +
+			'</small>' : '<span class="text-muted">—</span>') + '</td>' +
 		'<td><div class="ip-action-cell"><strong>' + esc(row.action) + '</strong><span>' +
 			(row.recommended_qty ? format_qty(row.recommended_qty) + ' ' + esc(row.stock_uom || "") : esc(__("No quantity"))) +
 			'</span><button class="btn btn-default btn-xs ip-open-detail" data-item-code="' + esc(row.item_code) + '">' +
@@ -521,6 +527,7 @@ function render_item_detail(detail) {
 			detail_metric(__("Lead time"), format_qty(lead.average_days) + " d", "± " + format_qty(lead.std_days) + " · " + lead.sample_count + " " + __("samples")) +
 			detail_metric(__("Safety stock"), format_qty(policy.safety_stock), __("Current") + " " + format_qty(item.current_safety_stock)) +
 			detail_metric(__("Reorder level"), format_qty(policy.reorder_level), __("Current") + " " + format_qty(item.current_reorder_level)) +
+			detail_metric(__("Potential replenish"), item.potential_replenish_date ? format_date(item.potential_replenish_date) : "—", item.potential_replenish_date ? (item.potential_replenish_overdue ? __("Overdue open PO schedule date") : __("Earliest open PO schedule date")) : __("No open Purchase Order")) +
 			detail_metric(__("Projection low"), format_qty(projection.minimum_projected_qty), projection.shortage_date ? __("Stockout") + " " + format_date(projection.shortage_date) : __("No stockout")) +
 		'</section>' +
 		'<section class="ip-equation-card">' +

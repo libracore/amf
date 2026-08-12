@@ -12,6 +12,7 @@ from amf.amf.utils.batch_naming import make_internal_production_batch_id
 
 TARGET_ITEM_PREFIXES = ("10", "11", "20", "21", "30")
 TARGET_ITEM_GROUPS = ("Plug", "Valve Seat", "Valve Head")
+RECEIPT_BATCH_ITEM_CODES = ("70E000",)
 TARGET_ITEM_CODE_PATTERN = r"^({0})[0-9]{{4}}$".format("|".join(TARGET_ITEM_PREFIXES))
 TARGET_ITEM_CODE_RE = re.compile(TARGET_ITEM_CODE_PATTERN)
 
@@ -22,6 +23,8 @@ def apply_batch_tracking_rule(doc, method=None):
 		return
 
 	_doc_set(doc, "has_batch_no", 1)
+	if is_receipt_batch_item_code(_doc_get(doc, "item_code") or _doc_get(doc, "name")):
+		_doc_set(doc, "create_new_batch", 1)
 
 
 def ensure_default_batch_for_item(doc, method=None):
@@ -83,6 +86,54 @@ def repair_target_item_batch_setup(
 def repair_target_item_batch_setup_for_patch():
 	"""Run from patches.txt without an explicit commit in this helper."""
 	return _repair_target_item_batch_setup(dry_run=False)
+
+
+def activate_receipt_batching_for_70e000():
+	"""Enable batch tracking and per-receipt Batch creation for item 70E000."""
+	return activate_receipt_batching_for_items(RECEIPT_BATCH_ITEM_CODES)
+
+
+def activate_receipt_batching_for_items(item_codes):
+	item_codes = tuple(item_codes or [])
+	if not item_codes:
+		return {"updated_items": [], "missing_items": [], "skipped_non_stock": []}
+
+	rows = frappe.get_all(
+		"Item",
+		filters={"name": ["in", item_codes]},
+		fields=["name", "item_code", "item_name", "is_stock_item", "has_batch_no", "create_new_batch"],
+	)
+	rows_by_name = {row.name: row for row in rows}
+	missing_items = [item_code for item_code in item_codes if item_code not in rows_by_name]
+	skipped_non_stock = []
+	updated_items = []
+
+	for item_code in item_codes:
+		row = rows_by_name.get(item_code)
+		if not row:
+			continue
+
+		if not cint(row.is_stock_item):
+			skipped_non_stock.append(_receipt_batch_item_summary(row))
+			continue
+
+		updated_items.append(_receipt_batch_item_summary(row))
+		if not cint(row.has_batch_no) or not cint(row.create_new_batch):
+			frappe.db.set_value(
+				"Item",
+				row.name,
+				{
+					"has_batch_no": 1,
+					"create_new_batch": 1,
+				},
+				update_modified=False,
+			)
+
+	return {
+		"updated_items": updated_items,
+		"missing_items": missing_items,
+		"skipped_non_stock": skipped_non_stock,
+	}
 
 
 def _repair_target_item_batch_setup(item_codes=None, dry_run=True, include_disabled=False):
@@ -227,6 +278,10 @@ def is_target_item_code(item_code):
 	return bool(TARGET_ITEM_CODE_RE.match(cstr(item_code).strip()))
 
 
+def is_receipt_batch_item_code(item_code):
+	return cstr(item_code).strip().upper() in RECEIPT_BATCH_ITEM_CODES
+
+
 def _validate_requested_items_exist(item_codes, rows):
 	if not item_codes:
 		return
@@ -241,7 +296,9 @@ def _doc_matches_batch_rule(doc):
 	item_code = _doc_get(doc, "item_code") or _doc_get(doc, "name")
 	item_group = cstr(_doc_get(doc, "item_group")).strip()
 	return (
-		is_target_item_code(item_code) or item_group in TARGET_ITEM_GROUPS
+		is_target_item_code(item_code)
+		or is_receipt_batch_item_code(item_code)
+		or item_group in TARGET_ITEM_GROUPS
 	) and cint(_doc_get(doc, "is_stock_item"))
 
 
@@ -271,6 +328,15 @@ def _item_summary(row):
 		"item_name": row.item_name,
 		"has_batch_no": cint(row.has_batch_no),
 		"batch_count": cint(row.batch_count),
+	}
+
+
+def _receipt_batch_item_summary(row):
+	return {
+		"item_code": row.item_code,
+		"item_name": row.item_name,
+		"has_batch_no": cint(row.has_batch_no),
+		"create_new_batch": cint(row.create_new_batch),
 	}
 
 

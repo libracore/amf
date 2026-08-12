@@ -320,7 +320,7 @@
 .ip-priority-table,
 .ip-mini-table {
 	margin: 0;
-	min-width: 1180px;
+	min-width: 1300px;
 }
 
 .ip-priority-table > thead > tr > th,
@@ -706,7 +706,7 @@
 .ip-detail-metrics {
 	display: grid;
 	gap: 9px;
-	grid-template-columns: repeat(5, 1fr);
+	grid-template-columns: repeat(6, 1fr);
 	margin-bottom: 10px;
 }
 
