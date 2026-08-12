@@ -71,7 +71,7 @@ BOM_VERSION_UPDATE_LOCK = "amf:update_boms_with_latest_versions"
 
 
 @frappe.whitelist()
-def update_boms_with_latest_versions_enqueue(dry_run=0, verbose=1):
+def update_boms_with_latest_versions_enqueue(dry_run=0, verbose=0):
     """Queue the recursive BOM version update on the long worker."""
     dry_run = cint(dry_run)
     verbose = cint(verbose)
