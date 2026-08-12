@@ -1,8 +1,8 @@
 # AMF ERP Release Notes
 
-Generated on: 2026-08-05
+Generated on: 2026-08-11
 
-Change history through: 2026-08-05
+Change history through: 2026-08-11
 
 Live system: [AMF ERP Desk](https://amf.libracore.ch/desk#)
 
@@ -16,7 +16,7 @@ Release audience: AMF ERP users, department leads, management, operations, finan
 
 This document is the business-facing release notes and change history for the AMF ERP custom app.
 
-It summarizes the main ERP changes developed in the AMF custom app from the beginning of the recorded development history to 2026-08-05. The report is based on the `apps/amf` git history, which starts on 2022-09-19, and on the current AMF app structure, including custom DocTypes, reports, pages, hooks and documentation.
+It summarizes the main ERP changes developed in the AMF custom app from the beginning of the recorded development history to 2026-08-11. The report is based on the `apps/amf` git history, which starts on 2022-09-19, and on the current AMF app structure, including custom DocTypes, reports, pages, hooks and documentation.
 
 This is intentionally not a technical commit-by-commit changelog. It is a release communication document for the main modifications, novelties and functional areas added over time. Standard Frappe and ERPNext framework changes are not listed unless they were reflected in AMF custom development.
 
@@ -47,7 +47,7 @@ Historical development milestones already recorded in the project, such as `v0.4
 
 | Release | Status | Period | Main Focus |
 | --- | --- | --- | --- |
-| `v2026.08.1` | Ready for validation, latest | 2026 Q3 to date | Tool-only maintenance planning, maintenance history, preventive maintenance dashboard, automatic Item maintenance summaries and P202-O BOM creation. |
+| `v2026.08.1` | Ready for validation, latest | 2026 Q3 to date | Tool-only maintenance planning, maintenance history, preventive maintenance dashboard, automatic Item maintenance summaries, P202-O BOM creation and receipt batch tracking for item `70E000`. |
 | `v2026.07.1` | Published | 2026 Q3 | Procurement cash forecast, global inventory dashboard, issue management, item dashboards, component drawing register, bank reconciliation automation and serial-number tools. |
 | `v2026.06.0` | Superseded | 2026 Q2 | Loan Orders, landed cost behavior, work order automation, KPI dashboards, procurement tools and AI-assisted reporting. |
 | `v2026.03.0` | Superseded | 2026 Q1 | Swiss VAT handling, customs mapping, planning quantities, batch quantity retrieval and costing support. |
@@ -59,7 +59,7 @@ Historical development milestones already recorded in the project, such as `v0.4
 
 ## Latest Release: `v2026.08.1`
 
-Release date: 2026-08-05
+Release date: 2026-08-11
 
 Release status: Ready for validation
 
@@ -73,6 +73,8 @@ The release is designed so maintenance status stays current when tools, plans or
 
 For product master data, the release also creates submitted default BOMs for the P202-O `4D` item family from validated P201-O/`42` BOM templates, with the body component updated to the P202-O body item.
 
+The release also activates batch tracking for purchased syringe item `70E000` (`Syringe 2500-P uL`). Purchase Receipts for this item can now receive a newly generated Batch automatically on receipt submission, improving traceability for incoming syringe stock.
+
 ### Highlights
 
 - Added a Tool-only maintenance section on Item records.
@@ -84,6 +86,7 @@ For product master data, the release also creates submitted default BOMs for the
 - Added automatic refresh behavior when a Tool item, maintenance plan or maintenance log is created, changed, completed, moved or deleted.
 - Added safeguards so Tool items with existing maintenance records cannot be silently moved out of the Tool item group.
 - Added daily maintenance summary refresh so due and overdue statuses age correctly over time.
+- Activated batch tracking and automatic per-receipt Batch creation for item `70E000`.
 
 ### Change Notes
 
@@ -97,6 +100,7 @@ For product master data, the release also creates submitted default BOMs for the
 | ERP automation | Maintenance summaries refresh automatically. | Item maintenance summary fields are updated after Tool saves, plan changes and log changes, plus a scheduled daily refresh keeps due and overdue status current. |
 | Data migration | Spreadsheet data mapped into Tool Item fields where safe. | Maintenance-related metadata from the spreadsheet was imported only when the Tool item match was unambiguous; conflicting or stale reused item codes were left untouched for manual review. |
 | Data protection | Item Group changes are guarded. | A Tool item with existing maintenance plans or logs cannot be moved out of Item Group `Tool` without first resolving the linked maintenance history. |
+| Purchase receipt traceability | Item `70E000` now creates Batches on receipt. | Enables batch tracking and automatic new Batch creation for `70E000` so each Purchase Receipt can create a receipt-specific Batch for the incoming syringe item. |
 
 ### User Impact
 
@@ -108,6 +112,7 @@ For product master data, the release also creates submitted default BOMs for the
 - Recurring plans calculate their next due date from the latest completed intervention.
 - Overdue and due statuses are visible both on Tool Item records and in the dedicated planner.
 - P202-O `4D` products can receive validated default BOMs based on the corresponding P201-O product structure.
+- Purchase Receipts for item `70E000` now support automatic Batch creation, so users do not need to create the receipt Batch manually when the document is submitted.
 
 ### Validation Notes
 
@@ -122,6 +127,7 @@ Recommended post-release checks:
 - Confirm the Tool Maintenance page opens at [https://amf.libracore.ch/desk#tool-maintenance](https://amf.libracore.ch/desk#tool-maintenance).
 - Review the spreadsheet import exceptions before manually entering maintenance data for conflicted item codes.
 - Review a representative P202-O `4D` item and confirm its submitted default BOM uses body item `5D1000` with the expected remaining components from the corresponding P201-O template.
+- Create or review a Purchase Receipt line for item `70E000` and confirm a Batch is generated on submission when the row has no manually selected Batch.
 
 ## Executive Summary
 
@@ -159,6 +165,7 @@ The main evolution areas are:
 - Automatic lifecycle updates added so Tool item summaries refresh when tools, plans or logs are created, edited, completed, moved or deleted.
 - Daily maintenance summary refresh added so due and overdue status remains current as dates age.
 - Safeguard added to prevent moving Tool items with maintenance records out of Item Group `Tool`.
+- Batch tracking and automatic per-receipt Batch creation activated for syringe item `70E000`.
 
 #### `v2026.07.1` - 2026 Q3
 
