@@ -14,6 +14,10 @@
   "conversion_factor",
   "declared_rate",
   "declared_amount",
+  "billing_section",
+  "commercial_role",
+  "billing_bom",
+  "component_summary",
   "serial_batch_section",
   "serial_no",
   "batch_no",
@@ -98,6 +102,36 @@
    "fieldtype": "Currency",
    "label": "Declared Amount",
    "options": "currency",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "billing_section",
+   "fieldtype": "Section Break",
+   "label": "Commercial Classification"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "Auto",
+   "description": "Auto classifies Item Group Product as Product, Valve Head/Syringe as Spare Part, and all other items as Other Item.",
+   "fieldname": "commercial_role",
+   "fieldtype": "Select",
+   "label": "Commercial Role",
+   "options": "Auto\nProduct\nSpare Part\nOther Item\nDo Not Invoice"
+  },
+  {
+   "allow_on_submit": 1,
+   "description": "Frozen BOM used to show shipped components and split the eventual invoice.",
+   "fieldname": "billing_bom",
+   "fieldtype": "Link",
+   "label": "Product BOM",
+   "options": "BOM"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "component_summary",
+   "fieldtype": "Small Text",
+   "label": "Included Product Components",
    "read_only": 1
   },
   {

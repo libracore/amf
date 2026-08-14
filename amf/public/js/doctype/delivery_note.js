@@ -94,7 +94,7 @@ frappe.ui.form.on("Delivery Note", {
             var w = window.open(frappe.urllib.get_full_url("/api/method/frappe.utils.print_format.download_pdf?"
                 + "doctype=" + encodeURIComponent("Delivery Note")
                 + "&name=" + encodeURIComponent(frm.doc.name)
-                + "&format=" + encodeURIComponent("Packaging Branding AMF 2023")
+                + "&format=" + encodeURIComponent("Packaging Branding AMF 2026")
                 + "&no_letterhead=" + encodeURIComponent("0")
             ));
             if (!w) {

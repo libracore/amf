@@ -7,7 +7,10 @@ import frappe
 from frappe import _
 from frappe.utils import cint, cstr, now_datetime
 
-from amf.amf.utils.batch_naming import make_internal_production_batch_id
+from amf.amf.utils.batch_naming import (
+	make_internal_production_batch_id,
+	make_supplier_receipt_batch_id,
+)
 
 
 TARGET_ITEM_PREFIXES = ("10", "11", "20", "21", "30")
@@ -133,6 +136,347 @@ def activate_receipt_batching_for_items(item_codes):
 		"updated_items": updated_items,
 		"missing_items": missing_items,
 		"skipped_non_stock": skipped_non_stock,
+	}
+
+
+@frappe.whitelist()
+def repair_70e000_purchase_receipt_batches(dry_run=True, commit=True):
+	"""
+	Create receipt-specific Batches for submitted Purchase Receipts of item 70E000.
+
+	Examples:
+	bench execute amf.amf.utils.item_batch_setup.repair_70e000_purchase_receipt_batches
+	bench execute amf.amf.utils.item_batch_setup.repair_70e000_purchase_receipt_batches --kwargs "{'dry_run': 0}"
+	"""
+	dry_run = cint(dry_run)
+	commit = cint(commit)
+
+	try:
+		summary = retrofit_purchase_receipt_batches_for_item(
+			item_code="70E000",
+			dry_run=dry_run,
+		)
+
+		if dry_run or not commit:
+			frappe.db.rollback()
+		else:
+			frappe.db.commit()
+
+		return summary
+	except Exception:
+		frappe.db.rollback()
+		raise
+
+
+def repair_70e000_purchase_receipt_batches_for_patch():
+	"""Run from patches.txt without an explicit commit in this helper."""
+	return retrofit_purchase_receipt_batches_for_item(
+		item_code="70E000",
+		dry_run=False,
+	)
+
+
+def retrofit_purchase_receipt_batches_for_item(item_code, dry_run=True):
+	item_code = cstr(item_code).strip()
+	item = _get_receipt_batch_item(item_code)
+	if not item:
+		frappe.throw(_("Missing Item: {0}").format(item_code))
+	if not cint(item.is_stock_item):
+		frappe.throw(_("Item {0} is not a stock item.").format(item_code))
+	if cint(item.disabled):
+		frappe.throw(_("Item {0} is disabled.").format(item_code))
+
+	if not dry_run:
+		activate_receipt_batching_for_items((item_code,))
+
+	receipt_rows = get_purchase_receipt_rows_missing_batches(item_code)
+	detail_names = [row.name for row in receipt_rows]
+	sle_by_detail = _get_purchase_receipt_sles_by_detail(item_code, detail_names)
+	missing_sle_rows = [
+		_purchase_receipt_row_summary(row)
+		for row in receipt_rows
+		if row.name not in sle_by_detail
+	]
+	if missing_sle_rows:
+		frappe.throw(
+			_("Cannot repair 70E000 Purchase Receipt batches because some submitted rows have no Stock Ledger Entry: {0}").format(
+				", ".join([row["name"] for row in missing_sle_rows])
+			)
+		)
+
+	batch_by_receipt = {}
+	created_batches = []
+	reused_batches = []
+	detail_updates = []
+	sle_updates = []
+
+	for row in receipt_rows:
+		sle_rows = sle_by_detail.get(row.name, [])
+		existing_sle_batches = sorted(set([
+			cstr(sle.batch_no).strip()
+			for sle in sle_rows
+			if cstr(sle.batch_no).strip()
+		]))
+		if len(existing_sle_batches) > 1:
+			frappe.throw(
+				_("Purchase Receipt row {0} has multiple Stock Ledger Entry batches: {1}").format(
+					row.name,
+					", ".join(existing_sle_batches),
+				)
+			)
+
+		if existing_sle_batches:
+			batch_no = existing_sle_batches[0]
+		else:
+			batch_no = batch_by_receipt.get(row.parent)
+			if not batch_no:
+				batch_no, created = _get_or_create_purchase_receipt_batch(
+					item_code=item_code,
+					row=row,
+					dry_run=dry_run,
+				)
+				batch_by_receipt[row.parent] = batch_no
+				if created:
+					created_batches.append(_batch_summary(row, batch_no))
+				else:
+					reused_batches.append(_batch_summary(row, batch_no))
+
+		detail_updates.append({
+			"name": row.name,
+			"parent": row.parent,
+			"item_code": row.item_code,
+			"warehouse": row.warehouse,
+			"qty": float(row.qty or 0),
+			"batch_no": batch_no,
+		})
+		if not dry_run:
+			frappe.db.set_value(
+				"Purchase Receipt Item",
+				row.name,
+				"batch_no",
+				batch_no,
+				update_modified=False,
+			)
+
+		for sle in sle_rows:
+			if cstr(sle.batch_no).strip() == batch_no:
+				continue
+
+			sle_updates.append({
+				"name": sle.name,
+				"voucher_no": sle.voucher_no,
+				"voucher_detail_no": sle.voucher_detail_no,
+				"item_code": sle.item_code,
+				"warehouse": sle.warehouse,
+				"actual_qty": float(sle.actual_qty or 0),
+				"batch_no": batch_no,
+			})
+			if not dry_run:
+				frappe.db.set_value(
+					"Stock Ledger Entry",
+					sle.name,
+					"batch_no",
+					batch_no,
+					update_modified=False,
+				)
+
+	return {
+		"dry_run": bool(dry_run),
+		"item_code": item_code,
+		"item_name": item.item_name,
+		"receipt_rows_missing_batch": len(receipt_rows),
+		"created_or_planned_batches": created_batches,
+		"reused_batches": reused_batches,
+		"detail_updates": detail_updates,
+		"sle_updates": sle_updates,
+		"missing_after": get_70e000_purchase_receipt_batch_missing_counts(item_code=item_code, dry_run=dry_run),
+	}
+
+
+def get_purchase_receipt_rows_missing_batches(item_code):
+	select_supplier_batch = "'' AS supplier_batch"
+	if frappe.get_meta("Purchase Receipt Item").get_field("supplier_batch"):
+		select_supplier_batch = "IFNULL(pri.supplier_batch, '') AS supplier_batch"
+
+	return frappe.db.sql(
+		"""
+		SELECT
+			pri.name,
+			pri.parent,
+			pri.idx,
+			pri.item_code,
+			pri.item_name,
+			pri.qty,
+			pri.warehouse,
+			IFNULL(pri.batch_no, '') AS batch_no,
+			{select_supplier_batch},
+			pr.posting_date,
+			pr.posting_time,
+			pr.supplier,
+			IFNULL(pr.is_return, 0) AS is_return
+		FROM `tabPurchase Receipt Item` pri
+		INNER JOIN `tabPurchase Receipt` pr ON pr.name = pri.parent
+		WHERE pri.item_code = %(item_code)s
+		  AND pr.docstatus = 1
+		  AND IFNULL(pr.is_return, 0) = 0
+		  AND IFNULL(pri.batch_no, '') = ''
+		  AND IFNULL(pri.warehouse, '') != ''
+		ORDER BY pr.posting_date, pr.posting_time, pri.parent, pri.idx
+		""".format(select_supplier_batch=select_supplier_batch),
+		{"item_code": item_code},
+		as_dict=True,
+	)
+
+
+def get_70e000_purchase_receipt_batch_missing_counts(item_code="70E000", dry_run=False):
+	if dry_run:
+		return {
+			"purchase_receipt_items_missing_batch": 0,
+			"stock_ledger_entries_missing_batch": 0,
+		}
+
+	return {
+		"purchase_receipt_items_missing_batch": frappe.db.sql(
+			"""
+			SELECT COUNT(*)
+			FROM `tabPurchase Receipt Item` pri
+			INNER JOIN `tabPurchase Receipt` pr ON pr.name = pri.parent
+			WHERE pri.item_code = %(item_code)s
+			  AND pr.docstatus = 1
+			  AND IFNULL(pr.is_return, 0) = 0
+			  AND IFNULL(pri.batch_no, '') = ''
+			  AND IFNULL(pri.warehouse, '') != ''
+			""",
+			{"item_code": item_code},
+		)[0][0],
+		"stock_ledger_entries_missing_batch": frappe.db.sql(
+			"""
+			SELECT COUNT(*)
+			FROM `tabStock Ledger Entry`
+			WHERE item_code = %(item_code)s
+			  AND voucher_type = 'Purchase Receipt'
+			  AND docstatus = 1
+			  AND IFNULL(is_cancelled, 'No') = 'No'
+			  AND IFNULL(batch_no, '') = ''
+			""",
+			{"item_code": item_code},
+		)[0][0],
+	}
+
+
+def _get_receipt_batch_item(item_code):
+	return frappe.db.get_value(
+		"Item",
+		item_code,
+		[
+			"name",
+			"item_code",
+			"item_name",
+			"is_stock_item",
+			"disabled",
+			"has_batch_no",
+			"create_new_batch",
+		],
+		as_dict=True,
+	)
+
+
+def _get_purchase_receipt_sles_by_detail(item_code, detail_names):
+	detail_names = tuple([name for name in detail_names if name])
+	if not detail_names:
+		return {}
+
+	rows = frappe.db.sql(
+		"""
+		SELECT
+			name,
+			item_code,
+			voucher_no,
+			voucher_detail_no,
+			warehouse,
+			actual_qty,
+			IFNULL(batch_no, '') AS batch_no
+		FROM `tabStock Ledger Entry`
+		WHERE item_code = %(item_code)s
+		  AND voucher_type = 'Purchase Receipt'
+		  AND docstatus = 1
+		  AND IFNULL(is_cancelled, 'No') = 'No'
+		  AND voucher_detail_no IN %(detail_names)s
+		ORDER BY posting_date, posting_time, creation, name
+		""",
+		{
+			"item_code": item_code,
+			"detail_names": detail_names,
+		},
+		as_dict=True,
+	)
+
+	by_detail = {}
+	for row in rows:
+		by_detail.setdefault(row.voucher_detail_no, []).append(row)
+
+	return by_detail
+
+
+def _get_or_create_purchase_receipt_batch(item_code, row, dry_run=True):
+	existing = frappe.db.get_value(
+		"Batch",
+		{
+			"item": item_code,
+			"reference_doctype": "Purchase Receipt",
+			"reference_name": row.parent,
+		},
+		"name",
+	)
+	if existing:
+		return existing, False
+
+	if dry_run:
+		return "DRY-RUN-BATCH-{0}".format(row.parent), True
+
+	batch_values = {
+		"doctype": "Batch",
+		"item": item_code,
+		"batch_id": make_supplier_receipt_batch_id(row.supplier),
+		"supplier": row.supplier,
+		"reference_doctype": "Purchase Receipt",
+		"reference_name": row.parent,
+		"description": (
+			"Retroactive AMF Purchase Receipt batch for item {item}; created {now} "
+			"from {purchase_receipt} row {row_name}."
+		).format(
+			item=item_code,
+			now=now_datetime(),
+			purchase_receipt=row.parent,
+			row_name=row.name,
+		),
+	}
+	if frappe.get_meta("Batch").get_field("supplier_batch"):
+		batch_values["supplier_batch"] = cstr(row.supplier_batch).strip()
+
+	batch = frappe.get_doc(batch_values).insert(ignore_permissions=True)
+	return batch.name, True
+
+
+def _batch_summary(row, batch_no):
+	return {
+		"purchase_receipt": row.parent,
+		"posting_date": row.posting_date,
+		"supplier": row.supplier,
+		"item_code": row.item_code,
+		"warehouse": row.warehouse,
+		"batch_no": batch_no,
+	}
+
+
+def _purchase_receipt_row_summary(row):
+	return {
+		"name": row.name,
+		"parent": row.parent,
+		"idx": row.idx,
+		"item_code": row.item_code,
+		"warehouse": row.warehouse,
+		"qty": float(row.qty or 0),
 	}
 
 

@@ -8,7 +8,7 @@ from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 
 def sync_loan_order_custom_fields():
-	"""Create lightweight backlinks from stock documents to Loan Order."""
+	"""Create backlinks from stock and billing documents to Loan Order."""
 	create_custom_fields(
 		{
 			"Stock Entry": [
@@ -35,6 +35,17 @@ def sync_loan_order_custom_fields():
 					"no_copy": 1,
 					"print_hide": 1,
 				},
+				{
+					"fieldname": "loan_order_settlement_type",
+					"fieldtype": "Select",
+					"label": "Loan Order Settlement Type",
+					"options": "\nDismantle Product",
+					"insert_after": "loan_order_movement",
+					"allow_on_submit": 1,
+					"read_only": 1,
+					"no_copy": 1,
+					"print_hide": 1,
+				},
 			],
 			"Stock Entry Detail": [
 				{
@@ -47,6 +58,17 @@ def sync_loan_order_custom_fields():
 					"read_only": 1,
 					"no_copy": 1,
 					"print_hide": 1,
+				},
+				{
+					"fieldname": "loan_settlement_valuation_share",
+					"fieldtype": "Float",
+					"label": "Loan Settlement Valuation Share",
+					"insert_after": "loan_order_item",
+					"allow_on_submit": 1,
+					"read_only": 1,
+					"no_copy": 1,
+					"print_hide": 1,
+					"hidden": 1,
 				},
 			],
 			"Delivery Note": [
@@ -73,6 +95,17 @@ def sync_loan_order_custom_fields():
 					"no_copy": 1,
 					"print_hide": 1,
 				},
+				{
+					"fieldname": "loan_order_settlement_type",
+					"fieldtype": "Select",
+					"label": "Loan Order Settlement Type",
+					"options": "\nFull Product Sale\nSpare Parts Sale\nRemaining Items Return",
+					"insert_after": "loan_order_movement",
+					"allow_on_submit": 1,
+					"read_only": 1,
+					"no_copy": 1,
+					"print_hide": 1,
+				},
 			],
 			"Delivery Note Item": [
 				{
@@ -82,6 +115,50 @@ def sync_loan_order_custom_fields():
 					"options": "Loan Order Item",
 					"insert_after": "item_code",
 					"allow_on_submit": 1,
+					"read_only": 1,
+					"no_copy": 1,
+					"print_hide": 1,
+				},
+			],
+			"Sales Invoice": [
+				{
+					"fieldname": "loan_order",
+					"fieldtype": "Link",
+					"label": "Loan Order",
+					"options": "Loan Order",
+					"insert_after": "customer_name",
+					"read_only": 1,
+					"no_copy": 1,
+					"print_hide": 1,
+					"in_standard_filter": 1,
+				},
+				{
+					"fieldname": "loan_order_billing_decision",
+					"fieldtype": "Select",
+					"label": "Loan Order Billing Decision",
+					"options": "\nSpare Parts Only\nFull Product Purchase",
+					"insert_after": "loan_order",
+					"read_only": 1,
+					"no_copy": 1,
+					"print_hide": 1,
+				},
+			],
+			"Sales Invoice Item": [
+				{
+					"fieldname": "loan_order_item",
+					"fieldtype": "Link",
+					"label": "Loan Order Item",
+					"options": "Loan Order Item",
+					"insert_after": "item_code",
+					"read_only": 1,
+					"no_copy": 1,
+					"print_hide": 1,
+				},
+				{
+					"fieldname": "loan_order_billing_role",
+					"fieldtype": "Data",
+					"label": "Loan Order Billing Role",
+					"insert_after": "loan_order_item",
 					"read_only": 1,
 					"no_copy": 1,
 					"print_hide": 1,

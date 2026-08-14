@@ -1,0 +1,238 @@
+{% set repeat_header = print_settings and print_settings.repeat_header_footer %}
+
+{% if letter_head and not no_letterhead %}
+<div{% if repeat_header %} id="header-html" class="hidden-pdf"{% endif %}>
+    <div class="letter-head">{{ letter_head }}</div>
+</div>
+{% endif %}
+
+<div class="page-break commercial-invoice-page">
+    <table class="invoice-hero">
+        <tr>
+            <td class="invoice-purpose">
+                <div class="eyebrow">{{ _("Customs document") }}</div>
+                <div class="purpose-copy">{{ _("International shipment declaration") }}</div>
+            </td>
+            <td class="invoice-identity">
+                <div class="document-type">{{ _("Commercial Invoice") }}</div>
+                <div class="document-number">{{ doc.name }}</div>
+            </td>
+        </tr>
+    </table>
+    <div class="hero-spacer"></div>
+
+    {% if doc.docstatus == 0 %}
+    <div class="status-banner status-draft">{{ _("DRAFT") }}</div>
+    {% elif doc.docstatus == 2 %}
+    <div class="status-banner status-cancelled">{{ _("CANCELLED") }}</div>
+    {% endif %}
+
+    <table class="aligned-grid shipment-summary">
+        <tr>
+            <td>
+                <div class="primary-summary">
+                    <div class="summary-label">{{ _("Shipping date") }}</div>
+                    <div class="summary-value primary-summary-value">{{ doc.get_formatted("posting_date") }}</div>
+                </div>
+                <table class="secondary-facts">
+                    <tr>
+                        <td>
+                            <div class="summary-label">{{ _("Purpose") }}</div>
+                            <div class="summary-value">{{ (doc.object or _("Merchandise"))|e }}</div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+            <td>
+                <div class="primary-summary">
+                    <div class="summary-label">{{ _("Customer PO") }}</div>
+                    <div class="summary-value primary-summary-value{% if not doc.po_no %} muted{% endif %}">{{ (doc.po_no or _("Not provided"))|e }}</div>
+                </div>
+                <table class="secondary-facts tracking-pair">
+                    <tr>
+                        <td>
+                            <div class="summary-label">{{ _("Tracking number") }}</div>
+                            <div class="summary-value{% if not doc.tracking_no %} muted{% endif %}">{{ (doc.tracking_no or _("Not assigned"))|e }}</div>
+                        </td>
+                        <td>
+                            <div class="summary-label">{{ _("Currency") }}</div>
+                            <div class="summary-value currency-value">{{ (doc.currency or "")|e }}</div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <table class="aligned-grid party-grid">
+        <tr>
+            <td>
+                <div class="party-card">
+                    <div class="section-kicker">{{ _("Sender / Exporter") }}</div>
+                    <div class="party-name">{{ (doc.company or "")|e }}</div>
+                    {% if doc.company_address_display %}
+                    <div class="address-value">{{ doc.company_address_display }}</div>
+                    {% endif %}
+                    {% if doc.sales_contact_name or doc.sales_contact_email %}
+                    <div class="contact-block">
+                        {% if doc.sales_contact_name %}<div>{{ doc.sales_contact_name|e }}</div>{% endif %}
+                        {% if doc.sales_contact_email %}<div>{{ doc.sales_contact_email|e }}</div>{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </td>
+            <td>
+                <div class="party-card">
+                    <div class="section-kicker">{{ _("Receiver / Importer") }}</div>
+                    <div class="party-name">{{ (doc.customer_name or doc.customer or "")|e }}</div>
+                    {% if doc.shipping_address %}
+                    <div class="address-value">{{ doc.shipping_address }}</div>
+                    {% endif %}
+                    {% if doc.contact_display or doc.contact_phone or doc.contact_mobile or doc.contact_email %}
+                    <div class="contact-block">
+                        {% if doc.contact_display %}<div>{{ doc.contact_display }}</div>{% endif %}
+                        {% if doc.contact_phone %}<div>{{ doc.contact_phone|e }}</div>{% endif %}
+                        {% if doc.contact_mobile and doc.contact_mobile != doc.contact_phone %}<div>{{ doc.contact_mobile|e }}</div>{% endif %}
+                        {% if doc.contact_email %}<div>{{ doc.contact_email|e }}</div>{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    {% if doc.eur1_form or doc.tax_id or doc.ein %}
+    {% set has_left_reference = doc.eur1_form %}
+    {% set has_right_reference = doc.tax_id or doc.ein %}
+    <table class="aligned-grid customs-references">
+        <tr>
+            <td{% if not has_left_reference %} class="empty-grid-cell"{% endif %}>
+                {% if has_left_reference %}
+                <table class="field-pair reference-pair">
+                    <tr>
+                        {% if doc.eur1_form %}
+                        <td>
+                            <div class="summary-label">{{ _("EUR.1 form") }}</div>
+                            <div class="reference-value">{{ doc.eur1_form|e }}</div>
+                        </td>
+                        {% endif %}
+                    </tr>
+                </table>
+                {% endif %}
+            </td>
+            <td{% if not has_right_reference %} class="empty-grid-cell"{% endif %}>
+                {% if has_right_reference %}
+                <table class="field-pair reference-pair">
+                    <tr>
+                        {% if doc.tax_id %}
+                        <td>
+                            <div class="summary-label">{{ _("EORI") }}</div>
+                            <div class="reference-value">{{ doc.tax_id|e }}</div>
+                        </td>
+                        {% endif %}
+                        {% if doc.ein %}
+                        <td>
+                            <div class="summary-label">{{ _("EIN") }}</div>
+                            <div class="reference-value">{{ doc.ein|e }}</div>
+                        </td>
+                        {% endif %}
+                    </tr>
+                </table>
+                {% endif %}
+            </td>
+        </tr>
+    </table>
+    {% endif %}
+
+    <div class="items-heading">
+        <span>{{ _("Shipment contents") }}</span>
+        <span class="item-count">{{ doc.items|length }} {{ _("line(s)") }}</span>
+    </div>
+
+    <table class="line-items">
+        <colgroup>
+            <col class="col-position">
+            <col class="col-reference">
+            <col class="col-description">
+            <col class="col-origin">
+            <col class="col-tariff">
+            <col class="col-quantity">
+            <col class="col-rate">
+            <col class="col-amount">
+            <col class="col-weight">
+        </colgroup>
+        <thead>
+            <tr>
+                <th class="center">{{ _("Pos.") }}</th>
+                <th>{{ _("Reference") }}</th>
+                <th>{{ _("Customs description") }}</th>
+                <th>{{ _("Origin") }}</th>
+                <th>{{ _("HS code") }}</th>
+                <th class="right">{{ _("Qty") }}</th>
+                <th class="right">{{ _("Unit price") }}<small>{{ (doc.currency or "")|e }}</small></th>
+                <th class="right">{{ _("Amount") }}<small>{{ (doc.currency or "")|e }}</small></th>
+                <th class="right">{{ _("Weight") }}<small>{{ _("kg") }}</small></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in doc.items %}
+            <tr>
+                <td class="center position-cell">{{ loop.index }}</td>
+                <td class="reference-cell">
+                    <strong>{{ item.item_code|e }}</strong>
+                    {% if item.item_name and item.item_name != item.item_code %}<small>{{ item.item_name|e }}</small>{% endif %}
+                </td>
+                <td class="description-cell">{{ item.custom_description or item.description or "" }}</td>
+                <td class="origin-cell">{{ (item.country_of_origin or "")|e }}</td>
+                <td class="code-cell">{{ (item.customs_tariff_number_ or "")|e }}</td>
+                <td class="right quantity-cell">
+                    <strong>{{ "%g"|format(item.qty or 0) }}</strong>
+                    {% if item.uom %}<small>{{ item.uom|e }}</small>{% endif %}
+                </td>
+                <td class="right money-cell">{{ item.get_formatted("net_rate", doc) }}</td>
+                <td class="right money-cell strong">{{ item.get_formatted("amount", doc) }}</td>
+                <td class="right weight-cell">{{ "%g"|format(item.total_weight or 0) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <table class="invoice-totals">
+        <tr>
+            <td class="weight-summary">
+                <div class="summary-label">{{ _("Total net weight") }}</div>
+                <div class="weight-total">{{ "%g"|format(doc.total_net_weight or 0) }} <span>{{ _("kg") }}</span></div>
+            </td>
+            <td class="total-label">{{ _("Invoice total") }}</td>
+            <td class="total-value">
+                <div>{{ doc.get_formatted("net_total") }}</div>
+                <small>{{ (doc.currency or "")|e }}</small>
+            </td>
+        </tr>
+    </table>
+
+    {% if doc.terms %}
+    <div class="terms-section">
+        <div class="section-kicker">{{ _("Terms and conditions") }}</div>
+        <div class="terms-copy">{{ doc.terms }}</div>
+    </div>
+    {% endif %}
+
+    <div class="customs-declaration">
+        <div class="section-kicker">{{ _("Customs declaration") }}</div>
+        <p>{{ _("This commercial invoice is for customs purposes only. The exporter of the products covered by this document declares that, except where otherwise clearly indicated, the products are of the preferential origin stated in the Origin column.") }}</p>
+        <p>{{ _("I certify that the particulars given in this declaration are correct and that this package does not contain dangerous articles prohibited by postal regulations.") }}</p>
+    </div>
+</div>
+
+<div id="footer-html" class="visible-pdf">
+    {% if footer and not no_letterhead %}
+    <div class="letter-head-footer">{{ footer }}</div>
+    {% endif %}
+    <table class="pdf-footer">
+        <tr>
+            <td>{{ _("Commercial Invoice") }} · {{ doc.name }}</td>
+            <td class="page-number">{{ _("Page") }} <span class="page"></span> / <span class="topage"></span></td>
+        </tr>
+    </table>
+</div>

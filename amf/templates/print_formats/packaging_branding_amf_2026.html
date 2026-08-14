@@ -1,0 +1,218 @@
+{% set repeat_header = print_settings and print_settings.repeat_header_footer %}
+
+{% if letter_head and not no_letterhead %}
+<div{% if repeat_header %} id="header-html" class="hidden-pdf"{% endif %}>
+    <div class="letter-head">{{ letter_head }}</div>
+</div>
+{% endif %}
+
+<div class="page-break packaging-page">
+    <table class="document-hero">
+        <tr>
+            <td class="document-purpose">
+                <div class="eyebrow">{{ _("Packaging & Branding") }}</div>
+                <div class="purpose-copy">{{ _("Packing and final quality checklist") }}</div>
+            </td>
+            <td class="document-identity">
+                <div class="document-type">{{ _("DELIVERY NOTE") }}</div>
+                <div class="document-number">{{ doc.name }}</div>
+            </td>
+        </tr>
+    </table>
+    <div class="hero-spacer"></div>
+
+    {% if doc.docstatus == 0 %}
+    <div class="status-banner status-draft">{{ _("DRAFT") }}</div>
+    {% elif doc.docstatus == 2 %}
+    <div class="status-banner status-cancelled">{{ _("CANCELLED") }}</div>
+    {% endif %}
+
+    <table class="summary-grid">
+        <tr>
+            <td>
+                <div class="summary-card">
+                    <div class="section-kicker">{{ _("Delivery to") }}</div>
+                    <div class="primary-value">{{ (doc.customer_name or "")|e }}</div>
+                    {% if doc.shipping_address %}
+                    <div class="address-value">{{ doc.shipping_address }}</div>
+                    {% endif %}
+                    {% if doc.contact_display or doc.contact_phone or doc.contact_email %}
+                    <div class="contact-block">
+                        {% if doc.contact_display %}<div>{{ doc.contact_display }}</div>{% endif %}
+                        {% if doc.contact_phone %}<div>{{ doc.contact_phone|e }}</div>{% endif %}
+                        {% if doc.contact_email %}<div>{{ doc.contact_email|e }}</div>{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </td>
+            <td>
+                <div class="summary-card">
+                    <div class="section-kicker">{{ _("Document details") }}</div>
+                    <table class="detail-list">
+                        <tr>
+                            <th>{{ _("Date") }}</th>
+                            <td>{{ doc.get_formatted("posting_date") }}</td>
+                        </tr>
+                        {% if doc.po_no %}
+                        <tr>
+                            <th>{{ _("Customer PO") }}</th>
+                            <td>{{ doc.po_no|e }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if doc.po_date %}
+                        <tr>
+                            <th>{{ _("PO date") }}</th>
+                            <td>{{ doc.get_formatted("po_date") }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if doc.pick_list %}
+                        <tr>
+                            <th>{{ _("Pick List") }}</th>
+                            <td>{{ doc.pick_list|e }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    {% if doc.address_display or doc.sales_contact_name or doc.sales_contact_email %}
+    <table class="secondary-details">
+        <tr>
+            {% if doc.address_display %}
+            <td>
+                <div class="section-kicker">{{ _("Billing address") }}</div>
+                <div class="address-value">{{ doc.address_display }}</div>
+            </td>
+            {% endif %}
+            {% if doc.sales_contact_name or doc.sales_contact_email %}
+            <td>
+                <div class="section-kicker">{{ _("AMF contact") }}</div>
+                {% if doc.sales_contact_name %}<div class="primary-value small">{{ doc.sales_contact_name|e }}</div>{% endif %}
+                {% if doc.sales_contact_email %}<div>{{ doc.sales_contact_email|e }}</div>{% endif %}
+            </td>
+            {% endif %}
+        </tr>
+    </table>
+    {% endif %}
+
+    {% set item_summary = namespace(codes=[]) %}
+    {% for delivery_item in doc.items %}
+        {% if delivery_item.item_code not in item_summary.codes %}
+            {% set item_summary.codes = item_summary.codes + [delivery_item.item_code] %}
+        {% endif %}
+    {% endfor %}
+    <div class="items-heading">
+        <span>{{ _("Items to pack") }}</span>
+        <span class="item-count">{{ item_summary.codes|length }} {{ _("item(s)") }}</span>
+    </div>
+
+    {% set packed_items = namespace(codes=[], position=0) %}
+    {% for item in doc.items %}
+    {% if item.item_code not in packed_items.codes %}
+    {% set packed_items.codes = packed_items.codes + [item.item_code] %}
+    {% set packed_items.position = packed_items.position + 1 %}
+    {% set merged = namespace(qty=0, serial_numbers=[]) %}
+    {% for matching_item in doc.items %}
+        {% if matching_item.item_code == item.item_code %}
+            {% set merged.qty = merged.qty + (matching_item.qty or 0) %}
+            {% set serial_text = matching_item.serial_no or matching_item.product_serial_no %}
+            {% if serial_text %}
+                {% set merged.serial_numbers = merged.serial_numbers + serial_text.split() %}
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+    <div class="item-section">
+        <table class="item-title-table">
+            <tr>
+                <td class="position-badge">{{ "%02d"|format(packed_items.position) }}</td>
+                <td class="item-title">
+                    <div class="item-code">{{ item.item_code|e }}</div>
+                    {% if item.item_name and item.item_name != item.item_code %}
+                    <div class="item-name">{{ item.item_name|e }}</div>
+                    {% endif %}
+                </td>
+                <td class="quantity-box">
+                    <div class="field-label">{{ _("Quantity") }}</div>
+                    <div class="quantity-value">{{ "%g"|format(merged.qty) }}{% if item.uom %} <span>{{ item.uom|e }}</span>{% endif %}</div>
+                </td>
+                <td class="quality-box">
+                    <div class="field-label">{{ _("Quality") }}</div>
+                    <div class="check-square"></div>
+                </td>
+            </tr>
+        </table>
+
+        <table class="item-overview">
+            <tr>
+                <td class="item-image-cell">
+                    {% if item.image %}
+                    <img class="item-image" src="{{ item.image }}" alt="{{ item.item_code|e }}">
+                    {% else %}
+                    <div class="image-placeholder">{{ _("No image") }}</div>
+                    {% endif %}
+                </td>
+                <td class="item-description">
+                    <div class="field-label">{{ _("Description") }}</div>
+                    <div class="description-value">{{ item.description or "" }}</div>
+                </td>
+            </tr>
+        </table>
+
+        {% if merged.serial_numbers %}
+        <table class="serial-table">
+            <thead>
+                <tr>
+                    <th colspan="3">
+                        <span>{{ _("Serial numbers") }}</span>
+                        <span class="serial-count">{{ merged.serial_numbers|length }}</span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for serial_row in merged.serial_numbers|batch(3, "") %}
+                <tr>
+                    {% for serial in serial_row %}
+                    <td{% if not serial %} class="empty-serial"{% endif %}>{{ serial|trim|e }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    {% if doc.instructions or doc.sustainability %}
+    <table class="notes-grid">
+        <tr>
+            {% if doc.instructions %}
+            <td>
+                <div class="section-kicker">{{ _("Instructions") }}</div>
+                <div class="notes-copy">{{ doc.instructions }}</div>
+            </td>
+            {% endif %}
+            {% if doc.sustainability %}
+            <td>
+                <div class="section-kicker">{{ _("Sustainability") }}</div>
+                <div class="notes-copy">{{ doc.sustainability }}</div>
+            </td>
+            {% endif %}
+        </tr>
+    </table>
+    {% endif %}
+</div>
+
+<div id="footer-html" class="visible-pdf">
+    {% if footer and not no_letterhead %}
+    <div class="letter-head-footer">{{ footer }}</div>
+    {% endif %}
+    <table class="pdf-footer">
+        <tr>
+            <td>{{ _("Delivery Note") }} {{ doc.name }}</td>
+            <td class="page-number">{{ _("Page") }} <span class="page"></span> / <span class="topage"></span></td>
+        </tr>
+    </table>
+</div>

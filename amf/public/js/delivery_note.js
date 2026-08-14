@@ -125,6 +125,19 @@ frappe.ui.form.on("Delivery Note", {
         sync_delivery_note_customs_identifiers(frm);
         add_loan_order_get_items_buttons(frm);
 
+        if (
+            frm.doc.docstatus === 1 &&
+            !frm.doc.is_return &&
+            /(^|[^A-Z0-9])DHL($|[^A-Z0-9])/i.test(frm.doc.carrier || "")
+        ) {
+            frm.add_custom_button(__("DHL Shipment Draft"), function () {
+                frappe.model.open_mapped_doc({
+                    method: "amf.amf.utils.dhl_shipment.make_dhl_shipment",
+                    frm: frm
+                });
+            }, __("Create"));
+        }
+
         // attach tooltip for EUR.1 form
         const description = "Fill out a paper EUR.1 form and place it on the package if the following criteria are met:\n\n"
             + "1. The destination is in the EU\n"
