@@ -8,3 +8,5 @@ amf.patches.v12_0.repair_4b_4c_bom_family_coherence_2026
 amf.patches.v12_0.retrofit_70e000_purchase_receipt_batches
 amf.patches.v12_0.install_packaging_branding_amf_2026
 amf.patches.v12_0.install_commercial_invoice_from_dn_2026
+amf.patches.v12_0.install_dhl_shipment_draft
+amf.patches.v12_0.install_dhl_shipment_creation

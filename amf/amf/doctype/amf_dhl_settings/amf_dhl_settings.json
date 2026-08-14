@@ -4,13 +4,84 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "dhl_api_key"
+  "tracking_section",
+  "dhl_api_key",
+  "mydhl_section",
+  "api_environment",
+  "api_username",
+  "api_password",
+  "shipper_account_number",
+  "shipper_contact_section",
+  "shipper_contact_name",
+  "shipper_contact_phone",
+  "shipper_contact_email"
  ],
  "fields": [
   {
+   "fieldname": "tracking_section",
+   "fieldtype": "Section Break",
+   "label": "DHL Tracking API"
+  },
+  {
+   "description": "API key used by the existing DHL tracking integration; this is not a MyDHL shipment credential.",
    "fieldname": "dhl_api_key",
    "fieldtype": "Data",
    "label": "DHL API Key"
+  },
+  {
+   "fieldname": "mydhl_section",
+   "fieldtype": "Section Break",
+   "label": "MyDHL Express API"
+  },
+  {
+   "default": "Test",
+   "description": "Validation uses POST /shipments?validateDataOnly=true. Test is the safe default.",
+   "fieldname": "api_environment",
+   "fieldtype": "Select",
+   "label": "API Environment",
+   "options": "Test\nProduction"
+  },
+  {
+   "description": "MyDHL Basic Authentication username supplied by DHL Express.",
+   "fieldname": "api_username",
+   "fieldtype": "Data",
+   "label": "API Username"
+  },
+  {
+   "description": "MyDHL Basic Authentication password supplied by DHL Express.",
+   "fieldname": "api_password",
+   "fieldtype": "Password",
+   "label": "API Password"
+  },
+  {
+   "description": "Default DHL Express shipper account. Shipment-specific payer and duties/taxes accounts remain explicit on Shipment.",
+   "fieldname": "shipper_account_number",
+   "fieldtype": "Data",
+   "label": "Shipper Account Number"
+  },
+  {
+   "fieldname": "shipper_contact_section",
+   "fieldtype": "Section Break",
+   "label": "Shipper Contact Fallback"
+  },
+  {
+   "description": "Named person used only when the Shipment has no pickup Contact/User full name.",
+   "fieldname": "shipper_contact_name",
+   "fieldtype": "Data",
+   "label": "Shipper Contact Full Name"
+  },
+  {
+   "description": "Phone used only when the Shipment contact, pickup Address and Company do not provide one.",
+   "fieldname": "shipper_contact_phone",
+   "fieldtype": "Data",
+   "label": "Shipper Contact Phone",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "shipper_contact_email",
+   "fieldtype": "Data",
+   "label": "Shipper Contact Email",
+   "options": "Email"
   }
  ],
  "issingle": 1,
