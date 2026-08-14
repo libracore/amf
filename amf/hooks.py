@@ -56,6 +56,7 @@ doctype_js = {
         "public/js/sales_order.js",
         #"public/js/quotation_sales_order_accessories.js",
     ],
+    "Shipment": "public/js/dhl_shipment.js",
     "Stock Entry": "public/js/stock_entry.js",
     "Work Order": "public/js/work_order.js",
 }
@@ -108,6 +109,7 @@ doc_events = {
         ],
     },
     "Delivery Note": {
+        "before_validate": "amf.amf.doctype.loan_order.loan_order.prepare_loan_settlement_delivery_note_validation",
         "before_save": [
             "amf.amf.utils.delivery_note_api.before_save_dn",
         ],
@@ -119,10 +121,14 @@ doc_events = {
         "before_submit": "amf.amf.utils.delivery_note_api.check_qa_inspections_status",
         "on_submit": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
         "on_cancel": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
+        "on_trash": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
     },
     "Item": {
         "onload": "amf.amf.utils.item_costing.populate_item_batch_costing_table",
-        "before_insert": "amf.amf.utils.item_batch_setup.apply_batch_tracking_rule",
+        "before_insert": [
+            "amf.amf.utils.item_batch_setup.apply_batch_tracking_rule",
+            # "amf.amf.utils.item_code_governance.validate_item_code_governance",
+        ],
         "validate": [
             "amf.amf.utils.item_batch_setup.apply_batch_tracking_rule",
             "amf.amf.utils.bom_mgt.sync_item_bom_fields",
@@ -161,7 +167,14 @@ doc_events = {
         "on_update_after_submit": "amf.master_crm.customer_marketing.sync_customer_marketing_from_sales_order",
     },
     "Sales Invoice": {
-        "validate": "amf.amf.utils.sales_invoice_total_ht.apply_sales_invoice_total_ht",
+        "validate": [
+            "amf.amf.utils.sales_invoice_total_ht.apply_sales_invoice_total_ht",
+            "amf.amf.doctype.loan_order.loan_order.validate_loan_order_sales_invoice",
+        ],
+        "after_insert": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order_invoice",
+        "on_submit": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order_invoice",
+        "on_cancel": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order_invoice",
+        "on_trash": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order_invoice",
     },
     "Project": {
         "before_insert": "amf.amf.utils.project_id.assign_project_id",
@@ -187,10 +200,12 @@ doc_events = {
             "amf.amf.utils.stock_entry.stock_entry_before_save",
             "amf.amf.utils.work_order_scrap.prepare_dynamic_usage_scrap_rows",
             "amf.amf.utils.stock_entry.get_stock_and_rate_override",
+            "amf.amf.doctype.loan_order.loan_order.prepare_loan_settlement_repack",
         ],
         "before_submit": [
             "amf.amf.utils.work_order_scrap.prepare_dynamic_usage_scrap_rows",
             "amf.amf.utils.stock_entry.stock_entry_before_submit",
+            "amf.amf.doctype.loan_order.loan_order.prepare_loan_settlement_repack",
         ],
         "on_submit": [
             "amf.amf.utils.custom.qr_code_to_document",
@@ -198,6 +213,7 @@ doc_events = {
             "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
         ],
         "on_cancel": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
+        "on_trash": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
     },
     "Timer Production": {
         "before_save": "amf.amf.doctype.timer_production.timer_production.timer_before_save",

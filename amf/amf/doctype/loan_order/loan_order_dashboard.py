@@ -11,6 +11,10 @@ def get_data():
 				"items": ["Stock Entry", "Delivery Note"]
 			},
 			{
+				"label": _("Billing"),
+				"items": ["Sales Invoice"]
+			},
+			{
 				"label": _("Support"),
 				"items": ["Issue"]
 			}

@@ -37,6 +37,15 @@
   "terms",
   "items_section",
   "items",
+  "billing_section",
+  "billing_status",
+  "billing_decision",
+  "selling_price_list",
+  "column_break_billing",
+  "sales_invoice",
+  "settlement_delivery_note",
+  "settlement_return_delivery_note",
+  "settlement_stock_entry",
   "documents_section",
   "outward_stock_entry",
   "outward_delivery_note",
@@ -237,6 +246,79 @@
    "label": "Items",
    "options": "Loan Order Item",
    "reqd": 1
+  },
+  {
+   "collapsible": 1,
+   "description": "The customer decision can be made after shipment. Spare Parts Only invoices valve heads and syringes from each product BOM. Full Product Purchase splits the full product price into product excluding spares, separately priced spares, then all remaining loan items.",
+   "fieldname": "billing_section",
+   "fieldtype": "Section Break",
+   "label": "Commercial Settlement"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "Pending",
+   "fieldname": "billing_status",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Billing Status",
+   "options": "Pending\nDraft Invoice\nInvoiced",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "Pending",
+   "fieldname": "billing_decision",
+   "fieldtype": "Select",
+   "label": "Customer Decision",
+   "options": "Pending\nSpare Parts Only\nFull Product Purchase",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "selling_price_list",
+   "fieldtype": "Link",
+   "label": "Selling Price List",
+   "options": "Price List"
+  },
+  {
+   "fieldname": "column_break_billing",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "sales_invoice",
+   "fieldtype": "Link",
+   "label": "Settlement Sales Invoice",
+   "no_copy": 1,
+   "options": "Sales Invoice",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "settlement_delivery_note",
+   "fieldtype": "Link",
+   "label": "Settlement Delivery Note",
+   "no_copy": 1,
+   "options": "Delivery Note",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "settlement_return_delivery_note",
+   "fieldtype": "Link",
+   "label": "Settlement Return Delivery Note",
+   "no_copy": 1,
+   "options": "Delivery Note",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "settlement_stock_entry",
+   "fieldtype": "Link",
+   "label": "Settlement Repack",
+   "no_copy": 1,
+   "options": "Stock Entry",
+   "read_only": 1
   },
   {
    "collapsible": 1,
