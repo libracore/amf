@@ -410,10 +410,13 @@ log_id = _get_or_create_log(doc)
 def check_stock_levels(test_mode=0, dry_run=0, send_email=1, recompute_lead_time=0, verbose_log=0):
     """
     Main entry: calculate safety stocks, reorder levels and flag items for reorder.
+
+    ``send_email`` is retained only for compatibility with historical callers. The
+    legacy plain-table email sender has been removed; weekly email is owned solely
+    by :func:`run_weekly_stock_level_update` and the inventory planning renderer.
     """
     test_mode = _is_truthy(test_mode)
     dry_run = _is_truthy(dry_run)
-    send_email = _is_truthy(send_email)
     recompute_lead_time = _is_truthy(recompute_lead_time)
     verbose_log = _is_truthy(verbose_log)
 
@@ -425,7 +428,6 @@ def check_stock_levels(test_mode=0, dry_run=0, send_email=1, recompute_lead_time
     items = _get_items(test_mode)
     demand_profiles = _get_demand_profiles_for_items(items)
     stock_positions = _get_stock_positions_for_items([item.name for item in items])
-    to_notify = []
     result = {
         "dry_run": dry_run,
         "items_checked": len(items),
@@ -512,24 +514,8 @@ def check_stock_levels(test_mode=0, dry_run=0, send_email=1, recompute_lead_time
             frappe.db.set_value("Item", item.name, "reorder", int(needs_reorder))
         _stock_check_log(verbose_log, f"[{now_datetime()}] Set reorder flag={int(needs_reorder)} for Item {item.name}")
 
-        if needs_reorder:
-            to_notify.append({
-                "code": item.name,
-                "name": item.item_name,
-                "stock": stock_position.actual_qty,
-                "avg_monthly": avg_monthly,
-                "ro": ro,
-                "ss": ss
-            })
-            _stock_check_log(verbose_log, f"[{now_datetime()}] Item {item.name} queued for notification")
-
     if not dry_run:
         frappe.db.commit()
-
-    if to_notify and not test_mode and send_email and not dry_run:
-        _stock_check_log(verbose_log, f"[{now_datetime()}] Sending notifications to recipients")
-        _send_notifications(to_notify)
-        _stock_check_log(verbose_log, f"[{now_datetime()}] Notifications sent")
 
     return result
 
@@ -1610,30 +1596,3 @@ def update_item_purchase_status(test_mode: bool, log_id: str):
             # update_log_entry(log_id, f"[{now_datetime()}] Set is_purchase_item={int(is_purch)} for Item {it.name}")
 
     frappe.db.commit()
-
-# --- Notifications ---
-
-def _send_notifications(items: list[dict]):
-    html = _build_email(items)
-    make(
-        recipients="alexandre.ringwald@amf.ch",
-        cc="alexandre.trachsel@amf.ch",
-        subject="Safety Stock Report",
-        content=html,
-        communication_medium="Email",
-        send_email=True
-    )
-
-def _build_email(items: list[dict]) -> str:
-    rows = ''.join(
-        f"<tr><td>{i['code']}</td><td>{i['name']}</td><td>{i['stock']}</td>"
-        f"<td>{i['avg_monthly']}</td><td>{i['ro']}</td><td>{i['ss']}</td></tr>"
-        for i in items
-    )
-    return (
-        "<p>Items at or below reorder level:</p>"
-        "<table style='border-collapse:collapse;width:100%;'>"
-        "<tr style='background:#2b47d9;color:#fff;'><th>Code</th><th>Name</th><th>Stock</th>"
-        "<th>Avg Mth</th><th>Reorder</th><th>Safety</th></tr>"
-        f"{rows}</table>"
-    )

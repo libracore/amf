@@ -1,10 +1,16 @@
 import frappe
-from frappe.core.doctype.communication.email import make
 
 test_mode = None
+WEEKLY_OPEN_ISSUES_REPORT_ENABLED = False
 
 def fetch_open_issues():
     """Fetch all open issues from the ERPNext database, then order them dynamically."""
+    if not WEEKLY_OPEN_ISSUES_REPORT_ENABLED:
+        return {
+            'disabled': True,
+            'report': 'Weekly Open Issues Report',
+        }
+
     # Fetch all open issues without filtering by issue_type initially.
     issues = frappe.get_list('Issue',
                              filters={'status': 'Open'},
@@ -57,6 +63,14 @@ def generate_html_report(issues):
 
 def send_email_report(html_content, owner_emails):
     """Send customized reports to process_owner and amf_contact."""
+    if not WEEKLY_OPEN_ISSUES_REPORT_ENABLED:
+        return {
+            'disabled': True,
+            'report': 'Weekly Open Issues Report',
+        }
+
+    from frappe.core.doctype.communication.email import make
+
     # Assuming email_content generation is done outside this function and passed as an argument
     # Generate reports for process_owner and amf_contact  
     email_content = f"Please find attached the report of open issues as of today. <br>{html_content}"
