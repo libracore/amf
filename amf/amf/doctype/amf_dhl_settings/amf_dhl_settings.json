@@ -35,7 +35,7 @@
   },
   {
    "default": "Test",
-   "description": "Validation uses POST /shipments?validateDataOnly=true. Test is the safe default.",
+   "description": "Validation and creation use the selected MyDHL endpoint. Test is the safe default; select Production only deliberately.",
    "fieldname": "api_environment",
    "fieldtype": "Select",
    "label": "API Environment",

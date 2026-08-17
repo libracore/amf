@@ -8,8 +8,39 @@ import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 
+MYDHL_SETTINGS_FIELDS = (
+	"tracking_section",
+	"dhl_api_key",
+	"mydhl_section",
+	"api_environment",
+	"api_username",
+	"api_password",
+	"shipper_account_number",
+	"shipper_contact_section",
+	"shipper_contact_name",
+	"shipper_contact_phone",
+	"shipper_contact_email",
+)
+
+
+def install_dhl_settings_schema():
+	"""Force the merged singleton JSON into the DB before using its fields."""
+	frappe.reload_doc("amf", "doctype", "amf_dhl_settings", force=True)
+	frappe.clear_cache(doctype="AMF DHL Settings")
+	meta = frappe.get_meta("AMF DHL Settings", cached=False)
+	missing = [fieldname for fieldname in MYDHL_SETTINGS_FIELDS if not meta.has_field(fieldname)]
+	if missing:
+		frappe.throw(
+			"AMF DHL Settings schema installation failed; missing fields: {0}".format(", ".join(missing))
+		)
+	if not frappe.db.get_single_value("AMF DHL Settings", "api_environment"):
+		frappe.db.set_value("AMF DHL Settings", "AMF DHL Settings", "api_environment", "Test")
+	return {"installed_fields": list(MYDHL_SETTINGS_FIELDS), "missing_fields": []}
+
+
 def install_dhl_shipment_fields():
 	"""Install the explicit operator inputs and validation audit fields."""
+	install_dhl_settings_schema()
 	create_custom_fields(
 		{
 			"Shipment": [
@@ -200,9 +231,4 @@ def install_dhl_shipment_fields():
 		},
 		update=True,
 	)
-	settings = frappe.get_single("AMF DHL Settings")
-	if not settings.get("api_environment"):
-		settings.api_environment = "Test"
-		settings.flags.ignore_permissions = True
-		settings.save()
 	frappe.clear_cache(doctype="Shipment")
