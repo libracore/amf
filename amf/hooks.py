@@ -298,6 +298,7 @@ after_migrate = [
     "amf.amf.utils.tool_maintenance.sync_tool_maintenance_custom_fields",
     "amf.amf.utils.sales_order_otif.sync_sales_order_otif_custom_fields",
     "amf.amf.utils.sales_invoice_total_ht.sync_sales_invoice_total_ht_customization",
+    "amf.amf.utils.weekly_operations_report.sync_weekly_operations_report_settings",
     "amf.amf.utils.amf_issue_test_management.clear_amf_issue_test_management_meta_cache",
     "amf.amf.utils.kpi_dashboard.sync_supply_chain_manufacturing_dashboard",
 ]

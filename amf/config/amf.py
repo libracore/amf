@@ -55,6 +55,12 @@ def get_data():
             "icon": "octicon octicon-git-compare",
             "items": [
                 {
+                    "type": "doctype",
+                    "name": "Weekly Operations Report",
+                    "label": _("Weekly Operations Reports"),
+                    "description": _("Tuesday production, supply, QC and shipping slides")
+                },
+                {
                     "type": "page",
                     "name": "tool-maintenance",
                     "label": _("Tool Maintenance"),

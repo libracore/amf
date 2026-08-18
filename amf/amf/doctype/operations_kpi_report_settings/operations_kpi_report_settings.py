@@ -16,6 +16,21 @@ class OperationsKPIReportSettings(Document):
             frappe.throw(_("Enable at least one report language."))
         if self.send_email and not self.email_recipients:
             frappe.throw(_("Email Recipients are required when automatic email is enabled."))
+        if self.enable_weekly_operations_slide:
+            if not self.weekly_report_owner:
+                frappe.throw(_("Slide Owner Initials are required for the weekly slide."))
+            if not self.weekly_qc_warehouse:
+                frappe.throw(_("A Quality Control Warehouse is required for the weekly slide."))
+            if not 1 <= cint(self.weekly_lookback_days) <= 90:
+                frappe.throw(_("Shipment Lookback must be between 1 and 90 days."))
+            if not 1 <= cint(self.weekly_lookahead_days) <= 90:
+                frappe.throw(_("Planning Lookahead must be between 1 and 90 days."))
+            if not 1 <= cint(self.weekly_qc_backlog_days) <= 365:
+                frappe.throw(_("QC Backlog Age must be between 1 and 365 days."))
+            if not 3 <= cint(self.weekly_max_items) <= 8:
+                frappe.throw(_("Maximum Rows per Section must be between 3 and 8."))
+        if self.weekly_send_email and not self.weekly_email_recipients:
+            frappe.throw(_("Weekly Email Recipients are required when weekly email is enabled."))
         if self.enable_ai_insights:
             from amf.amf.utils.openai_credentials import has_openai_api_key
 
@@ -55,6 +70,16 @@ def generate_previous_month_now():
     from amf.amf.utils.monthly_operations_report import generate_previous_month_report
 
     return generate_previous_month_report(force=True, source="Manual")
+
+
+@frappe.whitelist()
+def generate_current_weekly_slide_now():
+    frappe.only_for("System Manager")
+    from amf.amf.utils.weekly_operations_report import (
+        generate_current_weekly_report,
+    )
+
+    return generate_current_weekly_report(force=True, source="Manual")
 
 
 @frappe.whitelist()

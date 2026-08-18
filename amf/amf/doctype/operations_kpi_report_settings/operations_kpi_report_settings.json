@@ -6,6 +6,19 @@
  "field_order": [
   "enabled",
   "company",
+  "weekly_section",
+  "enable_weekly_operations_slide",
+  "weekly_report_owner",
+  "weekly_qc_warehouse",
+  "column_break_weekly",
+  "weekly_lookback_days",
+  "weekly_lookahead_days",
+  "weekly_qc_backlog_days",
+  "weekly_max_items",
+  "weekly_distribution_section",
+  "weekly_send_email",
+  "weekly_email_recipients",
+  "weekly_email_subject_prefix",
   "ai_section",
   "enable_ai_insights",
   "openai_api_key",
@@ -47,6 +60,86 @@
    "label": "Company",
    "options": "Company",
    "reqd": 1
+  },
+  {
+   "fieldname": "weekly_section",
+   "fieldtype": "Section Break",
+   "label": "Weekly Production & Supply Slide"
+  },
+  {
+   "default": "1",
+   "description": "Generate the 16:9 OPS Weekly slide every Tuesday at 08:00 Europe/Zurich.",
+   "fieldname": "enable_weekly_operations_slide",
+   "fieldtype": "Check",
+   "label": "Enable Weekly Slide"
+  },
+  {
+   "default": "ATR",
+   "fieldname": "weekly_report_owner",
+   "fieldtype": "Data",
+   "label": "Slide Owner Initials"
+  },
+  {
+   "default": "Quality Control - AMF21",
+   "fieldname": "weekly_qc_warehouse",
+   "fieldtype": "Link",
+   "label": "Quality Control Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "column_break_weekly",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "7",
+   "description": "Days of tracked, submitted Delivery Notes shown as shipments in progress.",
+   "fieldname": "weekly_lookback_days",
+   "fieldtype": "Int",
+   "label": "Shipment Lookback (Days)"
+  },
+  {
+   "default": "14",
+   "description": "Future days included for machining, Work Orders, and draft Delivery Notes.",
+   "fieldname": "weekly_lookahead_days",
+   "fieldtype": "Int",
+   "label": "Planning Lookahead (Days)"
+  },
+  {
+   "default": "7",
+   "description": "Receipt stock still in the QC warehouse after this age is counted as backlog.",
+   "fieldname": "weekly_qc_backlog_days",
+   "fieldtype": "Int",
+   "label": "QC Backlog Age (Days)"
+  },
+  {
+   "default": "6",
+   "description": "Maximum rows in each operational slide column (3 to 8).",
+   "fieldname": "weekly_max_items",
+   "fieldtype": "Int",
+   "label": "Maximum Rows per Section"
+  },
+  {
+   "fieldname": "weekly_distribution_section",
+   "fieldtype": "Section Break",
+   "label": "Weekly Slide Distribution"
+  },
+  {
+   "default": "0",
+   "fieldname": "weekly_send_email",
+   "fieldtype": "Check",
+   "label": "Email Weekly Slide Automatically"
+  },
+  {
+   "description": "Comma-separated email addresses used only for the weekly slide.",
+   "fieldname": "weekly_email_recipients",
+   "fieldtype": "Small Text",
+   "label": "Weekly Email Recipients"
+  },
+  {
+   "default": "[AMF Operations]",
+   "fieldname": "weekly_email_subject_prefix",
+   "fieldtype": "Data",
+   "label": "Weekly Email Subject Prefix"
   },
   {
    "fieldname": "ai_section",
@@ -217,7 +310,7 @@
   }
  ],
  "issingle": 1,
- "modified": "2026-06-25 00:10:00.000000",
+ "modified": "2026-08-14 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Operations KPI Report Settings",
