@@ -209,8 +209,8 @@
     color: #18223a;
     font-size: 12pt;
     font-weight: 700;
-    margin: 7mm 0 3mm;
-    padding-bottom: 1.5mm;
+    margin: 5mm 0 1.5mm;
+    padding-bottom: 1mm;
 }
 
 .item-count {
@@ -221,7 +221,7 @@
 }
 
 .item-section {
-    margin-bottom: 6mm;
+    margin-bottom: 1.4mm;
 }
 
 .item-title-table,
@@ -238,7 +238,7 @@
 .item-title-table td {
     border: 0 !important;
     color: #fff;
-    padding: 2.2mm 2.5mm !important;
+    padding: 1.2mm 2mm !important;
     vertical-align: middle !important;
 }
 
@@ -264,7 +264,7 @@
 
 .item-name {
     font-size: 7.5pt;
-    margin-top: 0.8mm;
+    margin-top: 0.4mm;
     opacity: 0.85;
 }
 
@@ -285,7 +285,7 @@
 .quantity-value {
     font-size: 11pt;
     font-weight: 700;
-    margin-top: 0.7mm;
+    margin-top: 0.3mm;
 }
 
 .quantity-value span {
@@ -297,9 +297,9 @@
     background: #fff;
     border: 1.2px solid #17235d;
     display: inline-block;
-    height: 4.5mm;
-    margin-top: 1mm;
-    width: 4.5mm;
+    height: 4mm;
+    margin-top: 0.5mm;
+    width: 4mm;
 }
 
 .item-overview {
@@ -309,19 +309,20 @@
 
 .item-overview td {
     border: 0 !important;
-    padding: 3mm !important;
-    vertical-align: middle !important;
+    padding: 1.4mm 2mm !important;
+    vertical-align: top !important;
 }
 
 .item-image-cell {
     border-right: 1px solid #e1e6f0 !important;
-    height: 28mm;
+    height: 16mm;
     text-align: center;
+    vertical-align: middle !important;
     width: 23%;
 }
 
 .item-image {
-    max-height: 26mm;
+    max-height: 14mm;
     max-width: 100%;
     width: auto;
 }
@@ -332,15 +333,24 @@
     font-style: italic;
 }
 
+.item-overview.no-image .item-image-cell {
+    height: 11mm;
+}
+
 .item-description {
     width: 77%;
 }
 
 .description-value {
     color: #303a50;
-    margin-top: 1mm;
+    margin-top: 0.5mm;
     word-break: break-word;
     word-wrap: break-word;
+}
+
+.description-value p,
+.description-value div {
+    margin-bottom: 0.3mm;
 }
 
 .serial-table {
@@ -360,7 +370,7 @@
     font-size: 7pt;
     font-weight: 700;
     letter-spacing: 0.07em;
-    padding: 1.5mm 2.5mm !important;
+    padding: 1.1mm 2mm !important;
     text-transform: uppercase;
 }
 
@@ -387,7 +397,7 @@
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
     font-size: 7.3pt;
     line-height: 1.2;
-    padding: 1.2mm 2.2mm !important;
+    padding: 0.7mm 2mm !important;
     vertical-align: middle !important;
     white-space: normal;
     width: 33.333%;
