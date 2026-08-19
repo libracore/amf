@@ -21,11 +21,11 @@
     </table>
     <div class="hero-spacer"></div>
 
-    {% if doc.docstatus == 0 %}
+    <!-- {% if doc.docstatus == 0 %}
     <div class="status-banner status-draft">{{ _("DRAFT") }}</div>
     {% elif doc.docstatus == 2 %}
     <div class="status-banner status-cancelled">{{ _("CANCELLED") }}</div>
-    {% endif %}
+    {% endif %} -->
 
     <table class="summary-grid">
         <tr>
@@ -144,7 +144,7 @@
             </tr>
         </table>
 
-        <table class="item-overview">
+        <table class="item-overview{% if item.image %} has-image{% else %} no-image{% endif %}">
             <tr>
                 <td class="item-image-cell">
                     {% if item.image %}

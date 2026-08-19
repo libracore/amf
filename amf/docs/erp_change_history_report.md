@@ -1,12 +1,12 @@
 # AMF ERP Release Notes
 
-Generated on: 2026-08-11
+Generated on: 2026-08-19
 
-Change history through: 2026-08-11
+Change history through: 2026-08-18
 
 Live system: [AMF ERP Desk](https://amf.libracore.ch/desk#)
 
-Latest release: `v2026.08.1`
+Latest release: `v2026.08.3`
 
 Release status: Ready for validation
 
@@ -16,7 +16,7 @@ Release audience: AMF ERP users, department leads, management, operations, finan
 
 This document is the business-facing release notes and change history for the AMF ERP custom app.
 
-It summarizes the main ERP changes developed in the AMF custom app from the beginning of the recorded development history to 2026-08-11. The report is based on the `apps/amf` git history, which starts on 2022-09-19, and on the current AMF app structure, including custom DocTypes, reports, pages, hooks and documentation.
+It summarizes the main ERP changes developed in the AMF custom app from the beginning of the recorded development history to 2026-08-18. The report is based on the `apps/amf` git history, which starts on 2022-09-19, and on the current AMF app structure, including custom DocTypes, reports, pages, hooks and documentation.
 
 This is intentionally not a technical commit-by-commit changelog. It is a release communication document for the main modifications, novelties and functional areas added over time. Standard Frappe and ERPNext framework changes are not listed unless they were reflected in AMF custom development.
 
@@ -47,7 +47,9 @@ Historical development milestones already recorded in the project, such as `v0.4
 
 | Release | Status | Period | Main Focus |
 | --- | --- | --- | --- |
-| `v2026.08.1` | Ready for validation, latest | 2026 Q3 to date | Tool-only maintenance planning, maintenance history, preventive maintenance dashboard, automatic Item maintenance summaries, P202-O BOM creation and receipt batch tracking for item `70E000`. |
+| `v2026.08.3` | Ready for validation, latest | 2026 Q3 to date | Loan Order commercial settlement, DHL Express shipment creation, Delivery Note commercial invoice and packaging formats, Weekly Operations Report slides and legacy weekly email cleanup. |
+| `v2026.08.2` | Superseded | 2026 Q3 | Recursive default BOM versioning, 4B/4C BOM family-coherence repairs, Issue timeline/resolution layout refinements and receipt batch tracking for item `70E000`. |
+| `v2026.08.1` | Superseded | 2026 Q3 | Tool-only maintenance planning, maintenance history, preventive maintenance dashboard, automatic Item maintenance summaries, P202-O BOM creation and receipt batch tracking for item `70E000`. |
 | `v2026.07.1` | Published | 2026 Q3 | Procurement cash forecast, global inventory dashboard, issue management, item dashboards, component drawing register, bank reconciliation automation and serial-number tools. |
 | `v2026.06.0` | Superseded | 2026 Q2 | Loan Orders, landed cost behavior, work order automation, KPI dashboards, procurement tools and AI-assisted reporting. |
 | `v2026.03.0` | Superseded | 2026 Q1 | Swiss VAT handling, customs mapping, planning quantities, batch quantity retrieval and costing support. |
@@ -57,77 +59,71 @@ Historical development milestones already recorded in the project, such as `v0.4
 | `v0.4.0` | Superseded | 2024 Q3 | Master CRM, Sales Actions, campaign lists, Gravity Forms, Brevo integration and CRM analytics. |
 | Foundation releases | Superseded | 2022-2024 | Core reporting, planning, labels, QR codes, inventory visibility, logistics, purchasing and CRM foundations. |
 
-## Latest Release: `v2026.08.1`
+## Latest Release: `v2026.08.3`
 
-Release date: 2026-08-11
+Release date: 2026-08-19
 
 Release status: Ready for validation
+
+Committed change window: 2026-08-14 to 2026-08-18
 
 Live version: [https://amf.libracore.ch/desk#](https://amf.libracore.ch/desk#)
 
 ### Summary
 
-This release adds a dedicated Tool Maintenance workflow inside AMF ERP and includes BOM creation support for P202-O products. Maintenance information is now attached directly to Item records when the Item Group is `Tool`, and the ERP includes dedicated maintenance plans, intervention logs and a maintenance planner page for daily follow-up.
+This release extends Loan Orders into a complete commercial settlement workflow. After loaned equipment is with the customer, users can record the customer decision, create a draft settlement Sales Invoice, and generate the supporting stock or delivery documents needed to close the loan cleanly.
 
-The release is designed so maintenance status stays current when tools, plans or maintenance logs change. New Tool items are initialized automatically, recurring plans recalculate their next due date after interventions, completed one-time plans close automatically, and Item maintenance summary fields are refreshed through document hooks and a scheduled daily sync.
+It also introduces a cautious DHL Express shipment workflow for submitted DHL Delivery Notes. ERPNext can now prepare a DHL Shipment draft, fetch available DHL transport products, validate the exact payload with MyDHL, and create the AWB only after the validated payload is still unchanged and the operator confirms the action.
 
-For product master data, the release also creates submitted default BOMs for the P202-O `4D` item family from validated P201-O/`42` BOM templates, with the body component updated to the P202-O body item.
-
-The release also activates batch tracking for purchased syringe item `70E000` (`Syringe 2500-P uL`). Purchase Receipts for this item can now receive a newly generated Batch automatically on receipt submission, improving traceability for incoming syringe stock.
+Operational reporting and document output also move forward. A new Weekly Operations Report creates a 16:9 production and supply slide as PDF/PNG, while Delivery Note printing gains updated commercial invoice and packaging formats for customs and shipping review.
 
 ### Highlights
 
-- Added a Tool-only maintenance section on Item records.
-- Added Tool Maintenance Plan and Tool Maintenance Log DocTypes.
-- Added the Tool Maintenance planner page at `/app/tool-maintenance`.
-- Added Item form actions for Maintenance Planner, New Maintenance Plan and Log Intervention.
-- Added BOM creation for P202-O products in the `4D` item family.
-- Imported safe tool metadata from the maintenance spreadsheet where item matching was unambiguous.
-- Added automatic refresh behavior when a Tool item, maintenance plan or maintenance log is created, changed, completed, moved or deleted.
-- Added safeguards so Tool items with existing maintenance records cannot be silently moved out of the Tool item group.
-- Added daily maintenance summary refresh so due and overdue statuses age correctly over time.
-- Activated batch tracking and automatic per-receipt Batch creation for item `70E000`.
+- Added Loan Order settlement invoicing for customer decisions such as `Spare Parts Only` and `Full Product Purchase`.
+- Added settlement stock/logistics documents for Loan Orders, including full-sale Delivery Notes, spare-part sale Delivery Notes, remaining-item return Delivery Notes and value-neutral repack Stock Entries.
+- Added Sales Invoice, Delivery Note and Stock Entry backlinks so Loan Order settlement documents remain traceable from the originating Loan Order and item rows.
+- Added DHL Express Shipment creation from submitted DHL Delivery Notes, including local draft building, product lookup, remote validation and confirmation-gated AWB creation.
+- Added DHL audit controls: payload fingerprints, Test/Production environment tracking, message references, creation status, piece tracking numbers and private attachment of returned labels/documents.
+- Added 2026 Delivery Note print formats for commercial invoices and packaging branding, with installer patches and updated Delivery Note print-button routing.
+- Added Weekly Operations Report DocType and generation utilities for a one-slide production and supply snapshot covering delivery performance, overdue orders, machining, Work Orders, QC backlog and shipping.
+- Added weekly report settings, manual generation from Operations KPI Report Settings, optional weekly email distribution and scheduled defaults.
+- Disabled legacy weekly open-issue and standard-item availability email reports so the new reporting workflow becomes the controlled reporting path.
+- Refined the 2026 packaging print layout so item sections, images and serial tables fit more compactly on the generated document.
 
 ### Change Notes
 
 | Area | Change | Brief Explanation |
 | --- | --- | --- |
-| Item master data | Tool-only maintenance fields added to Item. | Displays maintenance fields only for items in Item Group `Tool`, including serial number, equipment type, ownership, location, responsible employee, required PPE, calibration procedure, instructions, last maintenance, next maintenance, status and open/overdue plan counts. |
-| Maintenance planning | Tool Maintenance Plan DocType added. | Lets users define preventive maintenance requirements for tools, including frequency, due dates, responsibility, status and plan instructions. |
-| Maintenance execution | Tool Maintenance Log DocType added. | Records completed interventions, links work back to the related Tool item and maintenance plan, and updates last/next maintenance information. |
-| Maintenance dashboard | Tool Maintenance page added. | Provides a dedicated planning page for reviewing Tool maintenance status, due and overdue work, plans and intervention history. |
-| Product master data | P202-O BOM creation added. | Creates submitted default BOMs for P202-O `4D` finished goods from matching P201-O/`42` BOM templates and replaces the source body component with the P202-O body item `5D1000`. |
-| ERP automation | Maintenance summaries refresh automatically. | Item maintenance summary fields are updated after Tool saves, plan changes and log changes, plus a scheduled daily refresh keeps due and overdue status current. |
-| Data migration | Spreadsheet data mapped into Tool Item fields where safe. | Maintenance-related metadata from the spreadsheet was imported only when the Tool item match was unambiguous; conflicting or stale reused item codes were left untouched for manual review. |
-| Data protection | Item Group changes are guarded. | A Tool item with existing maintenance plans or logs cannot be moved out of Item Group `Tool` without first resolving the linked maintenance history. |
-| Purchase receipt traceability | Item `70E000` now creates Batches on receipt. | Enables batch tracking and automatic new Batch creation for `70E000` so each Purchase Receipt can create a receipt-specific Batch for the incoming syringe item. |
+| Loan Order settlement | Commercial decision workflow added. | Submitted customer Loan Orders can now move from temporary stock movement to settlement. Users choose `Spare Parts Only` or `Full Product Purchase`, and ERPNext prepares a draft invoice from the Loan Order quantities, roles and price list. |
+| Loan Order stock flow | Settlement support documents added. | A full purchase creates a settlement Delivery Note for the sold items. A spare-parts-only settlement dismantles loaned products through a value-neutral Repack, invoices the spare parts and prepares a return Delivery Note for the remaining components. |
+| Loan Order traceability | Backlinks and status sync added. | Sales Invoices, Sales Invoice Items, Delivery Notes and Stock Entries now carry Loan Order references where relevant. The Loan Order keeps links to the created settlement documents and updates its status when commercial settlement is complete. |
+| DHL shipment creation | MyDHL Express workflow added. | Submitted non-return Delivery Notes whose carrier contains `DHL` can create an ERPNext Shipment draft. The workflow builds the DHL payload, fetches available transport products, validates data remotely and only then allows AWB creation. |
+| DHL audit and safeguards | Validation boundary added. | The exact validated payload and MyDHL environment are fingerprinted before creation. Unknown creation outcomes block automatic retries, and request identifiers, tracking numbers, DHL responses and returned labels are retained for audit follow-up. |
+| Delivery Note printing | 2026 print formats added. | Delivery Notes now have enhanced commercial invoice and packaging branding formats. The commercial invoice format emphasizes customs fields such as origin, HS code, net weight and totals, while packaging output was tuned for denser item/serial presentation. |
+| Weekly operations reporting | Weekly slide report added. | The new Weekly Operations Report stores generated PDF/PNG outputs and a JSON data snapshot. It collects live ERP data for production, delivery, QC and shipping so management can review a repeatable weekly operational picture. |
+| Report distribution | Weekly settings and email controls added. | Operations KPI Report Settings now includes weekly slide configuration, row limits, lookback/lookahead windows, QC backlog thresholds, manual generation and optional scheduled email recipients. |
+| Legacy email cleanup | Old weekly reports disabled. | The older weekly open-issue and standard-item availability email functions now return disabled status instead of sending mail. This prevents parallel report emails from continuing beside the new Weekly Operations Report workflow. |
 
 ### User Impact
 
-- No separate user installation action is required.
-- Users should continue working in the live ERP system at [https://amf.libracore.ch/desk#](https://amf.libracore.ch/desk#).
-- Maintenance-relevant fields appear on Item records only when the item belongs to Item Group `Tool`.
-- New Tool items receive a maintenance summary automatically when saved.
-- Maintenance users can create plans and log interventions from the Tool Item form or from the Tool Maintenance planner page.
-- Recurring plans calculate their next due date from the latest completed intervention.
-- Overdue and due statuses are visible both on Tool Item records and in the dedicated planner.
-- P202-O `4D` products can receive validated default BOMs based on the corresponding P201-O product structure.
-- Purchase Receipts for item `70E000` now support automatic Batch creation, so users do not need to create the receipt Batch manually when the document is submitted.
+- No separate user installation action is required after the migration is deployed.
+- Loan Order users get a guided settlement path instead of manually assembling invoices, repacks and return documents.
+- Sales and finance teams can trace settlement invoices and related stock/logistics documents back to the originating Loan Order.
+- Logistics/export users can build and validate DHL Shipments from ERPNext before creating an AWB, with clearer audit data when DHL accepts, rejects or leaves an outcome uncertain.
+- Delivery Note users get refreshed commercial invoice and packaging outputs for customs, parcel preparation and customer-facing shipment documentation.
+- Operations managers can generate a weekly production and supply slide from live ERP data and control whether it is emailed automatically.
+- Legacy weekly email reports stop sending, reducing duplicate operational report traffic.
 
 ### Validation Notes
 
 Recommended post-release checks:
 
-- Open a Tool item and confirm the maintenance section is visible.
-- Open a non-Tool item and confirm the maintenance section is hidden.
-- Create a new Tool item and confirm the maintenance status initializes to `No Plan`.
-- Create a maintenance plan for a Tool item and confirm the Item summary counts update.
-- Log a completed intervention and confirm last maintenance, next maintenance and plan status update.
-- Test one recurring plan and confirm the next due date moves according to the configured frequency.
-- Confirm the Tool Maintenance page opens at [https://amf.libracore.ch/desk#tool-maintenance](https://amf.libracore.ch/desk#tool-maintenance).
-- Review the spreadsheet import exceptions before manually entering maintenance data for conflicted item codes.
-- Review a representative P202-O `4D` item and confirm its submitted default BOM uses body item `5D1000` with the expected remaining components from the corresponding P201-O template.
-- Create or review a Purchase Receipt line for item `70E000` and confirm a Batch is generated on submission when the row has no manually selected Batch.
+- Create or open a submitted customer Loan Order and validate both `Spare Parts Only` and `Full Product Purchase` settlement paths on representative examples.
+- Confirm the Loan Order keeps links to its settlement Sales Invoice, Delivery Notes and Repack Stock Entry where applicable.
+- Create a DHL Shipment draft from a submitted DHL Delivery Note, build the local draft, fetch transport products and validate with MyDHL in the Test environment before any Production AWB creation.
+- Print one representative Delivery Note with the 2026 commercial invoice and packaging formats, checking customs fields, totals, item images and serial-number layout.
+- Generate a Weekly Operations Report manually from Operations KPI Report Settings and confirm both the PDF and PNG slide outputs are attached.
+- Confirm the legacy weekly open-issue and standard-item availability email functions return disabled status and do not send mail.
 
 ## Executive Summary
 
@@ -141,18 +137,49 @@ The main evolution areas are:
 - QR code, barcode, label and production sticker generation.
 - Inventory visibility, safety stock, stock forecasting and replenishment support.
 - Purchasing and procurement follow-up.
-- Delivery Note, shipping, DHL tracking and logistics tools.
+- Delivery Note, shipping, DHL tracking, DHL shipment creation and logistics tools.
 - CRM, contact management, sales actions, campaign lists and external form/email integrations.
 - Quality inspection, issue management, customer feedback and satisfaction surveys.
 - Finance and compliance support such as VAT, HS codes, customs values, landed cost and custom ledgers.
 - Operational dashboards, KPI reporting and AI-assisted reporting.
+- Weekly operations slide reporting for production, supply, QC and shipping follow-up.
 - User interface improvements, document hooks, automation scripts and administrative utilities.
 
 ## Release History
 
 ### 2026 - Advanced Planning, Finance, Compliance, Dashboards And AI Reporting
 
-#### `v2026.08.1` - 2026 Q3 To Date - Latest
+#### `v2026.08.3` - 2026 Q3 To Date - Latest
+
+- Loan Order commercial settlement added for submitted customer Loan Orders after equipment has been loaned out.
+- Customer billing decisions now support `Spare Parts Only` and `Full Product Purchase`, with draft Sales Invoice creation from the Loan Order.
+- Spare-parts-only settlement can dismantle loaned products through a value-neutral Repack, invoice the spare components and prepare a return Delivery Note for the remaining components.
+- Full-product-purchase settlement can create the settlement Delivery Note and invoice the outstanding customer-owned items without rebuilding the transaction manually.
+- Loan Order settlement documents now carry backlinks across Sales Invoice, Delivery Note, Stock Entry and child rows for audit traceability.
+- DHL Express Shipment workflow added for submitted non-return Delivery Notes whose carrier is DHL.
+- DHL draft building, transport product lookup, MyDHL validation and confirmation-gated AWB creation added with payload fingerprints and environment tracking.
+- DHL Shipment audit fields added for validation status, creation status, message reference, tracking URL, piece tracking numbers, payload fingerprints and returned documents.
+- MyDHL Settings expanded with separate shipment API credentials, endpoint selection, shipper account and fallback shipper contact values.
+- Delivery Note commercial invoice and 2026 packaging print formats added, with installer patches and Delivery Note print-button routing.
+- Weekly Operations Report DocType added for generated PDF/PNG production and supply slides, including stored JSON diagnostics.
+- Weekly operations data collection added for delivery performance, overdue deliveries, machining queue, open Work Orders, incoming QC backlog and shipping status.
+- Operations KPI Report Settings expanded with weekly slide configuration, manual generation, scheduled defaults and optional weekly email distribution.
+- Legacy weekly open-issue and standard-item availability email reports disabled to avoid duplicate uncontrolled report emails.
+- 2026 packaging branding layout refined to fit item details, images and serial tables more compactly.
+- Tests added for Loan Order settlement, DHL shipment payload/creation behavior, weekly operations reporting and disabled legacy email reports.
+
+#### `v2026.08.2` - 2026 Q3
+
+- Recursive default BOM versioning added for bottom-up propagation of default child BOM changes.
+- BOM update job can be queued on the long worker and protected with a database lock.
+- New submitted BOM versions are created and promoted instead of editing submitted BOMs in place.
+- Item default BOM fields and AMF BOM snapshots are aligned when default BOMs are repaired.
+- 4B/4C BOM family-coherence repair tooling added for stale disabled component links, invalid child BOM links and expected special-component quantities.
+- Issue custom layout refreshed with support timeline and resolution fields.
+- Batch tracking and automatic per-receipt Batch creation activated for syringe item `70E000`.
+- Tests added for recursive BOM updates, BOM family coherence and receipt batch setup.
+
+#### `v2026.08.1` - 2026 Q3
 
 - Tool Maintenance workflow added for items in Item Group `Tool`.
 - Tool-only maintenance fields added to Item records, including equipment details, responsibility, safety information, instructions, dates, status and summary counts.
@@ -392,6 +419,7 @@ The main evolution areas are:
 - Production Master Planner, planning pages and planning DocType enhancements.
 - Work Order creation, assignment, serial-number behavior and automation.
 - P202-O BOM creation for the `4D` finished goods family.
+- 4B/4C BOM family coherence repairs and recursive default BOM versioning.
 - Production tracking with operator timers and Work Order QR access.
 - Estimated manufacturing time and production cost/time tracking support.
 - Tool maintenance planning, due-date tracking and intervention history.
@@ -403,12 +431,13 @@ The main evolution areas are:
 - Safety stock, reorder level, stock forecasting and shortage visibility.
 - Purchase Order checking, late purchase reporting and procurement dashboards.
 - Batch handling, raw material batches, ATR batches and batch disabling.
+- Receipt-specific batch creation for selected purchased stock items.
 - Stock Entry hooks, repairs, scrap behavior and valuation/rate updates.
 
 ### Item, BOM And Product Master
 
 - Item Master, Product Master and Item Creation workflows.
-- BOM creation, P202-O BOM creation, BOM child updates, pump BOM updates and recursive BOM updates.
+- BOM creation, P202-O BOM creation, BOM child updates, pump BOM updates, 4B/4C repairs and recursive BOM updates.
 - Item valuation from BOM costs.
 - Drawing match and component drawing register support.
 - Tool-only Item maintenance fields and automatic maintenance summaries.
@@ -418,10 +447,11 @@ The main evolution areas are:
 
 - Delivery Note API and Delivery Note customizations.
 - Serial-number transfer to Delivery Notes.
-- DHL export and tracking integration.
+- DHL export, tracking and MyDHL Express shipment creation.
 - Logistics tracking page and tracking settings.
+- Delivery Note commercial invoice and packaging branding print formats.
 - Sales Order to Delivery Note lead-time reporting.
-- Loan Order support and document links.
+- Loan Order support, document links and commercial settlement invoicing.
 
 ### CRM, Sales And Marketing
 
@@ -447,6 +477,7 @@ The main evolution areas are:
 - AMF-specific General Ledger reporting.
 - Swiss VAT handling.
 - HS Code and customs tariff support.
+- Customs-oriented Delivery Note commercial invoice output.
 - Landed Cost Voucher-related behavior.
 - Sales Invoice custom behavior.
 - Bank reconciliation automation.
@@ -456,21 +487,23 @@ The main evolution areas are:
 
 - Operational, sales, procurement, stock, production, delivery and quality reports added over time.
 - SCM, quotation, global inventory, operations KPI and planning dashboards introduced or improved.
+- Weekly Operations Report slides with production, delivery, QC and shipping snapshots.
 - AI-assisted operations reporting added with controlled evidence-backed insights.
 - Document AI import structures added for document parsing and extraction workflows.
 
 ### User Experience And Technical Enablement
 
 - Custom pages, common JavaScript utilities and UI refinements added.
+- DHL Shipment form actions for draft building, product lookup, validation and AWB creation.
 - Barcode, DataMatrix, QR code and label infrastructure expanded.
-- Web pages for planning, item information, logistics and document tooling added.
-- Hooks, migrations, settings DocTypes and background utilities added to automate operational behavior, including Tool maintenance lifecycle updates.
+- Web pages and generated documents for planning, item information, logistics, print formats and document tooling added.
+- Hooks, migrations, settings DocTypes and background utilities added to automate operational behavior, including Tool maintenance lifecycle updates, BOM repair workflows, DHL Shipment setup and weekly report settings.
 
 ## Current Main Custom Objects
 
-The current AMF custom app includes custom objects for planning, item creation, Tool Maintenance Plans, Tool Maintenance Logs, global quality inspection, timer production, DHL tracking, loan orders, issue management, Document AI imports, HS codes, customer feedback, CRM forms, Brevo campaigns, sales actions and satisfaction surveys.
+The current AMF custom app includes custom objects for planning, item creation, Weekly Operations Reports, Tool Maintenance Plans, Tool Maintenance Logs, global quality inspection, timer production, DHL tracking, loan orders, issue management, Document AI imports, HS codes, customer feedback, CRM forms, Brevo campaigns, sales actions and satisfaction surveys. It also includes utility layers for Loan Order settlement, DHL Shipment creation, BOM family repair, recursive BOM updates, Delivery Note print formats and batch setup.
 
-The current report catalog includes operational reports for inventory turnover, stock and revenue, produced and delivered items, purchased versus manufactured items, delivered items, purchase order items, late purchases, purchase order cash forecasting, projected stock, sales dashboards, quotation dashboards, manufacturing yield, machined parts, item margins, no-price items, leave balances, AMF general ledger and Sales Order to Delivery Note lead time.
+The current report catalog includes operational reports for inventory turnover, stock and revenue, produced and delivered items, purchased versus manufactured items, delivered items, purchase order items, late purchases, purchase order cash forecasting, projected stock, sales dashboards, quotation dashboards, manufacturing yield, machined parts, item margins, no-price items, leave balances, AMF general ledger, Sales Order to Delivery Note lead time and weekly operations slide reporting.
 
 The current page catalog includes inventory planning, sales order stock projection, logistics tracking, global inventory dashboard, Tool Maintenance, component drawing register, bank reconciliation automation, order confirmation parsing, PDF text extraction and file upload tools.
 
@@ -503,48 +536,44 @@ This document should remain high level. Technical implementation details, indivi
 
 ### Email de la dernière version - prêt à valider
 
-Objet: AMF ERP - Version v2026.08.1 - Maintenance outils et BOM P202-O
+Objet: AMF ERP - Version v2026.08.3 - Loan Orders, DHL et reporting OPS
 
 Bonjour à toutes et à tous,
 
-La dernière version AMF ERP, v2026.08.1, est prête pour validation dans le système live:
+La dernière version AMF ERP, v2026.08.3, est prête pour validation dans le système live:
 
 AMF ERP live
 https://amf.libracore.ch/desk#
 
-Cette version concerne principalement la planification de maintenance des outils directement dans l'ERP et la création de BOM pour les produits P202-O.
+Cette version concerne principalement le règlement commercial des Loan Orders, la création d'expéditions DHL Express, les nouveaux formats d'impression Delivery Note et le nouveau reporting hebdomadaire OPS.
 
 Principaux changements:
 
-Tool Maintenance
-https://amf.libracore.ch/desk#tool-maintenance
-Une nouvelle page permet de suivre les plans de maintenance, les interventions, les échéances et les retards pour les outils.
+Loan Orders
+https://amf.libracore.ch/desk#List/Loan%20Order/List
+Les Loan Orders client soumis peuvent maintenant créer une facture de règlement selon la décision client: Spare Parts Only ou Full Product Purchase. Le flux prépare aussi les documents de stock ou de livraison nécessaires pour solder correctement le prêt.
 
-Articles de type Tool
-https://amf.libracore.ch/desk#List/Item/List
-Une section maintenance est maintenant affichée uniquement pour les articles dont le groupe est Tool.
+DHL Express
+https://amf.libracore.ch/desk#List/Shipment/List
+Une Delivery Note DHL soumise peut maintenant préparer une Shipment ERPNext, récupérer les produits de transport DHL, valider les données avec MyDHL et créer l'AWB après confirmation explicite. Les validations, empreintes de payload, références DHL, numéros de suivi et documents retournés sont conservés pour audit.
 
-Tool Maintenance Plans
-https://amf.libracore.ch/desk#List/Tool%20Maintenance%20Plan/List
-Les plans de maintenance permettent de définir les fréquences, les prochaines échéances, les responsables et les instructions.
+Formats Delivery Note
+https://amf.libracore.ch/desk#List/Delivery%20Note/List
+De nouveaux formats 2026 améliorent la facture commerciale douanière et le branding packaging. Ils mettent mieux en avant l'origine, le code HS, les poids, les totaux et les informations articles/séries pour la préparation d'expédition.
 
-Tool Maintenance Logs
-https://amf.libracore.ch/desk#List/Tool%20Maintenance%20Log/List
-Les interventions réalisées peuvent être enregistrées et reliées au plan et à l'outil concerné.
+Weekly Operations Report
+https://amf.libracore.ch/desk#List/Weekly%20Operations%20Report/List
+Un nouveau rapport hebdomadaire génère une slide 16:9 en PDF et PNG pour suivre production, supply, QC et expéditions. La génération peut être lancée manuellement depuis Operations KPI Report Settings et dispose d'une distribution email optionnelle.
 
-BOM P202-O
-https://amf.libracore.ch/desk#List/BOM/List
-Les BOM des produits P202-O de la famille 4D peuvent être créés à partir des modèles P201-O correspondants, avec le composant body adapté.
-
-Mise à jour automatique
-Les statuts de maintenance sont recalculés automatiquement lors des changements d'outil, de plan ou d'intervention, ainsi qu'une fois par jour.
+Anciens emails hebdomadaires
+Les anciens rapports email Weekly Open Issues et Weekly Availability of Standard Items sont désactivés afin d'éviter des emails parallèles non contrôlés à côté du nouveau reporting OPS.
 
 Ce que cela signifie pour vous:
 
-- Les responsables maintenance et production sont invités à valider quelques outils représentatifs avant communication générale.
-- Les responsables produit ou production sont invités à vérifier une BOM P202-O représentative avant utilisation opérationnelle.
-- Les utilisateurs peuvent créer un plan de maintenance ou enregistrer une intervention depuis la fiche article Tool ou depuis la nouvelle page Tool Maintenance.
-- Les articles qui ne sont pas dans le groupe Tool ne sont pas concernés par cette nouvelle section.
+- Les équipes sales et finance sont invitées à valider un règlement Loan Order Spare Parts Only et un Full Product Purchase sur des cas représentatifs.
+- Les équipes logistique/export sont invitées à tester la création DHL en environnement Test avant toute création AWB en Production.
+- Les utilisateurs Delivery Note sont invités à contrôler une facture commerciale et un document packaging générés avec les nouveaux formats.
+- Les responsables opérations peuvent générer une Weekly Operations Report et vérifier la slide PDF/PNG avant activation d'une distribution email.
 - Merci de signaler tout comportement inattendu via le canal de support interne habituel.
 
 Bonne journée,

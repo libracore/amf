@@ -1,0 +1,429 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>AMF Ops Weekly W{{ report.scope.iso_week|e }}</title>
+    <style>
+        @page { size: 338.667mm 190.5mm; margin: 0; }
+        * { box-sizing: border-box; }
+        html, body {
+            width: 1280px;
+            height: 720px;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #ffffff;
+            color: #202124;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .slide {
+            position: relative;
+            width: 1280px;
+            height: 720px;
+            overflow: hidden;
+            background: #fff;
+        }
+        .masthead {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 1280px;
+            height: 81px;
+            background: #1b1c1e;
+            color: #fff;
+        }
+        .brand {
+            position: absolute;
+            left: 44px;
+            top: 16px;
+            height: 51px;
+            width: 260px;
+        }
+        .brand-mark {
+            position: absolute;
+            left: 0;
+            top: 4px;
+            width: 70px;
+            height: 43px;
+        }
+        .brand-name {
+            position: absolute;
+            left: 76px;
+            top: 7px;
+            font-size: 17px;
+            line-height: 17px;
+            font-weight: 700;
+            letter-spacing: .05px;
+        }
+        .tagline {
+            position: absolute;
+            right: 55px;
+            top: 27px;
+            font-size: 25px;
+            line-height: 28px;
+            font-weight: 700;
+            letter-spacing: .2px;
+        }
+        .box {
+            position: absolute;
+            background: #f6f6f6;
+            border: 1px solid #9c9c9c;
+        }
+        .report-title {
+            left: 38px;
+            top: 94px;
+            width: 1204px;
+            height: 64px;
+            border-radius: 12px;
+            text-align: center;
+            padding-top: 10px;
+        }
+        .report-title .title {
+            font-size: 20px;
+            line-height: 23px;
+            font-weight: 700;
+        }
+        .report-title .subtitle {
+            font-size: 18px;
+            line-height: 22px;
+            font-weight: 400;
+        }
+        .metric {
+            top: 176px;
+            width: 301px;
+            height: 64px;
+            padding: 5px 12px 4px;
+            overflow: hidden;
+        }
+        .metric.first { left: 38px; border-radius: 12px 12px 12px 12px; }
+        .metric.second { left: 339px; border-radius: 12px; }
+        .metric.third { left: 640px; border-radius: 12px; }
+        .metric.fourth { left: 941px; border-radius: 12px; }
+        .metric-title {
+            margin: 0 0 3px;
+            text-align: center;
+            font-size: 16px;
+            line-height: 17px;
+            font-weight: 700;
+        }
+        .metric-title.risk { color: #ed0000; }
+        .metric-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 13px;
+            line-height: 15px;
+        }
+        .metric-table td { padding: 0; vertical-align: middle; }
+        .metric-table .month { width: 31%; text-align: right; padding-right: 14px; }
+        .metric-table .fraction { width: 24%; text-align: center; }
+        .metric-table .percent { width: 24%; text-align: right; }
+        .metric-table .signal { width: 21%; text-align: center; }
+        .otif-label {
+            position: absolute;
+            left: 11px;
+            top: 23px;
+            width: 65px;
+            font-size: 15px;
+            line-height: 18px;
+            font-weight: 700;
+        }
+        .otif-table { margin-left: 59px; width: 218px; }
+        .dot {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 1px solid rgba(0,0,0,.10);
+            vertical-align: middle;
+        }
+        .dot.green { background: #6db343; }
+        .dot.amber { background: #ff970f; }
+        .dot.red { background: #e53935; }
+        .summary-lines {
+            text-align: center;
+            font-size: 14px;
+            line-height: 17px;
+            max-height: 37px;
+            overflow: hidden;
+        }
+        .risk-lines {
+            text-align: center;
+            font-size: 12px;
+            line-height: 16px;
+            max-height: 35px;
+            overflow: hidden;
+        }
+        .column {
+            top: 259px;
+            width: 301px;
+            height: 344px;
+            padding: 25px 24px 18px;
+            overflow: hidden;
+            border-radius: 48px;
+        }
+        .column.c1 { left: 38px; }
+        .column.c2 { left: 339px; }
+        .column.c3 { left: 640px; }
+        .column.c4 { left: 941px; }
+        .column-title {
+            margin: 0 0 4px;
+            font-size: 21px;
+            line-height: 23px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .column-title.small { font-size: 19px; }
+        .section-list {
+            list-style: none;
+            margin: 3px 0 0;
+            padding: 0;
+        }
+        .section-list li {
+            position: relative;
+            margin: 0 0 7px;
+            padding-left: 18px;
+            font-size: 15px;
+            line-height: 16px;
+            page-break-inside: avoid;
+        }
+        .section-list li:before {
+            content: "";
+            position: absolute;
+            left: 2px;
+            top: 5px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #202124;
+        }
+        .section-list li.overdue:before,
+        .section-list li.rejected:before { background: #e00000; }
+        .primary {
+            display: block;
+            font-weight: 400;
+        }
+        .secondary {
+            display: block;
+            margin-top: 1px;
+            color: #5b5b5b;
+            font-size: 10px;
+            line-height: 12px;
+        }
+        .empty {
+            margin: 12px 0 0 19px;
+            color: #6d6d6d;
+            font-size: 13px;
+            font-style: italic;
+        }
+        .shipping-subtitle {
+            margin: 30px 0 4px;
+            font-size: 20px;
+            line-height: 22px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .shipping-list li { margin-bottom: 5px; }
+        .footer-box {
+            top: 624px;
+            height: 63px;
+            padding: 11px 18px 6px;
+            text-align: center;
+            overflow: hidden;
+        }
+        .footer-box.alerts { left: 38px; width: 602px; border-radius: 12px; }
+        .footer-box.decisions { left: 640px; width: 602px; border-radius: 12px; }
+        .footer-title {
+            font-size: 17px;
+            line-height: 19px;
+            font-weight: 700;
+        }
+        .warning-icon, .idea-icon {
+            display: inline-block;
+            width: 17px;
+            height: 17px;
+            margin: 0 3px;
+            border-radius: 50%;
+            color: #202124;
+            background: #ffd326;
+            font-size: 12px;
+            line-height: 17px;
+            font-weight: 700;
+            vertical-align: 1px;
+        }
+        .warning-icon { border-radius: 3px; }
+        .footer-copy {
+            margin-top: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 12px;
+            line-height: 15px;
+        }
+        .copyright {
+            position: absolute;
+            left: 50px;
+            top: 694px;
+            color: #353535;
+            font-size: 11px;
+            line-height: 14px;
+        }
+    </style>
+</head>
+<body>
+<div class="slide">
+    <div class="masthead">
+        <div class="brand">
+            <svg class="brand-mark" viewBox="0 0 70 43" xmlns="http://www.w3.org/2000/svg" aria-label="AMF">
+                <g fill="none" stroke="#3450df" stroke-width="3.2" stroke-linecap="round">
+                    <path d="M3 39V11C3 5 6 3 10 3s7 2 7 8v28"/>
+                    <path d="M18 39V11c0-6 3-8 7-8s7 2 7 8v28"/>
+                    <path d="M33 39V11c0-6 3-8 7-8s7 2 7 8v28"/>
+                    <path d="M48 39V11c0-6 3-8 7-8s7 2 7 8v7"/>
+                </g>
+                <g fill="#3450df">
+                    <rect x="4" y="20" width="9" height="4" rx="2"/>
+                    <rect x="53" y="20" width="9" height="4" rx="2"/>
+                </g>
+            </svg>
+            <div class="brand-name">Advanced<br>Microfluidics</div>
+        </div>
+        <div class="tagline">Small Volumes Matter</div>
+    </div>
+
+    <div class="box report-title">
+        <div class="title">OPS WEEKLY — PRODUCTION &amp; SUPPLY</div>
+        <div class="subtitle">Week: {{ report.scope.iso_week|e }} | Date: {{ report.scope.date_label|e }} | Owner: {{ report.scope.owner|e }}</div>
+    </div>
+
+    <div class="box metric first">
+        <div class="metric-title">Output vs Plan (Sales Order)</div>
+        <table class="metric-table">
+            {% for row in report.delivery_performance.output_vs_plan %}
+            <tr>
+                <td class="month">{{ row.month|e }}</td>
+                <td class="fraction">{{ row.actual|e }}/{{ row.planned|e }}</td>
+                <td class="percent">{{ row.rate|e }}%</td>
+                <td class="signal"><span class="dot {{ row.tone|e }}"></span></td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <div class="box metric second">
+        <div class="otif-label">OTIF</div>
+        <table class="metric-table otif-table">
+            {% for row in report.delivery_performance.otif %}
+            <tr>
+                <td class="month">{{ row.month|e }}</td>
+                <td class="percent">{{ row.rate|e }}%</td>
+                <td class="signal"><span class="dot {{ row.tone|e }}"></span></td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <div class="box metric third">
+        <div class="metric-title">BACKLOG QC</div>
+        <div class="summary-lines">
+            {% for row in report.quality.backlog_items %}
+                {{ row.primary|e }}{% if not loop.last %}<br>{% endif %}
+            {% else %}
+                No aged receipt in QC
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="box metric fourth">
+        <div class="metric-title risk">CRITICAL RISKS</div>
+        <div class="risk-lines">
+            {% for risk in report.signals.critical_risks %}
+                {{ risk|e }}{% if not loop.last %}<br>{% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="box column c1">
+        <div class="column-title">USINAGE</div>
+        {% if report.machining["items"] %}
+        <ul class="section-list">
+            {% for row in report.machining["items"] %}
+            <li class="{% if row.overdue %}overdue{% endif %}">
+                <span class="primary">{{ row.primary|e }}</span>
+                <span class="secondary">{{ row.secondary|e }}{% if row.due_date %} · {{ row.due_date.strftime('%d.%m')|e }}{% endif %}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}<div class="empty">No open machining plan/WO</div>{% endif %}
+    </div>
+
+    <div class="box column c2">
+        <div class="column-title">EN COURS</div>
+        {% if report.current_work_orders["items"] %}
+        <ul class="section-list">
+            {% for row in report.current_work_orders["items"] %}
+            <li class="{% if row.overdue %}overdue{% endif %}">
+                <span class="primary">{{ row.primary|e }}</span>
+                <span class="secondary">{{ row.secondary|e }}{% if row.due_date %} · {{ row.due_date.strftime('%d.%m')|e }}{% endif %}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}<div class="empty">No active work order</div>{% endif %}
+    </div>
+
+    <div class="box column c3">
+        <div class="column-title">QC</div>
+        {% if report.quality["items"] %}
+        <ul class="section-list">
+            {% for row in report.quality["items"] %}
+            <li class="{% if row.rejected %}rejected{% endif %}">
+                <span class="primary">{{ row.primary|e }}</span>
+                <span class="secondary">{{ row.secondary|e }} · {{ row.inspection_status|e }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}<div class="empty">No PREC balance in QC</div>{% endif %}
+    </div>
+
+    <div class="box column c4">
+        <div class="column-title small">PRÊT/DEPART {{ report.scope.departure_date_label|e }}</div>
+        {% if report.shipping.ready %}
+        <ul class="section-list shipping-list">
+            {% for row in report.shipping.ready[:3] %}
+            <li class="{% if row.overdue %}overdue{% endif %}">
+                <span class="primary">{{ row.primary|e }}</span>
+                <span class="secondary">{{ row.secondary|e }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}<div class="empty">No draft Delivery Note</div>{% endif %}
+
+        <div class="shipping-subtitle">LIVRAISON EN COURS</div>
+        {% if report.shipping.shipped %}
+        <ul class="section-list shipping-list">
+            {% for row in report.shipping.shipped[:3] %}
+            <li>
+                <span class="primary">{{ row.primary|e }}</span>
+                <span class="secondary">{{ row.secondary|e }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}<div class="empty">No tracked shipment this week</div>{% endif %}
+    </div>
+
+    <div class="box footer-box alerts">
+        <div class="footer-title"><span class="warning-icon">!</span>Alerts/Blockers<span class="warning-icon">!</span></div>
+        <div class="footer-copy">
+            {% for alert in report.signals.alerts %}{{ alert|e }}{% if not loop.last %} &nbsp;•&nbsp; {% endif %}{% endfor %}
+        </div>
+    </div>
+    <div class="box footer-box decisions">
+        <div class="footer-title"><span class="idea-icon">i</span>Decisions/Asks<span class="idea-icon">i</span></div>
+        <div class="footer-copy">
+            {% for decision in report.signals.decisions %}{{ decision|e }}{% if not loop.last %} &nbsp;•&nbsp; {% endif %}{% endfor %}
+        </div>
+    </div>
+    <div class="copyright">© amf.ch • confidential</div>
+</div>
+</body>
+</html>

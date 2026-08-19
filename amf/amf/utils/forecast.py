@@ -1,9 +1,15 @@
-from frappe.core.doctype.communication.email import make
 import frappe
 
 test_mode = False
+WEEKLY_STANDARD_ITEM_AVAILABILITY_REPORT_ENABLED = False
 
 def get_item_details_and_quantities():
+    if not WEEKLY_STANDARD_ITEM_AVAILABILITY_REPORT_ENABLED:
+        return {
+            'disabled': True,
+            'report': 'Weekly Availability of Standard Items',
+        }
+
     item_codes = [
         "C100", "C101", "C102", "C103", "C201", "C202", "C203", "C204",
         "K101", "K100-12", "K100-6", "T100",
@@ -114,6 +120,14 @@ def generate_html_table(items_details):
     return None
 
 def send_email_forecast(email_content):
+    if not WEEKLY_STANDARD_ITEM_AVAILABILITY_REPORT_ENABLED:
+        return {
+            'disabled': True,
+            'report': 'Weekly Availability of Standard Items',
+        }
+
+    from frappe.core.doctype.communication.email import make
+
     # Creating email context
     email_context = {
         'recipients': ['sales@amf.ch', 'nathan.favereau@amf.ch'],

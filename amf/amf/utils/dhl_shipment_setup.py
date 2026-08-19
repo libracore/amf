@@ -8,8 +8,71 @@ import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 
+MYDHL_SETTINGS_FIELDS = (
+	"tracking_section",
+	"dhl_api_key",
+	"mydhl_section",
+	"api_environment",
+	"api_username",
+	"api_password",
+	"shipper_account_number",
+	"shipper_contact_section",
+	"shipper_contact_name",
+	"shipper_contact_phone",
+	"shipper_contact_email",
+)
+
+MYDHL_SETTINGS_DEFAULTS = {
+	"api_environment": "Test",
+}
+
+DHL_SHIPMENT_SECTION_FIELDS = (
+	"dhl_shipment_draft_section",
+	"dhl_validation_section",
+	"dhl_creation_section",
+)
+
+
+def install_dhl_settings_schema():
+	"""Force the merged singleton JSON into the DB before using its fields."""
+	frappe.reload_doc("amf", "doctype", "amf_dhl_settings", force=True)
+	frappe.clear_cache(doctype="AMF DHL Settings")
+	meta = frappe.get_meta("AMF DHL Settings", cached=False)
+	missing = [fieldname for fieldname in MYDHL_SETTINGS_FIELDS if not meta.has_field(fieldname)]
+	if missing:
+		frappe.throw(
+			"AMF DHL Settings schema installation failed; missing fields: {0}".format(", ".join(missing))
+		)
+	for fieldname, value in MYDHL_SETTINGS_DEFAULTS.items():
+		if not frappe.db.get_single_value("AMF DHL Settings", fieldname):
+			frappe.db.set_value("AMF DHL Settings", "AMF DHL Settings", fieldname, value)
+	return {"installed_fields": list(MYDHL_SETTINGS_FIELDS), "missing_fields": []}
+
+
+def set_dhl_shipment_sections_non_collapsible():
+	"""Keep the DHL Shipment sections expanded in the form."""
+	for fieldname in DHL_SHIPMENT_SECTION_FIELDS:
+		custom_field = frappe.db.get_value(
+			"Custom Field",
+			{"dt": "Shipment", "fieldname": fieldname},
+			"name",
+		)
+		if custom_field:
+			frappe.db.set_value(
+				"Custom Field",
+				custom_field,
+				{
+					"collapsible": 0,
+					"collapsible_depends_on": "",
+				},
+				update_modified=False,
+			)
+	frappe.clear_cache(doctype="Shipment")
+
+
 def install_dhl_shipment_fields():
 	"""Install the explicit operator inputs and validation audit fields."""
+	install_dhl_settings_schema()
 	create_custom_fields(
 		{
 			"Shipment": [
@@ -18,7 +81,8 @@ def install_dhl_shipment_fields():
 					"fieldtype": "Section Break",
 					"label": "DHL Express Draft",
 					"insert_after": "description_of_content",
-					"collapsible": 1,
+					"collapsible": 0,
+					"collapsible_depends_on": "",
 					"depends_on": "eval:doc.carrier && /(^|[^A-Z0-9])DHL($|[^A-Z0-9])/i.test(doc.carrier)",
 				},
 				{
@@ -76,8 +140,8 @@ def install_dhl_shipment_fields():
 					"fieldtype": "Section Break",
 					"label": "DHL Validation",
 					"insert_after": "dhl_duties_taxes_account_number",
-					"collapsible": 1,
-					"collapsible_depends_on": "dhl_validation_status",
+					"collapsible": 0,
+					"collapsible_depends_on": "",
 				},
 				{
 					"fieldname": "dhl_validation_status",
@@ -119,8 +183,8 @@ def install_dhl_shipment_fields():
 					"fieldtype": "Section Break",
 					"label": "DHL Creation",
 					"insert_after": "dhl_validated_payload_hash",
-					"collapsible": 1,
-					"collapsible_depends_on": "dhl_creation_status",
+					"collapsible": 0,
+					"collapsible_depends_on": "",
 				},
 				{
 					"fieldname": "dhl_creation_status",
@@ -200,9 +264,4 @@ def install_dhl_shipment_fields():
 		},
 		update=True,
 	)
-	settings = frappe.get_single("AMF DHL Settings")
-	if not settings.get("api_environment"):
-		settings.api_environment = "Test"
-		settings.flags.ignore_permissions = True
-		settings.save()
-	frappe.clear_cache(doctype="Shipment")
+	set_dhl_shipment_sections_non_collapsible()
