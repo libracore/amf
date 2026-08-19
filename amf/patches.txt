@@ -12,3 +12,4 @@ amf.patches.v12_0.install_dhl_shipment_draft
 amf.patches.v12_0.install_dhl_shipment_creation
 amf.patches.v12_0.repair_dhl_settings_schema
 amf.patches.v12_0.expand_dhl_shipment_sections
+amf.patches.v12_0.update_product_descriptions_2026_08_19
