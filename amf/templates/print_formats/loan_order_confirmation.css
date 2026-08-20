@@ -41,7 +41,6 @@
 .date-list,
 .loan-items,
 .declared-total,
-.signature-grid,
 .pdf-footer {
     border-collapse: collapse;
     table-layout: fixed;
@@ -202,7 +201,7 @@
 
 .purpose-panel,
 .terms-panel,
-.confirmation-panel {
+.agreement-panel {
     border: 1px solid #dce1eb;
     margin-bottom: 2.5mm;
     padding: 2.5mm;
@@ -302,28 +301,16 @@
     padding-top: 1.2mm;
 }
 
-.identifier-cell div {
-    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-    white-space: pre-line;
-    word-break: break-all;
-}
-
-.identifier-cell div + div { margin-top: 1mm; }
-.identifier-cell span { color: #7c8497; display: block; font-family: "Supreme", Arial, sans-serif; font-size: 5.8pt; text-transform: uppercase; }
-.identifier-cell .not-assigned { color: #a5abba; font-size: 8pt; text-align: center; }
-
 .col-position { width: 4%; }
-.col-reference { width: 14%; }
-.col-description { width: 34%; }
+.col-reference { width: 13%; }
+.col-description { width: 45%; }
 .col-quantity { width: 8%; }
-.col-identifiers { width: 14%; }
-.col-unit-value { width: 12%; }
-.col-total-value { width: 14%; }
+.col-unit-value { width: 14%; }
+.col-total-value { width: 16%; }
 
-.loan-items.without-values .col-reference { width: 18%; }
-.loan-items.without-values .col-description { width: 48%; }
+.loan-items.without-values .col-reference { width: 16%; }
+.loan-items.without-values .col-description { width: 70%; }
 .loan-items.without-values .col-quantity { width: 10%; }
-.loan-items.without-values .col-identifiers { width: 20%; }
 
 .declared-total {
     border: 1px solid #ccd3df;
@@ -345,34 +332,18 @@
 
 .terms-copy { margin-top: 1.2mm; white-space: pre-line; }
 
-.confirmation-panel {
+.agreement-panel {
     background: #f7f8fb;
     margin-top: 2mm;
     padding: 2.5mm 3mm;
 }
 
-.confirmation-panel p {
+.agreement-panel p {
     color: #4b556b;
     font-size: 7pt;
     line-height: 1.25;
-    margin: 0.8mm 0 1.5mm;
+    margin: 0.8mm 0 0;
 }
-
-.signature-grid td {
-    border: 0 !important;
-    padding: 2mm 4mm 0 0 !important;
-    width: 33.333%;
-}
-
-.signature-grid td:last-child { padding-right: 0 !important; }
-.signature-line { border-bottom: 1px solid #7d8597; height: 8mm; }
-.signature-grid span { color: #70788a; display: block; font-size: 6.2pt; margin-top: 0.6mm; }
-
-.compact-confirmation { padding: 1.5mm 2mm; }
-.compact-confirmation p { font-size: 6.8pt; line-height: 1.2; margin: 0.5mm 0; }
-.compact-confirmation .signature-grid td { padding: 0.5mm 3mm 0 0 !important; }
-.compact-confirmation .signature-line { height: 3mm; }
-.compact-confirmation .signature-grid span { margin-top: 0.4mm; }
 
 .pdf-footer {
     border-top: 1px solid #d9dfeb;

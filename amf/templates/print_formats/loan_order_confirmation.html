@@ -1,5 +1,5 @@
 {% set borrower_label = _("Borrower") if doc.party_type == "Customer" else _("Loan partner") %}
-{% set display_status = _("Confirmed") if doc.status == "Submitted" else _(doc.status or "Draft") %}
+{% set display_status = _("Issued") if doc.status == "Submitted" else _(doc.status or "Draft") %}
 {% set item_totals = namespace(amount=0, has_value=false) %}
 {% for item in doc.items %}
     {% set item_totals.amount = item_totals.amount + (item.declared_amount or 0) %}
@@ -15,10 +15,10 @@
         <tr>
             <td class="document-purpose">
                 <div class="eyebrow">{{ _("Temporary equipment loan") }}</div>
-                <div class="purpose-copy">{{ _("Customer confirmation") }}</div>
+                <div class="purpose-copy">{{ _("Customer copy") }}</div>
             </td>
             <td class="document-identity">
-                <div class="document-type">{{ _("Loan Order Confirmation") }}</div>
+                <div class="document-type">{{ _("Loan Order") }}</div>
                 <div class="document-number">{{ doc.name }}</div>
             </td>
         </tr>
@@ -26,7 +26,7 @@
     <div class="hero-spacer"></div>
 
     {% if doc.docstatus == 0 %}
-    <div class="status-banner status-draft">{{ _("DRAFT — NOT YET CONFIRMED") }}</div>
+    <div class="status-banner status-draft">{{ _("DRAFT — NOT YET ISSUED") }}</div>
     {% elif doc.docstatus == 2 or doc.status == "Cancelled" %}
     <div class="status-banner status-cancelled">{{ _("CANCELLED") }}</div>
     {% elif doc.status == "Overdue" %}
@@ -36,7 +36,7 @@
     <table class="confirmation-summary">
         <tr>
             <td>
-                <div class="summary-label">{{ _("Confirmation status") }}</div>
+                <div class="summary-label">{{ _("Order status") }}</div>
                 <div class="summary-value status-value">{{ display_status }}</div>
             </td>
             <td>
@@ -119,7 +119,6 @@
             <col class="col-reference">
             <col class="col-description">
             <col class="col-quantity">
-            <col class="col-identifiers">
             {% if item_totals.has_value %}
             <col class="col-unit-value">
             <col class="col-total-value">
@@ -131,7 +130,6 @@
                 <th>{{ _("Reference") }}</th>
                 <th>{{ _("Description") }}</th>
                 <th class="right">{{ _("Quantity") }}</th>
-                <th>{{ _("Serial / Batch") }}</th>
                 {% if item_totals.has_value %}
                 <th class="right">{{ _("Unit value") }}<small>{{ (doc.currency or "")|e }}</small></th>
                 <th class="right">{{ _("Declared value") }}<small>{{ (doc.currency or "")|e }}</small></th>
@@ -155,11 +153,6 @@
                 <td class="right quantity-cell">
                     <strong>{{ "%g"|format(item.qty or 0) }}</strong>
                     {% if item.uom %}<small>{{ item.uom|e }}</small>{% endif %}
-                </td>
-                <td class="identifier-cell">
-                    {% if item.serial_no %}<div><span>{{ _("Serial") }}</span>{{ item.serial_no|trim|e }}</div>{% endif %}
-                    {% if item.batch_no %}<div><span>{{ _("Batch") }}</span>{{ item.batch_no|e }}</div>{% endif %}
-                    {% if not item.serial_no and not item.batch_no %}<span class="not-assigned">—</span>{% endif %}
                 </td>
                 {% if item_totals.has_value %}
                 <td class="right money-cell">{{ item.get_formatted("declared_rate", doc) }}</td>
@@ -189,23 +182,16 @@
     </div>
     {% endif %}
 
-    <div class="confirmation-panel{% if doc.terms or doc.items|length > 4 %} compact-confirmation{% endif %}">
-        <div class="section-kicker">{{ _("Customer confirmation") }}</div>
-        <p>{{ _("Please confirm the equipment, loan period, purpose, and terms above. Sign below and contact {0} before the return due date to request an extension.").format(doc.company|e) }}</p>
-        <table class="signature-grid">
-            <tr>
-                <td><div class="signature-line"></div><span>{{ _("Name and position") }}</span></td>
-                <td><div class="signature-line"></div><span>{{ _("Date") }}</span></td>
-                <td><div class="signature-line"></div><span>{{ _("Signature") }}</span></td>
-            </tr>
-        </table>
+    <div class="agreement-panel">
+        <div class="section-kicker">{{ _("Loan Agreement") }}</div>
+        <p>{{ _("This Loan Order is governed by the attached Loan Agreement, which is shared and signed separately.") }}</p>
     </div>
 </div>
 
 <div id="footer-html" class="visible-pdf">
     <table class="pdf-footer">
         <tr>
-            <td>{{ _("Loan Order Confirmation") }} · {{ doc.name }}</td>
+            <td>{{ _("Loan Order") }} · {{ doc.name }}</td>
             <td class="page-number">{{ _("Page") }} <span class="page"></span> / <span class="topage"></span></td>
         </tr>
     </table>

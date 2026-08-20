@@ -65,14 +65,14 @@ class LoanOrder(Document):
 		party_address = get_default_address(self.party_type, self.party, "is_shipping_address")
 		contact_name = self.contact_person or get_default_contact(self.party_type, self.party)
 		item_codes = list(set(row.item_code for row in self.items if row.item_code))
-		customer_descriptions = {
-			item.name: item.custom_description
+		client_descriptions = {
+			item.name: item.description
 			for item in frappe.get_all(
 				"Item",
 				filters={"name": ("in", item_codes)},
-				fields=["name", "custom_description"],
+				fields=["name", "description"],
 			)
-			if item.custom_description
+			if item.description
 		} if item_codes else {}
 
 		self.print_party_address = get_address_display(party_address) or ""
@@ -83,7 +83,7 @@ class LoanOrder(Document):
 			else None
 		)
 		for row in self.items:
-			row.print_description = customer_descriptions.get(row.item_code) or row.description or row.item_name
+			row.print_description = client_descriptions.get(row.item_code) or row.description or row.item_name
 
 	def onload(self):
 		currency = self.currency or frappe.db.get_value("Company", self.company, "default_currency")
