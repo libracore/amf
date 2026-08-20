@@ -27,7 +27,7 @@ MAX_FILE_SIZE = 2 * 1024 * 1024
 DEFAULT_TOLERANCE = 0.05
 MAX_BATCH_SIZE = 200
 REFERENCE_PATTERN = re.compile(
-	r"\b((?:SINV|PINV)-\d+(?:-\d+)?)\b", re.IGNORECASE
+	r"\b((?:SINV|PINV)-?\d+(?:-\d+)?)\b", re.IGNORECASE
 )
 
 BANK_DEFINITIONS = OrderedDict(
@@ -68,9 +68,11 @@ BANK_DEFINITIONS = OrderedDict(
 	]
 )
 
-REQUIRED_COLUMNS = (
+COMMON_REQUIRED_COLUMNS = (
 	"Date",
 	"Texte de notification",
+)
+MULTI_ACCOUNT_REQUIRED_COLUMNS = (
 	"Compte",
 	"Crédit",
 	"Débit",
@@ -327,7 +329,9 @@ def _parse_csv(content):
 				"The PostFinance transaction header was not found. Expected a semicolon-separated export."
 			)
 		)
-	missing = [column for column in REQUIRED_COLUMNS if column not in headers]
+	missing = [
+		column for column in COMMON_REQUIRED_COLUMNS if column not in headers
+	]
 	if missing:
 		frappe.throw(
 			_("The CSV is missing required columns: {0}.").format(
@@ -336,6 +340,8 @@ def _parse_csv(content):
 		)
 
 	metadata = _parse_metadata(raw_rows[:header_index])
+	layout = _resolve_statement_layout(headers, metadata)
+	metadata["statement_layout"] = layout["name"]
 	transactions = []
 	for source_row, raw_row in enumerate(
 		raw_rows[header_index + 1 :], header_index + 2
@@ -347,9 +353,19 @@ def _parse_csv(content):
 			continue
 		padded = list(raw_row) + [""] * max(0, len(headers) - len(raw_row))
 		values = dict(zip(headers, padded[: len(headers)]))
+		if layout["name"] == "single_account":
+			# Single-account PostFinance exports keep the IBAN/currency in
+			# metadata and qualify the amount headings with the currency.
+			values["Compte"] = layout["iban"]
+			values["Monnaie"] = layout["currency"]
+			values["Crédit"] = values.get(layout["credit_column"])
+			values["Débit"] = values.get(layout["debit_column"])
 		transactions.append(_parse_transaction(values, source_row))
 
 	metadata["transaction_count"] = len(transactions)
+	metadata["currencies"] = _unique(
+		[transaction["currency"] for transaction in transactions]
+	)
 	return transactions, metadata
 
 
@@ -360,6 +376,7 @@ def _parse_metadata(rows):
 		"Date de fin:": "to_date",
 		"Genre de comptabilisation:": "booking_type",
 		"Compte:": "account_scope",
+		"Monnaie:": "currency",
 	}
 	for row in rows:
 		if not row:
@@ -373,11 +390,86 @@ def _parse_metadata(rows):
 	return metadata
 
 
+def _resolve_statement_layout(headers, metadata):
+	"""Accept both PostFinance multi-account and single-account exports."""
+	if all(column in headers for column in MULTI_ACCOUNT_REQUIRED_COLUMNS):
+		return {"name": "multi_account"}
+
+	currency = cstr(metadata.get("currency")).strip().upper()
+	credit_columns = _currency_amount_columns(headers, "Crédit")
+	debit_columns = _currency_amount_columns(headers, "Débit")
+	column_currencies = _unique(
+		list(credit_columns.keys()) + list(debit_columns.keys())
+	)
+	if not currency and len(column_currencies) == 1:
+		currency = column_currencies[0]
+
+	if not currency:
+		frappe.throw(
+			_(
+				"The single-account CSV has no currency in its metadata or amount headings."
+			)
+		)
+	if currency not in BANK_DEFINITIONS:
+		frappe.throw(
+			_("Currency {0} is not supported. Supported currencies are: {1}.").format(
+				currency, ", ".join(BANK_DEFINITIONS.keys())
+			)
+		)
+	if currency not in credit_columns or currency not in debit_columns:
+		frappe.throw(
+			_(
+				"The single-account CSV must contain Crédit en {0} and Débit en {0} columns."
+			).format(currency)
+		)
+
+	iban = _normalize_iban(metadata.get("account_scope"))
+	if not iban or iban not in [
+		definition["iban"] for definition in BANK_DEFINITIONS.values()
+	]:
+		frappe.throw(
+			_(
+				"The single-account CSV metadata must contain one supported PostFinance IBAN."
+			)
+		)
+
+	definition = BANK_DEFINITIONS[currency]
+	if iban != definition["iban"]:
+		frappe.throw(
+			_("The statement IBAN belongs to {0}, but its currency is {1}.").format(
+				next(
+					item["currency"]
+					for item in BANK_DEFINITIONS.values()
+					if item["iban"] == iban
+				),
+				currency,
+			)
+		)
+
+	return {
+		"name": "single_account",
+		"iban": iban,
+		"currency": currency,
+		"credit_column": credit_columns[currency],
+		"debit_column": debit_columns[currency],
+	}
+
+
+def _currency_amount_columns(headers, heading):
+	columns = {}
+	pattern = re.compile(r"^{0}\s+en\s+([A-Z]{{3}})$".format(heading), re.I)
+	for header in headers:
+		match = pattern.match(cstr(header).strip())
+		if match:
+			columns[match.group(1).upper()] = header
+	return columns
+
+
 def _parse_transaction(values, source_row):
 	notification = cstr(values.get("Texte de notification")).strip()
 	references = []
 	for match in REFERENCE_PATTERN.findall(notification):
-		reference = cstr(match).upper()
+		reference = _normalize_invoice_reference(match)
 		if reference not in references:
 			references.append(reference)
 
@@ -1139,7 +1231,8 @@ def _find_existing_payment(invoice_doctype, invoice_name, check_reference):
 
 def _extract_check_reference(notification, invoice_name):
 	"""Mirror the reference format already used on AMF Payment Entries."""
-	match = re.search(re.escape(invoice_name), notification, re.IGNORECASE)
+	invoice_pattern = _invoice_reference_search_pattern(invoice_name)
+	match = re.search(invoice_pattern, notification, re.IGNORECASE)
 	if not match:
 		return None
 	tail = notification[match.end() :]
@@ -1148,7 +1241,7 @@ def _extract_check_reference(notification, invoice_name):
 		tail = tail[references_marker.end() :]
 
 	tail = re.sub(
-		r"\b{0}\b".format(re.escape(invoice_name)),
+		invoice_pattern,
 		" ",
 		tail,
 		flags=re.IGNORECASE,
@@ -1163,6 +1256,32 @@ def _extract_check_reference(notification, invoice_name):
 		tail = token_match.group(0) if token_match else ""
 
 	return "{0} {1}".format(invoice_name, tail).strip() if tail else None
+
+
+def _normalize_invoice_reference(reference):
+	"""Normalize SINV01641 and SINV-01641 to the ERPNext document name."""
+	match = re.match(
+		r"^(SINV|PINV)-?(\d+(?:-\d+)?)$",
+		cstr(reference).strip(),
+		re.IGNORECASE,
+	)
+	if not match:
+		return cstr(reference).strip().upper()
+	return "{0}-{1}".format(match.group(1).upper(), match.group(2))
+
+
+def _invoice_reference_search_pattern(invoice_name):
+	"""Return a boundary-safe expression accepting the optional first dash."""
+	match = re.match(
+		r"^(SINV|PINV)-?(\d+(?:-\d+)?)$",
+		cstr(invoice_name).strip(),
+		re.IGNORECASE,
+	)
+	if not match:
+		return re.escape(cstr(invoice_name))
+	return r"\b{0}-?{1}\b".format(
+		re.escape(match.group(1)), re.escape(match.group(2))
+	)
 
 
 def _mark_duplicates_inside_file(rows):
