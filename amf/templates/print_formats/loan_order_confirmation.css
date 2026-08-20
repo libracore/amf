@@ -1,0 +1,392 @@
+@font-face {
+    font-family: "Supreme";
+    src: url("/files/Supreme-Variable.ttf") format("truetype");
+    font-weight: 100 800;
+    font-style: normal;
+}
+
+.print-format {
+    color: #18223a;
+    font-family: "Supreme", "Helvetica Neue", Arial, sans-serif;
+    font-size: 8.3pt;
+    line-height: 1.35;
+    margin-bottom: 0;
+}
+
+.print-format .loan-confirmation-page { page-break-after: auto; }
+.print-format table { margin: 0; }
+
+.loan-letter-head {
+    margin-bottom: 3mm;
+    page-break-inside: avoid;
+}
+
+.loan-letter-head .logo-cell a { display: none !important; }
+.loan-letter-head .banking-info { display: none !important; }
+
+.loan-letter-head .logo-cell:before {
+    color: #2b47d9;
+    content: "AMF";
+    display: inline-block;
+    font-size: 25pt;
+    font-weight: 750;
+    letter-spacing: -0.05em;
+    line-height: 1;
+    padding-top: 4mm;
+}
+
+.document-hero,
+.confirmation-summary,
+.overview-grid,
+.date-list,
+.loan-items,
+.declared-total,
+.signature-grid,
+.pdf-footer {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+}
+
+.document-hero {
+    border-bottom: 2px solid #2b47d9;
+    margin: 4mm 0 0;
+}
+
+.document-hero td {
+    border: 0 !important;
+    padding: 0 0 3mm !important;
+    vertical-align: bottom !important;
+}
+
+.document-purpose { width: 38%; }
+.document-identity { text-align: right; width: 62%; }
+
+.eyebrow,
+.section-kicker,
+.summary-label {
+    color: #2b47d9;
+    font-size: 6.8pt;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.purpose-copy { color: #667085; margin-top: 1mm; }
+
+.document-type {
+    color: #2b47d9;
+    font-size: 21pt;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    line-height: 1;
+}
+
+.document-number {
+    color: #7c8497;
+    font-size: 10.5pt;
+    font-weight: 550;
+    margin-top: 1.5mm;
+}
+
+.hero-spacer { height: 2mm; }
+
+.status-banner {
+    border: 1px solid;
+    font-size: 8.5pt;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    margin-bottom: 3mm;
+    padding: 1.4mm 3mm;
+    text-align: center;
+}
+
+.status-draft { background: #fff9db; border-color: #e9b949; color: #7a5200; }
+.status-cancelled { background: #fff0f0; border-color: #e25c5c; color: #9d1c1c; }
+.status-overdue { background: #fff4e8; border-color: #ed8b32; color: #9a4b08; }
+
+.confirmation-summary {
+    background: #f3f5fa;
+    border: 1px solid #dce1eb;
+    margin-bottom: 2.5mm !important;
+    page-break-inside: avoid;
+}
+
+.confirmation-summary td {
+    border: 0 !important;
+    border-right: 1px solid #dce1eb !important;
+    padding: 2mm 3mm !important;
+    width: 33.333%;
+}
+
+.confirmation-summary td:last-child { border-right: 0 !important; }
+
+.summary-value {
+    color: #18223a;
+    font-size: 9pt;
+    font-weight: 650;
+    margin-top: 0.7mm;
+}
+
+.status-value,
+.currency-value { color: #2b47d9; }
+
+.overview-grid {
+    border-collapse: separate;
+    border-spacing: 3mm 0;
+    margin: 0 -3mm 2.5mm;
+    page-break-inside: avoid;
+    width: calc(100% + 6mm);
+}
+
+.overview-grid > tbody > tr > td {
+    background: #fff;
+    border: 1px solid #dce1eb !important;
+    padding: 2.5mm !important;
+    vertical-align: top !important;
+    width: 50%;
+}
+
+.overview-card { min-height: 28mm; }
+
+.party-name {
+    color: #18223a;
+    font-size: 11pt;
+    font-weight: 650;
+    margin: 1.4mm 0 1mm;
+}
+
+.address-value,
+.contact-block,
+.terms-copy {
+    color: #3c465c;
+    word-wrap: break-word;
+}
+
+.address-value p,
+.address-value div,
+.contact-block p,
+.contact-block div { margin: 0 0 0.5mm; }
+
+.contact-block {
+    border-top: 1px solid #e2e6ee;
+    margin-top: 2mm;
+    padding-top: 2mm;
+}
+
+.date-list { margin-top: 1mm !important; }
+
+.date-list th,
+.date-list td {
+    border: 0 !important;
+    border-bottom: 1px solid #e5e8ef !important;
+    padding: 1.6mm 0 !important;
+}
+
+.date-list tr:last-child th,
+.date-list tr:last-child td { border-bottom: 0 !important; }
+
+.date-list th {
+    color: #687086;
+    font-size: 7.5pt;
+    font-weight: 500;
+    text-align: left;
+    width: 48%;
+}
+
+.date-list td {
+    color: #18223a;
+    font-weight: 650;
+    text-align: right;
+}
+
+.purpose-panel,
+.terms-panel,
+.confirmation-panel {
+    border: 1px solid #dce1eb;
+    margin-bottom: 2.5mm;
+    padding: 2.5mm;
+    page-break-inside: avoid;
+}
+
+.purpose-panel { background: #f8f9fc; }
+
+.purpose-title {
+    font-size: 10.5pt;
+    font-weight: 650;
+    margin-top: 1mm;
+}
+
+.purpose-explanation { color: #4b556b; margin-top: 1mm; }
+.purpose-explanation p, .purpose-explanation div { margin: 0 0 0.7mm; }
+
+.items-heading {
+    border-bottom: 1px solid #bfc7d8;
+    color: #18223a;
+    font-size: 12pt;
+    font-weight: 700;
+    margin: 3mm 0 1.5mm;
+    padding-bottom: 1mm;
+	page-break-after: avoid;
+}
+
+.item-count {
+    color: #7c8497;
+    float: right;
+    font-size: 8pt;
+    font-weight: 500;
+}
+
+.loan-items {
+    border: 1px solid #ccd3df;
+    page-break-inside: auto;
+}
+
+.loan-items thead {
+	display: table-header-group;
+	page-break-after: avoid;
+}
+
+.loan-items th {
+    background: #2b47d9 !important;
+    border: 0 !important;
+    border-right: 1px solid #5368df !important;
+    color: #fff !important;
+    font-size: 6.4pt;
+    font-weight: 650;
+    line-height: 1.15;
+    padding: 1.8mm 1.4mm !important;
+    text-transform: uppercase;
+    vertical-align: bottom !important;
+}
+
+.loan-items th:last-child { border-right: 0 !important; }
+
+.loan-items th small {
+    color: #dfe4ff;
+    display: block;
+    font-size: 5.7pt;
+    margin-top: 0.5mm;
+}
+
+.loan-items tbody tr { page-break-inside: avoid; }
+
+.loan-items td {
+    border: 0 !important;
+    border-right: 1px solid #e3e7ef !important;
+    border-top: 1px solid #e3e7ef !important;
+    color: #303a50;
+    font-size: 7.3pt;
+    padding: 1.4mm 1.5mm !important;
+    vertical-align: top !important;
+    word-break: break-word;
+    word-wrap: break-word;
+}
+
+.loan-items td:last-child { border-right: 0 !important; }
+.loan-items tbody tr:nth-child(even) td { background: #fafbfc; }
+.loan-items .center { text-align: center; }
+.loan-items .right { text-align: right; }
+.loan-items small { color: #747d91; display: block; font-size: 6.2pt; margin-top: 0.7mm; }
+.reference-cell strong { word-break: break-all; }
+.description-cell p, .description-cell div { margin: 0 0 0.6mm; }
+.quantity-cell { white-space: nowrap; }
+.strong { font-weight: 700; }
+
+.component-summary,
+.item-notes {
+    border-top: 1px solid #e3e7ef;
+    color: #596276;
+    font-size: 6.7pt;
+    margin-top: 1.2mm !important;
+    padding-top: 1.2mm;
+}
+
+.identifier-cell div {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    white-space: pre-line;
+    word-break: break-all;
+}
+
+.identifier-cell div + div { margin-top: 1mm; }
+.identifier-cell span { color: #7c8497; display: block; font-family: "Supreme", Arial, sans-serif; font-size: 5.8pt; text-transform: uppercase; }
+.identifier-cell .not-assigned { color: #a5abba; font-size: 8pt; text-align: center; }
+
+.col-position { width: 4%; }
+.col-reference { width: 14%; }
+.col-description { width: 34%; }
+.col-quantity { width: 8%; }
+.col-identifiers { width: 14%; }
+.col-unit-value { width: 12%; }
+.col-total-value { width: 14%; }
+
+.loan-items.without-values .col-reference { width: 18%; }
+.loan-items.without-values .col-description { width: 48%; }
+.loan-items.without-values .col-quantity { width: 10%; }
+.loan-items.without-values .col-identifiers { width: 20%; }
+
+.declared-total {
+    border: 1px solid #ccd3df;
+    border-top: 0;
+    page-break-inside: avoid;
+}
+
+.declared-total td,
+.declared-total th {
+    border: 0 !important;
+    padding: 1.7mm 3mm !important;
+    vertical-align: middle !important;
+}
+
+.declared-total td:first-child { background: #f8f9fc; width: 55%; }
+.declared-total th { color: #4b556b; font-size: 7.5pt; text-align: right; text-transform: uppercase; width: 23%; }
+.declared-total .total-value { background: #eef1ff; color: #213bc0; font-size: 12pt; font-weight: 750; text-align: right; width: 22%; }
+.value-note { color: #6b7385; font-size: 6.7pt; }
+
+.terms-copy { margin-top: 1.2mm; white-space: pre-line; }
+
+.confirmation-panel {
+    background: #f7f8fb;
+    margin-top: 2mm;
+    padding: 2.5mm 3mm;
+}
+
+.confirmation-panel p {
+    color: #4b556b;
+    font-size: 7pt;
+    line-height: 1.25;
+    margin: 0.8mm 0 1.5mm;
+}
+
+.signature-grid td {
+    border: 0 !important;
+    padding: 2mm 4mm 0 0 !important;
+    width: 33.333%;
+}
+
+.signature-grid td:last-child { padding-right: 0 !important; }
+.signature-line { border-bottom: 1px solid #7d8597; height: 8mm; }
+.signature-grid span { color: #70788a; display: block; font-size: 6.2pt; margin-top: 0.6mm; }
+
+.compact-confirmation { padding: 1.5mm 2mm; }
+.compact-confirmation p { font-size: 6.8pt; line-height: 1.2; margin: 0.5mm 0; }
+.compact-confirmation .signature-grid td { padding: 0.5mm 3mm 0 0 !important; }
+.compact-confirmation .signature-line { height: 3mm; }
+.compact-confirmation .signature-grid span { margin-top: 0.4mm; }
+
+.pdf-footer {
+    border-top: 1px solid #d9dfeb;
+    border-bottom: 4px solid #2b47d9;
+    color: #7c8497;
+    font-family: "Supreme", "Helvetica Neue", Arial, sans-serif;
+    font-size: 7pt;
+    margin-top: 2mm;
+}
+
+.pdf-footer td { border: 0 !important; padding: 1.5mm 0 2mm !important; }
+.pdf-footer .page-number { text-align: right; }
+
+@media print {
+    .print-format { font-family: "Supreme", "Helvetica Neue", Arial, sans-serif !important; }
+    .loan-items th, .status-banner, .declared-total .total-value { -webkit-print-color-adjust: exact; }
+}
