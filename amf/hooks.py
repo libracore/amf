@@ -42,7 +42,8 @@ doctype_js = {
     #    "public/js/delivery_note_submit_readiness.js",
     ],
     "Item": "public/js/item.js",
-    #"Issue": "public/js/doctype/issue.js",
+    "Issue": "public/js/doctype/issue_classification.js",
+    "AMF Issue Test": "public/js/doctype/issue_classification.js",
     "Issue Type": "public/js/doctype/issue_type.js",
     "Quality Inspection": "public/js/quality_inspection.js",
     "Purchase Invoice": "public/js/purchase_invoice.js",
@@ -149,8 +150,17 @@ doc_events = {
             "amf.amf.utils.custom.qr_code_to_document",
         ],
     },
+    "Issue": {
+        "validate": "amf.amf.utils.issue_classification.apply_issue_routing",
+    },
+    "Issue Type": {
+        "validate": "amf.amf.utils.issue_classification.apply_issue_type_routing",
+    },
     "AMF Issue Test": {
-        "validate": "amf.amf.utils.amf_issue_test_management.validate_issue_management",
+        "validate": [
+            "amf.amf.utils.issue_classification.apply_issue_routing",
+            "amf.amf.utils.amf_issue_test_management.validate_issue_management",
+        ],
     },
     "Lead": {
         "after_insert": [
@@ -315,6 +325,7 @@ after_migrate = [
     "amf.amf.utils.sales_order_otif.sync_sales_order_otif_custom_fields",
     "amf.amf.utils.sales_invoice_total_ht.sync_sales_invoice_total_ht_customization",
     "amf.amf.utils.weekly_operations_report.sync_weekly_operations_report_settings",
+    "amf.amf.utils.issue_classification.sync_issue_classification_setup",
     "amf.amf.utils.amf_issue_test_management.clear_amf_issue_test_management_meta_cache",
     "amf.amf.utils.kpi_dashboard.sync_supply_chain_manufacturing_dashboard",
     "amf.amf.utils.custom_item.sync_custom_item_configuration",

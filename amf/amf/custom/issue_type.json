@@ -2,11 +2,23 @@
  "custom_fields": [
   {
    "dt": "Issue Type",
-   "fieldname": "process",
-   "fieldtype": "Select",
-   "label": "Process",
-   "options": "\nManagement Process & Quality\nMarketing, Sales & Customer Support\nResearch & Development\nProcurement\nManufacturing\nPackaging & Shipping\nMaintenance\nInformation System",
+   "fieldname": "classification_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "insert_after": "description",
+   "label": "Classification Code",
+   "name": "Issue Type-classification_code",
+   "read_only": 1
+  },
+  {
+   "dt": "Issue Type",
+   "fieldname": "process",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Process",
+   "options": "AMF Issue Process",
+   "insert_after": "classification_code",
    "in_standard_filter": 1,
    "name": "Issue Type-process",
    "idx": 1
@@ -15,12 +27,37 @@
    "dt": "Issue Type",
    "fieldname": "process_owner",
    "fieldtype": "Link",
-   "label": "Process Owner",
+   "fetch_from": "process.primary_owner",
+   "label": "Primary Process Owner",
    "options": "User",
    "insert_after": "process",
    "in_standard_filter": 1,
    "name": "Issue Type-process_owner",
+   "read_only": 1,
    "idx": 2
+  },
+  {
+   "dt": "Issue Type",
+   "fetch_from": "process.secondary_owner",
+   "fieldname": "process_co_owner",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "insert_after": "process_owner",
+   "label": "Secondary Process Owner",
+   "name": "Issue Type-process_co_owner",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "default": "1",
+   "dt": "Issue Type",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "insert_after": "process_co_owner",
+   "label": "Active",
+   "name": "Issue Type-is_active"
   }
  ],
  "custom_perms": [],

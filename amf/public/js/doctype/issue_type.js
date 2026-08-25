@@ -4,30 +4,33 @@ Issue Type Client Custom Script
 */
 frappe.ui.form.on('Issue Type', {
     refresh(frm) {
-        // your code here
+        frm.set_query('process', function() {
+            return {
+                filters: {
+                    enabled: 1
+                }
+            };
+        });
     },
-    
-    process(frm) {
-        const processMap = {
-            'Management Process & Quality': 'remy.rysman@amf.ch',
-            'Marketing, Sales & Customer Support': 'christophe.przybyla@amf.ch',
-            'Research & Development': 'remy.rysman@amf.ch',
-            'Procurement': 'alexandre.ringwald@amf.ch',
-            'Manufacturing': 'alexandre.ringwald@amf.ch',
-            'Packaging & Shipping': 'alexandre.ringwald@amf.ch',
-            'Maintenance': 'alexandre.ringwald@amf.ch',
-            'Information System': 'alexandre.ringwald@amf.ch',
-        };
 
-        if (frm.doc.process) {
-            let processOwner = processMap[frm.doc.process];
-            if (processOwner) {
-                frm.set_value('process_owner', processOwner);
-            } else {
-                console.log(`No process owner found for the process: ${frm.doc.process}`);
-            }
-        } else {
-            console.log('The process field is not set.');
+    process(frm) {
+        if (!frm.doc.process) {
+            frm.set_value('process_owner', null);
+            frm.set_value('process_co_owner', null);
+            return;
         }
+
+        frappe.db.get_value(
+            'AMF Issue Process',
+            frm.doc.process,
+            ['primary_owner', 'secondary_owner'],
+            function(values) {
+                if (!values) {
+                    return;
+                }
+                frm.set_value('process_owner', values.primary_owner || null);
+                frm.set_value('process_co_owner', values.secondary_owner || null);
+            }
+        );
     }
 });

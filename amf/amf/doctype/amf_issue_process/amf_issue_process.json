@@ -1,0 +1,98 @@
+{
+ "autoname": "field:process_name",
+ "creation": "2026-08-25 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Setup",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "process_code",
+  "process_name",
+  "enabled",
+  "ownership_section",
+  "primary_owner",
+  "secondary_owner",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "process_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Process Code",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "process_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Process Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "ownership_section",
+   "fieldtype": "Section Break",
+   "label": "Ownership"
+  },
+  {
+   "fieldname": "primary_owner",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Primary Owner",
+   "options": "User"
+  },
+  {
+   "fieldname": "secondary_owner",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Secondary Owner",
+   "options": "User"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Scope and Routing Guidance"
+  }
+ ],
+ "modified": "2026-08-25 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "AMF Issue Process",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Support Team"
+  }
+ ],
+ "quick_entry": 1,
+ "sort_field": "process_code",
+ "sort_order": "ASC",
+ "title_field": "process_name",
+ "track_changes": 1
+}
