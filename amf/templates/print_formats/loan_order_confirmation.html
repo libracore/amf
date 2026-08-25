@@ -1,0 +1,198 @@
+{% set borrower_label = _("Borrower") if doc.party_type == "Customer" else _("Loan partner") %}
+{% set display_status = _("Issued") if doc.status == "Submitted" else _(doc.status or "Draft") %}
+{% set item_totals = namespace(amount=0, has_value=false) %}
+{% for item in doc.items %}
+    {% set item_totals.amount = item_totals.amount + (item.declared_amount or 0) %}
+    {% if item.declared_rate or item.declared_amount %}{% set item_totals.has_value = true %}{% endif %}
+{% endfor %}
+
+{% if letter_head and not no_letterhead %}
+<div class="letter-head loan-letter-head">{{ letter_head }}</div>
+{% endif %}
+
+<div class="page-break loan-confirmation-page">
+    <table class="document-hero">
+        <tr>
+            <td class="document-purpose">
+                <div class="eyebrow">{{ _("Temporary equipment loan") }}</div>
+                <div class="purpose-copy">{{ _("Customer copy") }}</div>
+            </td>
+            <td class="document-identity">
+                <div class="document-type">{{ _("Loan Order") }}</div>
+                <div class="document-number">{{ doc.name }}</div>
+            </td>
+        </tr>
+    </table>
+    <div class="hero-spacer"></div>
+
+    {% if doc.docstatus == 0 %}
+    <div class="status-banner status-draft">{{ _("DRAFT — NOT YET ISSUED") }}</div>
+    {% elif doc.docstatus == 2 or doc.status == "Cancelled" %}
+    <div class="status-banner status-cancelled">{{ _("CANCELLED") }}</div>
+    {% elif doc.status == "Overdue" %}
+    <div class="status-banner status-overdue">{{ _("RETURN OVERDUE") }}</div>
+    {% endif %}
+
+    <table class="confirmation-summary">
+        <tr>
+            <td>
+                <div class="summary-label">{{ _("Order status") }}</div>
+                <div class="summary-value status-value">{{ display_status }}</div>
+            </td>
+            <td>
+                <div class="summary-label">{{ _("Order date") }}</div>
+                <div class="summary-value">{{ doc.get_formatted("transaction_date") }}</div>
+            </td>
+            <td>
+                <div class="summary-label">{{ _("Currency") }}</div>
+                <div class="summary-value currency-value">{{ (doc.currency or "")|e }}</div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="overview-grid">
+        <tr>
+            <td>
+                <div class="overview-card borrower-card">
+                    <div class="section-kicker">{{ borrower_label }}</div>
+                    <div class="party-name">{{ (doc.party_name or doc.party or "")|e }}</div>
+                    {% if doc.print_party_address %}
+                    <div class="address-value">{{ doc.print_party_address }}</div>
+                    {% endif %}
+                    {% if doc.print_contact and (doc.print_contact.name or doc.print_contact.email or doc.print_contact.phone) %}
+                    <div class="contact-block">
+                        {% if doc.print_contact.name %}
+                        <div><strong>{{ doc.print_contact.name|e }}</strong>{% if doc.print_contact.designation %} · {{ doc.print_contact.designation|e }}{% endif %}</div>
+                        {% endif %}
+                        {% if doc.print_contact.email %}<div>{{ doc.print_contact.email|e }}</div>{% endif %}
+                        {% if doc.print_contact.phone %}<div>{{ doc.print_contact.phone|e }}</div>{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </td>
+            <td>
+                <div class="overview-card loan-period-card">
+                    <div class="section-kicker">{{ _("Loan period") }}</div>
+                    <table class="date-list">
+                        <tr>
+                            <th>{{ _("Loan starts") }}</th>
+                            <td>{{ doc.get_formatted("transaction_date") }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ _("Return due") }}</th>
+                            <td>{{ doc.get_formatted("expected_return_date") if doc.expected_return_date else _("To be agreed") }}</td>
+                        </tr>
+                        {% if doc.print_loan_duration is not none %}
+                        <tr>
+                            <th>{{ _("Duration") }}</th>
+                            <td>{{ doc.print_loan_duration }} {{ _("days") }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if doc.actual_return_date %}
+                        <tr>
+                            <th>{{ _("Returned on") }}</th>
+                            <td>{{ doc.get_formatted("actual_return_date") }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    {% if doc.purpose or doc.explanation %}
+    <div class="purpose-panel">
+        <div class="section-kicker">{{ _("Purpose of the loan") }}</div>
+        {% if doc.purpose %}<div class="purpose-title">{{ doc.purpose|e }}</div>{% endif %}
+        {% if doc.explanation %}<div class="purpose-explanation">{{ doc.explanation }}</div>{% endif %}
+    </div>
+    {% endif %}
+
+    <div class="items-heading">
+        <span>{{ _("Equipment on loan") }}</span>
+        <span class="item-count">{{ doc.items|length }} {{ _("line(s)") }}</span>
+    </div>
+
+    <table class="loan-items{% if not item_totals.has_value %} without-values{% endif %}">
+        <colgroup>
+            <col class="col-position">
+            <col class="col-reference">
+            <col class="col-description">
+            <col class="col-quantity">
+            {% if item_totals.has_value %}
+            <col class="col-unit-value">
+            <col class="col-total-value">
+            {% endif %}
+        </colgroup>
+        <thead>
+            <tr>
+                <th class="center">{{ _("Pos.") }}</th>
+                <th>{{ _("Reference") }}</th>
+                <th>{{ _("Description") }}</th>
+                <th class="right">{{ _("Quantity") }}</th>
+                {% if item_totals.has_value %}
+                <th class="right">{{ _("Unit value") }}<small>{{ (doc.currency or "")|e }}</small></th>
+                <th class="right">{{ _("Declared value") }}<small>{{ (doc.currency or "")|e }}</small></th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in doc.items %}
+            <tr>
+                <td class="center position-cell">{{ loop.index }}</td>
+                <td class="reference-cell">
+                    <strong>{{ item.item_code|e }}</strong>
+                </td>
+                <td class="description-cell">
+                    <div>{{ item.print_description or item.description or "" }}</div>
+                    {% if item.component_summary %}
+                    <div class="component-summary"><strong>{{ _("Included components:") }}</strong> {{ item.component_summary|e }}</div>
+                    {% endif %}
+                    {% if item.notes %}<div class="item-notes">{{ item.notes|e }}</div>{% endif %}
+                </td>
+                <td class="right quantity-cell">
+                    <strong>{{ "%g"|format(item.qty or 0) }}</strong>
+                    {% if item.uom %}<small>{{ item.uom|e }}</small>{% endif %}
+                </td>
+                {% if item_totals.has_value %}
+                <td class="right money-cell">{{ item.get_formatted("declared_rate", doc) }}</td>
+                <td class="right money-cell strong">{{ item.get_formatted("declared_amount", doc) }}</td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if item_totals.has_value %}
+    <table class="declared-total">
+        <tr>
+            <td>
+                <div class="value-note">{{ _("Declared values are for identification, insurance, and customs purposes. This document is not an invoice.") }}</div>
+            </td>
+            <th>{{ _("Total declared value") }}</th>
+            <td class="total-value">{{ frappe.utils.fmt_money(item_totals.amount, currency=doc.currency) }}</td>
+        </tr>
+    </table>
+    {% endif %}
+
+    {% if doc.terms %}
+    <div class="terms-panel">
+        <div class="section-kicker">{{ _("Loan terms") }}</div>
+        <div class="terms-copy">{{ doc.terms|e }}</div>
+    </div>
+    {% endif %}
+
+    <div class="agreement-panel">
+        <div class="section-kicker">{{ _("Loan Agreement") }}</div>
+        <p>{{ _("This Loan Order is governed by the attached Loan Agreement, which is shared and signed separately.") }}</p>
+    </div>
+</div>
+
+<div id="footer-html" class="visible-pdf">
+    <table class="pdf-footer">
+        <tr>
+            <td>{{ _("Loan Order") }} · {{ doc.name }}</td>
+            <td class="page-number">{{ _("Page") }} <span class="page"></span> / <span class="topage"></span></td>
+        </tr>
+    </table>
+</div>

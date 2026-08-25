@@ -5,6 +5,7 @@ Issue Client Custom Script
 frappe.ui.form.on('AMF Issue Test', {
     setup: function(frm) {
         setupIssueContactQueries(frm);
+        setActiveIssueTypeQuery(frm);
     },
 
     onload: function(frm) {
@@ -30,6 +31,7 @@ frappe.ui.form.on('AMF Issue Test', {
     },
 
     refresh: function(frm) {
+        setActiveIssueTypeQuery(frm);
         setupIssueContactQueries(frm);
         setIssueCreator(frm);
         updateInternalContactFromPerson(frm);
@@ -389,7 +391,7 @@ function addRepairInvoiceButton(frm) {
 
 function updateProcessAndOwner(frm) {
     if (frm.doc.issue_type) {
-        frappe.db.get_value('Issue Type', frm.doc.issue_type, ['process', 'process_owner'], (r) => {
+        frappe.db.get_value('Issue Type', frm.doc.issue_type, ['process', 'process_owner', 'process_co_owner'], (r) => {
             if (r) {
                 if (hasField(frm, 'process_involved')) {
                     frm.set_value('process_involved', r.process || null);
@@ -397,9 +399,22 @@ function updateProcessAndOwner(frm) {
                 if (hasField(frm, 'process_owner')) {
                     frm.set_value('process_owner', r.process_owner || null);
                 }
+                if (hasField(frm, 'process_co_owner')) {
+                    frm.set_value('process_co_owner', r.process_co_owner || null);
+                }
             }
         });
     }
+}
+
+function setActiveIssueTypeQuery(frm) {
+    frm.set_query('issue_type', function() {
+        return {
+            filters: {
+                is_active: 1
+            }
+        };
+    });
 }
 
 const PRIORITY_LEVELS = ['Low', 'Medium', 'High'];

@@ -16,8 +16,10 @@ from erpnext.stock.get_item_details import (
 	get_price_list_uom_dependant,
 )
 from frappe import _
+from frappe.contacts.doctype.address.address import get_address_display, get_default_address
+from frappe.contacts.doctype.contact.contact import get_default_contact
 from frappe.model.document import Document
-from frappe.utils import cint, flt, getdate, nowdate, nowtime
+from frappe.utils import cint, date_diff, flt, getdate, nowdate, nowtime
 from six import string_types
 
 
@@ -42,7 +44,47 @@ LOAN_SETTLEMENT_RETURN = "Remaining Items Return"
 LOAN_SETTLEMENT_REPACK = "Dismantle Product"
 
 
+def get_loan_order_print_contact(contact_name, fallback_email=None):
+	if not contact_name or not frappe.db.exists("Contact", contact_name):
+		return frappe._dict(email=fallback_email or "")
+
+	contact = frappe.get_cached_doc("Contact", contact_name)
+	return frappe._dict(
+		name=contact.full_name or " ".join(
+			part for part in (contact.first_name, contact.last_name) if part
+		),
+		designation=contact.designation or "",
+		email=fallback_email or contact.email_id or "",
+		phone=contact.phone or contact.mobile_no or "",
+	)
+
+
 class LoanOrder(Document):
+	def before_print(self):
+		"""Prepare customer-facing address and contact details for print formats."""
+		party_address = get_default_address(self.party_type, self.party, "is_shipping_address")
+		contact_name = self.contact_person or get_default_contact(self.party_type, self.party)
+		item_codes = list(set(row.item_code for row in self.items if row.item_code))
+		client_descriptions = {
+			item.name: item.description
+			for item in frappe.get_all(
+				"Item",
+				filters={"name": ("in", item_codes)},
+				fields=["name", "description"],
+			)
+			if item.description
+		} if item_codes else {}
+
+		self.print_party_address = get_address_display(party_address) or ""
+		self.print_contact = get_loan_order_print_contact(contact_name, self.contact_email)
+		self.print_loan_duration = (
+			date_diff(self.expected_return_date, self.transaction_date)
+			if self.transaction_date and self.expected_return_date
+			else None
+		)
+		for row in self.items:
+			row.print_description = client_descriptions.get(row.item_code) or row.description or row.item_name
+
 	def onload(self):
 		currency = self.currency or frappe.db.get_value("Company", self.company, "default_currency")
 		self.set_onload(
