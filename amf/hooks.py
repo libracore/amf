@@ -91,9 +91,15 @@ doc_events = {
             "amf.amf.utils.bom_updating.bom_before_save",
             "amf.amf.utils.bom_child_bom_resolver.apply_item_default_boms_to_rows",
         ],
-        "on_submit": "amf.amf.utils.bom_mgt.update_item_from_default_bom",
+        "on_submit": [
+            "amf.amf.utils.bom_mgt.update_item_from_default_bom",
+            "amf.amf.utils.custom_item.sync_product_from_bom",
+        ],
         "on_cancel": "amf.amf.utils.bom_mgt.update_item_from_default_bom",
-        "on_update_after_submit": "amf.amf.utils.bom_mgt.update_item_from_default_bom",
+        "on_update_after_submit": [
+            "amf.amf.utils.bom_mgt.update_item_from_default_bom",
+            "amf.amf.utils.custom_item.sync_product_from_bom",
+        ],
     },
     "Contact": {
         "autoname": "amf.master_crm.naming.contact_autoname",
@@ -135,7 +141,10 @@ doc_events = {
             "amf.amf.utils.item_reporting.apply_item_reporting_fields",
             "amf.amf.utils.tool_maintenance.validate_tool_item_group_change",
         ],
-        "on_update": "amf.amf.utils.tool_maintenance.sync_tool_item_after_save",
+        "on_update": [
+            "amf.amf.utils.tool_maintenance.sync_tool_item_after_save",
+            "amf.amf.utils.custom_item.sync_products_from_custom_valve_head",
+        ],
         "after_insert": [
             "amf.amf.utils.custom.qr_code_to_document",
         ],
@@ -152,6 +161,9 @@ doc_events = {
     "Purchase Invoice": {
         "validate": "amf.amf.utils.purchase_invoice.apply_default_cost_center",
     },
+    # "Purchase Order": {
+    #     "on_submit": "amf.amf.utils.item_image.queue_purchase_order_item_images",
+    # },
     "Purchase Receipt": {
         "before_submit": [
             "amf.amf.utils.purchase_receipt_gl_override.install_purchase_receipt_gl_override",
@@ -161,7 +173,11 @@ doc_events = {
             "amf.amf.utils.purchase_receipt.generate_qa_for_purchase_receipt",
         ],
     },
+    "Quotation": {
+        "before_save": "amf.amf.utils.custom_item.warn_custom_items_on_save",
+    },
     "Sales Order": {
+        "before_save": "amf.amf.utils.custom_item.warn_custom_items_on_save",
         "on_submit": "amf.master_crm.customer_marketing.sync_customer_marketing_from_sales_order",
         "on_cancel": "amf.master_crm.customer_marketing.sync_customer_marketing_from_sales_order",
         "on_update_after_submit": "amf.master_crm.customer_marketing.sync_customer_marketing_from_sales_order",
@@ -301,4 +317,5 @@ after_migrate = [
     "amf.amf.utils.weekly_operations_report.sync_weekly_operations_report_settings",
     "amf.amf.utils.amf_issue_test_management.clear_amf_issue_test_management_meta_cache",
     "amf.amf.utils.kpi_dashboard.sync_supply_chain_manufacturing_dashboard",
+    "amf.amf.utils.custom_item.sync_custom_item_configuration",
 ]
