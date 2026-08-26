@@ -1,9 +1,5 @@
-{% set repeat_header = print_settings and print_settings.repeat_header_footer %}
-
 {% if letter_head and not no_letterhead %}
-<div{% if repeat_header %} id="header-html" class="hidden-pdf"{% endif %}>
-    <div class="letter-head">{{ letter_head }}</div>
-</div>
+<div class="letter-head commercial-invoice-letter-head">{{ letter_head }}</div>
 {% endif %}
 
 <div class="page-break commercial-invoice-page">
