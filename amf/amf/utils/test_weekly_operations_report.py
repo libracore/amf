@@ -3,14 +3,20 @@ from __future__ import unicode_literals
 
 import unittest
 from datetime import date
+from types import SimpleNamespace
 from unittest.mock import patch
 
+from amf.amf.report.on_time_delivery_kpis.on_time_delivery_kpis import (
+    get_conditions as get_otif_conditions,
+)
 from amf.amf.utils.weekly_operations_report import (
     _date_sort_key,
     _priority_date_sort_key,
     _shorten,
     build_management_signals,
     build_slide_html,
+    collect_quality_control,
+    get_output_vs_plan,
     get_reporting_months,
     parse_recipients,
     render_slide_png,
@@ -99,6 +105,40 @@ class TestWeeklyOperationsReport(unittest.TestCase):
 
     def test_short_labels_use_an_ellipsis(self):
         self.assertEqual(_shorten("abcdefgh", 6), "abcde…")
+
+    @patch(
+        "amf.amf.report.on_time_delivery_kpis.on_time_delivery_kpis."
+        "get_skip_otif_kpi_condition",
+        return_value="",
+    )
+    def test_otif_excludes_gx_items(self, _skip_condition):
+        conditions, _params = get_otif_conditions(
+            {"from_date": date(2026, 8, 1), "to_date": date(2026, 8, 31)}
+        )
+        self.assertIn("dni.item_code NOT RLIKE '^GX'", conditions)
+
+    @patch(
+        "amf.amf.utils.weekly_operations_report.get_skip_otif_kpi_condition",
+        return_value="",
+    )
+    @patch("amf.amf.utils.weekly_operations_report.frappe.db.sql")
+    def test_output_vs_plan_uses_only_production_orders(self, sql, _skip_condition):
+        sql.return_value = [SimpleNamespace(planned=1, actual=1)]
+        get_output_vs_plan(date(2026, 8, 1), date(2026, 8, 31))
+        query = sql.call_args[0][0]
+        self.assertIn("so.sales_order_type = 'Production'", query)
+
+    @patch(
+        "amf.amf.utils.weekly_operations_report.frappe.db.sql",
+        return_value=[],
+    )
+    def test_quality_control_excludes_gx_items(self, sql):
+        collect_quality_control(
+            date(2026, 8, 31),
+            "Quality Control - AMF21",
+        )
+        query = sql.call_args[0][0]
+        self.assertIn("sle.item_code NOT LIKE 'GX%%'", query)
 
     def test_machining_sort_uses_priority_then_date(self):
         rows = [

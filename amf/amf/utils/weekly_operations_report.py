@@ -76,7 +76,6 @@ def sync_weekly_operations_report_settings():
         "weekly_lookahead_days": DEFAULT_LOOKAHEAD_DAYS,
         "weekly_qc_backlog_days": DEFAULT_QC_BACKLOG_DAYS,
         "weekly_max_items": DEFAULT_MAX_ITEMS,
-        "weekly_send_email": 0,
         "weekly_email_subject_prefix": "[AMF Operations]",
     }
     existing_fields = {
@@ -238,19 +237,11 @@ def generate_weekly_report(report_name, force=False):
         )
         report.reload()
 
-        email_result = None
-        if (
-            report.source == "Scheduled"
-            and cint(_setting(settings, "weekly_send_email", 0))
-        ):
-            email_result = email_weekly_report(report.name)
-
         return {
             "name": report.name,
             "status": report.status,
             "file_url": report.output_file,
             "png_url": report.output_png,
-            "email": email_result,
         }
     except Exception:
         error = frappe.get_traceback()
@@ -440,13 +431,10 @@ def get_output_vs_plan(period_start, cutoff_date):
                 GROUP BY dni.so_detail
             ) delivered ON delivered.so_detail = soi.name
             WHERE so.docstatus = 1
+                AND so.sales_order_type = 'Production'
                 AND soi.delivery_date BETWEEN %(period_start)s AND %(cutoff_date)s
                 AND soi.item_code NOT RLIKE '^Di-'
                 AND soi.item_code NOT RLIKE '^ENC-'
-                AND (
-                    so.sales_order_type IS NULL
-                    OR so.sales_order_type NOT IN ('R&D', 'Hybrid')
-                )
                 AND COALESCE(
                     NULLIF(soi.stock_qty, 0),
                     soi.qty * IFNULL(soi.conversion_factor, 1)
@@ -761,6 +749,7 @@ def collect_quality_control(
         LEFT JOIN `tabItem` item ON item.name = sle.item_code
         WHERE sle.warehouse = %(warehouse)s
             AND sle.posting_date <= %(report_date)s
+            AND sle.item_code NOT LIKE 'GX%%'
         GROUP BY sle.item_code, item.item_name
         HAVING SUM(sle.actual_qty) > 0.000001
         """,

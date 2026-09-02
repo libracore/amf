@@ -29,8 +29,6 @@ class OperationsKPIReportSettings(Document):
                 frappe.throw(_("QC Backlog Age must be between 1 and 365 days."))
             if not 3 <= cint(self.weekly_max_items) <= 8:
                 frappe.throw(_("Maximum Rows per Section must be between 3 and 8."))
-        if self.weekly_send_email and not self.weekly_email_recipients:
-            frappe.throw(_("Weekly Email Recipients are required when weekly email is enabled."))
         if self.enable_ai_insights:
             from amf.amf.utils.openai_credentials import has_openai_api_key
 
