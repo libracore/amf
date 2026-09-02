@@ -272,6 +272,18 @@ def get_data():
             ]
         },
         {
+            "label": _("Quality"),
+            "icon": "octicon octicon-checklist",
+            "items": [
+                {
+                    "type": "doctype",
+                    "name": "Organizational Modification Request",
+                    "label": _("Organizational Modification Requests"),
+                    "description": _("ISO 9001 organizational modification requests, approvals and effectiveness follow-up")
+                }
+            ]
+        },
+        {
             "label": _("Settings"),
             "icon": "fa fa-money",
             "items": [
