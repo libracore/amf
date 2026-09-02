@@ -1,0 +1,74 @@
+{
+ "creation": "2026-09-02 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "action",
+  "responsible",
+  "responsible_name",
+  "due_date",
+  "completed",
+  "completion_date"
+ ],
+ "fields": [
+  {
+   "columns": 5,
+   "fieldname": "action",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Action",
+   "reqd": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "responsible",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Responsable",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "responsible.full_name",
+   "fieldname": "responsible_name",
+   "fieldtype": "Data",
+   "label": "Nom du responsable",
+   "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "due_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Échéance",
+   "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "columns": 1,
+   "default": "0",
+   "fieldname": "completed",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Fait"
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.completed",
+   "fieldname": "completion_date",
+   "fieldtype": "Date",
+   "label": "Date de réalisation",
+   "mandatory_depends_on": "eval:doc.completed"
+  }
+ ],
+ "istable": 1,
+ "modified": "2026-09-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "Organizational Modification Action",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "idx",
+ "sort_order": "ASC"
+}

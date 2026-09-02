@@ -1,0 +1,649 @@
+{
+ "allow_import": 1,
+ "allow_rename": 0,
+ "autoname": "naming_series:",
+ "creation": "2026-09-02 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "identification_section",
+  "naming_series",
+  "status",
+  "requester",
+  "requester_name",
+  "column_break_identification",
+  "request_date",
+  "planned_implementation_date",
+  "change_level",
+  "change_section",
+  "change_types_heading",
+  "change_type_organization",
+  "change_type_manufacturing",
+  "change_type_erp_it",
+  "change_type_other",
+  "column_break_change_types",
+  "change_type_process",
+  "change_type_supplier",
+  "change_type_documentation",
+  "change_type_other_detail",
+  "change_description_section",
+  "what_is_changing",
+  "why_change",
+  "associated_reference",
+  "impacts_section",
+  "impact_domains_heading",
+  "impact_product_quality",
+  "impact_production_capacity",
+  "impact_suppliers",
+  "impact_erp_traceability",
+  "column_break_impacts",
+  "impact_customer_regulatory",
+  "impact_organization_skills",
+  "impact_equipment_measurement",
+  "impact_qms_documents",
+  "risk_assessment_section",
+  "risk_if_failed",
+  "risk_controls_before_implementation",
+  "training_documentation_required",
+  "training_documentation_details",
+  "implementation_section",
+  "actions",
+  "validation_section",
+  "effectiveness_validation_criteria",
+  "effectiveness_review_period",
+  "effectiveness_review_period_other",
+  "decision_section",
+  "decision",
+  "decision_conditions",
+  "change_responsible_approval_section",
+  "change_responsible_name_function",
+  "change_responsible_approval_date",
+  "column_break_change_responsible_signature",
+  "change_responsible_signature",
+  "quality_approval_section",
+  "quality_name_function",
+  "quality_approval_date",
+  "column_break_quality_signature",
+  "quality_signature",
+  "management_approval_section",
+  "management_name_function",
+  "management_approval_date",
+  "column_break_management_signature",
+  "management_signature",
+  "execution_section",
+  "actual_implementation_date",
+  "closure_section",
+  "effectiveness_review_result",
+  "change_effective",
+  "additional_actions",
+  "follow_up_issue",
+  "closure_quality_reviewer",
+  "closure_quality_reviewer_name",
+  "closure_date",
+  "column_break_closure_signature",
+  "closure_quality_signature",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "identification_section",
+   "fieldtype": "Section Break",
+   "label": "Identification de la demande"
+  },
+  {
+   "default": "OMR-.YYYY.-.####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Série de numérotation",
+   "options": "OMR-.YYYY.-.####",
+   "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Statut",
+   "no_copy": 1,
+   "options": "Draft\nApproved\nApproved with Conditions\nRejected\nEffectiveness Review\nClosed\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "requester",
+   "fieldtype": "Link",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "label": "Demandeur / pilote",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "requester.full_name",
+   "fieldname": "requester_name",
+   "fieldtype": "Data",
+   "label": "Nom du demandeur / pilote",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_identification",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "request_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date de demande",
+   "reqd": 1
+  },
+  {
+   "fieldname": "planned_implementation_date",
+   "fieldtype": "Date",
+   "label": "Mise en œuvre prévue",
+   "reqd": 1
+  },
+  {
+   "fieldname": "change_level",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Niveau",
+   "options": "\nC2 - Significant\nC3 - Major",
+   "reqd": 1
+  },
+  {
+   "fieldname": "change_section",
+   "fieldtype": "Section Break",
+   "label": "1. LE CHANGEMENT"
+  },
+  {
+   "fieldname": "change_types_heading",
+   "fieldtype": "Heading",
+   "label": "Type de changement — cocher ce qui s’applique"
+  },
+  {
+   "default": "0",
+   "fieldname": "change_type_organization",
+   "fieldtype": "Check",
+   "label": "Organisation / responsabilités"
+  },
+  {
+   "default": "0",
+   "fieldname": "change_type_manufacturing",
+   "fieldtype": "Check",
+   "label": "Fabrication / équipement"
+  },
+  {
+   "default": "0",
+   "fieldname": "change_type_erp_it",
+   "fieldtype": "Check",
+   "label": "ERP / IT / données"
+  },
+  {
+   "default": "0",
+   "fieldname": "change_type_other",
+   "fieldtype": "Check",
+   "label": "Autre"
+  },
+  {
+   "fieldname": "column_break_change_types",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "change_type_process",
+   "fieldtype": "Check",
+   "label": "Processus / méthode de travail"
+  },
+  {
+   "default": "0",
+   "fieldname": "change_type_supplier",
+   "fieldtype": "Check",
+   "label": "Fournisseur / externalisation"
+  },
+  {
+   "default": "0",
+   "fieldname": "change_type_documentation",
+   "fieldtype": "Check",
+   "label": "Documentation / SMQ"
+  },
+  {
+   "depends_on": "eval:doc.change_type_other",
+   "fieldname": "change_type_other_detail",
+   "fieldtype": "Small Text",
+   "label": "Préciser l’autre type de changement",
+   "mandatory_depends_on": "eval:doc.change_type_other"
+  },
+  {
+   "fieldname": "change_description_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "description": "Décrire simplement la situation actuelle et la situation cible.",
+   "fieldname": "what_is_changing",
+   "fieldtype": "Text",
+   "label": "Qu’est-ce qui change ?",
+   "reqd": 1
+  },
+  {
+   "description": "Indiquer le besoin, le problème à résoudre ou l’objectif recherché.",
+   "fieldname": "why_change",
+   "fieldtype": "Text",
+   "label": "Pourquoi ce changement ?",
+   "reqd": 1
+  },
+  {
+   "description": "Issue ERP, CAPA, ECO, projet, qualification, ticket IT, etc.",
+   "fieldname": "associated_reference",
+   "fieldtype": "Small Text",
+   "label": "Référence associée, si applicable"
+  },
+  {
+   "fieldname": "impacts_section",
+   "fieldtype": "Section Break",
+   "label": "2. IMPACTS ET RISQUES"
+  },
+  {
+   "fieldname": "impact_domains_heading",
+   "fieldtype": "Heading",
+   "label": "Quels domaines peuvent être impactés ?"
+  },
+  {
+   "default": "0",
+   "fieldname": "impact_product_quality",
+   "fieldtype": "Check",
+   "label": "Produit / qualité"
+  },
+  {
+   "default": "0",
+   "fieldname": "impact_production_capacity",
+   "fieldtype": "Check",
+   "label": "Production / capacité"
+  },
+  {
+   "default": "0",
+   "fieldname": "impact_suppliers",
+   "fieldtype": "Check",
+   "label": "Fournisseurs"
+  },
+  {
+   "default": "0",
+   "fieldname": "impact_erp_traceability",
+   "fieldtype": "Check",
+   "label": "ERP / données / traçabilité"
+  },
+  {
+   "fieldname": "column_break_impacts",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "impact_customer_regulatory",
+   "fieldtype": "Check",
+   "label": "Client / réglementation"
+  },
+  {
+   "default": "0",
+   "fieldname": "impact_organization_skills",
+   "fieldtype": "Check",
+   "label": "Organisation / compétences"
+  },
+  {
+   "default": "0",
+   "fieldname": "impact_equipment_measurement",
+   "fieldtype": "Check",
+   "label": "Équipements / moyens de mesure"
+  },
+  {
+   "default": "0",
+   "fieldname": "impact_qms_documents",
+   "fieldtype": "Check",
+   "label": "Documents du SMQ"
+  },
+  {
+   "fieldname": "risk_assessment_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "risk_if_failed",
+   "fieldtype": "Text",
+   "label": "Qu’est-ce qui pourrait mal se passer si le changement est mal préparé ou échoue ?",
+   "reqd": 1
+  },
+  {
+   "fieldname": "risk_controls_before_implementation",
+   "fieldtype": "Text",
+   "label": "Que faut-il faire AVANT la mise en œuvre pour maîtriser ces risques ?",
+   "reqd": 1
+  },
+  {
+   "default": "No",
+   "fieldname": "training_documentation_required",
+   "fieldtype": "Select",
+   "label": "Formation ou mise à jour documentaire nécessaire ?",
+   "options": "No\nYes",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.training_documentation_required == 'Yes'",
+   "fieldname": "training_documentation_details",
+   "fieldtype": "Small Text",
+   "label": "Si oui, préciser",
+   "mandatory_depends_on": "eval:doc.training_documentation_required == 'Yes'"
+  },
+  {
+   "fieldname": "implementation_section",
+   "fieldtype": "Section Break",
+   "label": "3. PLAN DE MISE EN ŒUVRE ET VALIDATION"
+  },
+  {
+   "fieldname": "actions",
+   "fieldtype": "Table",
+   "label": "Actions requises avant la mise en œuvre",
+   "options": "Organizational Modification Action"
+  },
+  {
+   "fieldname": "validation_section",
+   "fieldtype": "Section Break",
+   "label": "Validation du changement"
+  },
+  {
+   "description": "Définir un critère simple et observable : conformité, KPI, absence d’incident, validation utilisateur, audit ciblé, etc.",
+   "fieldname": "effectiveness_validation_criteria",
+   "fieldtype": "Text",
+   "label": "Comment vérifierons-nous que le changement fonctionne comme prévu ?",
+   "reqd": 1
+  },
+  {
+   "fieldname": "effectiveness_review_period",
+   "fieldtype": "Select",
+   "label": "Revue d’efficacité prévue",
+   "options": "\n1 month\n3 months\nOther"
+  },
+  {
+   "depends_on": "eval:doc.effectiveness_review_period == 'Other'",
+   "fieldname": "effectiveness_review_period_other",
+   "fieldtype": "Data",
+   "label": "Autre délai de revue",
+   "mandatory_depends_on": "eval:doc.effectiveness_review_period == 'Other'"
+  },
+  {
+   "collapsible": 0,
+   "fieldname": "decision_section",
+   "fieldtype": "Section Break",
+   "label": "Décision"
+  },
+  {
+   "fieldname": "decision",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Décision",
+   "options": "\nApproved\nApproved with Conditions\nRejected",
+   "permlevel": 1
+  },
+  {
+   "depends_on": "eval:doc.decision == 'Approved with Conditions'",
+   "fieldname": "decision_conditions",
+   "fieldtype": "Text",
+   "label": "Conditions / commentaire éventuel",
+   "mandatory_depends_on": "eval:doc.decision == 'Approved with Conditions'",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "change_responsible_approval_section",
+   "fieldtype": "Section Break",
+   "label": "Visa du responsable du changement"
+  },
+  {
+   "fieldname": "change_responsible_name_function",
+   "fieldtype": "Data",
+   "label": "Nom / fonction"
+  },
+  {
+   "fieldname": "change_responsible_approval_date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fieldname": "column_break_change_responsible_signature",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "change_responsible_signature",
+   "fieldtype": "Signature",
+   "label": "Visa"
+  },
+  {
+   "fieldname": "quality_approval_section",
+   "fieldtype": "Section Break",
+   "label": "Visa Qualité",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "quality_name_function",
+   "fieldtype": "Data",
+   "label": "Nom / fonction",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "quality_approval_date",
+   "fieldtype": "Date",
+   "label": "Date",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "column_break_quality_signature",
+   "fieldtype": "Column Break",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "quality_signature",
+   "fieldtype": "Signature",
+   "label": "Visa",
+   "permlevel": 1
+  },
+  {
+   "depends_on": "eval:doc.change_level == 'C3 - Major'",
+   "fieldname": "management_approval_section",
+   "fieldtype": "Section Break",
+   "label": "Visa Direction Générale (C3)",
+   "permlevel": 1
+  },
+  {
+   "depends_on": "eval:doc.change_level == 'C3 - Major'",
+   "fieldname": "management_name_function",
+   "fieldtype": "Data",
+   "label": "Nom / fonction",
+   "permlevel": 1
+  },
+  {
+   "depends_on": "eval:doc.change_level == 'C3 - Major'",
+   "fieldname": "management_approval_date",
+   "fieldtype": "Date",
+   "label": "Date",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "column_break_management_signature",
+   "fieldtype": "Column Break",
+   "permlevel": 1
+  },
+  {
+   "depends_on": "eval:doc.change_level == 'C3 - Major'",
+   "fieldname": "management_signature",
+   "fieldtype": "Signature",
+   "label": "Visa",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "execution_section",
+   "fieldtype": "Section Break",
+   "label": "Mise en œuvre"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "actual_implementation_date",
+   "fieldtype": "Date",
+   "label": "Date de mise en œuvre effective"
+  },
+  {
+   "collapsible": 0,
+   "fieldname": "closure_section",
+   "fieldtype": "Section Break",
+   "label": "4. CLÔTURE"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "effectiveness_review_result",
+   "fieldtype": "Text",
+   "label": "Résultat de la revue d’efficacité"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "change_effective",
+   "fieldtype": "Select",
+   "label": "Le changement est-il efficace et maîtrisé ?",
+   "options": "\nYes\nNo"
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.change_effective == 'No'",
+   "description": "Définir les actions complémentaires nécessaires.",
+   "fieldname": "additional_actions",
+   "fieldtype": "Text",
+   "label": "Actions complémentaires",
+   "mandatory_depends_on": "eval:doc.change_effective == 'No'"
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.change_effective == 'No'",
+   "description": "Ouvrir un Issue ERP uniquement si une défaillance ou un risque qualité justifie une investigation formelle.",
+   "fieldname": "follow_up_issue",
+   "fieldtype": "Link",
+   "label": "Issue ERP de suivi, si nécessaire",
+   "options": "Issue"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "closure_quality_reviewer",
+   "fieldtype": "Link",
+   "label": "Responsable Qualité de la clôture",
+   "options": "User",
+   "permlevel": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fetch_from": "closure_quality_reviewer.full_name",
+   "fieldname": "closure_quality_reviewer_name",
+   "fieldtype": "Data",
+   "label": "Nom du responsable Qualité",
+   "permlevel": 1,
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "closure_date",
+   "fieldtype": "Date",
+   "label": "Date de clôture",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "column_break_closure_signature",
+   "fieldtype": "Column Break",
+   "permlevel": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "closure_quality_signature",
+   "fieldtype": "Signature",
+   "label": "Visa clôture Qualité",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Organizational Modification Request",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "is_submittable": 1,
+ "modified": "2026-09-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "AMF",
+ "name": "Organizational Modification Request",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Quality Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "Quality Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "if_owner": 1,
+   "print": 1,
+   "read": 1,
+   "role": "All",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "All"
+  }
+ ],
+ "search_fields": "requester,requester_name,status,change_level,associated_reference",
+ "show_name_in_global_search": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "requester_name",
+ "track_changes": 1
+}
