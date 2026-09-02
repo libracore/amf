@@ -19,3 +19,4 @@ amf.patches.v12_0.install_loan_order_confirmation
 amf.patches.v12_0.install_issue_classification_model_2026_08_25
 amf.patches.v12_0.install_issue_type_suggestions_2026_08_25
 amf.patches.v12_0.extend_issue_type_suggestions_to_amf_issue_test_2026_08_25
+amf.patches.v12_0.install_standard_branding_amf_2026

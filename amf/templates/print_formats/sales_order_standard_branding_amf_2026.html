@@ -1,0 +1,223 @@
+{% set display_status = _("Draft") if doc.docstatus == 0 else (_("Cancelled") if doc.docstatus == 2 else (_(doc.status) if doc.status in ("Completed", "Closed") else _("Confirmed"))) %}
+{% set item_count = doc.items|length %}
+
+{% if letter_head and not no_letterhead %}
+<div class="letter-head sales-order-letter-head">{{ letter_head }}</div>
+{% endif %}
+
+<div class="page-break sales-order-page">
+    <table class="document-hero">
+        <tr>
+            <td class="document-purpose">
+                <div class="eyebrow">{{ _("Order confirmation") }}</div>
+                <div class="purpose-copy">{{ _("Customer order summary") }}</div>
+            </td>
+            <td class="document-identity">
+                <div class="document-type">{{ _("Sales Order") }}</div>
+                <div class="document-number">{{ doc.name|e }}</div>
+            </td>
+        </tr>
+    </table>
+    <div class="hero-spacer"></div>
+
+    {% if doc.docstatus == 0 %}
+    <div class="status-banner status-draft">{{ _("DRAFT — NOT YET CONFIRMED") }}</div>
+    {% elif doc.docstatus == 2 %}
+    <div class="status-banner status-cancelled">{{ _("CANCELLED") }}</div>
+    {% endif %}
+
+    <table class="order-summary">
+        <tr>
+            <td class="summary-customer">
+                <div class="summary-label">{{ _("Customer") }}</div>
+                <div class="summary-value customer-value">{{ (doc.customer_name or doc.customer or "")|e }}</div>
+            </td>
+            <td>
+                <div class="summary-label">{{ _("Order status") }}</div>
+                <div class="summary-value status-value">{{ display_status }}</div>
+            </td>
+            <td>
+                <div class="summary-label">{{ _("Order date") }}</div>
+                <div class="summary-value">{{ doc.get_formatted("transaction_date") }}</div>
+            </td>
+            <td>
+                <div class="summary-label">{{ _("Requested delivery") }}</div>
+                <div class="summary-value">{{ doc.get_formatted("delivery_date") }}</div>
+            </td>
+            <td class="summary-currency">
+                <div class="summary-label">{{ _("Currency") }}</div>
+                <div class="summary-value currency-value">{{ (doc.currency or "")|e }}</div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="address-grid">
+        <tr>
+            <td>
+                <div class="address-card">
+                    <div class="section-kicker">{{ _("Billing address") }}</div>
+                    {% if doc.address_display %}
+                    <div class="address-value">{{ doc.address_display }}</div>
+                    {% else %}
+                    <div class="party-name">{{ (doc.customer_name or doc.customer or "")|e }}</div>
+                    {% endif %}
+                    {% if doc.contact_display or doc.contact_phone or doc.contact_email %}
+                    <div class="contact-block">
+                        {% if doc.contact_display %}<div><strong>{{ doc.contact_display|e }}</strong></div>{% endif %}
+                        {% if doc.contact_phone %}<div>{{ doc.contact_phone|e }}</div>{% endif %}
+                        {% if doc.contact_email %}<div>{{ doc.contact_email|e }}</div>{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </td>
+            <td>
+                <div class="address-card">
+                    <div class="section-kicker">{{ _("Shipping address") }}</div>
+                    {% if doc.shipping_address %}
+                    <div class="address-value">{{ doc.shipping_address }}</div>
+                    {% else %}
+                    <div class="address-value muted">{{ _("Same as billing address") }}</div>
+                    {% endif %}
+                    {% if doc.tax_id %}
+                    <div class="tax-reference"><span>{{ _("Customer tax ID") }}</span>{{ doc.tax_id|e }}</div>
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="reference-strip">
+        <tr>
+            <td>
+                <div class="summary-label">{{ _("Customer PO") }}</div>
+                <div class="reference-value{% if not doc.po_no %} muted{% endif %}">{{ (doc.po_no or _("Not provided"))|e }}</div>
+                {% if doc.po_date %}<div class="reference-detail">{{ _("Dated {0}").format(doc.get_formatted("po_date")) }}</div>{% endif %}
+            </td>
+            <td>
+                <div class="summary-label">{{ _("AMF contact") }}</div>
+                <div class="reference-value{% if not doc.sales_contact_name %} muted{% endif %}">{{ (doc.sales_contact_name or _("Not assigned"))|e }}</div>
+                {% if doc.sales_contact_email %}<div class="reference-detail">{{ doc.sales_contact_email|e }}</div>{% endif %}
+            </td>
+            {% if doc.project or doc.inter_company_order_reference %}
+            <td>
+                <div class="summary-label">{{ _("Project / reference") }}</div>
+                <div class="reference-value">{{ (doc.project or doc.inter_company_order_reference)|e }}</div>
+            </td>
+            {% endif %}
+        </tr>
+    </table>
+
+    {% if doc.introduction %}
+    <div class="message-panel introduction-panel">
+        <div class="section-kicker">{{ _("Order information") }}</div>
+        <div class="message-copy">{{ doc.introduction }}</div>
+    </div>
+    {% endif %}
+
+    <div class="items-heading">
+        <span>{{ _("Order lines") }}</span>
+        <span class="item-count">{{ item_count }} {{ _("line(s)") }}</span>
+    </div>
+
+    <table class="order-items">
+        <colgroup>
+            <col class="col-position">
+            <col class="col-reference">
+            <col class="col-delivery">
+            <col class="col-description">
+            <col class="col-quantity">
+            <col class="col-remaining">
+            <col class="col-rate">
+            <col class="col-amount">
+        </colgroup>
+        <thead>
+            <tr>
+                <th class="center">{{ _("Pos.") }}</th>
+                <th>{{ _("Reference") }}</th>
+                <th>{{ _("Est. ship date") }}</th>
+                <th>{{ _("Description") }}</th>
+                <th class="right">{{ _("Ordered") }}</th>
+                <th class="right">{{ _("Remaining") }}</th>
+                <th class="right">{{ _("Unit price") }}<small>{{ (doc.currency or "")|e }}</small></th>
+                <th class="right">{{ _("Amount") }}<small>{{ (doc.currency or "")|e }}</small></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in doc.items %}
+            <tr>
+                <td class="center position-cell">{{ loop.index }}</td>
+                <td class="reference-cell">
+                    <strong>{{ item.item_code|e }}</strong>
+                    {% if item.item_name and item.item_name != item.item_code %}<small>{{ item.item_name|e }}</small>{% endif %}
+                </td>
+                <td class="delivery-cell">{{ item.get_formatted("delivery_date") }}</td>
+                <td class="description-cell">
+                    <div>{{ item.description or "" }}</div>
+                    {% if item.discount_percentage and not item.do_not_show_discount %}
+                    <div class="discount-note">{{ _("Discount") }}: {{ "%g"|format(item.discount_percentage) }}%</div>
+                    {% endif %}
+                </td>
+                <td class="right quantity-cell">
+                    <strong>{{ "%g"|format(item.qty or 0) }}</strong>
+                    {% if item.uom %}<small>{{ item.uom|e }}</small>{% endif %}
+                </td>
+                <td class="right quantity-cell remaining-cell">
+                    <strong>{{ "%g"|format(item.qty_pcs_rem if item.qty_pcs_rem is not none else ((item.qty or 0) - (item.delivered_qty or 0))) }}</strong>
+                    {% if item.uom %}<small>{{ item.uom|e }}</small>{% endif %}
+                </td>
+                <td class="right money-cell">{{ item.get_formatted("rate", doc) }}</td>
+                <td class="right money-cell strong">{{ item.get_formatted("amount", doc) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <table class="order-totals">
+        <tr>
+            <td class="totals-context" rowspan="{{ 2 + (doc.taxes|length) + (1 if doc.discount_amount else 0) }}">
+                <div class="summary-label">{{ _("Order value") }}</div>
+                <div class="totals-note">{{ _("All amounts are shown in {0}.").format(doc.currency or "") }}</div>
+            </td>
+            <th>{{ _("Subtotal") }}</th>
+            <td>{{ doc.get_formatted("total") }}</td>
+        </tr>
+        {% if doc.discount_amount %}
+        <tr class="discount-total">
+            <th>{{ _("Additional discount") }}</th>
+            <td>− {{ doc.get_formatted("discount_amount") }}</td>
+        </tr>
+        {% endif %}
+        {% for tax in doc.taxes %}
+        <tr>
+            <th>{{ (tax.description or tax.account_head or _("Tax / charge"))|e }}</th>
+            <td>{{ tax.get_formatted("tax_amount_after_discount_amount", doc) }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="grand-total-row">
+            <th>{{ _("Grand total") }}</th>
+            <td>{{ doc.get_formatted("grand_total") }}</td>
+        </tr>
+    </table>
+
+    {% if doc.terms %}
+    <div class="terms-panel">
+        <div class="section-kicker">{{ _("Terms and conditions") }}</div>
+        <div class="terms-copy">{{ doc.terms }}</div>
+    </div>
+    {% endif %}
+
+    {% if doc.closing_text %}
+    <div class="message-panel closing-panel">
+        <div class="message-copy">{{ doc.closing_text }}</div>
+    </div>
+    {% endif %}
+</div>
+
+<div id="footer-html" class="visible-pdf">
+    <table class="pdf-footer">
+        <tr>
+            <td>{{ _("Sales Order") }} · {{ doc.name|e }}</td>
+            <td class="page-number">{{ _("Page") }} <span class="page"></span> / <span class="topage"></span></td>
+        </tr>
+    </table>
+</div>

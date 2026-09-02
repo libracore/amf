@@ -1,0 +1,434 @@
+@font-face {
+    font-family: "Supreme";
+    src: url("/files/Supreme-Variable.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 100 800;
+}
+
+.print-format {
+    color: #18223a;
+    font-family: "Supreme", "Helvetica Neue", Arial, sans-serif;
+    font-size: 8.1pt;
+    line-height: 1.33;
+    margin-bottom: 0;
+}
+
+.print-format .sales-order-page { page-break-after: auto; }
+.print-format table { margin: 0; }
+
+.sales-order-letter-head {
+    line-height: 1.1;
+    margin-bottom: 1mm;
+    page-break-inside: avoid;
+}
+
+.sales-order-letter-head .company-name { font-size: 11pt !important; }
+
+.sales-order-letter-head .gray-text {
+    font-size: 6.4pt !important;
+    line-height: 1.1 !important;
+}
+
+.sales-order-letter-head .banking-info {
+    font-size: 5.9pt !important;
+    padding-top: 1mm !important;
+}
+
+.sales-order-letter-head .logo-cell a { display: none !important; }
+
+.sales-order-letter-head .logo-cell:before {
+    color: #2b47d9;
+    content: "AMF";
+    display: inline-block;
+    font-size: 25pt;
+    font-weight: 750;
+    letter-spacing: -0.05em;
+    line-height: 1;
+    padding-top: 2mm;
+}
+
+.document-hero,
+.order-summary,
+.address-grid,
+.reference-strip,
+.order-items,
+.order-totals,
+.pdf-footer {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+}
+
+.document-hero {
+    border-bottom: 2px solid #2b47d9;
+    margin-top: 0;
+}
+
+.document-hero td {
+    border: 0 !important;
+    padding: 0 0 2mm !important;
+    vertical-align: bottom !important;
+}
+
+.document-purpose { width: 40%; }
+.document-identity { text-align: right; width: 60%; }
+
+.eyebrow,
+.section-kicker,
+.summary-label {
+    color: #2b47d9;
+    font-size: 6.7pt;
+    font-weight: 700;
+    letter-spacing: 0.075em;
+    text-transform: uppercase;
+}
+
+.purpose-copy {
+    color: #687086;
+    margin-top: 0.8mm;
+}
+
+.document-type {
+    color: #2b47d9;
+    font-size: 22pt;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    line-height: 1;
+}
+
+.document-number {
+    color: #7c8497;
+    font-size: 10.5pt;
+    font-weight: 550;
+    margin-top: 1.2mm;
+}
+
+.hero-spacer { height: 1.8mm; }
+
+.status-banner {
+    border: 1px solid;
+    font-size: 8.5pt;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    margin-bottom: 2.5mm;
+    padding: 1.3mm 3mm;
+    text-align: center;
+}
+
+.status-draft { background: #fff9db; border-color: #e9b949; color: #7a5200; }
+.status-cancelled { background: #fff0f0; border-color: #e25c5c; color: #9d1c1c; }
+
+.order-summary {
+    background: #f3f5fa;
+    border: 1px solid #dce1eb;
+    margin-bottom: 3mm !important;
+    page-break-inside: avoid;
+}
+
+.order-summary td {
+    border: 0 !important;
+    border-right: 1px solid #dce1eb !important;
+    padding: 1.8mm 2.4mm !important;
+    vertical-align: top !important;
+    width: 17%;
+}
+
+.order-summary td:last-child { border-right: 0 !important; }
+.order-summary .summary-customer { width: 32%; }
+.order-summary .summary-currency { width: 14%; }
+
+.summary-value {
+    color: #18223a;
+    font-size: 8.5pt;
+    font-weight: 650;
+    margin-top: 0.6mm;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+}
+
+.customer-value { font-size: 9.5pt; }
+.status-value, .currency-value { color: #2b47d9; }
+.muted { color: #9299a8 !important; font-style: italic; }
+
+.address-grid {
+    border-collapse: separate;
+    border-spacing: 3mm 0;
+    margin: 0 -3mm 3mm;
+    page-break-inside: avoid;
+    width: calc(100% + 6mm);
+}
+
+.address-grid > tbody > tr > td {
+    background: #fff;
+    border: 1px solid #dce1eb !important;
+    padding: 2.2mm 3mm !important;
+    vertical-align: top !important;
+    width: 50%;
+}
+
+.address-card { min-height: 29mm; }
+
+.party-name {
+    font-size: 10.5pt;
+    font-weight: 650;
+    margin-top: 1.2mm;
+}
+
+.address-value {
+    color: #3c465c;
+    margin-top: 1.2mm;
+    word-wrap: break-word;
+}
+
+.address-value p,
+.address-value div,
+.contact-block p,
+.contact-block div { margin: 0 0 0.45mm; }
+
+.contact-block {
+    border-top: 1px solid #e2e6ee;
+    color: #3c465c;
+    margin-top: 1.7mm;
+    padding-top: 1.7mm;
+    word-break: break-word;
+}
+
+.tax-reference {
+    border-top: 1px solid #e2e6ee;
+    color: #3c465c;
+    margin-top: 1.7mm;
+    padding-top: 1.7mm;
+}
+
+.tax-reference span {
+    color: #7c8497;
+    display: block;
+    font-size: 6pt;
+    text-transform: uppercase;
+}
+
+.reference-strip {
+    background: #f8f9fc;
+    border: 1px solid #dce1eb;
+    margin-bottom: 3mm !important;
+    page-break-inside: avoid;
+}
+
+.reference-strip td {
+    border: 0 !important;
+    border-right: 1px solid #dce1eb !important;
+    padding: 1.7mm 3mm !important;
+    vertical-align: top !important;
+}
+
+.reference-strip td:last-child { border-right: 0 !important; }
+
+.reference-value {
+    color: #18223a;
+    font-size: 8.8pt;
+    font-weight: 650;
+    margin-top: 0.6mm;
+    word-break: break-word;
+}
+
+.reference-detail {
+    color: #70788a;
+    font-size: 6.7pt;
+    margin-top: 0.4mm;
+    word-break: break-word;
+}
+
+.message-panel,
+.terms-panel {
+    border: 1px solid #dce1eb;
+    margin-top: 3mm;
+    padding: 2.3mm 3mm;
+    page-break-inside: avoid;
+}
+
+.message-panel { background: #f8f9fc; }
+.message-copy { color: #3c465c; }
+.message-copy p, .message-copy div { margin: 0 0 0.6mm; }
+
+.items-heading {
+    border-bottom: 1px solid #bfc7d8;
+    color: #18223a;
+    font-size: 12pt;
+    font-weight: 700;
+    margin: 3mm 0 1.5mm;
+    padding-bottom: 1mm;
+    page-break-after: avoid;
+}
+
+.item-count {
+    color: #7c8497;
+    float: right;
+    font-size: 8pt;
+    font-weight: 500;
+}
+
+.order-items {
+    border: 1px solid #ccd3df;
+    page-break-inside: auto;
+}
+
+.order-items thead {
+    display: table-header-group;
+    page-break-after: avoid;
+}
+
+.order-items th {
+    background: #2b47d9 !important;
+    border: 0 !important;
+    border-right: 1px solid #5368df !important;
+    color: #fff !important;
+    font-size: 6.1pt;
+    font-weight: 650;
+    line-height: 1.15;
+    padding: 1.6mm 1.1mm !important;
+    text-transform: uppercase;
+    vertical-align: bottom !important;
+}
+
+.order-items th:last-child { border-right: 0 !important; }
+
+.order-items th small {
+    color: #dfe4ff;
+    display: block;
+    font-size: 5.5pt;
+    margin-top: 0.35mm;
+}
+
+.order-items tbody tr { page-break-inside: avoid; }
+
+.order-items td {
+    border: 0 !important;
+    border-right: 1px solid #e3e7ef !important;
+    border-top: 1px solid #e3e7ef !important;
+    color: #303a50;
+    font-size: 7pt;
+    padding: 1.6mm 1.2mm !important;
+    vertical-align: top !important;
+    word-break: break-word;
+    word-wrap: break-word;
+}
+
+.order-items td:last-child { border-right: 0 !important; }
+.order-items tbody tr:nth-child(even) td { background: #fafbfc; }
+.order-items .center { text-align: center; }
+.order-items .right { text-align: right; }
+
+.order-items small {
+    color: #747d91;
+    display: block;
+    font-size: 6pt;
+    margin-top: 0.45mm;
+}
+
+.reference-cell strong { word-break: break-all; }
+.description-cell p, .description-cell div { margin: 0 0 0.5mm; }
+.delivery-cell { white-space: nowrap; }
+.quantity-cell, .money-cell { white-space: normal; }
+.strong { font-weight: 700; }
+
+.discount-note {
+    border-top: 1px solid #e2e6ee;
+    color: #2b47d9;
+    font-size: 6.2pt;
+    font-weight: 650;
+    margin-top: 1mm !important;
+    padding-top: 0.8mm;
+}
+
+.col-position { width: 4%; }
+.col-reference { width: 13%; }
+.col-delivery { width: 11%; }
+.col-description { width: 32%; }
+.col-quantity { width: 7%; }
+.col-remaining { width: 7%; }
+.col-rate { width: 12%; }
+.col-amount { width: 14%; }
+
+.order-totals {
+    border: 1px solid #ccd3df;
+    border-top: 0;
+    page-break-inside: avoid;
+}
+
+.order-totals td,
+.order-totals th {
+    border: 0 !important;
+    border-top: 1px solid #e3e7ef !important;
+    padding: 1.7mm 3mm !important;
+    vertical-align: middle !important;
+}
+
+.order-totals tr:first-child td,
+.order-totals tr:first-child th { border-top: 0 !important; }
+
+.totals-context {
+    background: #f8f9fc;
+    width: 55%;
+}
+
+.totals-note {
+    color: #6b7385;
+    font-size: 6.7pt;
+    margin-top: 0.6mm;
+}
+
+.order-totals th {
+    color: #4b556b;
+    font-size: 7.2pt;
+    font-weight: 650;
+    text-align: right;
+    text-transform: uppercase;
+    width: 24%;
+}
+
+.order-totals td:last-child {
+    font-weight: 650;
+    text-align: right;
+    width: 21%;
+}
+
+.discount-total td:last-child { color: #b42318; }
+
+.grand-total-row th,
+.grand-total-row td:last-child { background: #eef1ff; }
+
+.grand-total-row td:last-child {
+    color: #213bc0;
+    font-size: 12.5pt;
+    font-weight: 750;
+}
+
+.terms-panel { color: #3c465c; }
+
+.terms-copy {
+    margin-top: 1.1mm;
+    word-wrap: break-word;
+}
+
+.terms-copy p,
+.terms-copy div { margin: 0 0 0.55mm; }
+
+.terms-copy a { color: #4658c8; text-decoration: none; }
+.closing-panel { margin-bottom: 0; }
+
+.pdf-footer {
+    border-top: 1px solid #d9dfeb;
+    border-bottom: 4px solid #2b47d9;
+    color: #7c8497;
+    font-family: "Supreme", "Helvetica Neue", Arial, sans-serif;
+    font-size: 7pt;
+    margin-top: 2mm;
+}
+
+.pdf-footer td { border: 0 !important; padding: 1.5mm 0 2mm !important; }
+.pdf-footer .page-number { text-align: right; }
+
+@media print {
+    .print-format { font-family: "Supreme", "Helvetica Neue", Arial, sans-serif !important; }
+    .order-items th, .status-banner, .grand-total-row td:last-child { -webkit-print-color-adjust: exact; }
+}
