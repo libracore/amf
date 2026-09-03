@@ -1,12 +1,12 @@
 # AMF ERP Release Notes
 
-Generated on: 2026-08-25
+Generated on: 2026-09-03
 
-Change history through: 2026-08-25
+Change history through: 2026-09-03
 
 Live system: [AMF ERP Desk](https://amf.libracore.ch/desk#)
 
-Latest release: `v2026.08.4`
+Latest release: `v2026.09.1`
 
 Release status: Ready for validation
 
@@ -16,7 +16,7 @@ Release audience: AMF ERP users, department leads, management, operations, finan
 
 This document is the business-facing release notes and change history for the AMF ERP custom app.
 
-It summarizes the main ERP changes developed in the AMF custom app from the beginning of the recorded development history to 2026-08-25. The report is based on the `apps/amf` git history, which starts on 2022-09-19, and on the current AMF app structure, including custom DocTypes, reports, pages, hooks and documentation.
+It summarizes the main ERP changes developed in the AMF custom app from the beginning of the recorded development history to 2026-09-03. The report is based on the `apps/amf` git history, which starts on 2022-09-19, and on the current AMF app structure, including custom DocTypes, reports, pages, hooks and documentation.
 
 This is intentionally not a technical commit-by-commit changelog. It is a release communication document for the main modifications, novelties and functional areas added over time. Standard Frappe and ERPNext framework changes are not listed unless they were reflected in AMF custom development.
 
@@ -47,7 +47,8 @@ Historical development milestones already recorded in the project, such as `v0.4
 
 | Release | Status | Period | Main Focus |
 | --- | --- | --- | --- |
-| `v2026.08.4` | Ready for validation, latest | 2026 Q3 to date | Governed Product and purchased-item descriptions, Loan Order printing, PostFinance import compatibility, custom-item R&D review controls and process-owned Issue classification. |
+| `v2026.09.1` | Ready for validation, latest | 2026 Q3 to date | Organizational Modification Request governance, Sales Order and commercial-invoice printing, focused Weekly Operations KPIs and a guarded RVM.3300 stock-history correction. |
+| `v2026.08.4` | Superseded | 2026 Q3 | Governed Product and purchased-item descriptions, Loan Order printing, PostFinance import compatibility, custom-item R&D review controls and process-owned Issue classification. |
 | `v2026.08.3` | Superseded | 2026 Q3 | Loan Order commercial settlement, DHL Express shipment creation, Delivery Note commercial invoice and packaging formats, Weekly Operations Report slides and legacy weekly email cleanup. |
 | `v2026.08.2` | Superseded | 2026 Q3 | Recursive default BOM versioning, 4B/4C BOM family-coherence repairs, Issue timeline/resolution layout refinements and receipt batch tracking for item `70E000`. |
 | `v2026.08.1` | Superseded | 2026 Q3 | Tool-only maintenance planning, maintenance history, preventive maintenance dashboard, automatic Item maintenance summaries, P202-O BOM creation and receipt batch tracking for item `70E000`. |
@@ -60,74 +61,77 @@ Historical development milestones already recorded in the project, such as `v0.4
 | `v0.4.0` | Superseded | 2024 Q3 | Master CRM, Sales Actions, campaign lists, Gravity Forms, Brevo integration and CRM analytics. |
 | Foundation releases | Superseded | 2022-2024 | Core reporting, planning, labels, QR codes, inventory visibility, logistics, purchasing and CRM foundations. |
 
-## Latest Release: `v2026.08.4`
+## Latest Release: `v2026.09.1`
 
-Release date: 2026-08-25
+Release date: 2026-09-03
 
 Release status: Ready for validation
 
-Committed change window: 2026-08-19 to 2026-08-25
+Committed change window: 2026-08-26 to 2026-09-03
 
 Live version: [https://amf.libracore.ch/desk#](https://amf.libracore.ch/desk#)
 
 ### Summary
 
-This release strengthens master-data quality by standardizing the customer-facing, customs and internal descriptions used for finished Products and purchased physical items. Product descriptions are derived from their configured body, valve head, syringe and preferred submitted BOM, while purchased-item descriptions combine ERP purchasing evidence, supplier references and reviewed catalog facts without discarding existing production notes.
+This release introduces a controlled Organizational Modification Request workflow for significant and major company changes. Teams can document the proposed change, affected domains, risks, preventive controls, implementation actions and effectiveness criteria, then route it through change-responsible, Quality and—when required—General Management approval before implementation and closure.
 
-Loan Order communication and finance workflows also improve. A dedicated customer-facing Loan Order print format presents the borrower, loan period, equipment, purpose, terms and declared values, and the PostFinance reconciliation importer now accepts both multi-account and single-account CSV exports as well as invoice references written with or without the normal dash.
+Customer documents also become more consistent. `Standard Branding AMF 2026` is now the default Sales Order print format and presents customer/order references, billing and shipping details, item delivery dates, remaining quantities, prices, totals and commercial text in a structured layout. The Delivery Note commercial invoice letterhead handling was simplified to prevent it from behaving like a repeating PDF header.
 
-Finally, the release adds two controlled review mechanisms. Custom Valve Heads propagate a `Custom Item` flag to Products and trigger a one-time R&D review warning in Quotations and Sales Orders. Issues now use a governed process, ownership and classification model with canonical active Issue Types, accountable owners, separate outcomes and user-confirmed subject suggestions.
+Weekly Operations reporting is now deliberately narrower and manually distributed: production output considers only Sales Orders classified as `Production`, `GX` items are excluded from selected delivery/QC indicators, and scheduled report generation no longer sends the slide automatically. A guarded migration also corrects the duplicate RVM.3300 receipt `PREC-02960` and its downstream batch allocations while preserving the valid physical stock history.
 
 ### Highlights
 
-- Standardized the three Item description layers for Product records: customer-facing sales content, concise customs wording and internal production detail based on the preferred active submitted BOM.
-- Added a reviewed migration for active physical items with submitted purchase history, using supplier references and catalog evidence while preserving existing production notes.
-- Added stable child groups under `Part` for clearer classification of fasteners, bearings, seals, fluidic components, electronics, custom mechanical parts and other purchased components.
-- Added a dedicated Loan Order print format with borrower/contact details, loan dates, item descriptions, declared values, purpose and terms; the printed document now points to a separately shared and signed Loan Agreement.
-- Extended PostFinance bank-statement parsing to accept single-account exports whose IBAN and currency are held in metadata and whose debit/credit columns include the currency.
-- Normalized invoice references such as `SINV01641` and `SINV-01641` to the ERPNext document-name format during reconciliation and payment matching.
-- Added a `Custom Item` control that propagates from custom Valve Heads through active default BOMs to finished Products.
-- Added a non-repeating R&D review warning when a draft Quotation or Sales Order contains custom items; the warning is rearmed when the custom-item set changes.
-- Added the `AMF Issue Process` setup object, canonical Issue Types, active/retired controls and automatic primary/secondary process-owner routing.
-- Added up to three subject-based Issue Type suggestions on Issue and AMF Issue Test, using governed multilingual vocabulary and confirmed historical classifications while leaving the final selection to the user.
-- Refined the Issue form so product/batch information and repair fields follow a clearer operational sequence, including visibility of the warranty indicator.
+- Added the submittable Organizational Modification Request (OMR) workflow for `C2 - Significant` and `C3 - Major` changes.
+- Added structured change-type and impact assessment, risk/failure analysis, pre-implementation controls, training/documentation requirements and effectiveness-review planning.
+- Added an implementation action table with named owners, due dates, completion tracking and controls preventing implementation while actions remain incomplete.
+- Added approval decisions and electronic visas for the change owner and Quality, with an additional General Management approval required for C3 changes.
+- Added post-submit implementation and effectiveness closure stages, including automatic statuses and an optional follow-up Issue when a change is not effective.
+- Added a controlled French OMR PDF (`AMF.0053`) and an AMF module link for direct access to modification requests.
+- Added `Standard Branding AMF 2026` for Sales Orders and made it the default print format after migration.
+- Synchronized the AMF Sales Order, Sales Order Item and Payment Schedule customizations needed by the new print and existing order workflows.
+- Adjusted Delivery Note commercial-invoice letterhead rendering to keep the letterhead with the document body instead of configuring it as a repeatable PDF header.
+- Restricted Weekly Operations output-versus-plan data to `Production` Sales Orders and excluded `GX` items from On Time Delivery and incoming-QC inventory calculations.
+- Changed Weekly Operations slide distribution to manual email only; scheduled generation continues to create the report files without automatically emailing recipients.
+- Added an assertion-guarded, idempotent migration to remove duplicate Purchase Receipt `PREC-02960`, reassign valid RVM.3300 consumption and split later batch usage correctly between the valid receipts.
+- Added or updated automated coverage for OMR validation/lifecycle rules and the revised Weekly Operations data and email behavior.
 
 ### Change Notes
 
 | Area | Change | Brief Explanation |
 | --- | --- | --- |
-| Product descriptions | Three governed description layers generated. | Product Items receive structured customer-facing specifications from the configured product family, valve head and syringe, a DHL-safe customs description, and an internal production description from the preferred active submitted BOM. The migration validates its output and does not invent a BOM where none exists. |
-| Purchased-item master data | Evidence-based descriptions and grouping added. | Active physical items with submitted purchase history are enriched from Item data, supplier part numbers, purchase documents and reviewed supplier/manufacturer sources. Existing production notes are preserved, non-physical placeholders are excluded and a compact CSV supports review and debugging. |
-| Part classification | Stable purchased-part child groups added. | Purchased `Part` records can be assigned to controlled groups such as Fasteners, Bearings and Bushings, Fluidic Components, Electronic Components or Custom Mechanical Parts. Classification rules preserve an existing valid child group and use stable fallbacks for items without a stronger match. |
-| Loan Order printing | Customer-facing print format installed. | Loan Orders now default to a structured print with borrower address/contact, start and return dates, equipment descriptions, quantities, purpose, terms and optional declared values. The final layout identifies the document as issued and refers to the separately signed Loan Agreement instead of embedding a signature block. |
-| Bank reconciliation | Additional PostFinance CSV layout supported. | The importer now resolves both the existing multi-account export and a single-account format with IBAN/currency metadata and currency-qualified credit/debit columns. It verifies that the IBAN and currency match a configured supported account before importing transactions. |
-| Invoice matching | Optional-dash references normalized. | Sales and Purchase Invoice references are recognized whether the bank text contains the normal dash or omits it. References are normalized before matching and the same flexible pattern is used when extracting Payment Entry check references. |
-| Custom-item governance | Valve Head flags propagated to Products. | Marking a Valve Head as custom identifies Products whose active submitted default BOM directly contains it. The synchronization also runs when qualifying BOMs are submitted or updated and can backfill existing related Products after migration. |
-| Sales review | R&D warning added to draft selling documents. | Saving a Quotation or Sales Order with custom items displays an orange R&D review message listing the affected references. A hidden acknowledgement prevents repetition for an unchanged item set but resets when custom items are removed or changed. |
-| Issue classification | Process-owned taxonomy and routing added. | A new AMF Issue Process register defines process codes, scope and primary/secondary owners. Canonical Issue Types link to these processes, inactive legacy types are excluded from new selection, and the selected type routes the Issue to the accountable owner fields. |
-| Issue suggestions | Governed user-confirmed recommendations added. | Issue and AMF Issue Test subjects can show up to three ranked active Issue Types using controlled English/French/German terminology and sufficiently confirmed historical examples. Suggestions explain their matching signals and never apply a classification until the user explicitly chooses one. |
-| Issue form layout | Product and resolution sections reordered. | Product/item/batch details are brought forward, repair options are kept together and the `Under Guarantee` control is visible. This reduces navigation between scattered fields while preserving the existing Issue information. |
+| Organizational change control | OMR lifecycle introduced. | The new Organizational Modification Request records C2/C3 changes from proposal through impact and risk assessment, implementation planning, approval, execution, effectiveness review and Quality closure. Its status progresses automatically through Draft, approval outcome, Effectiveness Review and Closed states. |
+| OMR scope and risk | Required governance fields added. | Requesters must identify at least one change type and impacted domain, explain the change and its purpose, document what could fail, define preventive controls and state how effectiveness will be verified. Conditional fields capture training, documentation and non-standard review periods when applicable. |
+| OMR actions and approvals | Controlled execution gates added. | Each implementation action has a responsible user, due date and completion record, and actions must be complete before an actual implementation date can be recorded. Submission requires the decision and applicable signed approvals; C3 changes additionally require a General Management visa. |
+| OMR effectiveness and closure | Post-implementation review added. | Submitted requests remain updateable for the actual implementation and effectiveness review. An ineffective result requires additional actions and can link to a formal Issue; completed closure requires the Quality reviewer, result, decision, date and signature. |
+| OMR output and navigation | Controlled document and module link added. | A French `AMF.0053 - Organizational Modification Request` PDF mirrors the governed form and is available from a dedicated Print action. The AMF module exposes the OMR list so users can access the workflow directly. |
+| Sales Order printing | 2026 customer format made default. | The new branded format combines order status and dates, customer PO, AMF contact, billing/shipping addresses, introduction, delivery dates, ordered/remaining quantities, discounts, totals, terms and closing text. A migration installs or refreshes it and sets it as the Sales Order default. |
+| Sales Order fixtures | Existing AMF customizations synchronized. | Sales Order, Sales Order Item and Payment Schedule fields/property settings used by printing and operations are now committed as migration fixtures. This includes customer PO/contact data, shipping controls, order type, remaining quantities, display options and payment-schedule labeling. |
+| Commercial invoice printing | Letterhead behavior corrected. | The Delivery Note commercial invoice now renders the letterhead once as part of the document layout with controlled spacing. This avoids unintended repeated-header behavior and keeps the first-page composition stable. |
+| Weekly Operations scope | Production and `GX` filters tightened. | Output-versus-plan now counts only Sales Orders explicitly classified as `Production`. `GX` item codes are excluded from the On Time Delivery dataset and incoming-QC stock backlog so the slide reflects the intended operational scope. |
+| Weekly Operations distribution | Automatic scheduled email removed. | Scheduled generation still creates the Weekly Operations Report PDF/PNG, but no longer sends it automatically. Recipients and subject settings remain available for intentional manual sending of a generated slide. |
+| Stock history correction | Duplicate RVM.3300 receipt repaired. | The migration validates exact receipts, batches, quantities and downstream Stock Entries before changing anything. It reassigns consumption to the correct `PREC-02868` batch, allocates 67 later-used units to `PREC-02979`, removes duplicate `PREC-02960` and verifies the expected remaining stock. |
 
 ### User Impact
 
 - No separate user installation action is required after the migration is deployed.
-- Sales, customs and production users receive clearer Product and purchased-item descriptions drawn from controlled ERP and supplier evidence.
-- Item-master reviewers should check generated descriptions and the new `Part` child-group assignments, especially any component that depends on a safe fallback rather than an exact researched catalog match.
-- Loan Order users receive a consistent customer document with the relevant loan dates, equipment details and declared values; the Loan Agreement remains a separate signed document.
-- Finance users can import the supported single-account PostFinance export and match compact invoice references that omit the dash.
-- Sales users are warned when a Quotation or Sales Order needs R&D review because it contains a custom Product or Valve Head.
-- Issue creators receive clearer active classifications and suggestions, while process owners gain explicit routing and accountability for triage and closure quality.
+- Requesters and Quality managers gain one auditable place to prepare, approve, implement and close significant organizational, process, supplier, production, documentation or ERP/IT changes.
+- C3 requests require General Management approval; implementation cannot be recorded until all planned actions are marked complete.
+- Sales users receive a clearer default Sales Order document with delivery, remaining-quantity and commercial information grouped for customer review.
+- Operations managers should expect Weekly Operations output and delivery indicators to change because only Production orders and the intended non-`GX` scope are now counted.
+- Weekly slides are not emailed by scheduled generation; an authorized user must deliberately send a generated report.
+- The RVM.3300 repair is limited to the named receipts and exact validated stock records; it aborts if the live state differs from the expected history.
 
 ### Validation Notes
 
 Recommended post-release checks:
 
-- Review a representative pump, valve, special Product and Product without a BOM across the customer, customs and internal description fields.
-- Review purchased items from several suppliers and Part categories, confirming that source facts are appropriate and existing internal production notes remain intact.
-- Print draft and submitted Loan Orders with and without declared values, checking address/contact selection, dates, item descriptions, page layout and the separate Loan Agreement wording.
-- Import one multi-account and one supported single-account PostFinance CSV, then verify invoice matching for references both with and without a dash.
-- Mark a test Valve Head as custom, confirm the related default-BOM Product is flagged, and verify the R&D warning behavior on a draft Quotation and Sales Order.
-- Create test Issues for several processes, confirm owner routing, verify retired Issue Types cannot be newly selected and review the subject suggestions before explicitly applying one.
+- Create one C2 and one C3 OMR, verifying mandatory scope/impact fields, action due-date rules, approval signatures and the additional General Management requirements for C3.
+- Submit an approved OMR, complete its actions, record implementation and exercise both effective and ineffective closure paths, including a follow-up Issue where justified.
+- Generate the `AMF.0053` PDF and confirm the French content, signatures, selected change/impact boxes, action plan and closure data remain legible across pages.
+- Print representative draft and submitted Sales Orders with taxes, discounts, long descriptions and remaining quantities, confirming `Standard Branding AMF 2026` is the default.
+- Print a Delivery Note commercial invoice with a letterhead and confirm the letterhead appears once with correct first-page spacing.
+- Generate a Weekly Operations Report and reconcile output/plan, On Time Delivery and QC backlog values against Production-only and non-`GX` expectations; verify scheduled generation sends no email.
+- After migration, confirm `PREC-02960` and its obsolete batch are removed, the valid receipt/invoice remain submitted, RVM.3300 WIP is zero and 33 units remain in the overflow batch in Main Stock.
 
 ## Executive Summary
 
@@ -143,17 +147,34 @@ The main evolution areas are:
 - Purchasing and procurement follow-up.
 - Delivery Note, shipping, DHL tracking, DHL shipment creation and logistics tools.
 - CRM, contact management, sales actions, campaign lists and external form/email integrations.
-- Quality inspection, process-owned Issue classification, customer feedback and satisfaction surveys.
+- Quality inspection, process-owned Issue classification, organizational change control, customer feedback and satisfaction surveys.
 - Finance and compliance support such as VAT, HS codes, customs values, landed cost, custom ledgers and PostFinance reconciliation.
 - Operational dashboards, KPI reporting and AI-assisted reporting.
-- Weekly operations slide reporting for production, supply, QC and shipping follow-up.
+- Weekly operations slide reporting with controlled production, delivery, QC and shipping scope.
+- Customer-facing Sales Order, Loan Order, Delivery Note and commercial-invoice document formats.
 - User interface improvements, document hooks, automation scripts and administrative utilities.
 
 ## Release History
 
 ### 2026 - Advanced Planning, Finance, Compliance, Dashboards And AI Reporting
 
-#### `v2026.08.4` - 2026 Q3 To Date - Latest
+#### `v2026.09.1` - 2026 Q3 To Date - Latest
+
+- Organizational Modification Request and Organizational Modification Action DocTypes added for controlled C2 significant and C3 major changes.
+- OMR preparation covers the proposed change, motivation, change types, impacted domains, failure risks, preventive controls, training/documentation needs and effectiveness criteria.
+- Named implementation actions now carry responsible users, deadlines, completion flags and completion dates; all actions must be complete before implementation can be recorded.
+- Submission requires an approval decision plus change-responsible and Quality signatures, while C3 changes also require General Management approval.
+- Submitted OMRs support actual implementation, effectiveness review and Quality closure, with automatic statuses and mandatory additional actions when a change is not effective.
+- French controlled print format `AMF.0053 - Organizational Modification Request` added with a dedicated PDF button and direct access from the AMF module.
+- Sales Order custom fields and property fixtures synchronized so customer PO, AMF contact, shipping, order-type, remaining-quantity, display and payment-schedule configuration migrate consistently.
+- `Standard Branding AMF 2026` Sales Order format added and set as the default, presenting customer/order details, delivery dates, remaining quantities, pricing, totals, terms and commercial messages.
+- Delivery Note commercial-invoice letterhead changed from repeatable-header behavior to a single document letterhead with controlled first-page spacing.
+- Weekly Operations output-versus-plan restricted to `Production` Sales Orders; `GX` items excluded from On Time Delivery and incoming-QC backlog calculations.
+- Weekly Operations scheduled generation no longer sends email automatically; generated slides remain available for deliberate manual distribution.
+- Guarded RVM.3300 correction added for duplicate receipt `PREC-02960`, including downstream batch reassignment, a 100/67-unit split between valid receipts, obsolete-batch removal and final stock verification.
+- Tests added for OMR validation, approvals, implementation and closure, with Weekly Operations tests updated for Production-only metrics, `GX` exclusions and manual email distribution.
+
+#### `v2026.08.4` - 2026 Q3
 
 - Product Item descriptions standardized into customer-facing, customs and internal production layers derived from product configuration and the preferred active submitted BOM.
 - Description generation covers established pump and valve families, special products and Valve Heads, validates output length/content and avoids creating a production basis for Products without a BOM.
@@ -456,6 +477,7 @@ The main evolution areas are:
 - Batch handling, raw material batches, ATR batches and batch disabling.
 - Receipt-specific batch creation for selected purchased stock items.
 - Stock Entry hooks, repairs, scrap behavior and valuation/rate updates.
+- Guarded correction tooling for the duplicate RVM.3300 receipt and its downstream batch/ledger history.
 
 ### Item, BOM And Product Master
 
@@ -475,7 +497,7 @@ The main evolution areas are:
 - Serial-number transfer to Delivery Notes.
 - DHL export, tracking and MyDHL Express shipment creation.
 - Logistics tracking page and tracking settings.
-- Delivery Note commercial invoice and packaging branding print formats.
+- Delivery Note commercial invoice and packaging branding print formats, including single-letterhead commercial-invoice rendering.
 - Sales Order to Delivery Note lead-time reporting.
 - Loan Order support, document links and commercial settlement invoicing.
 
@@ -485,6 +507,7 @@ The main evolution areas are:
 - Contact enhancements, statuses, duplicate prevention and customer linking.
 - Sales actions, sales activities, sales journey and quotation workflow.
 - Custom-item warnings on Quotations and Sales Orders requiring R&D review.
+- Default `Standard Branding AMF 2026` Sales Order output with customer, delivery, remaining-quantity, price and totals presentation.
 - Gravity Forms integration for external form entry handling.
 - Brevo integration, campaign lists, campaign synchronization and contact statistics.
 - Customer, referral and satisfaction survey features.
@@ -499,6 +522,7 @@ The main evolution areas are:
 - Governed Issue processes, canonical Issue Types, accountable-owner routing and subject-based classification suggestions.
 - Issue outcomes separated from classifications, with inactive legacy types retained for historical records.
 - Root cause and quality investigation support.
+- Organizational Modification Requests with C2/C3 risk assessment, approvals, implementation actions, effectiveness review and Quality closure.
 
 ### Finance, Compliance And Administration
 
@@ -515,7 +539,7 @@ The main evolution areas are:
 
 - Operational, sales, procurement, stock, production, delivery and quality reports added over time.
 - SCM, quotation, global inventory, operations KPI and planning dashboards introduced or improved.
-- Weekly Operations Report slides with production, delivery, QC and shipping snapshots.
+- Weekly Operations Report slides with Production-order scope, non-`GX` delivery/QC filters and manual email distribution.
 - AI-assisted operations reporting added with controlled evidence-backed insights.
 - Document AI import structures added for document parsing and extraction workflows.
 
@@ -524,13 +548,14 @@ The main evolution areas are:
 - Custom pages, common JavaScript utilities and UI refinements added.
 - DHL Shipment form actions for draft building, product lookup, validation and AWB creation.
 - Loan Order customer print format and print-time address, contact and description preparation.
+- Sales Order 2026 branded print format and controlled French OMR PDF generation.
 - Barcode, DataMatrix, QR code and label infrastructure expanded.
 - Web pages and generated documents for planning, item information, logistics, print formats and document tooling added.
 - Hooks, migrations, settings DocTypes and background utilities added to automate operational behavior, including Tool maintenance lifecycle updates, BOM repair workflows, DHL Shipment setup and weekly report settings.
 
 ## Current Main Custom Objects
 
-The current AMF custom app includes custom objects for planning, item creation, Weekly Operations Reports, Tool Maintenance Plans, Tool Maintenance Logs, global quality inspection, timer production, DHL tracking, loan orders, issue management, AMF Issue Processes, Document AI imports, HS codes, customer feedback, CRM forms, Brevo campaigns, sales actions and satisfaction surveys. It also includes utility layers for Product and purchased-item descriptions, custom-item governance, Issue classification, Loan Order settlement and printing, DHL Shipment creation, BOM family repair, recursive BOM updates, Delivery Note print formats and batch setup.
+The current AMF custom app includes custom objects for planning, item creation, Weekly Operations Reports, Organizational Modification Requests and Actions, Tool Maintenance Plans, Tool Maintenance Logs, global quality inspection, timer production, DHL tracking, loan orders, issue management, AMF Issue Processes, Document AI imports, HS codes, customer feedback, CRM forms, Brevo campaigns, sales actions and satisfaction surveys. It also includes utility layers for Product and purchased-item descriptions, custom-item governance, Issue classification, OMR setup/printing, Loan Order settlement and printing, Sales Order branding, DHL Shipment creation, BOM family repair, recursive BOM updates, Delivery Note print formats, batch setup and guarded stock-history correction.
 
 The current report catalog includes operational reports for inventory turnover, stock and revenue, produced and delivered items, purchased versus manufactured items, delivered items, purchase order items, late purchases, purchase order cash forecasting, projected stock, sales dashboards, quotation dashboards, manufacturing yield, machined parts, item margins, no-price items, leave balances, AMF general ledger, Sales Order to Delivery Note lead time and weekly operations slide reporting.
 
@@ -565,50 +590,49 @@ This document should remain high level. Technical implementation details, indivi
 
 ### Email de la dernière version - prêt à valider
 
-Objet: AMF ERP - Version v2026.08.4 - Descriptions articles, Loan Orders et classification Issues
+Objet: AMF ERP - Version v2026.09.1 - Modifications organisationnelles, impressions et KPI OPS
 
 Bonjour à toutes et à tous,
 
-La dernière version AMF ERP, v2026.08.4, est prête pour validation dans le système live:
+La dernière version AMF ERP, v2026.09.1, est prête pour validation dans le système live:
 
 AMF ERP live
 https://amf.libracore.ch/desk#
 
-Cette version concerne principalement la qualité des descriptions articles, le nouveau format d'impression Loan Order, la compatibilité des imports PostFinance, le contrôle des articles custom et une classification des Issues basée sur les processus responsables.
+Cette version introduit un processus contrôlé pour les demandes de modification organisationnelle, modernise l'impression des Sales Orders et précise le périmètre du reporting hebdomadaire OPS. Elle comprend également une correction sécurisée de l'historique de stock RVM.3300.
 
 Principaux changements:
 
-Descriptions des Products et articles achetés
-https://amf.libracore.ch/desk#List/Item/List
-Les Products disposent maintenant de descriptions client, douanière et interne structurées à partir de leur configuration et de leur BOM active soumise. Les articles physiques achetés sont enrichis avec les références fournisseurs, l'historique d'achat et des sources catalogue contrôlées, tout en conservant les notes de production existantes.
+Organizational Modification Request
+https://amf.libracore.ch/desk#List/Organizational%20Modification%20Request/List
+Le nouveau formulaire OMR encadre les changements significatifs C2 et majeurs C3 depuis la demande jusqu'à la clôture Qualité. Il documente les impacts, risques, mesures préventives, actions avec responsables et échéances, critères d'efficacité et visas requis; les changements C3 demandent aussi l'approbation de la Direction Générale.
 
-Classification des pièces achetées
-https://amf.libracore.ch/desk#Tree/Item%20Group
-Les articles du groupe Part peuvent être répartis dans des sous-groupes stables, par exemple Fasteners, Bearings and Bushings, Fluidic Components, Electronic Components ou Custom Mechanical Parts. Cette structure facilite les recherches et les contrôles sans remplacer une classification existante déjà valide.
+Mise en œuvre et clôture OMR
+https://amf.libracore.ch/desk#List/Organizational%20Modification%20Request/List
+Toutes les actions planifiées doivent être terminées avant d'enregistrer la mise en œuvre effective. La revue d'efficacité et la clôture sont ensuite documentées dans le même dossier, avec actions complémentaires obligatoires et lien possible vers une Issue si le changement n'est pas maîtrisé.
 
-Impression Loan Order
-https://amf.libracore.ch/desk#List/Loan%20Order/List
-Un format client dédié présente l'emprunteur, les contacts, la période de prêt, les équipements, le but, les conditions et les valeurs déclarées si elles existent. Le document imprimé renvoie désormais au Loan Agreement transmis et signé séparément.
+Impression Sales Order
+https://amf.libracore.ch/desk#List/Sales%20Order/List
+Le format `Standard Branding AMF 2026` devient le format d'impression par défaut. Il regroupe le statut, les références client, les adresses, les dates de livraison, les quantités commandées et restantes, les prix, taxes, totaux, conditions et messages commerciaux dans un document client plus lisible.
 
-Réconciliation bancaire PostFinance
-https://amf.libracore.ch/desk#bank-reconciliation-automation
-L'import accepte les exports CSV multi-comptes et mono-compte PostFinance. Les références SINV/PINV sont aussi reconnues avec ou sans tiret, avec contrôle de cohérence entre l'IBAN, la devise et les comptes supportés avant l'import.
+Facture commerciale Delivery Note
+https://amf.libracore.ch/desk#List/Delivery%20Note/List
+Le letterhead de la facture commerciale est maintenant placé une seule fois dans le corps du document avec un espacement contrôlé. Cette adaptation évite sa répétition comme en-tête PDF et stabilise la présentation de la première page.
 
-Articles custom et revue R&D
-https://amf.libracore.ch/desk#List/Quotation/List
-Un Valve Head marqué Custom Item propage ce statut aux Products concernés via leur BOM par défaut. Lorsqu'un devis ou une commande client contient un article custom, un avertissement orange demande une revue de configuration avec le département R&D sans se répéter tant que la liste des articles concernés reste identique.
+Weekly Operations Report
+https://amf.libracore.ch/desk#List/Weekly%20Operations%20Report/List
+Le calcul Output vs Plan utilise désormais uniquement les Sales Orders de type Production, et les articles GX sont exclus des indicateurs On Time Delivery et du backlog QC entrant. La génération planifiée crée toujours les fichiers PDF/PNG, mais leur envoi email devient exclusivement manuel.
 
-Classification et routage des Issues
-https://amf.libracore.ch/desk#List/Issue/List
-Les Issues utilisent maintenant des types actifs et normalisés liés à un processus responsable et à ses propriétaires principal et secondaire. Jusqu'à trois suggestions sont proposées à partir du sujet et du vocabulaire contrôlé; l'utilisateur doit toujours choisir et appliquer explicitement la classification finale.
+Correction stock RVM.3300
+Une migration contrôlée corrige le doublon `PREC-02960` et réattribue les consommations aux réceptions valides `PREC-02868` et `PREC-02979`. Elle vérifie les documents, lots, quantités et mouvements attendus avant toute modification, puis contrôle le stock final et s'arrête si l'historique ne correspond pas exactement aux hypothèses validées.
 
 Ce que cela signifie pour vous:
 
-- Les responsables articles sont invités à contrôler plusieurs descriptions Product et articles achetés, ainsi que les nouveaux sous-groupes Part.
-- Les utilisateurs Loan Order sont invités à imprimer un brouillon et un document soumis, avec et sans valeurs déclarées.
-- L'équipe finance est invitée à tester un export PostFinance mono-compte et les références de facture avec et sans tiret.
-- Les équipes sales et R&D sont invitées à vérifier la propagation Custom Item et l'avertissement sur un devis ou une commande client.
-- Les responsables de processus sont invités à contrôler le routage, les propriétaires et les suggestions sur plusieurs Issues représentatives.
+- Les demandeurs et l'équipe Qualité sont invités à tester un OMR C2 et un OMR C3, y compris les signatures, actions, mise en œuvre et clôture.
+- L'équipe Sales est invitée à imprimer plusieurs Sales Orders représentatifs avec le nouveau format par défaut.
+- Les responsables opérations sont invités à rapprocher les nouveaux KPI hebdomadaires avec les Sales Orders Production et à confirmer qu'aucun email n'est envoyé automatiquement.
+- La facture commerciale Delivery Note doit être vérifiée avec letterhead sur un document de plusieurs pages.
+- Après migration, l'équipe stock/finance doit confirmer la suppression de `PREC-02960`, l'intégrité des documents valides et le solde attendu de 33 unités RVM.3300.
 - Merci de signaler tout comportement inattendu via le canal de support interne habituel.
 
 Bonne journée,
