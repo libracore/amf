@@ -162,6 +162,7 @@ def get_conditions(filters):
     conditions = [
         "dni.item_code NOT RLIKE '^Di-'",
         "dni.item_code NOT RLIKE '^ENC-'",
+        "dni.item_code NOT RLIKE '^GX'",
         "dn.docstatus = 1",
         "IFNULL(dn.is_return, 0) != 1",
         "soi.delivery_date BETWEEN %(from_date)s AND %(to_date)s",

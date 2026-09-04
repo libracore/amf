@@ -304,7 +304,9 @@ override_doctype_dashboards = {
     "Sales Order": "amf.amf.utils.dashboards.modify_so_dashboard",
 }
 
-after_install = "amf.amf.utils.project_id.after_install"
+after_install = [
+    "amf.amf.utils.project_id.after_install"
+]
 
 # Migration Hook
 # --------------

@@ -16,7 +16,6 @@
   "weekly_qc_backlog_days",
   "weekly_max_items",
   "weekly_distribution_section",
-  "weekly_send_email",
   "weekly_email_recipients",
   "weekly_email_subject_prefix",
   "ai_section",
@@ -121,13 +120,7 @@
   {
    "fieldname": "weekly_distribution_section",
    "fieldtype": "Section Break",
-   "label": "Weekly Slide Distribution"
-  },
-  {
-   "default": "0",
-   "fieldname": "weekly_send_email",
-   "fieldtype": "Check",
-   "label": "Email Weekly Slide Automatically"
+   "label": "Manual Weekly Slide Email"
   },
   {
    "description": "Comma-separated email addresses used only for the weekly slide.",
@@ -310,7 +303,7 @@
   }
  ],
  "issingle": 1,
- "modified": "2026-08-14 00:00:00.000000",
+ "modified": "2026-09-02 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "AMF",
  "name": "Operations KPI Report Settings",
