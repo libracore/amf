@@ -305,8 +305,7 @@ override_doctype_dashboards = {
 }
 
 after_install = [
-    "amf.amf.utils.project_id.after_install",
-    "amf.amf.utils.organizational_modification_request_setup.install_organizational_modification_request_print_format",
+    "amf.amf.utils.project_id.after_install"
 ]
 
 # Migration Hook
@@ -330,7 +329,6 @@ after_migrate = [
     "amf.amf.utils.weekly_operations_report.sync_weekly_operations_report_settings",
     "amf.amf.utils.issue_classification.sync_issue_classification_setup",
     "amf.amf.utils.amf_issue_test_management.clear_amf_issue_test_management_meta_cache",
-    "amf.amf.utils.organizational_modification_request_setup.install_organizational_modification_request_print_format",
     "amf.amf.utils.kpi_dashboard.sync_supply_chain_manufacturing_dashboard",
     "amf.amf.utils.custom_item.sync_custom_item_configuration",
 ]
