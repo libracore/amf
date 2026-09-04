@@ -1,0 +1,31 @@
+{
+ "custom_fields": [],
+ "custom_perms": [],
+ "doctype": "Organizational Modification Request",
+ "property_setters": [
+  {
+   "_assign": null,
+   "_comments": null,
+   "_liked_by": null,
+   "_user_tags": null,
+   "creation": "2026-09-04 21:00:19.159981",
+   "default_value": null,
+   "doc_type": "Organizational Modification Request",
+   "docstatus": 0,
+   "doctype_or_field": "DocType",
+   "field_name": null,
+   "idx": 0,
+   "modified": "2026-09-04 21:00:19.159981",
+   "modified_by": "Administrator",
+   "name": "Organizational Modification Request-default_print_format",
+   "owner": "Administrator",
+   "parent": null,
+   "parentfield": null,
+   "parenttype": null,
+   "property": "default_print_format",
+   "property_type": "Data",
+   "value": "Organizational Modification Request"
+  }
+ ],
+ "sync_on_migrate": 1
+}
