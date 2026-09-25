@@ -5,6 +5,7 @@
 from __future__ import unicode_literals
 
 import frappe
+from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.utils import cstr, flt, today
 
 
@@ -15,6 +16,33 @@ RCA_STATEMENT_FIELD = "root_cause_statement"
 RCA_LEGACY_DESCRIPTION_FIELD = "root_cause_description"
 EFFECTIVENESS_RESULT_FIELD = "effectiveness_result"
 ISSUE_ITEMS_TABLE_FIELD = "issue_items"
+AMF_ISSUE_TEST_LINK_FIELD = "amf_issue_test"
+
+AMF_ISSUE_TEST_INTEGRATION_CUSTOM_FIELDS = {
+	"Issue": [
+		{
+			"fieldname": AMF_ISSUE_TEST_LINK_FIELD,
+			"fieldtype": "Link",
+			"label": "AMF Issue Test",
+			"options": "AMF Issue Test",
+			"insert_after": "issue_split_from",
+			"description": "AMF Issue Test that created this legacy Issue.",
+			"in_list_view": 1,
+			"in_standard_filter": 1,
+			"no_copy": 1,
+			"read_only": 1,
+			"unique": 1,
+		},
+	],
+}
+
+LINKED_ISSUE_FIELDS = (
+	"subject",
+	"input_selection",
+	"issue_type",
+	"urgency",
+	"impact",
+)
 
 PRIORITY_MATRIX = {
 	("Low", "Low"): "P3 - Routine Follow-Up",
@@ -58,6 +86,35 @@ def clear_amf_issue_test_management_meta_cache():
 	frappe.clear_cache(doctype="Issue Type")
 	frappe.clear_cache(doctype="AMF Issue Test Item")
 	frappe.clear_cache(doctype="AMF Issue Test Root Cause Why")
+
+
+def sync_amf_issue_test_integration():
+	"""Install the traceability field used by the AMF Issue Test bridge."""
+	create_custom_fields(AMF_ISSUE_TEST_INTEGRATION_CUSTOM_FIELDS, update=True)
+	clear_amf_issue_test_management_meta_cache()
+	frappe.clear_cache(doctype="Issue")
+
+
+def create_linked_issue(doc, method=None):
+	"""Create the minimal legacy Issue for a newly inserted AMF Issue Test."""
+	if doc.doctype != "AMF Issue Test" or not doc.name:
+		return
+
+	existing_issue = frappe.db.get_value(
+		"Issue",
+		{AMF_ISSUE_TEST_LINK_FIELD: doc.name},
+		"name",
+	)
+	if existing_issue:
+		return existing_issue
+
+	issue = frappe.new_doc("Issue")
+	for fieldname in LINKED_ISSUE_FIELDS:
+		issue.set(fieldname, doc.get(fieldname))
+	issue.set(AMF_ISSUE_TEST_LINK_FIELD, doc.name)
+	issue.insert(ignore_permissions=True)
+
+	return issue.name
 
 
 def validate_issue_management(doc, method=None):
