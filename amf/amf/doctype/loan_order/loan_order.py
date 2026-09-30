@@ -11,9 +11,7 @@ import frappe
 from erpnext.stock import get_warehouse_account_map
 from erpnext.stock.get_item_details import (
 	get_conversion_factor,
-	get_item_price,
-	get_price_list_currency,
-	get_price_list_uom_dependant,
+	get_item_price
 )
 from frappe import _
 from frappe.contacts.doctype.address.address import get_address_display, get_default_address
@@ -1116,7 +1114,7 @@ def get_selling_rate(item_code, uom, qty, price_list, customer, transaction_date
 	for price in prices or []:
 		if flt(price[1]) > 0:
 			rate = flt(price[1])
-			if price[2] != uom and not get_price_list_uom_dependant(price_list):
+			if price[2] != uom:         # deprecated: and not get_price_list_uom_dependant(price_list)
 				rate *= flt(get_conversion_factor(item_code, uom).get("conversion_factor")) or 1
 			return rate
 	return None
@@ -1129,7 +1127,7 @@ def build_settlement_invoice(loan_order, billing_decision, price_list, lines):
 	sales_invoice.posting_date = nowdate()
 	sales_invoice.currency = loan_order.currency
 	sales_invoice.selling_price_list = price_list
-	sales_invoice.price_list_currency = get_price_list_currency(price_list)
+	sales_invoice.price_list_currency = frappe.get_value("Price List", price_list, "currency")
 	sales_invoice.ignore_pricing_rule = 1
 	sales_invoice.update_stock = 0
 	sales_invoice.remarks = _("Loan settlement for {0}: {1}").format(loan_order.name, billing_decision)
