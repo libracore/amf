@@ -1,0 +1,30 @@
+[project]
+name = "amf"
+authors = [
+    { name = "libracore AG", email = "info@libracore.com" }
+]
+description = "ERP applications and tools for AMF"
+requires-python = ">=3.10"
+readme = "README.md"
+dynamic = ["version"]
+dependencies = [
+    "frappe",
+    "google-auth",
+    "qrcode",
+    "reportlab",
+    "treepoem",
+    "weasyprint",
+    "pylibdmtx",
+    "tqdm",
+    "pymupdf4llm",
+    "openai>=2.43.0,<3",
+    "pydantic>=1.9.0,<3",
+]
+
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.bench.frappe-dependencies]
+frappe = ">=15.0.0"
+
