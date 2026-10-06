@@ -41,6 +41,7 @@ frappe.ui.form.on('AMF Issue Test', {
         addRepairInvoiceButton(frm);
         addRootCauseButtons(frm);
         updatePriority(frm, false);
+        setupIssueHistoryPrompt(frm);
     },
 
     issue_type: function(frm) {
@@ -97,6 +98,284 @@ frappe.ui.form.on('AMF Issue Test', {
         updateRootCauseAnalysis(frm);
     },
 });
+
+function setupIssueHistoryPrompt(frm) {
+    if (!isNewDoc(frm)) {
+        return;
+    }
+
+    frm.add_custom_button(__('Customer / Supplier History'), function() {
+        openIssueHistoryDialog(frm);
+    });
+
+    if (frm._amf_issue_history_prompted) {
+        return;
+    }
+    frm._amf_issue_history_prompted = true;
+    setTimeout(function() {
+        if (isNewDoc(frm)) {
+            openIssueHistoryDialog(frm);
+        }
+    }, 0);
+}
+
+function openIssueHistoryDialog(frm) {
+    if (frm._amf_issue_history_dialog_open) {
+        return;
+    }
+    frm._amf_issue_history_dialog_open = true;
+
+    let request_number = 0;
+    let refresh_timer;
+    const selection = ['Customer Issue', 'Supplier Issue', 'Internal Issue'].includes(frm.doc.input_selection)
+        ? frm.doc.input_selection : '';
+    const dialog = new frappe.ui.Dialog({
+        title: __('Customer / Supplier Issue History'),
+        size: 'large',
+        fields: [
+            {
+                fieldname: 'input_selection',
+                fieldtype: 'Select',
+                label: __('Input Selection'),
+                options: '\nCustomer Issue\nSupplier Issue\nInternal Issue',
+                default: selection,
+                onchange: schedule_history_load
+            },
+            {
+                fieldname: 'customer',
+                fieldtype: 'Link',
+                label: __('Customer'),
+                options: 'Customer',
+                depends_on: "eval:doc.input_selection === 'Customer Issue'",
+                default: selection === 'Customer Issue' ? getIssueCustomer(frm) : null,
+                onchange: schedule_history_load
+            },
+            {
+                fieldname: 'supplier',
+                fieldtype: 'Link',
+                label: __('Supplier'),
+                options: 'Supplier',
+                depends_on: "eval:doc.input_selection === 'Supplier Issue'",
+                default: selection === 'Supplier Issue' ? frm.doc.supplier : null,
+                onchange: schedule_history_load
+            },
+            {fieldname: 'history', fieldtype: 'HTML'}
+        ],
+        primary_action_label: __('Continue to Issue'),
+        primary_action: function() {
+            const choice = get_history_selection();
+            if (!choice.input_selection) {
+                frappe.msgprint(__('Choose an input selection first.'));
+                return;
+            }
+            if (choice.input_selection !== 'Internal Issue' && !choice.party) {
+                frappe.msgprint(__('Select a customer or supplier first.'));
+                return;
+            }
+
+            const values = choice.input_selection === 'Customer Issue'
+                ? [
+                    ['input_selection', choice.input_selection],
+                    ['supplier', null],
+                    ['customer', choice.party],
+                    ['customer_issue', choice.party]
+                ]
+                : choice.input_selection === 'Supplier Issue' ? [
+                    ['input_selection', choice.input_selection],
+                    ['customer_issue', null],
+                    ['customer', null],
+                    ['supplier', choice.party]
+                ] : [
+                    ['input_selection', choice.input_selection],
+                    ['customer_issue', null],
+                    ['customer', null],
+                    ['supplier', null]
+                ];
+            dialog.disable_primary_action();
+            let updates = Promise.resolve();
+            values.forEach(function(entry) {
+                updates = updates.then(function() {
+                    return frm.set_value(entry[0], entry[1]);
+                });
+            });
+            updates.then(function() {
+                dialog.hide();
+            }).catch(function() {
+                dialog.enable_primary_action();
+            });
+        },
+        onhide: function() {
+            request_number++;
+            clearTimeout(refresh_timer);
+            frm._amf_issue_history_dialog_open = false;
+        }
+    });
+
+    function get_history_selection() {
+        const input_selection = dialog.get_value('input_selection');
+        const party = input_selection === 'Customer Issue'
+            ? dialog.get_value('customer')
+            : input_selection === 'Supplier Issue' ? dialog.get_value('supplier') : null;
+        return {input_selection: input_selection, party: party};
+    }
+
+    function show_history_message(message) {
+        dialog.fields_dict.history.$wrapper.empty()
+            .append($('<p class="text-muted">').text(message));
+    }
+
+    function schedule_history_load() {
+        request_number++;
+        clearTimeout(refresh_timer);
+        const current_request = request_number;
+        const choice = get_history_selection();
+        if (choice.input_selection === 'Internal Issue') {
+            show_history_message(__('Internal issue history will be added later. Continue to enter the issue.'));
+            return;
+        }
+        if (!choice.party) {
+            show_history_message(__('Choose a customer or supplier to see previous issues.'));
+            return;
+        }
+
+        show_history_message(__('Loading previous issues…'));
+        refresh_timer = setTimeout(function() {
+            frappe.call({
+                method: 'amf.amf.utils.issue_history.get_issue_history',
+                args: choice,
+                callback: function(response) {
+                    if (current_request !== request_number) {
+                        return;
+                    }
+                    render_issue_history(dialog, response.message || {issues: [], total: 0});
+                },
+                error: function() {
+                    if (current_request === request_number) {
+                        show_history_message(__('Issue history could not be loaded.'));
+                    }
+                }
+            });
+        }, 250);
+    }
+
+    dialog.show();
+    schedule_history_load();
+}
+
+function render_issue_history(dialog, result) {
+    const issues = result.issues || [];
+    const $container = dialog.fields_dict.history.$wrapper.empty();
+    if (!issues.length) {
+        $container.append($('<p class="text-muted">').text(__('No previous issues found for this party.')));
+        return;
+    }
+
+    $container.append($('<p class="text-muted">').text(
+        __('{0} previous issues. Linked legacy Issues are grouped with their AMF Issue Test record.', [result.total])
+    ));
+    const $search = $('<input type="text" class="form-control input-sm">')
+        .attr('placeholder', __('Filter the issue history'));
+    $container.append($search);
+
+    const $scroll = $('<div>').css({'max-height': '420px', 'overflow': 'auto', 'margin-top': '10px'});
+    const $table = $('<table class="table table-bordered table-condensed">');
+    const $head = $('<thead>').appendTo($table);
+    const $header_row = $('<tr>').appendTo($head);
+    [__('Date'), __('Issue'), __('Status'), __('Subject'), __('Issue Type / Process'), __('Item(s)'), __('Related documents')]
+        .forEach(function(label) {
+            $('<th>').text(label).appendTo($header_row);
+        });
+    const $body = $('<tbody>').appendTo($table);
+    $table.appendTo($scroll);
+    $container.append($scroll);
+
+    function add_link($parent, doctype, name, label) {
+        if (!name) {
+            return;
+        }
+        $('<a>')
+            .attr({href: frappe.utils.get_form_link(doctype, name), target: '_blank', rel: 'noopener noreferrer'})
+            .text(label || name)
+            .appendTo($parent);
+    }
+
+    function draw_rows() {
+        const needle = ($search.val() || '').toLowerCase().trim();
+        $body.empty();
+        let visible = 0;
+        issues.forEach(function(issue) {
+            const item_labels = (issue.items || []).map(function(item) {
+                let label = item.item_code || item.item_name || '';
+                if (item.item_name && item.item_name !== item.item_code) {
+                    label += ' — ' + item.item_name;
+                }
+                if (item.quantity !== null && item.quantity !== undefined) {
+                    label += ' × ' + item.quantity;
+                }
+                if (item.serial_no) {
+                    label += ' · ' + __('Serial: {0}', [item.serial_no]);
+                }
+                if (item.batch_no) {
+                    label += ' · ' + __('Batch: {0}', [item.batch_no]);
+                }
+                return label;
+            });
+            const item_text = item_labels.join(' ');
+            const searchable = [issue.name, issue.legacy_issue, issue.subject, issue.status,
+                issue.issue_type, issue.process_involved, item_text, issue.serial_no, issue.loan_order,
+                issue.sales_order, issue.delivery_note]
+                .join(' ').toLowerCase();
+            if (needle && searchable.indexOf(needle) === -1) {
+                return;
+            }
+            visible++;
+            const $row = $('<tr>').appendTo($body);
+            $('<td>').text(issue.date || '').appendTo($row);
+            const $issue = $('<td>').appendTo($row);
+            add_link($issue, issue.doctype, issue.name);
+            if (issue.legacy_issue) {
+                $issue.append($('<br>'));
+                add_link($issue, 'Issue', issue.legacy_issue, __('Legacy: {0}', [issue.legacy_issue]));
+            }
+            $('<td>').text(issue.status || '').appendTo($row);
+            $('<td>').text(issue.subject || '').appendTo($row);
+            const $type = $('<td>').text(issue.issue_type || '').appendTo($row);
+            if (issue.process_involved) {
+                $type.append($('<div class="text-muted">').text(issue.process_involved));
+            }
+            const $items = $('<td>').appendTo($row);
+            item_labels.forEach(function(label) {
+                $('<div>').text(label).appendTo($items);
+            });
+            if (issue.serial_no) {
+                $items.append($('<div class="text-muted">').text(__('Serial: {0}', [issue.serial_no])));
+            }
+            const $related = $('<td>').appendTo($row);
+            if (issue.loan_order) {
+                add_link($related, 'Loan Order', issue.loan_order);
+            }
+            if (issue.sales_order) {
+                if (issue.loan_order) {
+                    $related.append($('<br>'));
+                }
+                add_link($related, 'Sales Order', issue.sales_order);
+            }
+            if (issue.delivery_note) {
+                if (issue.loan_order || issue.sales_order) {
+                    $related.append($('<br>'));
+                }
+                add_link($related, 'Delivery Note', issue.delivery_note);
+            }
+        });
+        if (!visible) {
+            $('<tr>').append($('<td colspan="7" class="text-muted">')
+                .text(__('No issues match this filter.'))).appendTo($body);
+        }
+    }
+
+    $search.on('input', draw_rows);
+    draw_rows();
+}
 
 frappe.ui.form.on('AMF Issue Test Root Cause Why', {
     form_render: function(frm, cdt, cdn) {
