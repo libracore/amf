@@ -6,6 +6,7 @@
 
 from __future__ import unicode_literals
 
+import hashlib
 import math
 import re
 import unicodedata
@@ -277,6 +278,34 @@ LEGACY_ISSUE_TYPE_MAP = {
 # This is a resolution outcome, not a problem nature. It is deliberately not
 # auto-mapped to a canonical Issue Type.
 LEGACY_OUTCOME_TYPES = ("No issue found after analysis",)
+OTHER_ISSUE_TYPE = "Other"
+USER_DEFINED_ISSUE_TYPE_CODE_PREFIX = "USR-"
+
+
+def _other_issue_type_fields():
+	return [
+		{
+			"fieldname": "new_issue_type_name",
+			"fieldtype": "Data",
+			"label": "New Issue Type",
+			"insert_after": "issue_type",
+			"depends_on": "eval:doc.issue_type == '{0}'".format(OTHER_ISSUE_TYPE),
+			"description": "Enter a reusable Issue Type name. It will be created when this document is saved.",
+			"no_copy": 1,
+			"print_hide": 1,
+		},
+		{
+			"fieldname": "new_issue_type_process",
+			"fieldtype": "Link",
+			"label": "Process for New Issue Type",
+			"options": "AMF Issue Process",
+			"insert_after": "new_issue_type_name",
+			"depends_on": "eval:doc.issue_type == '{0}'".format(OTHER_ISSUE_TYPE),
+			"description": "Select the process accountable for this new Issue Type.",
+			"no_copy": 1,
+			"print_hide": 1,
+		},
+	]
 
 
 ISSUE_CLASSIFICATION_CUSTOM_FIELDS = {
@@ -329,7 +358,7 @@ ISSUE_CLASSIFICATION_CUSTOM_FIELDS = {
 			"in_standard_filter": 1,
 		},
 	],
-	"Issue": [
+	"Issue": _other_issue_type_fields() + [
 		{
 			"fieldname": "issue_type_suggestions",
 			"fieldtype": "HTML",
@@ -365,7 +394,7 @@ ISSUE_CLASSIFICATION_CUSTOM_FIELDS = {
 			"in_standard_filter": 1,
 		},
 	],
-	"AMF Issue Test": [
+	"AMF Issue Test": _other_issue_type_fields() + [
 		{
 			"fieldname": "issue_type_suggestions",
 			"fieldtype": "HTML",
@@ -435,6 +464,7 @@ def sync_issue_processes():
 def sync_issue_types():
 	processes = _processes_by_name()
 	canonical_names = {definition["name"] for definition in ISSUE_TYPE_DEFINITIONS}
+	canonical_names.add(OTHER_ISSUE_TYPE)
 
 	for definition in ISSUE_TYPE_DEFINITIONS:
 		process = processes[definition["process"]]
@@ -447,6 +477,18 @@ def sync_issue_types():
 			"is_active": 1,
 		}
 		_upsert_issue_type(definition["name"], values)
+
+	_upsert_issue_type(
+		OTHER_ISSUE_TYPE,
+		{
+			"description": "Use this option to create a specific reusable Issue Type and assign its accountable process.",
+			"classification_code": "OTHER",
+			"process": None,
+			"process_owner": None,
+			"process_co_owner": None,
+			"is_active": 1,
+		},
+	)
 
 	for legacy_name, canonical_name in LEGACY_ISSUE_TYPE_MAP.items():
 		if not frappe.db.exists("Issue Type", legacy_name):
@@ -478,8 +520,14 @@ def sync_issue_types():
 
 	# Any ungoverned type remains available historically but is no longer offered
 	# for new classification.
-	for row in frappe.get_all("Issue Type", fields=["name"]):
-		if row.name not in canonical_names and row.name not in LEGACY_ISSUE_TYPE_MAP and row.name not in LEGACY_OUTCOME_TYPES:
+	for row in frappe.get_all("Issue Type", fields=["name", "classification_code"]):
+		is_user_defined = cstr(row.classification_code).startswith(USER_DEFINED_ISSUE_TYPE_CODE_PREFIX)
+		is_governed = (
+			row.name in canonical_names
+			or row.name in LEGACY_ISSUE_TYPE_MAP
+			or row.name in LEGACY_OUTCOME_TYPES
+		)
+		if not is_user_defined and not is_governed:
 			frappe.db.set_value("Issue Type", row.name, "is_active", 0, update_modified=False)
 
 
@@ -529,6 +577,9 @@ def apply_issue_routing(doc, method=None):
 	issue_type = cstr(doc.get("issue_type")).strip()
 	if not issue_type:
 		return
+	if issue_type == OTHER_ISSUE_TYPE:
+		issue_type = create_user_defined_issue_type(doc)
+		doc.set("issue_type", issue_type)
 
 	routing = get_issue_type_routing(issue_type, include_active=True)
 	if not routing:
@@ -540,6 +591,71 @@ def apply_issue_routing(doc, method=None):
 	for fieldname, value in routing.items():
 		if _doc_has_field(doc, fieldname):
 			doc.set(fieldname, value)
+
+
+def create_user_defined_issue_type(doc):
+	"""Create or reuse the Issue Type requested through the Other workflow."""
+	name = cstr(doc.get("new_issue_type_name")).strip()
+	process = cstr(doc.get("new_issue_type_process")).strip()
+	if not name:
+		frappe.throw(_("Enter the New Issue Type before saving."))
+	if name.lower() == OTHER_ISSUE_TYPE.lower():
+		frappe.throw(_("The New Issue Type must be more specific than Other."))
+	if len(name) > 140:
+		frappe.throw(_("The New Issue Type cannot exceed 140 characters."))
+	if not process:
+		frappe.throw(_("Select the Process for the New Issue Type before saving."))
+
+	owners = frappe.db.get_value(
+		"AMF Issue Process",
+		process,
+		["primary_owner", "secondary_owner", "enabled"],
+		as_dict=True,
+	)
+	if not owners:
+		frappe.throw(_("Unknown Issue Process: {0}").format(process))
+	if not cint(owners.enabled):
+		frappe.throw(_("Issue Process {0} is disabled.").format(process))
+
+	existing_name = frappe.db.exists("Issue Type", name)
+	if existing_name:
+		existing = frappe.db.get_value(
+			"Issue Type",
+			existing_name,
+			["process", "is_active"],
+			as_dict=True,
+		)
+		if not cint(existing.is_active):
+			frappe.throw(_("Issue Type {0} already exists but is retired.").format(existing_name))
+		if cstr(existing.process).strip() != process:
+			frappe.throw(
+				_("Issue Type {0} already belongs to Process {1}.").format(
+					existing_name,
+					existing.process or _("Not Set"),
+				)
+			)
+		return existing_name
+
+	issue_type = frappe.get_doc(
+		{
+			"doctype": "Issue Type",
+			"name": name,
+			"description": "User-defined Issue Type for the {0} process.".format(process),
+			"classification_code": get_user_defined_issue_type_code(name),
+			"process": process,
+			"process_owner": owners.primary_owner,
+			"process_co_owner": owners.secondary_owner,
+			"is_active": 1,
+		}
+	)
+	issue_type.insert(ignore_permissions=True)
+	clear_issue_classification_cache()
+	return issue_type.name
+
+
+def get_user_defined_issue_type_code(name):
+	digest = hashlib.sha1(cstr(name).strip().lower().encode("utf-8")).hexdigest()[:8].upper()
+	return "{0}{1}".format(USER_DEFINED_ISSUE_TYPE_CODE_PREFIX, digest)
 
 
 def get_issue_type_routing(issue_type, include_active=False):
@@ -567,7 +683,7 @@ def suggest_issue_types(subject, limit=3):
 
 	candidates = frappe.get_all(
 		"Issue Type",
-		filters={"is_active": 1},
+		filters={"is_active": 1, "name": ["!=", OTHER_ISSUE_TYPE]},
 		fields=["name", "description", "classification_code", "process"],
 		order_by="name asc",
 	)
@@ -749,7 +865,11 @@ def _get_issue_suggestion_history_model():
 def _build_issue_suggestion_history_model():
 	active_names = {
 		row.name
-		for row in frappe.get_all("Issue Type", filters={"is_active": 1}, fields=["name"])
+		for row in frappe.get_all(
+			"Issue Type",
+			filters={"is_active": 1, "name": ["!=", OTHER_ISSUE_TYPE]},
+			fields=["name"],
+		)
 	}
 	model = {"total_documents": 0, "token_documents": {}, "types": {}}
 

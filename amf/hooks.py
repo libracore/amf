@@ -151,7 +151,10 @@ doc_events = {
         ],
     },
     "Issue": {
-        "validate": "amf.amf.utils.issue_classification.apply_issue_routing",
+        "validate": [
+            "amf.amf.utils.issue_classification.apply_issue_routing",
+            "amf.amf.utils.amf_issue_test_management.sync_linked_issue_party",
+        ],
     },
     "Issue Type": {
         "validate": "amf.amf.utils.issue_classification.apply_issue_type_routing",

@@ -2,10 +2,12 @@
 frappe.ui.form.on('Issue', {
     setup(frm) {
         setActiveIssueTypeQuery(frm);
+        setupOtherIssueTypeQuery(frm);
     },
 
     refresh(frm) {
         setActiveIssueTypeQuery(frm);
+        toggleOtherIssueTypeFields(frm);
         bindSubjectSuggestionInput(frm);
         scheduleIssueTypeSuggestions(frm);
     },
@@ -15,6 +17,7 @@ frappe.ui.form.on('Issue', {
     },
 
     issue_type(frm) {
+        toggleOtherIssueTypeFields(frm);
         markIssueTypeAsUserConfirmed(frm);
         fetchIssueRouting(frm);
         renderIssueTypeSuggestions(frm, frm._amf_issue_type_suggestions || []);
@@ -25,7 +28,12 @@ frappe.ui.form.on('Issue', {
 // shared handler adds the same recommendation and confirmation behavior without
 // duplicating the classifier or its UI implementation.
 frappe.ui.form.on('AMF Issue Test', {
+    setup(frm) {
+        setupOtherIssueTypeQuery(frm);
+    },
+
     refresh(frm) {
+        toggleOtherIssueTypeFields(frm);
         bindSubjectSuggestionInput(frm);
         scheduleIssueTypeSuggestions(frm);
     },
@@ -35,10 +43,31 @@ frappe.ui.form.on('AMF Issue Test', {
     },
 
     issue_type(frm) {
+        toggleOtherIssueTypeFields(frm);
         markIssueTypeAsUserConfirmed(frm);
         renderIssueTypeSuggestions(frm, frm._amf_issue_type_suggestions || []);
     }
 });
+
+const OTHER_ISSUE_TYPE = 'Other';
+
+function setupOtherIssueTypeQuery(frm) {
+    if (!frm.fields_dict.new_issue_type_process) {
+        return;
+    }
+    frm.set_query('new_issue_type_process', function() {
+        return { filters: { enabled: 1 } };
+    });
+}
+
+function toggleOtherIssueTypeFields(frm) {
+    const required = frm.doc.issue_type === OTHER_ISSUE_TYPE;
+    ['new_issue_type_name', 'new_issue_type_process'].forEach(function(fieldname) {
+        if (frm.fields_dict[fieldname]) {
+            frm.toggle_reqd(fieldname, required);
+        }
+    });
+}
 
 function setActiveIssueTypeQuery(frm) {
     frm.set_query('issue_type', function() {

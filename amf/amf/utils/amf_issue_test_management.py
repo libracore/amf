@@ -44,6 +44,15 @@ LINKED_ISSUE_FIELDS = (
 	"impact",
 )
 
+LINKED_ISSUE_PARTY_FIELDS = (
+	"customer",
+	"customer_issue",
+	"supplier",
+	"contact",
+	"contact_new",
+	"raised_by_email",
+)
+
 PRIORITY_MATRIX = {
 	("Low", "Low"): "P3 - Routine Follow-Up",
 	("Medium", "Low"): "P3 - Routine Follow-Up",
@@ -93,6 +102,7 @@ def sync_amf_issue_test_integration():
 	create_custom_fields(AMF_ISSUE_TEST_INTEGRATION_CUSTOM_FIELDS, update=True)
 	clear_amf_issue_test_management_meta_cache()
 	frappe.clear_cache(doctype="Issue")
+	sync_existing_linked_issue_parties()
 
 
 def create_linked_issue(doc, method=None):
@@ -111,10 +121,67 @@ def create_linked_issue(doc, method=None):
 	issue = frappe.new_doc("Issue")
 	for fieldname in LINKED_ISSUE_FIELDS:
 		issue.set(fieldname, doc.get(fieldname))
+	set_linked_issue_party(issue, doc, empty_value="")
 	issue.set(AMF_ISSUE_TEST_LINK_FIELD, doc.name)
 	issue.insert(ignore_permissions=True)
 
 	return issue.name
+
+
+def sync_linked_issue_party(doc, method=None):
+	"""Keep ERPNext from inferring an unrelated customer/contact on bridge Issues."""
+	if doc.doctype != "Issue" or not doc.get(AMF_ISSUE_TEST_LINK_FIELD):
+		return
+
+	source = frappe.db.get_value(
+		"AMF Issue Test",
+		doc.get(AMF_ISSUE_TEST_LINK_FIELD),
+		LINKED_ISSUE_PARTY_FIELDS,
+		as_dict=True,
+	)
+	if source:
+		set_linked_issue_party(doc, source)
+
+
+def set_linked_issue_party(issue, source, empty_value=None):
+	"""Copy the source party fields, using the visible customer as canonical."""
+	for fieldname, value in get_linked_issue_party_values(source, empty_value).items():
+		issue.set(fieldname, value)
+
+
+def get_linked_issue_party_values(source, empty_value=None):
+	"""Return canonical party values for the generated legacy Issue."""
+	customer = (
+		cstr(source.get("customer_issue")).strip()
+		or cstr(source.get("customer")).strip()
+		or empty_value
+	)
+	return {
+		"customer": customer,
+		"customer_issue": customer,
+		"supplier": cstr(source.get("supplier")).strip() or empty_value,
+		"contact": cstr(source.get("contact")).strip() or empty_value,
+		"contact_new": cstr(source.get("contact_new")).strip() or empty_value,
+		"raised_by_email": cstr(source.get("raised_by_email")).strip() or empty_value,
+	}
+
+
+def sync_existing_linked_issue_parties():
+	"""Repair party values on Issues created previously by this bridge."""
+	for row in frappe.get_all(
+		"Issue",
+		filters={AMF_ISSUE_TEST_LINK_FIELD: ["is", "set"]},
+		fields=["name", AMF_ISSUE_TEST_LINK_FIELD],
+	):
+		source = frappe.db.get_value(
+			"AMF Issue Test",
+			row.get(AMF_ISSUE_TEST_LINK_FIELD),
+			LINKED_ISSUE_PARTY_FIELDS,
+			as_dict=True,
+		)
+		if source:
+			values = get_linked_issue_party_values(source)
+			frappe.db.set_value("Issue", row.name, values, update_modified=False)
 
 
 def validate_issue_management(doc, method=None):

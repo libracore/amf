@@ -8,8 +8,10 @@ from amf.amf.utils.issue_classification import (
 	ISSUE_CLASSIFICATION_CUSTOM_FIELDS,
 	ISSUE_TYPE_DEFINITIONS,
 	LEGACY_ISSUE_TYPE_MAP,
+	OTHER_ISSUE_TYPE,
 	PROCESS_DEFINITIONS,
 	_issue_type_values_to_routing,
+	get_user_defined_issue_type_code,
 	rank_issue_type_suggestions,
 )
 
@@ -48,6 +50,21 @@ class TestIssueClassification(unittest.TestCase):
 			self.assertEqual(fields["issue_type_suggestions"]["fieldtype"], "HTML")
 			self.assertEqual(fields["issue_type_user_confirmed"]["hidden"], 1)
 			self.assertEqual(fields["issue_type_user_confirmed"]["read_only"], 1)
+
+	def test_both_issue_doctypes_have_other_type_inputs(self):
+		for doctype in ("Issue", "AMF Issue Test"):
+			fields = {
+				definition["fieldname"]: definition
+				for definition in ISSUE_CLASSIFICATION_CUSTOM_FIELDS[doctype]
+			}
+			self.assertIn(OTHER_ISSUE_TYPE, fields["new_issue_type_name"]["depends_on"])
+			self.assertEqual(fields["new_issue_type_process"]["options"], "AMF Issue Process")
+
+	def test_user_defined_issue_type_code_is_stable_and_namespaced(self):
+		first = get_user_defined_issue_type_code("Special Calibration Issue")
+		second = get_user_defined_issue_type_code(" special calibration issue ")
+		self.assertEqual(first, second)
+		self.assertTrue(first.startswith("USR-"))
 
 	def test_issue_type_process_translates_to_issue_process_involved(self):
 		routing = _issue_type_values_to_routing(
