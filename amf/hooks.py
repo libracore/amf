@@ -150,6 +150,10 @@ doc_events = {
             "amf.amf.utils.custom.qr_code_to_document",
         ],
     },
+    "Item Group": {
+        "validate": "amf.amf.utils.tool_maintenance.validate_tool_group_parent_change",
+        "on_update": "amf.amf.utils.tool_maintenance.sync_tool_group_after_save",
+    },
     "Issue": {
         "validate": [
             "amf.amf.utils.issue_classification.apply_issue_routing",
