@@ -37,6 +37,8 @@ NEW_SALES_ITEMS_LOOKBACK_DAYS = 7
 @frappe.whitelist()
 def update_all_item_valuation_rates_enq():
     """Queue the Item master valuation refresh in the long worker."""
+    if frappe.conf.get("pause_amf_cost_writers"):
+        return None
     _enqueue_long_job("amf.amf.utils.item_mgt.update_all_item_valuation_rates")
     return None
 
@@ -47,6 +49,8 @@ def update_all_item_valuation_rates():
     Update Item.valuation_rate from the default BOM cost first and the latest
     purchase invoice rate as a fallback.
     """
+    if frappe.conf.get("pause_amf_cost_writers"):
+        return None
     log_context = frappe._dict(
         {
             "doctype": "Item",

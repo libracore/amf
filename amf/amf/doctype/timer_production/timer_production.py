@@ -4,7 +4,10 @@
 
 
 from __future__ import unicode_literals
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
+from html import escape
+from urllib.parse import quote
 # import frappe
 from frappe.model.document import Document
 
@@ -20,6 +23,8 @@ TIMER_PRODUCTION_ASSEMBLY_COST_SOURCE_FIELDS = (
 	"quantity",
 	"total_duration",
 )
+TIMER_ALERT_AFTER = timedelta(hours=4)
+TERMINAL_WORK_ORDER_STATUSES = ("Completed", "Stopped", "Cancelled")
 
 
 class TimerProduction(Document):
@@ -27,7 +32,16 @@ class TimerProduction(Document):
 
 
 import frappe
-from frappe.utils import cstr, flt, get_datetime, now_datetime, time_diff_in_hours
+from frappe.utils import (
+	cstr,
+	flt,
+	get_datetime,
+	get_url,
+	get_url_to_form,
+	now_datetime,
+	nowdate,
+	validate_email_address,
+)
 
 
 def get_timer_production_work_order_values(work_order):
@@ -258,75 +272,174 @@ def backfill_timer_production_work_order_fields():
 	}
 
 
-# ==================================================
-#  send mail alert for timers running more than 4 hours
-# ==================================================
-def send_timer_alert():
-	timers = frappe.get_all("Timer Production",
-		filters={
-			"status": "IN PROCESS",
-		},
-		fields=["name", "work_order", "operator"]
+def _timer_alert_fallback_recipients():
+	"""Read optional supervisor addresses from site config."""
+	configured = frappe.conf.get("timer_production_alert_recipients") or []
+	if isinstance(configured, str):
+		configured = configured.replace(";", ",").replace("\n", ",").split(",")
+
+	recipients = []
+	for address in configured:
+		address = validate_email_address(cstr(address).strip())
+		if address and address not in recipients:
+			recipients.append(address)
+	return recipients
+
+
+def _timer_alert_delivery(operator):
+	"""Resolve the session's operator trigram to a User and an email destination."""
+	user = None
+	if operator:
+		user = frappe.db.get_value(
+			"User", {"username": operator, "enabled": 1}, ["name", "email"], as_dict=True
+		)
+
+	operator_email = validate_email_address(user.email) if user else None
+	recipients = [operator_email] if operator_email else _timer_alert_fallback_recipients()
+	return user, recipients
+
+
+def _timer_alert_message(timer, session, elapsed):
+	work_order = escape(cstr(timer.work_order))
+	operator = escape(cstr(session.operator or "inconnu"))
+	started = escape(cstr(session.start_time))
+	base_url = cstr(frappe.conf.get("timer_production_alert_base_url") or "").rstrip("/")
+	if base_url:
+		web_url = base_url + "/production-timer?param=" + quote(cstr(timer.work_order), safe="")
+		desk_url = base_url + "/desk#Form/Timer%20Production/" + quote(cstr(timer.name), safe="/")
+	else:
+		web_url = get_url("/production-timer?param=" + quote(cstr(timer.work_order), safe=""))
+		desk_url = get_url_to_form("Timer Production", timer.name)
+	web_url = escape(web_url, quote=True)
+	desk_url = escape(desk_url, quote=True)
+	return (
+		f"<p>Bonjour,</p><p>Le timer de production pour l'ordre de fabrication "
+		f"<b>{work_order}</b> est toujours en cours pour l'opérateur <b>{operator}</b>. "
+		f"La session a commencé le {started} et dure depuis {elapsed:.1f} heures.</p>"
+		f"<p>Veuillez vérifier que tout va bien et mettre le timer en pause si nécessaire.</p>"
+		f'<p><a href="{web_url}">Ouvrir le timer de production</a><br>'
+		f'<a href="{desk_url}">Ouvrir le document ERP</a></p>'
 	)
 
-	
 
-	for t in timers:
-		
-		already = frappe.db.exists("ToDo", {
+def _send_timer_session_alert(session_name, now, cutoff):
+	"""Lock and recheck a session before creating its one durable alert."""
+	rows = frappe.db.sql(
+		"""SELECT name, parent, operator, start_time, stop_time
+		FROM `tabWork Order Timer Table` WHERE name = %s FOR UPDATE""",
+		(session_name,), as_dict=True,
+	)
+	if not rows:
+		return False
+
+	session = rows[0]
+	if session.stop_time or not session.start_time or get_datetime(session.start_time) > cutoff:
+		return False
+	if frappe.db.exists("Timer Production Alert", session.name):
+		return False
+
+	timer = frappe.db.get_value(
+		"Timer Production", session.parent, ["name", "work_order", "status"], as_dict=True
+	)
+	if not timer or timer.status != "IN PROCESS" or not timer.work_order:
+		return False
+	work_order_status = frappe.db.get_value("Work Order", timer.work_order, "status")
+	if not work_order_status or work_order_status in TERMINAL_WORK_ORDER_STATUSES:
+		return False
+
+	user, recipients = _timer_alert_delivery(session.operator)
+	if not user and not recipients:
+		frappe.logger("timer_production_alert").warning(
+			"No operator User or fallback recipient for timer session %s", session.name
+		)
+		return False
+
+	elapsed = (now - get_datetime(session.start_time)).total_seconds() / SECONDS_PER_HOUR
+	message = _timer_alert_message(timer, session, elapsed)
+	todo = None
+	if user:
+		todo = frappe.get_doc({
+			"doctype": "ToDo",
+			"owner": user.name,
+			"assigned_by": frappe.session.user or "Administrator",
+			"date": nowdate(),
+			"status": "Open",
+			"priority": "Medium",
+			"description": message,
 			"reference_type": "Timer Production",
-			"reference_name": t.name,
-			"status": "Open"
-		})
-		if already:
+			"reference_name": timer.name,
+		}).insert(ignore_permissions=True)
+
+	if recipients:
+		frappe.sendmail(
+			recipients=recipients,
+			subject="Timer de production en cours depuis plus de 4 heures: {0}".format(timer.work_order),
+			message=message,
+			reference_doctype="Timer Production",
+			reference_name=timer.name,
+		)
+
+	frappe.get_doc({
+		"doctype": "Timer Production Alert",
+		"session_id": session.name,
+		"timer": timer.name,
+		"work_order": timer.work_order,
+		"operator": session.operator,
+		"status": "Open",
+		"alerted_at": now,
+		"email_recipients": ", ".join(recipients),
+		"todo": todo.name if todo else None,
+	}).insert(ignore_permissions=True)
+	return True
+
+
+def send_timer_alert():
+	"""Alert once per continuously running operator session after four hours."""
+	now = now_datetime()
+	cutoff = now - TIMER_ALERT_AFTER
+	sessions = frappe.get_all(
+		"Work Order Timer Table",
+		filters={
+			"parenttype": "Timer Production",
+			"parentfield": "sessions_list",
+			"stop_time": ["is", "not set"],
+			"start_time": ["<=", cutoff],
+		},
+		fields=["name"],
+		limit_page_length=0,
+	)
+	alerted = 0
+	for session in sessions:
+		alerted += int(_send_timer_session_alert(session.name, now, cutoff))
+	return {"checked": len(sessions), "alerted": alerted}
+
+
+def close_timer_alerts(timer, method=None):
+	"""Resolve only alerts whose sessions stopped or whose timer finished."""
+	if not timer.name:
+		return
+
+	active_sessions = {
+		session.name for session in timer.sessions_list if not session.stop_time
+	} if timer.status == "IN PROCESS" else set()
+	alerts = frappe.get_all(
+		"Timer Production Alert",
+		filters={"timer": timer.name, "status": "Open"},
+		fields=["name", "session_id", "todo"],
+		limit_page_length=0,
+	)
+	for alert in alerts:
+		if alert.session_id in active_sessions:
 			continue
-
-		session = frappe.db.get_value(
-            "Work Order Timer Table",
-            {
-                "parent": t.name,
-                "stop_time": ["is", "not set"]
-            },
-            ["start_time"],
-            as_dict=True
-        )
-
-		if not session or not session.start_time:
-			continue
-		hours_running = time_diff_in_hours(now_datetime(), session.start_time)
-		if hours_running > 4:
-			frappe.sendmail(
-				recipients=frappe.db.get_value("User", {"username": t.operator}, "email"),
-				subject="Timer de production en cours depuis plus de 4 heures",
-				message=f"""
-					<p>Bonjour {t.operator},</p>
-					<p>La minuterie de production <b>{t.name}</b> pour l'ordre de fabrication <b>{t.work_order}</b> fonctionne depuis plus de 4 heures.</p>
-
-					<p>Veuillez vérifier que tout va bien.</p>
-
-					<a href="https://amf.libracore.ch/production-timer?param={t.work_order}"
-						style="font-size:16px; font-weight:bold; color:#1a73e8;">
-					Ouvrir le timer dans la webpage
-					</a><br><br>
-
-					<a href="https://amf.libracore.ch/desk#Form/Timer%20Production/{t.name}"
-						style="font-size:16px; font-weight:bold; color:#1a73e8;">
-					Ouvrir le timer dans le système ERP
-					</a><br><br>
-					
-					<p>Cordialement,<br/>Votre système ERP</p>
-				"""
-			)
-
-			# create ToDo
-			frappe.get_doc({
-				"doctype": "ToDo",
-				"owner": t.operator,
-				"date": frappe.utils.nowdate(),
-				"description": f"Le timer de production {t.name} pour l'ordre de fabrication {t.work_order} fonctionne depuis plus de 4 heures. Veuillez vérifier que tout va bien.",
-				"reference_type": "Timer Production",
-				"reference_name": t.name,
-			}).insert(ignore_permissions=True)
+		if alert.todo and frappe.db.get_value("ToDo", alert.todo, "status") == "Open":
+			todo = frappe.get_doc("ToDo", alert.todo)
+			todo.status = "Closed"
+			todo.save(ignore_permissions=True)
+		frappe.db.set_value(
+			"Timer Production Alert", alert.name,
+			{"status": "Closed", "closed_at": now_datetime()},
+			update_modified=False,
+		)
 
 
 def timer_before_save(timer, method = None):

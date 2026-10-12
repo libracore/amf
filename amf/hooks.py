@@ -251,6 +251,7 @@ doc_events = {
     },
     "Timer Production": {
         "before_save": "amf.amf.doctype.timer_production.timer_production.timer_before_save",
+        "on_update": "amf.amf.doctype.timer_production.timer_production.close_timer_alerts",
     },
     "Work Order": {
         # Frappe V12 runs on_update after both insert and update, i.e. after save.
@@ -267,9 +268,11 @@ doc_events = {
 # ---------------
 
 scheduler_events = {
-    "hourly": [
-        "amf.amf.amf.doctype.timer_production.timer_production.send_timer_alert",
-    ],
+    "cron": {
+        "*/15 * * * *": [
+            "amf.amf.doctype.timer_production.timer_production.send_timer_alert",
+        ],
+    },
     "daily": [
         "amf.amf.utils.batch_auto_disable.sync_all_batch_disabled_states",
         "amf.amf.utils.item_image.update_item_images",
