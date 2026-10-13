@@ -23,4 +23,5 @@ amf.patches.v12_0.correct_prec_02960_stock_usage
 amf.patches.v12_0.create_amf_control_center_premium_software_items_2026_09_29
 amf.patches.v12_0.ensure_mat_1021_receipt_batch_2026_10_12
 amf.patches.v12_0.ensure_mat_1021_original_stock_batch_2026_10_12
+amf.patches.v12_0.ensure_110137_unbatched_stock_removed_2026_10_13
 amf.patches.v12_0.reprice_selected_61_boms_2026_10_12
