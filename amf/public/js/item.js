@@ -45,7 +45,24 @@ const TOOL_MAINTENANCE_FIELDS = [
 ];
 
 function setupToolMaintenance(frm) {
-    const isTool = frm.doc.item_group === TOOL_MAINTENANCE_ITEM_GROUP;
+    renderToolMaintenance(frm);
+    const requestNumber = (frm.__tool_maintenance_group_request || 0) + 1;
+    frm.__tool_maintenance_group_request = requestNumber;
+    return frappe.call({
+        method: "amf.amf.utils.tool_maintenance.get_tool_item_groups",
+        callback: function (r) {
+            if (r.exc || requestNumber !== frm.__tool_maintenance_group_request) {
+                return;
+            }
+            frm.__tool_maintenance_item_groups = r.message || [];
+            renderToolMaintenance(frm);
+        },
+    });
+}
+
+function renderToolMaintenance(frm) {
+    const groups = frm.__tool_maintenance_item_groups || [TOOL_MAINTENANCE_ITEM_GROUP];
+    const isTool = groups.includes(frm.doc.item_group);
     ["Maintenance Planner", "New Maintenance Plan", "Log Intervention"].forEach(function (label) {
         frm.remove_custom_button(__(label), __("Maintenance"));
     });
@@ -54,6 +71,7 @@ function setupToolMaintenance(frm) {
             frm.toggle_display(fieldname, isTool);
         }
     });
+    frm.layout.refresh_dependency();
 
     if (!isTool || frm.is_new()) {
         return;

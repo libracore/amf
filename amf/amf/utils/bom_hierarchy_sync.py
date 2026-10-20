@@ -106,6 +106,8 @@ def sync_latest_bom_hierarchy_for_all_items(dry_run=0, verbose=0):
 	3. Errors are isolated per root item so one broken hierarchy does not stop the
 	   full batch run.
 	"""
+	if frappe.conf.get("pause_amf_cost_writers"):
+		return {"status": "paused", "reason": "pause_amf_cost_writers"}
 	dry_run = cint(dry_run)
 	verbose = cint(verbose)
 
@@ -238,6 +240,8 @@ def enqueue_sync_latest_bom_hierarchy_for_all_items(dry_run=0, verbose=0):
 	Use this entry point when the batch is too large for a foreground terminal
 	run or when you want the worker to handle the full pass asynchronously.
 	"""
+	if frappe.conf.get("pause_amf_cost_writers"):
+		return {"status": "paused", "reason": "pause_amf_cost_writers"}
 	dry_run = cint(dry_run)
 	verbose = cint(verbose)
 

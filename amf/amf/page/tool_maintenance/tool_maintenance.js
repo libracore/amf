@@ -75,7 +75,7 @@ ToolMaintenancePage.prototype.make = function() {
 				'<div><div class="tm-eyebrow"><span class="octicon octicon-tools"></span> ' +
 					esc(__("EQUIPMENT RELIABILITY")) + '</div>' +
 				'<h2>' + esc(__("Plan the work. Keep the history.")) + '</h2>' +
-				'<p>' + esc(__("A live maintenance view for Items in the Tool group, with recurring plans, due dates and traceable intervention records.")) + '</p></div>' +
+				'<p>' + esc(__("A live maintenance view for Items in the Tool group and its subgroups, with recurring plans, due dates and traceable intervention records.")) + '</p></div>' +
 				'<div class="tm-generated"></div>' +
 			'</section>' +
 			'<div class="tm-results"></div>' +
@@ -386,4 +386,3 @@ function esc(value) {
 }
 
 }());
-

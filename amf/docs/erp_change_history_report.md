@@ -1,8 +1,8 @@
 # AMF ERP Release Notes
 
-Generated on: 2026-09-03
+Generated on: 2026-10-12
 
-Change history through: 2026-09-03
+Change history through: 2026-10-12
 
 Live system: [AMF ERP Desk](https://amf.libracore.ch/desk#)
 
@@ -16,7 +16,7 @@ Release audience: AMF ERP users, department leads, management, operations, finan
 
 This document is the business-facing release notes and change history for the AMF ERP custom app.
 
-It summarizes the main ERP changes developed in the AMF custom app from the beginning of the recorded development history to 2026-09-03. The report is based on the `apps/amf` git history, which starts on 2022-09-19, and on the current AMF app structure, including custom DocTypes, reports, pages, hooks and documentation.
+It summarizes the main ERP changes developed in the AMF custom app from the beginning of the recorded development history to 2026-10-12. The report is based on the `apps/amf` git history, which starts on 2022-09-19, and on the current AMF app structure, including custom DocTypes, reports, pages, hooks and documentation.
 
 This is intentionally not a technical commit-by-commit changelog. It is a release communication document for the main modifications, novelties and functional areas added over time. Standard Frappe and ERPNext framework changes are not listed unless they were reflected in AMF custom development.
 
@@ -157,6 +157,13 @@ The main evolution areas are:
 ## Release History
 
 ### 2026 - Advanced Planning, Finance, Compliance, Dashboards And AI Reporting
+
+#### 2026-10-12 - Tool Maintenance Subgroups
+
+- Extended Tool Maintenance to Item Group `Tool` and all its descendants, including Assembly tool, Dimensional Measuring tool, Electrical Testing Instruments, Machinery, Machining tool and Pressure/flow Testing Instruments.
+- The dashboard, Item maintenance sections, plan/log Item selectors, server validation, workbook matching and daily summaries now use the same current Item Group hierarchy; new and nested subgroups are included automatically.
+- Creating or moving a subgroup refreshes maintenance summaries for its affected Items. Items and subgroups with maintenance records can move within Tool; moving them outside Tool requires those records to be removed or reassigned first.
+- Corrected the maintenance Details query so intervention history and plan procedures load correctly on ERPNext v12.
 
 #### `v2026.09.1` - 2026 Q3 To Date - Latest
 
@@ -488,7 +495,7 @@ The main evolution areas are:
 - Custom Valve Head propagation and R&D review controls for custom Products in selling documents.
 - Item valuation from BOM costs.
 - Drawing match and component drawing register support.
-- Tool-only Item maintenance fields and automatic maintenance summaries.
+- Item maintenance fields and automatic maintenance summaries for Tool and all its subgroups.
 - Item pricing and item category controls.
 
 ### Logistics And Delivery

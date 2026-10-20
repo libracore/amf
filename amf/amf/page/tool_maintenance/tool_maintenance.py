@@ -10,7 +10,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, cstr, getdate, now_datetime
 
-from amf.amf.utils.tool_maintenance import get_plan_state
+from amf.amf.utils.tool_maintenance import get_plan_state, get_tool_item_groups, is_tool_item_group
 
 
 ALLOWED_ROLES = {
@@ -34,7 +34,7 @@ def get_dashboard(search=None, status=None, responsible=None, include_disabled=0
 	if status not in VALID_STATUSES:
 		status = ""
 
-	filters = {"item_group": "Tool"}
+	filters = {"item_group": ["in", get_tool_item_groups()]}
 	if not include_disabled:
 		filters["disabled"] = 0
 	items = frappe.get_list(
@@ -157,14 +157,14 @@ def get_tool_detail(item_code):
 	item_code = cstr(item_code).strip()
 	item = frappe.get_doc("Item", item_code)
 	frappe.has_permission("Item", ptype="read", doc=item, throw=True)
-	if item.item_group != "Tool":
-		frappe.throw(_("Maintenance details are only available for Tool Items."))
+	if not is_tool_item_group(item.item_group):
+		frappe.throw(_("Maintenance details are only available for Items in Tool or its subgroups."))
 
 	plans = frappe.get_list(
 		"Tool Maintenance Plan",
 		filters={"item_code": item_code},
 		fields=[
-			"name", "status", "maintenance_type", "activity", "procedure",
+			"name", "status", "maintenance_type", "activity", "`procedure`",
 			"responsible", "next_due_date", "warning_days", "frequency_value",
 			"frequency_unit", "last_completed_on", "notes",
 		],
@@ -257,4 +257,3 @@ def _assert_access():
 		return
 	if not ALLOWED_ROLES.intersection(set(frappe.get_roles())):
 		frappe.throw(_("You do not have access to Tool Maintenance."), frappe.PermissionError)
-

@@ -18,6 +18,10 @@ from frappe.utils import add_days, add_months, add_years, cint, cstr, getdate, n
 
 TOOL_ITEM_GROUP = "Tool"
 ACTIVE_PLAN_STATUS = "Active"
+TOOL_SECTION_DEPENDS_ON = (
+	"eval:doc.item_group=='Tool'||(this.frm&&"
+	"(this.frm.__tool_maintenance_item_groups||[]).indexOf(doc.item_group)!==-1)"
+)
 
 ITEM_MAINTENANCE_FIELDS = (
 	"tool_serial_number",
@@ -37,7 +41,7 @@ TOOL_MAINTENANCE_CUSTOM_FIELDS = {
 			"fieldtype": "Section Break",
 			"label": "Tool Maintenance",
 			"insert_after": "item_defaults",
-			"depends_on": "eval:doc.item_group=='Tool'",
+			"depends_on": TOOL_SECTION_DEPENDS_ON,
 		},
 		{
 			"fieldname": "tool_serial_number",
@@ -101,7 +105,7 @@ TOOL_MAINTENANCE_CUSTOM_FIELDS = {
 			"fieldtype": "Section Break",
 			"label": "Maintenance Planning Summary",
 			"insert_after": "tool_maintenance_instructions",
-			"depends_on": "eval:doc.item_group=='Tool'",
+			"depends_on": TOOL_SECTION_DEPENDS_ON,
 			"collapsible": 1,
 		},
 		{
@@ -157,10 +161,52 @@ TOOL_MAINTENANCE_CUSTOM_FIELDS = {
 
 
 def sync_tool_maintenance_custom_fields():
-	"""Install Tool-only Item fields and refresh their planning summaries."""
+	"""Install maintenance fields for the Tool subtree and refresh summaries."""
 	create_custom_fields(TOOL_MAINTENANCE_CUSTOM_FIELDS, update=True)
 	frappe.clear_cache(doctype="Item")
 	return sync_all_tool_maintenance_summaries()
+
+
+def _item_group_subtree(item_group):
+	bounds = frappe.db.get_value("Item Group", item_group, ["lft", "rgt"], as_dict=True)
+	if not bounds:
+		return []
+	return [group.name for group in frappe.get_all(
+		"Item Group",
+		filters={"lft": [">=", bounds.lft], "rgt": ["<=", bounds.rgt]},
+		fields=["name"],
+		order_by="lft asc",
+	)]
+
+
+@frappe.whitelist()
+def get_tool_item_groups():
+	"""Read the current tree so new and nested Tool subgroups qualify immediately."""
+	return _item_group_subtree(TOOL_ITEM_GROUP)
+
+
+def is_tool_item_group(item_group):
+	return bool(item_group and item_group in get_tool_item_groups())
+
+
+@frappe.whitelist()
+def tool_item_query(doctype, txt, searchfield, start, page_len, filters=None, as_dict=False):
+	"""Permission-aware Link search for enabled Items in the Tool subtree."""
+	if doctype != "Item":
+		frappe.throw(_("Tool maintenance search is only available for Items."))
+	return frappe.get_list(
+		"Item",
+		filters={"item_group": ["in", get_tool_item_groups()], "disabled": 0},
+		or_filters={
+			"name": ["like", "%{0}%".format(cstr(txt))],
+			"item_name": ["like", "%{0}%".format(cstr(txt))],
+		},
+		fields=["name", "item_name"],
+		order_by="item_code asc",
+		limit_start=max(cint(start), 0),
+		limit_page_length=min(max(cint(page_len), 1), 100),
+		as_list=not as_dict,
+	)
 
 
 def validate_tool_item(item_code):
@@ -172,19 +218,19 @@ def validate_tool_item(item_code):
 	)
 	if not item:
 		frappe.throw(_("Item {0} does not exist.").format(item_code))
-	if item.item_group != TOOL_ITEM_GROUP:
+	if not is_tool_item_group(item.item_group):
 		frappe.throw(
-			_("Maintenance plans and logs are only available for Items in the Tool Item Group.")
+			_("Maintenance plans and logs are only available for Items in Tool or its subgroups.")
 		)
 	return item
 
 
 def validate_tool_item_group_change(doc, method=None):
 	"""Keep existing plans and logs attached to a Tool Item."""
-	if doc.is_new() or doc.item_group == TOOL_ITEM_GROUP:
+	if doc.is_new() or is_tool_item_group(doc.item_group):
 		return
 	previous_group = frappe.db.get_value("Item", doc.name, "item_group")
-	if previous_group != TOOL_ITEM_GROUP:
+	if not is_tool_item_group(previous_group):
 		return
 
 	linked_plan = frappe.db.get_value("Tool Maintenance Plan", {"item_code": doc.name}, "name")
@@ -197,6 +243,50 @@ def validate_tool_item_group_change(doc, method=None):
 				"before changing its Item Group."
 			).format(doc.name, ", ".join(links))
 		)
+
+
+def validate_tool_group_parent_change(doc, method=None):
+	"""Prevent moving a maintained subtree outside Tool and orphaning its history."""
+	doc.flags.tool_maintenance_membership_changed = False
+	if doc.is_new() or doc.name == TOOL_ITEM_GROUP:
+		return
+	previous_parent = frappe.db.get_value("Item Group", doc.name, "parent_item_group")
+	if previous_parent == doc.parent_item_group:
+		return
+	was_tool_group = is_tool_item_group(doc.name)
+	will_be_tool_group = is_tool_item_group(doc.parent_item_group)
+	doc.flags.tool_maintenance_membership_changed = was_tool_group != will_be_tool_group
+	if not was_tool_group or will_be_tool_group:
+		return
+	if not frappe.db.exists("DocType", "Tool Maintenance Plan"):
+		return
+	items = frappe.get_all(
+		"Item", filters={"item_group": ["in", _item_group_subtree(doc.name)]}, fields=["name"]
+	)
+	item_codes = [item.name for item in items]
+	if not item_codes:
+		return
+	for doctype in ("Tool Maintenance Plan", "Tool Maintenance Log"):
+		if frappe.db.exists(doctype, {"item_code": ["in", item_codes]}):
+			frappe.throw(_(
+				"Item Group {0} contains Items with Tool maintenance records. Remove or reassign "
+				"those records before moving this group outside Tool."
+			).format(doc.name))
+
+
+def sync_tool_group_after_save(doc, method=None):
+	"""Refresh affected Items when their subtree enters or leaves Tool."""
+	if not doc.flags.tool_maintenance_membership_changed:
+		return
+	if not _maintenance_columns_exist():
+		return
+	if not frappe.db.exists("DocType", "Tool Maintenance Plan"):
+		return
+	items = frappe.get_all(
+		"Item", filters={"item_group": ["in", _item_group_subtree(doc.name)]}, fields=["name"]
+	)
+	for item in items:
+		sync_item_maintenance_summary(item.name)
 
 
 def sync_tool_item_after_save(doc, method=None):
@@ -263,7 +353,7 @@ def sync_item_maintenance_summary(item_code, exclude_plan=None, exclude_log=None
 		return None
 
 	item_group = frappe.db.get_value("Item", item_code, "item_group")
-	if item_group != TOOL_ITEM_GROUP:
+	if not is_tool_item_group(item_group):
 		values = {
 			"tool_last_maintenance_date": None,
 			"tool_next_maintenance_date": None,
@@ -310,7 +400,9 @@ def sync_all_tool_maintenance_summaries():
 	if not frappe.db.exists("DocType", "Tool Maintenance Plan"):
 		return {"updated": 0, "skipped": "missing_doctypes"}
 
-	items = frappe.get_all("Item", filters={"item_group": TOOL_ITEM_GROUP}, fields=["name"])
+	items = frappe.get_all(
+		"Item", filters={"item_group": ["in", get_tool_item_groups()]}, fields=["name"]
+	)
 	for item in items:
 		sync_item_maintenance_summary(item.name)
 	return {"updated": len(items)}
@@ -564,11 +656,12 @@ def _worksheet_rows(sheet):
 
 def _resolve_item(raw_code, equipment_name, items, items_by_code):
 	codes = _item_code_candidates(raw_code)
+	tool_groups = set(get_tool_item_groups())
 	for code in codes:
 		item = items_by_code.get(code)
 		if not item:
 			continue
-		if item.item_group != TOOL_ITEM_GROUP:
+		if item.item_group not in tool_groups:
 			return None, "not_tool"
 		if not _names_compatible(equipment_name, item.item_name):
 			return None, "code_name_conflict"
@@ -582,7 +675,7 @@ def _resolve_item(raw_code, equipment_name, items, items_by_code):
 		return None, "missing_item_reference"
 	strong_matches = []
 	for item in items:
-		if item.item_group != TOOL_ITEM_GROUP:
+		if item.item_group not in tool_groups:
 			continue
 		ratio = SequenceMatcher(None, _normalize_name(name), _normalize_name(item.item_name)).ratio()
 		if ratio >= 0.78:

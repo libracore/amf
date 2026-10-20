@@ -4,7 +4,7 @@
 frappe.ui.form.on("Tool Maintenance Plan", {
 	setup: function(frm) {
 		frm.set_query("item_code", function() {
-			return {filters: {item_group: "Tool", disabled: 0}};
+			return {query: "amf.amf.utils.tool_maintenance.tool_item_query"};
 		});
 	},
 
@@ -27,4 +27,3 @@ frappe.ui.form.on("Tool Maintenance Plan", {
 		}, __("Maintenance"));
 	}
 });
-
