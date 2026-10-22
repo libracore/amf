@@ -224,6 +224,8 @@ doc_events = {
         ],
     },
     "Stock Ledger Entry": {
+        # Reposting older receipts must use the guard even in a fresh worker.
+        "before_validate": "amf.amf.utils.purchase_receipt_gl_override.install_purchase_receipt_gl_override",
         "on_submit": "amf.amf.utils.batch_auto_disable.queue_batch_disabled_state_sync",
     },
     "Stock Entry": {
