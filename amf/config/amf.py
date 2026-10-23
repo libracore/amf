@@ -56,6 +56,18 @@ def get_data():
             "items": [
                 {
                     "type": "doctype",
+                    "name": "Monthly Inventory Check",
+                    "label": _("Monthly Inventory Checks"),
+                    "description": _("Count random references across all warehouses and verify corrections")
+                },
+                {
+                    "type": "doctype",
+                    "name": "Monthly Inventory Settings",
+                    "label": _("Monthly Inventory Settings"),
+                    "description": _("Configure eligible references, sample size and assignee")
+                },
+                {
+                    "type": "doctype",
                     "name": "Weekly Operations Report",
                     "label": _("Weekly Operations Reports"),
                     "description": _("Tuesday production, supply, QC and shipping slides")
