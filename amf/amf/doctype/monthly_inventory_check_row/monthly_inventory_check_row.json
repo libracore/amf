@@ -1,0 +1,214 @@
+{
+ "doctype": "DocType",
+ "name": "Monthly Inventory Check Row",
+ "module": "AMF",
+ "engine": "InnoDB",
+ "creation": "2026-10-23 00:00:00.000000",
+ "modified": "2026-10-23 00:00:00.000000",
+ "owner": "Administrator",
+ "modified_by": "Administrator",
+ "editable_grid": 1,
+ "field_order": [
+  "item_code",
+  "item_name",
+  "warehouse",
+  "stock_uom",
+  "tracked_item",
+  "current_qty",
+  "current_rate",
+  "snapshot_on",
+  "count_section",
+  "counted_qty",
+  "counted_rate",
+  "counted",
+  "reason",
+  "qty_difference",
+  "value_difference",
+  "row_status",
+  "correction_section",
+  "correction_type",
+  "correction_document",
+  "checked_by",
+  "checked_on",
+  "resolved",
+  "ledger_token"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item Code",
+   "options": "Item",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 2,
+   "read_only": 1
+  },
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Warehouse",
+   "options": "Warehouse",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 2,
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_uom",
+   "fieldtype": "Link",
+   "label": "Stock Uom",
+   "options": "UOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tracked_item",
+   "fieldtype": "Check",
+   "label": "Batch or Serial Tracked",
+   "read_only": 1
+  },
+  {
+   "fieldname": "current_qty",
+   "fieldtype": "Float",
+   "label": "ERP Quantity",
+   "precision": "6",
+   "in_list_view": 1,
+   "columns": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "current_rate",
+   "fieldtype": "Currency",
+   "label": "ERP Valuation Rate",
+   "in_list_view": 1,
+   "columns": 1,
+   "options": "currency",
+   "precision": "6",
+   "read_only": 1
+  },
+  {
+   "fieldname": "snapshot_on",
+   "fieldtype": "Datetime",
+   "label": "Snapshot On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "count_section",
+   "fieldtype": "Section Break",
+   "label": "Physical Count and Valuation Review"
+  },
+  {
+   "fieldname": "counted_qty",
+   "fieldtype": "Float",
+   "label": "Counted Quantity",
+   "precision": "6",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "counted_rate",
+   "fieldtype": "Currency",
+   "label": "Verified Valuation Rate",
+   "in_list_view": 1,
+   "columns": 1,
+   "options": "currency",
+   "precision": "6"
+  },
+  {
+   "fieldname": "counted",
+   "fieldtype": "Check",
+   "label": "Confirmed",
+   "default": "0",
+   "in_list_view": 1,
+   "columns": 1,
+   "description": "Explicit confirmation is required, including quantities of zero."
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Small Text",
+   "label": "Reason for Difference",
+   "mandatory_depends_on": "eval:doc.counted && (doc.counted_qty != doc.current_qty || (doc.counted_qty && doc.counted_rate != doc.current_rate))"
+  },
+  {
+   "fieldname": "qty_difference",
+   "fieldtype": "Float",
+   "label": "Qty Difference",
+   "precision": "6",
+   "read_only": 1
+  },
+  {
+   "fieldname": "value_difference",
+   "fieldtype": "Currency",
+   "label": "Value Difference",
+   "options": "currency",
+   "precision": "6",
+   "read_only": 1
+  },
+  {
+   "fieldname": "row_status",
+   "fieldtype": "Select",
+   "label": "Row Status",
+   "options": "Pending\nMatched\nDifference\nCorrected",
+   "default": "Pending",
+   "in_list_view": 1,
+   "columns": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "correction_section",
+   "fieldtype": "Section Break",
+   "label": "Submitted Correction"
+  },
+  {
+   "fieldname": "correction_type",
+   "fieldtype": "Select",
+   "label": "Correction Document Type",
+   "options": "\nStock Entry\nStock Reconciliation",
+   "description": "For batch or serial items, create a normal stock correction with the exact batches or serial numbers, then link it here."
+  },
+  {
+   "fieldname": "correction_document",
+   "fieldtype": "Dynamic Link",
+   "label": "Correction Document",
+   "options": "correction_type"
+  },
+  {
+   "fieldname": "checked_by",
+   "fieldtype": "Link",
+   "label": "Checked By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "checked_on",
+   "fieldtype": "Datetime",
+   "label": "Checked On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "resolved",
+   "fieldtype": "Check",
+   "label": "Resolved",
+   "hidden": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "ledger_token",
+   "fieldtype": "Data",
+   "label": "Ledger Token",
+   "hidden": 1,
+   "read_only": 1
+  }
+ ],
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1,
+ "istable": 1
+}

@@ -1,0 +1,148 @@
+{
+ "doctype": "DocType",
+ "name": "Monthly Inventory Settings",
+ "module": "AMF",
+ "engine": "InnoDB",
+ "creation": "2026-10-23 00:00:00.000000",
+ "modified": "2026-10-23 13:30:00.000000",
+ "owner": "Administrator",
+ "modified_by": "Administrator",
+ "editable_grid": 1,
+ "field_order": [
+  "enabled",
+  "company",
+  "warehouse_root",
+  "assigned_to",
+  "column_schedule",
+  "sample_size",
+  "minimum_items",
+  "maximum_items",
+  "due_day",
+  "references_section",
+  "item_groups",
+  "exclusions_section",
+  "excluded_items",
+  "items"
+ ],
+ "fields": [
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enable Monthly Inventory",
+   "default": "0",
+   "description": "Daily scheduler creates one check per month, including catch-up after downtime. Configure item groups and excluded references before enabling."
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "description": "Count only enabled stock warehouses under AMF Warehouse / Production, excluding OLD BATCH."
+  },
+  {
+   "fieldname": "warehouse_root",
+   "fieldtype": "Link",
+   "label": "Warehouse Scope",
+   "options": "Warehouse",
+   "read_only": 1,
+   "description": "Only enabled stock warehouses within this Production group are included. OLD BATCH is excluded."
+  },
+  {
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "label": "Assigned To",
+   "options": "User",
+   "default": "alexandre.trachsel@amf.ch",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_schedule",
+   "fieldtype": "Column Break",
+   "label": "Column Schedule"
+  },
+  {
+   "fieldname": "sample_size",
+   "fieldtype": "Int",
+   "label": "References per Check",
+   "default": "10",
+   "read_only": 1,
+   "description": "Exactly ten distinct references are randomly selected from eligible item groups, after exclusions."
+  },
+  {
+   "fieldname": "minimum_items",
+   "fieldtype": "Int",
+   "label": "Minimum Items",
+   "default": "10",
+   "reqd": 1,
+   "hidden": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "maximum_items",
+   "fieldtype": "Int",
+   "label": "Maximum Items",
+   "default": "10",
+   "reqd": 1,
+   "hidden": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "due_day",
+   "fieldtype": "Int",
+   "label": "Due Day of Month",
+   "default": "15",
+   "reqd": 1,
+   "description": "1 to 28. A late catch-up check keeps its original due date."
+  },
+  {
+   "fieldname": "references_section",
+   "fieldtype": "Section Break",
+   "label": "Eligible Item Groups"
+  },
+  {
+   "fieldname": "item_groups",
+   "fieldtype": "Table",
+   "label": "Item Groups",
+   "options": "Monthly Inventory Item Group",
+   "description": "All groups are enabled by default except Product. Uncheck Enabled to exclude a group and all its subgroups. A disabled parent takes precedence over enabled children."
+  },
+  {
+   "fieldname": "exclusions_section",
+   "fieldtype": "Section Break",
+   "label": "Non-Eligible References"
+  },
+  {
+   "fieldname": "excluded_items",
+   "fieldtype": "Table",
+   "label": "Excluded References",
+   "options": "Monthly Inventory Exclusion",
+   "description": "References in this table are always excluded from future monthly selections, even when their item group is enabled."
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Legacy Reference List",
+   "options": "Monthly Inventory Reference",
+   "description": "Retained for historical compatibility. Eligibility is defined by item groups and exclusions.",
+   "hidden": 1,
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1
+  },
+  {
+   "role": "Stock Manager",
+   "read": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1,
+ "issingle": 1
+}

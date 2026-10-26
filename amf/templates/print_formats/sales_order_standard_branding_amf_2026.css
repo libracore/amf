@@ -16,24 +16,6 @@
 .print-format .sales-order-page { page-break-after: auto; }
 .print-format table { margin: 0; }
 
-.sales-order-letter-head {
-    line-height: 1.1;
-    margin-bottom: 1mm;
-    page-break-inside: avoid;
-}
-
-.sales-order-letter-head .company-name { font-size: 11pt !important; }
-
-.sales-order-letter-head .gray-text {
-    font-size: 6.4pt !important;
-    line-height: 1.1 !important;
-}
-
-.sales-order-letter-head .banking-info {
-    font-size: 5.9pt !important;
-    padding-top: 1mm !important;
-}
-
 .document-hero,
 .order-summary,
 .address-grid,

@@ -26,3 +26,5 @@ amf.patches.v12_0.ensure_mat_1021_original_stock_batch_2026_10_12
 amf.patches.v12_0.ensure_110137_unbatched_stock_removed_2026_10_13
 amf.patches.v12_0.reprice_selected_61_boms_2026_10_12
 amf.patches.v12_0.correct_of02883_stock_entries_2026_10_13
+amf.patches.v12_0.clean_client_description_metadata_2026_10_22
+amf.patches.v12_0.create_4d_interface_variants_2026_10_26

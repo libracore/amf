@@ -41,15 +41,36 @@ class TestPurchasedItemDescriptionUpdate2026(unittest.TestCase):
 		self.assertIn("<div><br></div>" + div("Item reference", "TEST.001"), value)
 		self.assertIn("RVM mini", plain(value))
 		self.assertNotIn("non-medical", plain(value).lower())
+		self.assertNotIn("<!--", value)
+		self.assertNotIn("safe-fallback", value)
 
 	def test_generated_facts_are_stable_on_rerun(self):
 		item = self.item()
-		item["description"] = "{}{}<div>Reviewed fact.</div>{}".format(
-			CLIENT_START, FACTS_START, FACTS_END
-		)
+		item["description"] = client_description(item, "Reviewed fact")
 		facts, basis = choose_catalog_facts(item, [], [])
 		self.assertEqual("Reviewed fact", facts)
 		self.assertEqual("previous-generated", basis)
+
+	def test_legacy_evidence_markup_is_removed(self):
+		item = self.item()
+		item["description"] = (
+			CLIENT_START + "<div><strong>Syringe glass</strong></div>" + FACTS_START
+			+ "<div>Reviewed fact.</div>" + FACTS_END
+			+ "<!-- AMF:PURCHASED:BASIS START -->erp-catalog"
+			+ "<!-- AMF:PURCHASED:BASIS END -->"
+		)
+		facts, basis = choose_catalog_facts(item, [], [])
+		self.assertEqual("Reviewed fact", facts)
+		self.assertNotIn("erp-catalog", client_description(item, facts, basis))
+
+	def test_sanitized_legacy_evidence_text_is_removed(self):
+		item = self.item(description=(
+			"<div>Syringe glass</div><div>Reviewed fact.</div>erp-catalog"
+			"<div><br></div><div>Item reference: TEST.001</div>"
+		))
+		facts, basis = choose_catalog_facts(item, [], [])
+		self.assertEqual("Reviewed fact", facts)
+		self.assertNotIn("erp-catalog", client_description(item, facts, basis))
 
 	def test_existing_internal_note_is_preserved(self):
 		note = "<div>Solder this component only for the RS-485 option.</div>"

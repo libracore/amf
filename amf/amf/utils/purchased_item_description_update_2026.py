@@ -409,17 +409,35 @@ def choose_catalog_facts(item, purchase_descriptions, suppliers):
 	code = item.get("item_code") or item.get("name")
 	if code in RESEARCHED_ITEMS:
 		return clean_client_text(RESEARCHED_ITEMS[code]["facts"]), "researched"
-	if CLIENT_START in str(item.get("description") or ""):
-		previous = plain(extract_between(item.get("description"), FACTS_START, FACTS_END))
-		if previous:
-			basis = plain(extract_between(item.get("description"), BASIS_START, BASIS_END))
-			if basis not in EVIDENCE_BASIS_LABELS:
-				old_internal = plain(item.get("internal_description"))
-				basis = next(
-					(key for key, label in EVIDENCE_BASIS_LABELS.items() if label in old_internal),
-					"previous-generated",
-				)
-			return clean_client_text(previous), basis
+	current_description = str(item.get("description") or "")
+	previous = ""
+	if CLIENT_START in current_description:
+		previous = plain(extract_between(current_description, FACTS_START, FACTS_END))
+	else:
+		# The clean, customer-facing layout has exactly one technical-details div
+		# between the item title and the blank line before Item reference.
+		# Frappe also stored a legacy variant after stripping HTML comments,
+		# leaving the evidence key as bare text between the facts and reference.
+		basis_pattern = (
+			r"(?:researched|erp-catalog|previous-generated|supplier-capability|"
+			r"group-specification|supplier-catalog|safe-fallback)"
+		)
+		match = re.fullmatch(
+			r"<div>(?:<strong>)?.*?(?:</strong>)?</div><div>(.*?)</div>"
+			+ r"(?:" + basis_pattern + r"|<div>" + basis_pattern + r"</div>)?"
+			r"(?:<div><br></div>)?<div>(?:<strong>)?Item reference:(?:</strong>)?\s*.*?</div>",
+			current_description,
+			flags=re.S,
+		)
+		if match:
+			previous = plain(match.group(1))
+	if previous:
+		old_internal = plain(item.get("internal_description"))
+		basis = next(
+			(key for key, label in EVIDENCE_BASIS_LABELS.items() if label in old_internal),
+			"previous-generated",
+		)
+		return clean_client_text(previous), basis
 
 	lines = []
 	for value in [item.get("description")] + list(purchase_descriptions):
@@ -497,17 +515,10 @@ def classify_part_item(item, facts, suppliers):
 def client_description(item, facts, fact_basis="safe-fallback"):
 	code = item.get("item_code") or item.get("name")
 	return "".join([
-		CLIENT_START,
 		"<div><strong>{}</strong></div>".format(esc(clean_title(item))),
-		FACTS_START,
 		"<div>{}</div>".format(esc(facts)),
-		FACTS_END,
-		BASIS_START,
-		esc(fact_basis),
-		BASIS_END,
 		"<div><br></div>",
 		div("Item reference", code),
-		CLIENT_END,
 	])
 
 
@@ -887,6 +898,10 @@ def validate_updates(updates):
 			if re.search(r"<\s*script", str(value), re.I):
 				errors.append("{} has unsafe script markup in {}".format(name, fieldname))
 		client = row["new_values"]["description"]
+		if "<!--" in client or "-->" in client:
+			errors.append("{} client description contains internal HTML comments".format(name))
+		if any(term in client.lower() for term in ("researched", "safe-fallback", "self-fallback", "erp-catalog", "supplier-capability", "supplier-catalog", "group-specification", "previous-generated")):
+			errors.append("{} client description contains an internal evidence label".format(name))
 		if "non-medical" in plain(client).lower():
 			errors.append("{} client description contains non-medical wording".format(name))
 		if "RVM Mini" in plain(client) or "RVMmini" in plain(client):

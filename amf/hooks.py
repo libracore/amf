@@ -59,6 +59,7 @@ doctype_js = {
     ],
     "Shipment": "public/js/dhl_shipment.js",
     "Stock Entry": "public/js/stock_entry.js",
+    "Stock Reconciliation": "public/js/stock_reconciliation_transport.js",
     "Work Order": "public/js/work_order.js",
 }
 
@@ -224,6 +225,8 @@ doc_events = {
         ],
     },
     "Stock Ledger Entry": {
+        # Reposting older receipts must use the guard even in a fresh worker.
+        "before_validate": "amf.amf.utils.purchase_receipt_gl_override.install_purchase_receipt_gl_override",
         "on_submit": "amf.amf.utils.batch_auto_disable.queue_batch_disabled_state_sync",
     },
     "Stock Entry": {
@@ -246,8 +249,17 @@ doc_events = {
             "amf.amf.utils.stock_entry.check_rates_and_assign_on_submit",
             "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
         ],
-        "on_cancel": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
+        "on_cancel": [
+            "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
+            "amf.amf.utils.monthly_inventory.on_correction_cancel",
+        ],
         "on_trash": "amf.amf.doctype.loan_order.loan_order.update_linked_loan_order",
+    },
+    "Stock Reconciliation": {
+        "before_validate": "amf.amf.utils.monthly_inventory.guard_reconciliation",
+        "before_submit": "amf.amf.utils.monthly_inventory.guard_reconciliation",
+        "on_cancel": "amf.amf.utils.monthly_inventory.on_correction_cancel",
+        "on_trash": "amf.amf.utils.monthly_inventory.on_reconciliation_trash",
     },
     "Timer Production": {
         "before_save": "amf.amf.doctype.timer_production.timer_production.timer_before_save",
@@ -274,6 +286,7 @@ scheduler_events = {
         ],
     },
     "daily": [
+        "amf.amf.utils.monthly_inventory.run_monthly_inventory",
         "amf.amf.utils.batch_auto_disable.sync_all_batch_disabled_states",
         "amf.amf.utils.item_image.update_item_images",
         "amf.amf.utils.tool_maintenance.sync_all_tool_maintenance_summaries",
@@ -316,12 +329,14 @@ override_doctype_dashboards = {
 }
 
 after_install = [
-    "amf.amf.utils.project_id.after_install"
+    "amf.amf.utils.project_id.after_install",
+    "amf.amf.utils.monthly_inventory.setup_monthly_inventory",
 ]
 
 # Migration Hook
 # --------------
 after_migrate = [
+    "amf.amf.utils.monthly_inventory.setup_monthly_inventory",
     "amf.amf.utils.leave_event.setup_leave_event_integration",
     "amf.master_crm.migration.translate_customer_to_organization",
     "amf.master_crm.customer_marketing.sync_customer_marketing_custom_fields",
@@ -343,3 +358,10 @@ after_migrate = [
     "amf.amf.utils.kpi_dashboard.sync_supply_chain_manufacturing_dashboard",
     "amf.amf.utils.custom_item.sync_custom_item_configuration",
 ]
+
+permission_query_conditions = {
+    "Monthly Inventory Check": "amf.amf.utils.monthly_inventory.permission_query",
+}
+has_permission = {
+    "Monthly Inventory Check": "amf.amf.utils.monthly_inventory.has_permission",
+}

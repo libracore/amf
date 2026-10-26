@@ -1,0 +1,220 @@
+{
+ "doctype": "DocType",
+ "name": "Monthly Inventory Check",
+ "module": "AMF",
+ "engine": "InnoDB",
+ "creation": "2026-10-23 00:00:00.000000",
+ "modified": "2026-10-23 13:30:00.000000",
+ "owner": "Administrator",
+ "modified_by": "Administrator",
+ "editable_grid": 1,
+ "field_order": [
+  "company",
+  "warehouse_root",
+  "period",
+  "status",
+  "column_header",
+  "assigned_to",
+  "due_date",
+  "currency",
+  "reference_count",
+  "checked_rows",
+  "total_rows",
+  "instructions",
+  "count_section",
+  "rows",
+  "correction_section",
+  "reconciliation",
+  "completed_on",
+  "completed_by",
+  "notes",
+  "audit_section",
+  "selection_log",
+  "selected_items"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "in_list_view": 1,
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "warehouse_root",
+   "fieldtype": "Link",
+   "label": "Warehouse Scope",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "period",
+   "fieldtype": "Date",
+   "label": "Inventory Month",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "In Progress\nAwaiting Reconciliation\nPassed",
+   "default": "In Progress",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_header",
+   "fieldtype": "Column Break",
+   "label": "Column Header"
+  },
+  {
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "label": "Assigned To",
+   "options": "User",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "due_date",
+   "fieldtype": "Date",
+   "label": "Due Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "hidden": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "reference_count",
+   "fieldtype": "Int",
+   "label": "Selected References",
+   "read_only": 1
+  },
+  {
+   "fieldname": "checked_rows",
+   "fieldtype": "Int",
+   "label": "Confirmed Warehouse Rows",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_rows",
+   "fieldtype": "Int",
+   "label": "Total Warehouse Rows",
+   "read_only": 1
+  },
+  {
+   "fieldname": "instructions",
+   "fieldtype": "HTML",
+   "label": "Instructions",
+   "options": "<p>This check covers 10 randomly selected references in enabled warehouses under AMF Warehouse / Production, excluding OLD BATCH. ERP quantities and latest warehouse valuation rates are filled automatically. Verify physical quantities and valuation rates, then confirm each warehouse row. Values shown are a dated stock snapshot. Refresh Stock if anything has moved; this clears all counts. Explain each difference. Create a draft reconciliation for standard items, or link a submitted batch/serial-aware correction for tracked items. Use Verify and Complete after submitting corrections.</p>"
+  },
+  {
+   "fieldname": "count_section",
+   "fieldtype": "Section Break",
+   "label": "Warehouse Counts"
+  },
+  {
+   "fieldname": "rows",
+   "fieldtype": "Table",
+   "label": "Counts",
+   "options": "Monthly Inventory Check Row",
+   "reqd": 1
+  },
+  {
+   "fieldname": "correction_section",
+   "fieldtype": "Section Break",
+   "label": "Corrections and Completion"
+  },
+  {
+   "fieldname": "reconciliation",
+   "fieldtype": "Link",
+   "label": "Generated Stock Reconciliation",
+   "options": "Stock Reconciliation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "completed_on",
+   "fieldtype": "Datetime",
+   "label": "Completed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "completed_by",
+   "fieldtype": "Link",
+   "label": "Completed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "audit_section",
+   "fieldtype": "Section Break",
+   "label": "Selection Audit",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "selection_log",
+   "fieldtype": "Code",
+   "label": "Selection Log",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "selected_items",
+   "fieldtype": "Code",
+   "label": "Selected Items",
+   "options": "JSON",
+   "hidden": 1,
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "share": 1
+  },
+  {
+   "role": "Stock Manager",
+   "read": 1,
+   "write": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "share": 1
+  },
+  {
+   "role": "Stock User",
+   "read": 1,
+   "write": 1,
+   "report": 1,
+   "print": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1,
+ "allow_copy": 0,
+ "allow_rename": 0,
+ "allow_import": 0,
+ "search_fields": "period,assigned_to,status"
+}
