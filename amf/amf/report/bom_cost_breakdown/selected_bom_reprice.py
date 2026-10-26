@@ -6,24 +6,24 @@ a qualifying Purchase Receipt makes it a purchased leaf instead.
 """
 
 import csv
+import io
 import hashlib
 import json
 from collections import Counter, defaultdict
 from decimal import Decimal
-from pathlib import Path
 
 import frappe
 
 from . import material_reprice
+from amf.amf.utils import data_artifact as artifacts
 
 
-DOCS = Path(__file__).resolve().parents[3] / "docs"
-REFS_PATH = DOCS / "bom_cost_old_vs_new_2026-10-12_updated.csv"
-REVIEWED_PROPOSAL_PATH = DOCS / "bom_selected_61_recursive_reprice_proposal_2026-10-12.json"
+REFS_NAME = artifacts.SELECTED_REFS
+REVIEWED_PROPOSAL_NAME = artifacts.SELECTED_PROPOSAL
 
 
-def selected_refs(path=REFS_PATH):
-    with Path(path).open(newline="", encoding="utf-8-sig") as source:
+def selected_refs(name=REFS_NAME):
+    with io.StringIO(artifacts.get_bytes(name).decode("utf-8-sig"), newline="") as source:
         rows = list(csv.reader(source))
     if any(len(row) != 1 or not row[0].strip() for row in rows):
         raise ValueError("Selected Item file must have one Item code per row")
@@ -104,16 +104,15 @@ def _outside_current_parents(entries):
 
 
 def write_scoped_proposal(output_prefix=None):
-    """Read-only preview. The proposal must be regenerated after source changes."""
+    """Save a database preview without changing BOMs. Use a new name for each review."""
     refs, entries = scoped_plan()
-    prefix = Path(output_prefix or DOCS / "bom_selected_61_recursive_reprice_proposal_2026-10-12")
-    prefix.parent.mkdir(parents=True, exist_ok=True)
+    prefix = output_prefix or artifacts.new_name("bom-selected-proposal", "json")[:-5]
+    artifacts.validate_name(prefix + ".json")
     outside = _outside_current_parents(entries)
     payload = _payload_bytes(refs, entries, outside)
-    proposal_path = prefix.with_suffix(".json")
-    proposal_path.write_bytes(payload)
-    summary_path = prefix.with_suffix(".csv")
-    with summary_path.open("w", newline="", encoding="utf-8") as target:
+    proposal_path = artifacts.put(prefix + ".json", payload)
+    summary_path = prefix + ".csv"
+    with artifacts.csv_output(summary_path) as target:
         fields = ("bom", "finished_item", "selected_root", "status", "reasons",
                   "old_raw_material_cost", "new_raw_material_cost", "old_total_cost", "new_total_cost")
         writer = csv.DictWriter(target, fieldnames=fields)
@@ -122,8 +121,8 @@ def write_scoped_proposal(output_prefix=None):
             writer.writerow({field: (int(entry["finished_item"] in refs) if field == "selected_root" else
                                     "; ".join(entry["reasons"]) if field == "reasons" else
                                     entry.get(field)) for field in fields})
-    outside_path = prefix.with_name(prefix.name + "_outside_parents").with_suffix(".csv")
-    with outside_path.open("w", newline="", encoding="utf-8") as target:
+    outside_path = prefix + "_outside_parents.csv"
+    with artifacts.csv_output(outside_path) as target:
         fields = ("parent_item", "parent_bom", "bom_item_row", "component_item", "changed_child_bom")
         writer = csv.DictWriter(target, fieldnames=fields)
         writer.writeheader()
@@ -145,9 +144,9 @@ def write_scoped_proposal(output_prefix=None):
             "outside_parents_csv": str(outside_path)}
 
 
-def apply_scoped_proposal(json_path=REVIEWED_PROPOSAL_PATH, commit=True):
+def apply_scoped_proposal(proposal_name=REVIEWED_PROPOSAL_NAME, commit=True):
     """Apply only a fresh reviewed proposal; let patch runner commit if requested."""
-    saved = Path(json_path).read_bytes()
+    saved = artifacts.get_bytes(proposal_name)
     refs, entries = scoped_plan()
     if _payload_bytes(refs, entries, _outside_current_parents(entries)) != saved:
         raise ValueError("Selected BOM proposal differs from current Items, BOMs, or receipts; regenerate")
@@ -230,10 +229,10 @@ def _verify_updated_explosions(entries):
     return len(changed)
 
 
-def preflight_scoped_proposal(json_path):
+def preflight_scoped_proposal(proposal_name=REVIEWED_PROPOSAL_NAME):
     """Exercise every selected write and flat BOM rebuild, then roll back."""
     refs, entries = scoped_plan()
-    if _payload_bytes(refs, entries, _outside_current_parents(entries)) != Path(json_path).read_bytes():
+    if _payload_bytes(refs, entries, _outside_current_parents(entries)) != artifacts.get_bytes(proposal_name):
         raise ValueError("Selected BOM proposal changed; regenerate before preflight")
     changed = [entry for entry in entries if entry["status"] == "ready_changed"]
     try:

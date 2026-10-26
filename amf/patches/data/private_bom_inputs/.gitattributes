@@ -1,0 +1,3 @@
+# Preserve the exact bytes used by the reviewed SHA-256 checksums.
+*.csv -text whitespace=cr-at-eol
+*.json -text

@@ -11,9 +11,9 @@ import hashlib
 import json
 from collections import Counter, defaultdict
 from decimal import Decimal, ROUND_HALF_UP
-from pathlib import Path
 
 import frappe
+from amf.amf.utils import data_artifact as artifacts
 
 
 SIX = Decimal("0.000001")
@@ -223,14 +223,14 @@ def proposal_bytes(plan):
     return json.dumps(serial(plan),sort_keys=True,indent=2,default=str).encode("utf-8") + b"\n"
 
 
-def write_proposal(output_prefix):
+def write_proposal(output_prefix=None):
     plan = build_plan()
-    prefix = Path(output_prefix)
-    prefix.parent.mkdir(parents=True, exist_ok=True)
-    path = prefix.with_suffix(".json")
+    prefix = output_prefix or artifacts.new_name("bom-material-proposal", "json")[:-5]
+    path = prefix + ".json"
+    artifacts.validate_name(path)
     payload = proposal_bytes(plan)
-    path.write_bytes(payload)
-    with prefix.with_suffix(".csv").open("w",newline="",encoding="utf-8") as target:
+    artifacts.put(path, payload)
+    with artifacts.csv_output(prefix + ".csv") as target:
         fields = ["bom","finished_item","status","reasons","old_raw_material_cost",
                   "new_raw_material_cost","old_total_cost","new_total_cost"]
         writer = csv.DictWriter(target,fieldnames=fields)
@@ -238,8 +238,8 @@ def write_proposal(output_prefix):
         for entry in plan:
             writer.writerow({key: "; ".join(entry[key]) if key == "reasons" else entry.get(key)
                              for key in fields})
-    detail_path = prefix.with_name(prefix.name + "_rows").with_suffix(".csv")
-    with detail_path.open("w",newline="",encoding="utf-8") as target:
+    detail_path = prefix + "_rows.csv"
+    with artifacts.csv_output(detail_path) as target:
         fields = ["bom","finished_item","bom_status","row","idx","item",
                   "qty","stock_qty","linked_bom","clear_child_link","method","source",
                   "receipt_posted","receipt_qualifying_lines","receipt_stock_qty",
@@ -253,7 +253,7 @@ def write_proposal(output_prefix):
                     entry["finished_item"] if field == "finished_item" else
                     entry["status"] if field == "bom_status" else row.get(field)
                     for field in fields})
-    return {"json":str(path),"csv":str(prefix.with_suffix(".csv")),
+    return {"json":str(path),"csv":prefix + ".csv",
             "rows_csv":str(detail_path),
             "sha256":hashlib.sha256(payload).hexdigest(),
             "statuses":dict(Counter(entry["status"] for entry in plan)),
@@ -263,10 +263,9 @@ def write_proposal(output_prefix):
                 for entry in plan for r in entry["reasons"]))}
 
 
-def apply_proposal(json_path):
+def apply_proposal(proposal_name):
     """Apply only if current records and source receipts reproduce the proposal."""
-    path = Path(json_path)
-    saved = path.read_bytes()
+    saved = artifacts.get_bytes(proposal_name)
     current = build_plan()
     if proposal_bytes(current) != saved:
         raise ValueError("Proposal differs from current BOM, Item, or Purchase Receipt data; regenerate")
@@ -328,9 +327,9 @@ def _verify_applied(changed):
                 raise ValueError("Post-write child link mismatch: {}".format(row["row"]))
 
 
-def preflight_one(json_path, bom_name):
+def preflight_one(proposal_name, bom_name):
     """Exercise the write and ERPNext explosion rebuild, then roll it back."""
-    saved = Path(json_path).read_bytes()
+    saved = artifacts.get_bytes(proposal_name)
     current = build_plan()
     if proposal_bytes(current) != saved:
         raise ValueError("Proposal differs from current source data")
@@ -349,9 +348,9 @@ def preflight_one(json_path, bom_name):
     return result
 
 
-def verify_proposal(json_path):
+def verify_proposal(proposal_name):
     """Independent persisted read-back, including untouched blocked BOMs."""
-    plan = json.loads(Path(json_path).read_text(encoding="utf-8"))
+    plan = artifacts.get_json(proposal_name)
     names = {entry["bom"] for entry in plan}
     current_defaults = {row.name for row in frappe.db.sql("""
         SELECT b.name FROM tabItem i JOIN tabBOM b ON b.name=i.default_bom
@@ -424,9 +423,9 @@ def verify_proposal(json_path):
             "representative_458040_raw_material_cost":str(boms["BOM-458040-012"].raw_material_cost)}
 
 
-def verify_explosion_quantities(json_path):
+def verify_explosion_quantities(proposal_name):
     """Compare every updated flat BOM quantity with its actual material tree."""
-    plan = json.loads(Path(json_path).read_text(encoding="utf-8"))
+    plan = artifacts.get_json(proposal_name)
     by_bom = {entry["bom"]:entry for entry in plan}
     actual_rows = frappe.db.sql("""
         SELECT bi.parent,bi.item_code,bi.stock_qty,bi.bom_no

@@ -1,0 +1,17 @@
+[
+  {
+    "name": "bom_cost_old_vs_new_2026-10-12_updated.csv",
+    "sha256": "022f3a2d31359cd537dde156fe23b72a5ddaf143ca495fec32bcc193c2ceec33",
+    "bytes": 486
+  },
+  {
+    "name": "bom_selected_61_recursive_reprice_proposal_2026-10-12.json",
+    "sha256": "eacfc6fe2caaec05ef28988ea1ca0c902fa05ae7af90461d0983598093e54b26",
+    "bytes": 459623
+  },
+  {
+    "name": "bom_material_reprice_proposal_2026-10-09.json",
+    "sha256": "a8ff2abccbf67b8d67163d95cd7b75988ce074cf6c41a692415b527e053af08e",
+    "bytes": 2925956
+  }
+]

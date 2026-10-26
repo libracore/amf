@@ -1,6 +1,5 @@
 import frappe
 from amf.amf.utils.qr_code_generator import generate_qr_code
-import os
 from frappe.desk.form.assign_to import add as assign_to_add
 from frappe.utils import cint
 from erpnext.stock.doctype.quality_inspection_template.quality_inspection_template \
@@ -519,9 +518,10 @@ def update_sales_order(doc, method):
     sales_order.save()
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def generate_dhl(delivery_note_id):
     delivery_note = frappe.get_doc('Delivery Note', delivery_note_id)
+    delivery_note.check_permission("write")
     lines = []
 
 
@@ -553,19 +553,6 @@ def generate_dhl(delivery_note_id):
 
     dhl_data = '\n'.join(lines)
 
-    # Define the directory where the file will be saved
-    file_directory = '/tmp/'
-    if not os.path.exists(file_directory):
-        os.makedirs(file_directory)
-
-    # Define the complete path
-    file_path = os.path.join(
-        file_directory, 'dhl_file_{}.txt'.format(delivery_note_id))
-
-    # Write data to the txt file
-    with open(file_path, 'w') as f:
-        f.write(dhl_data)
-
     # Define a filename
     file_name = 'dhl_file_{}.txt'.format(delivery_note_id)
 
@@ -576,7 +563,7 @@ def generate_dhl(delivery_note_id):
         "attached_to_doctype": 'Delivery Note',
         "attached_to_name": delivery_note_id,
         "content": dhl_data,
-        "is_private": 0
+        "is_private": 1
     }).insert()
 
     return {"status": "success", "data": dhl_data, "message": "File has been successfully generated"}
