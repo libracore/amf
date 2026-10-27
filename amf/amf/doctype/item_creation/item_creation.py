@@ -89,7 +89,7 @@ def _validate_existing_head_family(head_code):
 
 @frappe.whitelist()
 def syringe_item_query(doctype, txt, searchfield, start, page_len, filters=None, as_dict=False):
-    """Any six-character 70X___ Item, where X is a digit or letter."""
+    """Any six-character 70X___ Item, where X is a nonzero digit or letter."""
     from frappe.desk.reportview import get_match_cond
 
     if doctype != "Item" or not frappe.has_permission("Item", "read"):
@@ -98,7 +98,7 @@ def syringe_item_query(doctype, txt, searchfield, start, page_len, filters=None,
         WHERE item_code REGEXP %(pattern)s
         AND (name LIKE %(txt)s OR item_name LIKE %(txt)s OR reference_code LIKE %(txt)s)
         {match} ORDER BY name LIMIT %(start)s, %(page_len)s""".format(match=get_match_cond("Item")),
-        dict(pattern="^70[0-9A-Za-z]...$", txt="%" + (txt or "") + "%", start=max(0, cint(start)),
+        dict(pattern="^70[1-9A-Za-z]...$", txt="%" + (txt or "") + "%", start=max(0, cint(start)),
              page_len=min(100, max(1, cint(page_len) or 20))), as_dict=as_dict)
 
 

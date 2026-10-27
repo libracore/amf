@@ -4,7 +4,7 @@ AMF `0.7.3` extends the reviewed workflow without changing the numbering allocat
 
 ## Syringe selection
 
-The child-table Syringe selector accepts six-character Item codes `70X___`, where `X` is a digit or letter and each underscore represents one further character. Its fixed server expression is `^70[0-9A-Za-z]...$`. Thus `700025`, `708000`, `70E000` and `70F000` can appear regardless of Item Group. A punctuation character in the third position, a retired leading slash or an extra character does not match. Search includes the Item code, name and reference, honors Item read permissions and uses bound SQL parameters and bounded pagination.
+The child-table Syringe selector accepts six-character Item codes `70X___`, where `X` is a digit from 1 to 9 or a letter and each underscore represents one further character. Its fixed server expression is `^70[1-9A-Za-z]...$`. Thus `708000`, `709000`, `70E000` and `70F000` can appear regardless of Item Group. Zero or punctuation in the third position, a retired leading slash or an extra character does not match; `700025` is excluded. Search includes the Item code, name and reference, honors Item read permissions and uses bound SQL parameters and bounded pagination.
 
 This is a catalogue selector. Existing server-side engineering compatibility, identity and enabled-Item checks still determine which selected configurations can be released. Body selection retains `5_1___`.
 

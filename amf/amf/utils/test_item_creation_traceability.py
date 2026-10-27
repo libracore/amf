@@ -121,7 +121,7 @@ class TestItemCreationTraceability(unittest.TestCase):
             with self.assertRaises(frappe.PermissionError):
                 trace.result_history()
 
-    def test_syringe_query_allows_digit_or_letter_in_third_position(self):
+    def test_syringe_query_allows_only_nonzero_digit_or_letter_in_third_position(self):
         from amf.amf.doctype.item_creation.item_creation import syringe_item_query
         with patch.object(frappe, "has_permission", return_value=True), \
                 patch("frappe.desk.reportview.get_match_cond", return_value=""):
@@ -130,9 +130,9 @@ class TestItemCreationTraceability(unittest.TestCase):
         self.assertNotIn("' OR 1=1", query)
         self.assertEqual(values["start"], 0)
         self.assertEqual(values["page_len"], 100)
-        for code in ("700000", "709000", "70E000", "70F123", "70z123"):
+        for code in ("701000", "709000", "70E000", "70F123", "70z123"):
             self.assertIsNotNone(re.fullmatch(values["pattern"], code), code)
-        for code in ("70_000", "70-000", "70.000", "70E0000", "70E00", "/70E000", "71E000"):
+        for code in ("700000", "700025", "70_000", "70-000", "70.000", "70E0000", "70E00", "/70E000", "71E000"):
             self.assertIsNone(re.fullmatch(values["pattern"], code), code)
 
 
