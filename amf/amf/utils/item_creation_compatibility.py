@@ -6,10 +6,11 @@ new combinations from the existence of a Body or Syringe Item.
 import re
 
 
-RULE_VERSION = "2026-10-27.1"
-LV_SYRINGES = ("2", "3", "5", "8", "D")
+RULE_VERSION = "2026-10-27.2"
+LV_SYRINGES = ("2", "3", "4", "5", "8", "9", "D")
 HV_SYRINGES = ("E", "F")
-SYRINGE_REFERENCES = {"2": "S-50-P", "3": "S-100-P", "5": "S-250-P", "8": "S-500-P",
+SYRINGE_REFERENCES = {"2": "S-50-P", "3": "S-100-P", "4": "S-100-U", "5": "S-250-P",
+                      "8": "S-500-P", "9": "S-500-U",
                       "D": "S-1000-P", "E": "S-2500-P", "F": "S-5000-P"}
 BODY_RULES = (
     ("511000", "RVM", "1", ("0",), "P200-O"),

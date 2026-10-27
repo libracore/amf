@@ -18,17 +18,19 @@ The existing System Manager authorization is retained. Separate engineering role
 
 ## Explicit compatibility policy
 
-[item_creation_compatibility.py](../amf/utils/item_creation_compatibility.py) owns the versioned rules. They are based on the enabled catalogue relationships evaluated in the audit.
+[item_creation_compatibility.py](../amf/utils/item_creation_compatibility.py) owns the versioned rules. They combine the catalogue relationships evaluated in the audit with the user's explicit authorization of both U syringes for standard LV bodies on 27 October 2026.
 
 | Family | Bodies | Syringe tokens | Head requirements |
 | --- | --- | --- | --- |
 | RVM | `511000`, `521000` | No syringe | Standard head; observed D, DS, O, OS, S, B, DA, SA, SL, T, SPLIT and SPLITS types. |
-| LV | `551000`, `571000`, `591000`, `5B1000` | `2`, `3`, `5`, `8`, `D` | Standard D/DS head. |
+| LV | `551000`, `571000`, `591000`, `5B1000` | `2`, `3`, `4`, `5`, `8`, `9`, `D` | Standard D/DS head. |
 | HV | `561000`, `581000`, `5A1000`, `5C1000` | `E`, `F` | D/DS head with an explicit HV designation. Customer suffixes such as `-HV MGA` are recognized. |
 
 Every selected Body/Syringe must also exist, be enabled and belong to its correct Item Group. Duplicate combinations, unsupported pairs and selections whose family checkbox is cleared are errors. Selected configurations use the same reserved head suffix at every layer.
 
-`704000`/`709000` are excluded from new LV recipes because the inspected catalogue contains their Product recipes only in disabled Products. Other interfaces/families, including the pending 4D interface BOMs, are not inferred from the existence of a Body Item. Extending support requires a reviewed compatibility-rule/recipe update.
+AMF `0.7.5`, rule version `2026-10-27.2`, permits `704000` (`S-100-U`) and `709000` (`S-500-U`) with all four standard LV bodies, as explicitly authorized by the user. The chooser and manually selected rows use the same rules. Their enabled state, exact U reference, head geometry and request engineering review remain required. Historical disabled Products are not reactivated. HV bodies continue to permit only `70E000` and `70F000`. Other interfaces/families, including the pending 4D interface BOMs, still require a reviewed rule update.
+
+The rule-version change invalidates earlier draft approvals at submission; refresh the complete plan and record a fresh engineering review. Submitted/cancelled requests retain their original recorded snapshots. The expanded maximum standard selection is five head-chain Items plus thirty Products: 35 Items/BOMs.
 
 These rules enforce the supported standard configuration matrix, head type and volume class. The review records the engineering decision for the exact geometry, materials, stock dimensions and accessory quantities; catalogue frequency is not proof of physical compatibility for a new design.
 
@@ -61,7 +63,8 @@ The form invalidates cached plans immediately and debounces requests by 350 ms. 
 
 - The read-only live-catalogue preview for seven planned Items/BOMs passed in approximately **0.3 seconds**.
 - Real approval/submission created **seven Items and seven submitted BOMs**, then approved **three replacement BOMs**. Existing Product parent BOM links remained unchanged. The complete case took approximately **10.5 seconds**.
-- The largest supported standard selection created **27 Items and 27 submitted BOMs** in approximately **35 seconds**. An HV selection created six Items/six BOMs in approximately 5.6 seconds.
+- Before the `0.7.5` LV/U extension, the largest supported standard selection created **27 Items and 27 submitted BOMs** in approximately **35 seconds**. An HV selection created six Items/six BOMs in approximately 5.6 seconds.
+- The user-authorized `0.7.5` LV/U extension passed a real review/submission for all eight added pairs: **13 Items, 13 submitted BOMs and 13 result links** in approximately **18 seconds**. Exact U references, codes and materials were verified; all temporary records/files were rolled back. The expanded maximum 35-Item plan passed the bulk-read unit check.
 - Injected second-BOM failure propagated. Both changed request inputs and a changed temporary raw-stock Item invalidated approval. Request, Item, reservation and QR cleanup checks passed after rollback.
 - Every write-path integration test configured nested commits to raise an error. No nested commit occurred. Test business records and generated files were rolled back.
 - Real Guest access to preview and engineering review was denied in a database-enforced read-only transaction.

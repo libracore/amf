@@ -63,7 +63,7 @@ def catalogue():
         tables["Item"].append(body)
     for token in "234589DEF":
         row = item("70" + token + "000", "Syringe")
-        row["reference_code"] = compatibility.SYRINGE_REFERENCES.get(token, "S-500-P")
+        row["reference_code"] = compatibility.SYRINGE_REFERENCES[token]
         tables["Item"].append(row)
     return MemoryCatalogue(tables)
 
@@ -126,10 +126,52 @@ class TestItemCreationPlan(unittest.TestCase):
         self.assertEqual(plan["actions"][-1]["item"]["item_code"], "420ABC")
         self.assertNotIn("410ABC", [row["item"]["item_code"] for row in plan["actions"]])
 
-    def test_disabled_recipe_only_lv_syringes_cannot_be_selected(self):
+    def test_approved_u_syringes_generate_the_correct_product_for_each_lv_body(self):
+        for body, motor in (("551000", "5"), ("571000", "7"), ("591000", "9"), ("5B1000", "B")):
+            for syringe, reference in (("704000", "S-100-U"), ("709000", "S-500-U")):
+                with self.subTest(body=body, syringe=syringe):
+                    plan = plans.build_plan(source(pump_check=1, product_variants=[
+                        dict(selected=1, body=body, syringe=syringe)]), catalogue=catalogue())
+                    self.assertEqual(plan["errors"], [])
+                    product = plan["actions"][-1]
+                    self.assertEqual(product["item"]["item_code"], "4" + motor + syringe[2] + "ABC")
+                    self.assertTrue(product["item"]["reference_code"].endswith(reference.replace("-", "")))
+                    self.assertIn(syringe, [row["item_code"] for row in product["materials"]])
+
+    def test_u_syringes_still_require_enabled_items_and_the_correct_u_reference(self):
         for syringe in ("704000", "709000"):
-            plan = plans.build_plan(source(pump_check=1, product_variants=[dict(selected=1, body="551000", syringe=syringe)]), catalogue=catalogue())
+            for change in ({"disabled": 1}, {"reference_code": "S-500-P"}):
+                with self.subTest(syringe=syringe, change=change):
+                    data = catalogue()
+                    next(row for row in data.tables["Item"] if row["name"] == syringe).update(change)
+                    plan = plans.build_plan(source(pump_check=1, product_variants=[
+                        dict(selected=1, body="551000", syringe=syringe)]), catalogue=data)
+                    self.assertFalse(plan["ready"])
+
+    def test_u_syringes_are_not_added_to_hv_bodies(self):
+        for syringe in ("704000", "709000"):
+            plan = plans.build_plan(source(head_name="VALVE HEAD-D-1-6-050-C-P-HV", pump_hv_check=1,
+                product_variants=[dict(selected=1, body="561000", syringe=syringe)]), catalogue=catalogue())
             self.assertTrue(any("Unsupported" in row["message"] for row in plan["errors"]))
+
+    def test_configuration_chooser_includes_all_eight_approved_u_pairs(self):
+        doc = source(pump_check=1)
+        with patch.object(workflow, "_source_for_preview", return_value=doc), \
+                patch.object(frappe, "get_all", return_value=[frappe._dict(row) for row in catalogue().tables["Item"]]):
+            rows = workflow.get_compatible_variants({})
+        pairs = {(row["body"], row["syringe"]) for row in rows if row["syringe"] in ("704000", "709000")}
+        self.assertEqual(pairs, {(body, syringe) for body in ("551000", "571000", "591000", "5B1000")
+                                for syringe in ("704000", "709000")})
+
+    def test_compatibility_rule_change_invalidates_a_previous_draft_approval(self):
+        doc = source(review_status="Reviewed", plug_code="100ABC", seat_code="200ABC")
+        with patch.object(compatibility, "RULE_VERSION", "2026-10-27.1"):
+            old = plans.build_plan(doc, catalogue=catalogue())
+        doc.approved_plan_hash, doc.approved_input_hash = old["fingerprint"], old["input_hash"]
+        current = plans.build_plan(doc, catalogue=catalogue())
+        with patch.object(workflow, "_lock_source"), patch.object(workflow, "build_plan", return_value=current):
+            with self.assertRaisesRegex(frappe.ValidationError, "stale"):
+                workflow.validate_submission(doc)
 
     def test_hv_requires_hv_head_and_standard_products_reject_hv_heads(self):
         for changes in (dict(pump_hv_check=1, product_variants=[dict(selected=1, body="561000", syringe="70E000")]),
@@ -217,7 +259,7 @@ class TestItemCreationPlan(unittest.TestCase):
         data = catalogue()
         plan = plans.build_plan(source(rvm_check=1, pump_check=1, product_variants=variants), catalogue=data)
         self.assertEqual(plan["errors"], [])
-        self.assertEqual(len(plan["actions"]), 27)
+        self.assertEqual(len(plan["actions"]), 35)
         self.assertEqual(self.db.get_value.call_count, 1)  # Warehouse, never repeated syringe lookups.
         self.assertEqual(sum(row[0] == "Item" for row in data.reads), 1)
 
