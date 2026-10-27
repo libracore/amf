@@ -4,6 +4,26 @@ frappe.ui.form.on('Monthly Inventory Check', {
         const grid = frm.fields_dict.rows.grid;
         grid.cannot_add_rows = true;
         grid.wrapper.find('.grid-remove-rows, .grid-add-row, .grid-add-multiple-rows').hide();
+        if (!frm.is_new() && frm.doc.status !== 'Cancelled' && frm.perm[0].delete &&
+                (frappe.user.has_role('Stock Manager') || frappe.user.has_role('System Manager') || frappe.session.user === 'Administrator')) {
+            frm.add_custom_button(__('Cancel Check'), () => frappe.confirm(
+                __('Cancel this inventory check? Saved counts will be retained and assignments closed. Stock correction documents will remain unchanged.'),
+                () => frappe.call({
+                    method: 'amf.amf.utils.monthly_inventory.cancel_check',
+                    args: {name: frm.doc.name}, freeze: true,
+                    callback() { frm.reload_doc(); }
+                })));
+        }
+        if (frm.doc.reconciliation) {
+            frm.add_custom_button(__('Open Reconciliation'), () =>
+                frappe.set_route('Form', 'Stock Reconciliation', frm.doc.reconciliation));
+        }
+        if (frm.doc.status === 'Cancelled') {
+            frm.set_read_only();
+            frm.disable_save();
+            frm.dashboard.set_headline_alert(__('Inventory check cancelled. Saved counts and stock correction documents are retained.'), 'grey');
+            return;
+        }
         if (frm.doc.status === 'Passed') {
             frm.set_read_only();
             frm.dashboard.set_headline_alert(__('Sanity check passed. All counts and submitted corrections were verified.'), 'green');
@@ -48,10 +68,6 @@ frappe.ui.form.on('Monthly Inventory Check', {
             frm.add_custom_button(__('Create Draft Reconciliation'), () => action('create_reconciliation', 'Stock Reconciliation'));
         }
         frm.add_custom_button(__('Verify and Complete'), () => action('complete_check'));
-        if (frm.doc.reconciliation) {
-            frm.add_custom_button(__('Open Reconciliation'), () =>
-                frappe.set_route('Form', 'Stock Reconciliation', frm.doc.reconciliation));
-        }
         frappe.call({
             method: 'amf.amf.utils.monthly_inventory.get_stale_rows',
             args: {name: frm.doc.name},

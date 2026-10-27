@@ -1,0 +1,68 @@
+{
+ "doctype": "DocType",
+ "name": "AMF Data Artifact",
+ "module": "AMF",
+ "engine": "InnoDB",
+ "autoname": "field:artifact_name",
+ "title_field": "artifact_name",
+ "creation": "2026-10-26 00:00:00.000000",
+ "modified": "2026-10-26 00:00:00.000000",
+ "owner": "Administrator",
+ "modified_by": "Administrator",
+ "field_order": [
+  "artifact_name",
+  "source_site",
+  "sha256",
+  "byte_length",
+  "content"
+ ],
+ "fields": [
+  {
+   "fieldname": "artifact_name",
+   "fieldtype": "Data",
+   "label": "Artifact Name",
+   "reqd": 1,
+   "unique": 1,
+   "set_only_once": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "source_site",
+   "fieldtype": "Data",
+   "label": "Source Site",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sha256",
+   "fieldtype": "Data",
+   "label": "SHA-256",
+   "read_only": 1,
+   "length": 64
+  },
+  {
+   "fieldname": "byte_length",
+   "fieldtype": "Int",
+   "label": "UTF-8 Bytes",
+   "read_only": 1
+  },
+  {
+   "fieldname": "content",
+   "fieldtype": "Code",
+   "label": "Content",
+   "reqd": 1,
+   "description": "Private CSV, JSON or text, stored in the database. Create a new named version to change content."
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "allow_rename": 0
+}

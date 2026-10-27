@@ -17,7 +17,7 @@ from amf.amf.dashboard_chart_source.otif_by_semester.otif_by_semester import (
 
 
 DEFAULT_SEMESTER_COUNT = 8
-ITEM_CODE_PATTERN = r"^(10|20)[0-9]{4}$"
+ITEM_CODE_PATTERN = r"^(10|20)[0-9A-Z]{4}$"
 
 ITEM_FAMILIES = OrderedDict([
     ("plugs", {"prefix": "10", "label": _("Plugs")}),

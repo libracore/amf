@@ -17,8 +17,8 @@ from amf.amf.dashboard_chart_source.otif_by_semester.otif_by_semester import (
 
 
 DEFAULT_SEMESTER_COUNT = 8
-MANUFACTURED_ITEM_PATTERN = r"^30[0-9]{4}$"
-DELIVERED_ITEM_PATTERN = r"^(30[0-9]{4}|4[0-9]{5})$"
+MANUFACTURED_ITEM_PATTERN = r"^30[0-9A-Z]{4}$"
+DELIVERED_ITEM_PATTERN = r"^(30[0-9A-Z]{4}|4[0-9A-Z]{5})$"
 DELIVERY_NOTE_STATUSES = ("Completed", "Closed", "Validated")
 CHART_COLORS = ["blue", "green"]
 

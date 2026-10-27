@@ -4,6 +4,8 @@
 
 from __future__ import unicode_literals
 
+import re
+
 import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.utils import cstr, flt
@@ -17,7 +19,7 @@ WORKDAY_HOURS = 8.0 + (25.0 / MINUTES_PER_HOUR)
 
 ESTIMATED_TIME_DEPENDS_ON = (
     "eval:doc.production_item && "
-    "/^(10|20)[0-9]{4}$/.test(doc.production_item)"
+    "/^(10|20)[0-9A-Z]{4}$/.test(doc.production_item)"
 )
 
 
@@ -63,7 +65,7 @@ def sync_work_order_estimated_time_custom_fields():
 def is_estimated_time_item_code(item_code):
     """Return whether an item code is a six-digit 10xxxx or 20xxxx code."""
     item_code = cstr(item_code).strip()
-    return len(item_code) == 6 and item_code[:2] in ("10", "20") and item_code.isdigit()
+    return len(item_code) == 6 and item_code[:2] in ("10", "20") and bool(re.match(r"^[0-9A-Z]{6}$", item_code))
 
 
 def calculate_estimated_manufacturing_time(

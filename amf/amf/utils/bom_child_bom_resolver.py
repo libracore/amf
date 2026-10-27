@@ -7,6 +7,10 @@ def apply_item_default_boms_to_rows(doc, method=None):
     Optionally verifies those BOMs are submitted & active.
     """
 
+    if getattr(frappe.local, "amf_atomic_family_creation", False):
+        # Item Creation pins and verifies the exact reviewed child revisions.
+        return
+
     # ---- knobs you can tweak ----
     ONLY_IF_EMPTY = False     # False = override whatever is there; True = only fill blanks
     VERIFY_STATUS = True      # True = ensure default_bom is submitted & active

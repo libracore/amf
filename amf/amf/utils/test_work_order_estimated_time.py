@@ -13,12 +13,14 @@ from amf.amf.utils.work_order_estimated_time import (
 
 
 class TestWorkOrderEstimatedTime(unittest.TestCase):
-    def test_item_code_must_be_six_digits_and_start_with_10_or_20(self):
+    def test_item_code_must_be_six_characters_and_start_with_10_or_20(self):
         self.assertTrue(is_estimated_time_item_code("101234"))
         self.assertTrue(is_estimated_time_item_code("201234"))
         self.assertFalse(is_estimated_time_item_code("301234"))
         self.assertFalse(is_estimated_time_item_code("10123"))
-        self.assertFalse(is_estimated_time_item_code("10AB34"))
+        self.assertTrue(is_estimated_time_item_code("10AB34"))
+        self.assertTrue(is_estimated_time_item_code("100ABC"))
+        self.assertFalse(is_estimated_time_item_code("10AB_4"))
 
     def test_estimated_time_converts_cycle_minutes_to_hours(self):
         self.assertEqual(

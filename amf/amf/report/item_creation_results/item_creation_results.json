@@ -1,0 +1,12 @@
+{
+ "doctype": "Report",
+ "name": "Item Creation Results",
+ "report_name": "Item Creation Results",
+ "module": "AMF",
+ "is_standard": "Yes",
+ "report_type": "Script Report",
+ "ref_doctype": "Item Creation",
+ "disabled": 0,
+ "prepared_report": 0,
+ "roles": [{"role": "System Manager"}]
+}

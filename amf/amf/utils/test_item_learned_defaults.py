@@ -83,6 +83,17 @@ class TestItemLearnedDefaults(unittest.TestCase):
 		self.assertIn("<b>Reference:</b> P200O300042<br>", description)
 		self.assertIn("<b>Item Group:</b> Product<br>", description)
 
+	def test_compound_channels_preserve_each_dimension_and_small_channels(self):
+		description = item_learned_defaults.build_item_description(
+			"300ABC", "VALVE HEAD-D-1-6-025+050-C-P", "Valve Head")
+		self.assertIn("0.25+0.50 mm", description)
+
+	def test_material_u_uses_the_component_context(self):
+		seat = item_learned_defaults.build_item_description("200ABC", "SEAT-D-1-6-050-U", "Valve Seat")
+		plug = item_learned_defaults.build_item_description("100ABC", "PLUG-D-1-6-050-U", "Plug")
+		self.assertIn("PEI", seat)
+		self.assertIn("UHMW-PE", plug)
+
 	def test_product_numeric_defaults_are_learned_from_same_prefix(self):
 		rows = [
 			peer("410001", "Finished Good", 0.33, "Kg", "8479.5000", 0),

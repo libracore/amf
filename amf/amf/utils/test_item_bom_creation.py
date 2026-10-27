@@ -352,6 +352,7 @@ class TestItemBomCreation(unittest.TestCase):
 
 		with patch.object(item_bom_creation.frappe, "db", fake_db), \
 			patch.object(item_bom_creation.frappe, "get_doc", return_value=item), \
+			patch.object(item_bom_creation.item_code_family, "reserve_suffix"), \
 			patch.object(item_bom_creation, "_lock_item"), \
 			patch.object(item_bom_creation, "_get_creation_context", return_value=context), \
 			patch.object(item_bom_creation, "_validate_raw_material"), \

@@ -1,0 +1,63 @@
+{
+ "doctype": "DocType",
+ "name": "Item Creation Review",
+ "module": "AMF",
+ "istable": 1,
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "reviewed_by",
+  "reviewed_at",
+  "plan_hash",
+  "input_hash",
+  "review_notes",
+  "plan_snapshot"
+ ],
+ "fields": [
+  {
+   "fieldname": "reviewed_by",
+   "fieldtype": "Link",
+   "label": "Reviewed By",
+   "options": "User",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "reviewed_at",
+   "fieldtype": "Datetime",
+   "label": "Reviewed At",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "plan_hash",
+   "fieldtype": "Data",
+   "label": "Plan Hash",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "input_hash",
+   "fieldtype": "Data",
+   "label": "Input Hash",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "review_notes",
+   "fieldtype": "Small Text",
+   "label": "Review Notes",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "plan_snapshot",
+   "fieldtype": "Long Text",
+   "label": "Plan Snapshot",
+   "read_only": 1,
+   "hidden": 1
+  }
+ ],
+ "permissions": [],
+ "track_changes": 1
+}

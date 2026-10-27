@@ -1,6 +1,5 @@
 import re
 import time
-from amf.amf.doctype.item_creation.item_creation import get_last_item_code
 import frappe
 
 def fetch_items(item_group, disabled=False):
@@ -402,7 +401,7 @@ def delete_disabled_items_with_bom():
 @frappe.whitelist()
 def get_max_six_digit_item_code(item_group, item_type):
     """
-    Determine the next 6-digit code for the given item_group and item_type.
+    Suggest the next six-character code for the given item_group and item_type.
 
     Logic:
       1. If item_group is one of [Plug, Valve Seat, Valve Head], build a 6-digit code:
@@ -412,8 +411,8 @@ def get_max_six_digit_item_code(item_group, item_type):
               * '1' if (Plug or Valve Seat) + item_type=sub-assembly
               * '2' if (Plug or Valve Seat) + item_type=finished good
               * '0' for Valve Head (no item_type logic)
-         - Digits #3-#6: the next 4-digit sequence, found by get_last_item_code(None) + 1
-           (zero-padded to 4 digits).
+         - Character #3 is 0; the final three characters are a globally free
+           head-family suffix. The Item before-insert hook reserves it on save.
       2. Otherwise, use the "normal" approach (see get_normal_six_digit_code), which:
          - Derives a second digit from item_type (component→0, sub-assembly→1, finished good→2, else 0)
          - Looks up the highest 6-digit code matching ^[0-9]{second_digit}[0-9]{4}$
@@ -431,14 +430,9 @@ def get_max_six_digit_item_code(item_group, item_type):
     if item_group not in special_groups:
         return get_normal_six_digit_code(item_group, item_type)
 
-    # -----------------------------------------------------
-    # Special group => gather the "last item code" baseline
-    # -----------------------------------------------------
-    # get_last_item_code(None) is assumed to return an integer
-    # representing the highest found so far; handle accordingly.
-    current_last = get_last_item_code(None) or 0  # ensure integer fallback
-    next_val = current_last + 1
-    last_four = str(next_val).zfill(4)  # e.g. '0007'
+    # Preserve six characters while sharing the global head-family suffix.
+    from amf.amf.utils.item_code_family import suggest_suffix
+    last_four = "0" + suggest_suffix()
 
     # 1) Determine the first digit (group-based)
     group_digit_map = {

@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import math
+import re
 from collections import defaultdict
 
 from amf.amf.utils.stock_summary import get_stock
@@ -1120,7 +1121,7 @@ def _is_machining_item_code(item_code):
     item_code = str(item_code or "")
     return (
         len(item_code) == MACHINING_ITEM_CODE_LENGTH
-        and item_code.isdigit()
+        and bool(re.match(r"^[0-9A-Z]{6}$", item_code))
         and item_code.startswith(MACHINING_ITEM_PREFIXES)
     )
 

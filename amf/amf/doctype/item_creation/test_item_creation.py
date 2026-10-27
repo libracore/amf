@@ -33,7 +33,11 @@ class FakeDB(object):
         return doctype == "Item" and name in self.existing_codes
 
     def sql(self, query, values=None, as_dict=False):
-        values = values or {}
+        if "tabSeries" in query:
+            return []
+        if "SELECT item_code, item_group" in query:
+            return [{"item_code": code, "item_group": ""} for code in self.existing_codes]
+        values = values if isinstance(values, dict) else {}
         item_group = values.get("item_group")
         tag_raw_mat = values.get("tag_raw_mat")
         sub_assembly_prefix = values.get("sub_assembly_prefix")
@@ -79,8 +83,8 @@ class TestItemCreation(unittest.TestCase):
             },
         )
 
-    def test_next_available_suffix_starts_at_0001(self):
-        self.assertEqual(get_next_available_bom_managed_suffix([]), "0001")
+    def test_next_available_suffix_starts_at_001(self):
+        self.assertEqual(get_next_available_bom_managed_suffix([]), "001")
 
     def test_next_available_suffix_fills_the_first_full_gap(self):
         existing_codes = [
@@ -95,7 +99,7 @@ class TestItemCreation(unittest.TestCase):
             "210003",
             "300003",
         ]
-        self.assertEqual(get_next_available_bom_managed_suffix(existing_codes), "0002")
+        self.assertEqual(get_next_available_bom_managed_suffix(existing_codes), "002")
 
     def test_partially_used_suffix_is_never_reused(self):
         existing_codes = [
@@ -106,7 +110,7 @@ class TestItemCreation(unittest.TestCase):
             "300001",
             "100002",
         ]
-        self.assertEqual(get_next_available_bom_managed_suffix(existing_codes), "0003")
+        self.assertEqual(get_next_available_bom_managed_suffix(existing_codes), "003")
 
     def test_sub_assembly_code_reuses_component_suffix(self):
         self.assertEqual(
@@ -147,7 +151,7 @@ class TestItemCreation(unittest.TestCase):
             item_creation.frappe.db = original_db
 
         self.assertEqual(suggestion["item_code"], "210123")
-        self.assertEqual(suggestion["family_suffix"], "0123")
+        self.assertEqual(suggestion["family_suffix"], "123")
         self.assertEqual(suggestion["reuse_component_item"], "200123")
         self.assertEqual(suggestion["tag_raw_mat"], "PEEK")
 

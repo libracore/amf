@@ -1,0 +1,73 @@
+{
+ "doctype": "DocType",
+ "name": "Item Creation Result",
+ "module": "AMF",
+ "istable": 1,
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_code",
+  "item_action",
+  "bom",
+  "bom_action",
+  "replaced_bom",
+  "completed_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "options": "Item",
+   "label": "Item",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 3,
+   "search_index": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "item_action",
+   "fieldtype": "Select",
+   "options": "create\nreuse",
+   "label": "Item Action",
+   "in_list_view": 1,
+   "columns": 2,
+   "read_only": 1
+  },
+  {
+   "fieldname": "bom",
+   "fieldtype": "Link",
+   "options": "BOM",
+   "label": "BOM Revision",
+   "in_list_view": 1,
+   "columns": 3,
+   "search_index": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "bom_action",
+   "fieldtype": "Select",
+   "options": "create\nreplace\nreuse\nnone",
+   "label": "BOM Action",
+   "in_list_view": 1,
+   "columns": 2,
+   "read_only": 1
+  },
+  {
+   "fieldname": "replaced_bom",
+   "fieldtype": "Link",
+   "options": "BOM",
+   "label": "Previous BOM Revision",
+   "search_index": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "completed_at",
+   "fieldtype": "Datetime",
+   "label": "Completed At",
+   "read_only": 1
+  }
+ ],
+ "permissions": [],
+ "track_changes": 1
+}

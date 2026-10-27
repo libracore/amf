@@ -22,7 +22,7 @@ def auto_gen_qa_inspection(batch_name):
 
     item_code = doc.item
     item_group = frappe.db.get_value("Item", item_code, "item_group")
-    is_six_digit = len(item_code) == 6 and item_code.isdigit()
+    is_six_digit = bool(re.match(r"^[0-9A-Z]{6}$", item_code))
     
     if item_code.startswith(("20", "10")) and is_six_digit:
         # create Quality Inspection

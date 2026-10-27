@@ -172,6 +172,9 @@ def deactivate_non_default_boms_():
 This is hooked in the BOM : before_save trigger (hooky.py)
 """
 def bom_before_save(doc, event):
+    if getattr(frappe.local, "amf_atomic_family_creation", False):
+        # Creating a reserved family must not rewrite pre-existing parent BOMs.
+        return
     # Keep the trace very explicit because this hook directly affects parent BOMs.
     print(
         "[BOM Hook {0}] before_save triggered for BOM {1} "

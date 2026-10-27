@@ -488,6 +488,14 @@ def update_item_from_default_bom(doc, method=None, log_id=None):
 
     Supports both BOM document events and internal batch calls.
     """
+    if getattr(frappe.local, "amf_atomic_family_creation", False):
+        # The owning Item Creation transaction records results and handles errors.
+        # Item.validate refreshes its BOM snapshot without per-BOM log/save commits.
+        item = frappe.get_doc("Item", doc.item)
+        if item.default_bom == doc.name:
+            item.save(ignore_permissions=True)
+        return
+
     item, trigger_bom_name, trigger_label = _resolve_item_sync_context(doc, method)
     if not item:
         return

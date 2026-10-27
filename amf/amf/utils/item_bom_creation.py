@@ -8,6 +8,7 @@ from frappe import _
 from frappe.utils import flt
 
 from amf.amf.utils.item_learned_defaults import build_item_description
+from amf.amf.utils import item_code_family
 
 
 ITEM_GROUP_RULES = {
@@ -117,6 +118,12 @@ def create_item_boms_after_save(
 		item.item_group,
 		item.get("tag_raw_mat"),
 	)
+	item_code_family.reserve_suffix(item_code[-3:], ("Item", item.name), continuation=True)
+	with item_code_family.family_creation(("Item", item.name), item_code[-3:]):
+		return _create_saved_item_boms(item, context, raw_material, accessory_item, accessory_qty)
+
+
+def _create_saved_item_boms(item, context, raw_material, accessory_item, accessory_qty):
 
 	if context["layer"] == "component":
 		bom_name, bom_created = _ensure_component_raw_material_bom(
@@ -205,14 +212,14 @@ def _ensure_component_raw_material_bom(component_item, context, raw_material):
 
 
 def _get_creation_context(item_code, item_group, tag_raw_mat):
-	item_code = (item_code or "").strip()
+	item_code = (item_code or "").strip().upper()
 	item_group = (item_group or "").strip()
 	rule = ITEM_GROUP_RULES.get(item_group)
 	if not rule:
 		frappe.throw(_("Automatic BOM creation is only available for Plug and Valve Seat Items."))
 
-	if not re.match(r"^[0-9]{6}$", item_code):
-		frappe.throw(_("Item Code must contain exactly six digits for automatic BOM creation."))
+	if not re.match(r"^[0-9A-Z]{6}$", item_code):
+		frappe.throw(_("Item Code must contain exactly six letters/digits for automatic BOM creation."))
 
 	prefix = item_code[:2]
 	if prefix == rule["component_prefix"]:

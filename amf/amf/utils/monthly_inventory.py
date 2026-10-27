@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from html import escape
 
 import frappe
+import frappe.defaults
 from frappe import _
 from frappe.utils import cint, flt, getdate, get_url_to_form, now_datetime, nowdate
 from erpnext.stock.utils import get_stock_balance
@@ -30,7 +31,7 @@ PROTECTED_ROW_FIELDS = SNAPSHOT_FIELDS + ("checked_by", "checked_on", "resolved"
                                           "qty_difference", "value_difference", "row_status")
 PROTECTED_FIELDS = ("company", "warehouse_root", "period", "assigned_to", "due_date", "selected_items",
                     "selection_log", "reconciliation", "status", "completed_on", "completed_by",
-                    "reference_count", "checked_rows", "total_rows", "currency")
+                    "reference_count", "checked_rows", "total_rows", "currency", "cancelled_on", "cancelled_by")
 
 
 def is_manager(user=None):
@@ -52,6 +53,8 @@ def permission_query(user=None):
 
 def has_permission(doc, user=None, ptype=None):
     user = user or frappe.session.user
+    if ptype in ("cancel", "delete") and not is_manager(user):
+        return False
     if not is_manager(user) and user != doc.assigned_to:
         return False
 
@@ -94,6 +97,8 @@ def lock_check(name, write=True):
     doc = load_locked_check(name)
     if write:
         doc.check_permission("write")
+        if doc.status == "Cancelled":
+            frappe.throw(_("A cancelled inventory check is locked."))
         if not is_manager() and frappe.session.user != doc.assigned_to:
             frappe.throw(_("This inventory check is assigned to another user."), frappe.PermissionError)
     return doc
@@ -219,7 +224,7 @@ def run_monthly_inventory():
     # Daily catch-up also covers an unavailable scheduler on the first day.
     if not cint(frappe.db.get_single_value(SETTINGS, "enabled")):
         return
-    return generate_check()
+    return generate_check(automatic=True)
 
 
 def check_name(company, period):
@@ -233,7 +238,7 @@ def generate_current_month():
     return generate_check()
 
 
-def generate_check():
+def generate_check(automatic=False):
     # The singleton lock is held until the enclosing Frappe transaction commits.
     frappe.db.sql("SELECT field FROM tabSingles WHERE doctype=%s FOR UPDATE", SETTINGS)
     settings = frappe.get_single(SETTINGS)
@@ -246,11 +251,15 @@ def generate_check():
     existing = frappe.db.sql("SELECT name FROM `tabMonthly Inventory Check` WHERE name=%s FOR UPDATE", key)
     if existing:
         return existing[0][0]
+    # Removing this month's check is deliberate. Only an explicit manual
+    # generation may replace it; the daily catch-up must not undo deletion.
+    if automatic and frappe.db.exists("Deleted Document", {"deleted_doctype": CHECK, "deleted_name": key}):
+        return
     candidates = get_eligible_references(settings)
     busy = frappe.db.sql("""SELECT DISTINCT r.item_code
         FROM `tabMonthly Inventory Check Row` r
         JOIN `tabMonthly Inventory Check` c ON c.name=r.parent
-        WHERE c.company=%s AND c.status!='Passed'""", settings.company)
+        WHERE c.company=%s AND c.status NOT IN ('Passed', 'Cancelled')""", settings.company)
     candidates = set(candidates).difference(row[0] for row in busy)
     history = dict(frappe.db.sql("""SELECT r.item_code, MAX(c.period)
         FROM `tabMonthly Inventory Check Row` r
@@ -292,14 +301,16 @@ def generate_check():
     return doc.name
 
 
-def production_root(company):
+def production_root(company, required=True):
     roots = frappe.db.sql("""SELECT w.name, w.lft, w.rgt, w.disabled, w.is_group,
         p.disabled AS parent_disabled FROM tabWarehouse w
         JOIN tabWarehouse p ON p.name=w.parent_warehouse AND p.company=w.company
         WHERE w.company=%s AND w.warehouse_name='Production'
         AND p.warehouse_name='AMF Warehouse'""", company, as_dict=True)
     if len(roots) != 1 or roots[0].disabled or roots[0].parent_disabled or not roots[0].is_group:
-        frappe.throw(_("An enabled Production warehouse group directly under AMF Warehouse is required for company {0}.").format(company))
+        if required:
+            frappe.throw(_("An enabled Production warehouse group directly under AMF Warehouse is required for company {0}.").format(company))
+        return None
     return roots[0]
 
 
@@ -404,8 +415,8 @@ def validate_check(doc):
     else:
         old = load_locked_check(doc.name)
         if not internal:
-            if old.status == "Passed":
-                frappe.throw(_("A passed inventory check is locked."))
+            if old.status in ("Passed", "Cancelled"):
+                frappe.throw(_("A passed or cancelled inventory check is locked."))
             if not is_manager() and frappe.session.user != old.assigned_to:
                 frappe.throw(_("Only the assignee or a Stock Manager can record counts."), frappe.PermissionError)
             for field in PROTECTED_FIELDS:
@@ -433,6 +444,8 @@ def validate_check(doc):
                         row.checked_by, row.checked_on = frappe.session.user, now_datetime()
                     elif count_changed:
                         row.checked_by, row.checked_on = None, None
+    if doc.status == "Cancelled":
+        return
     for row in doc.rows:
         row.counted = cint(row.counted)
         if row.counted not in (0, 1):
@@ -512,7 +525,7 @@ def refresh_stock(name):
 def get_stale_rows(name):
     doc = frappe.get_doc(CHECK, name)
     doc.check_permission("read")
-    if doc.status == "Passed":
+    if doc.status in ("Passed", "Cancelled"):
         return []
     return [row.name for row in doc.rows if stock_state(row.item_code, row.warehouse)["token"] != row.ledger_token]
 
@@ -559,6 +572,8 @@ def guard_reconciliation(reco, method=None):
     if not reco.get("monthly_inventory_check"):
         return
     doc = lock_check(reco.monthly_inventory_check, write=False)
+    if doc.status == "Cancelled":
+        frappe.throw(_("This reconciliation belongs to a cancelled inventory check and cannot be saved or submitted."))
     if doc.reconciliation != reco.name or doc.status == "Passed":
         frappe.throw(_("Generate this reconciliation from its inventory check."))
     require_all_counted(doc)
@@ -615,6 +630,8 @@ def complete_check(name):
 
 
 def verify_and_complete(doc):
+    if doc.status == "Cancelled":
+        frappe.throw(_("A cancelled inventory check cannot be completed."))
     if doc.status == "Passed":
         return doc.name
     require_all_counted(doc)
@@ -633,12 +650,65 @@ def verify_and_complete(doc):
     return doc.name
 
 
+@frappe.whitelist(methods=["POST", "PUT"])
+def cancel_check(name):
+    require_manager()
+    doc = lock_check(name, write=False)
+    # MICs are non-submittable checklists. Frappe v12 cannot grant its native
+    # Cancel right without Submit; use the same manager right as deletion.
+    doc.check_permission("delete")
+    if doc.status == "Cancelled":
+        return doc.name
+    with transition(doc.name):
+        doc.status = "Cancelled"
+        doc.cancelled_on, doc.cancelled_by = now_datetime(), frappe.session.user
+        doc.save(ignore_permissions=True)
+    from frappe.desk.form.assign_to import close_all_assignments
+    close_all_assignments(CHECK, doc.name)
+    doc.add_comment("Info", _("Inventory check cancelled. Recorded counts and stock correction documents are retained."))
+    return doc.name
+
+
+def trash_check(doc):
+    """Manager deletion removes the checklist, never its stock vouchers.
+
+    Lock vouchers before the check, matching their save/cancel hooks. Clearing
+    this metadata backlink is a controlled exception to the reconciliation
+    guard; the stock voucher and its accounting entries remain unchanged.
+    Frappe retains the full checklist in Deleted Document.
+    """
+    require_manager()
+    doc.check_permission("delete")
+    linked = frappe.get_all("Stock Reconciliation", filters={"monthly_inventory_check": doc.name},
+                            fields=["name"], order_by="name")
+    vouchers = []
+    for record in linked:
+        current = frappe.db.sql("""SELECT name, monthly_inventory_check FROM `tabStock Reconciliation`
+            WHERE name=%s FOR UPDATE""", record.name, as_dict=True)
+        if current and current[0].monthly_inventory_check == doc.name:
+            vouchers.append(record.name)
+    current = load_locked_check(doc.name)
+    if comparable(current.modified) != comparable(doc.modified):
+        frappe.throw(_("This inventory check changed during the request. Reload it before deleting."),
+                     frappe.TimestampMismatchError)
+    for name in vouchers:
+        frappe.db.set_value("Stock Reconciliation", name, "monthly_inventory_check", None, update_modified=False)
+        frappe.clear_document_cache("Stock Reconciliation", name)
+        frappe.get_doc("Stock Reconciliation", name).add_comment("Info",
+            _("Monthly Inventory Check {0} was deleted by {1}. This stock voucher was retained; only its inventory check link was cleared.").format(
+                escape(doc.name), escape(frappe.session.user)))
+    from frappe.desk.form.assign_to import close_all_assignments
+    close_all_assignments(CHECK, doc.name)
+
+
 def on_correction_cancel(doc, method=None):
     # A cancelled correction invalidates the audit result, including manual ones.
     names = frappe.db.sql("""SELECT DISTINCT parent FROM `tabMonthly Inventory Check Row`
         WHERE correction_type=%s AND correction_document=%s""", (doc.doctype, doc.name))
     for (name,) in names:
         check = lock_check(name, write=False)
+        if check.status == "Cancelled":
+            continue
         with transition(name):
             for row in check.rows:
                 if row.correction_type == doc.doctype and row.correction_document == doc.name:
@@ -658,6 +728,8 @@ def on_correction_cancel(doc, method=None):
 def on_reconciliation_trash(doc, method=None):
     if doc.get("monthly_inventory_check"):
         check = lock_check(doc.monthly_inventory_check, write=False)
+        if check.status == "Cancelled":
+            return
         if check.reconciliation == doc.name:
             with transition(check.name):
                 check.reconciliation = None
@@ -668,7 +740,12 @@ def on_reconciliation_trash(doc, method=None):
 
 
 def setup_monthly_inventory():
-    """Idempotent installation; preserve choices and never enable mail implicitly."""
+    """Provision metadata/defaults without requiring operational master data.
+
+    Installation and the one-time upgrade patch may run before a Company's
+    warehouse hierarchy or assignee exists. Their absence must not block
+    deployment. Runtime configuration/generation retain strict validation.
+    """
     # v12 retains a separate column cache when this Single was loaded before sync.
     frappe.clear_cache(doctype=SETTINGS)
     frappe.local.valid_columns.pop(SETTINGS, None)
@@ -677,22 +754,32 @@ def setup_monthly_inventory():
         "fieldname": "monthly_inventory_check", "label": "Monthly Inventory Check",
         "fieldtype": "Link", "options": CHECK, "insert_after": "company",
         "read_only": 1, "no_copy": 1}]})
-    existing = {row[0] for row in frappe.db.sql("SELECT field FROM tabSingles WHERE doctype=%s", SETTINGS)}
-    defaults = {"enabled": 0, "assigned_to": DEFAULT_ASSIGNEE, "sample_size": SAMPLE_SIZE,
+    existing = frappe.db.get_singles_dict(SETTINGS)
+    assignee = frappe.db.get_value("User", DEFAULT_ASSIGNEE, ["enabled", "user_type"], as_dict=True)
+    default_assignee = DEFAULT_ASSIGNEE if assignee and assignee.enabled and assignee.user_type == "System User" else None
+    defaults = {"enabled": 0, "assigned_to": default_assignee, "sample_size": SAMPLE_SIZE,
                 "minimum_items": SAMPLE_SIZE, "maximum_items": SAMPLE_SIZE, "due_day": 15,
                 "company": frappe.defaults.get_global_default("company")}
     for field, value in defaults.items():
-        if field not in existing and value is not None:
+        if (field not in existing or (field == "assigned_to" and not existing[field])) and value is not None:
             frappe.db.set_value(SETTINGS, SETTINGS, field, value, update_modified=False)
     settings = frappe.get_single(SETTINGS)
     before = [(row.item_group, row.enabled) for row in settings.item_groups]
     previous_scope = tuple(settings.get(field) for field in (
         "sample_size", "minimum_items", "maximum_items", "warehouse_root"))
     settings.sample_size = settings.minimum_items = settings.maximum_items = SAMPLE_SIZE
-    settings.warehouse_root = production_root(settings.company).name if settings.company else None
+    root = production_root(settings.company, required=False) if settings.company else None
+    if root:
+        settings.warehouse_root = root.name
     synchronize_group_rows(settings, get_inventory_item_groups())
     if before != [(row.item_group, row.enabled) for row in settings.item_groups] or previous_scope != (
             settings.sample_size, settings.minimum_items, settings.maximum_items, settings.warehouse_root):
+        # This is a metadata backfill, not an operator enabling the feature.
+        # Save valid group rows even if the assignee/Company is not configured
+        # or an existing operational configuration needs administrator repair.
+        settings.flags.ignore_validate = True
+        settings.flags.ignore_links = True
+        settings.flags.ignore_mandatory = True
         settings.save(ignore_permissions=True)
 
 

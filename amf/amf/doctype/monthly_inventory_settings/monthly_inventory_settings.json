@@ -4,7 +4,7 @@
  "module": "AMF",
  "engine": "InnoDB",
  "creation": "2026-10-23 00:00:00.000000",
- "modified": "2026-10-23 13:30:00.000000",
+ "modified": "2026-10-27 14:00:00.000000",
  "owner": "Administrator",
  "modified_by": "Administrator",
  "editable_grid": 1,
@@ -52,7 +52,7 @@
    "fieldtype": "Link",
    "label": "Assigned To",
    "options": "User",
-   "default": "alexandre.trachsel@amf.ch",
+   "description": "Setup selects alexandre.trachsel@amf.ch when that enabled System User exists. Otherwise choose an assignee before saving or enabling inventory checks.",
    "reqd": 1
   },
   {

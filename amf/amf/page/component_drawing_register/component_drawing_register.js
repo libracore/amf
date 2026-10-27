@@ -194,7 +194,7 @@ ComponentDrawingRegister.prototype.render = function() {
 					tab_button("missing", __("Missing Drawing References"), missing_drawings.length) +
 				'</div>' +
 				'<div class="cdr-rule"><span class="octicon octicon-checklist"></span> ' +
-					esc(__("Item code rule: ^(10|20)[0-9]{4}$")) + '</div>' +
+					esc(__("Item code rule: ^(10|20)[0-9A-Z]{4}$")) + '</div>' +
 			'</header>' +
 			'<div class="cdr-tab-panel" data-panel="register">' + this.render_table(rows) + '</div>' +
 			'<div class="cdr-tab-panel" data-panel="missing">' + this.render_missing_references(missing_drawings) + '</div>' +

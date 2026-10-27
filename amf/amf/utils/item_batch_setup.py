@@ -16,7 +16,7 @@ from amf.amf.utils.batch_naming import (
 TARGET_ITEM_PREFIXES = ("10", "11", "20", "21", "30")
 TARGET_ITEM_GROUPS = ("Plug", "Valve Seat", "Valve Head")
 RECEIPT_BATCH_ITEM_CODES = ("70E000",)
-TARGET_ITEM_CODE_PATTERN = r"^({0})[0-9]{{4}}$".format("|".join(TARGET_ITEM_PREFIXES))
+TARGET_ITEM_CODE_PATTERN = r"^({0})[0-9A-Z]{{4}}$".format("|".join(TARGET_ITEM_PREFIXES))
 TARGET_ITEM_CODE_RE = re.compile(TARGET_ITEM_CODE_PATTERN)
 
 
