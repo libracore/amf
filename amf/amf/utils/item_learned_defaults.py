@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from collections import Counter
+import re
 
 import frappe
 from frappe.utils import cstr, escape_html, flt
@@ -61,6 +62,7 @@ MATERIAL_MAP = {
 	"S": "Stainless Steel",
 	"K": "PEEK",
 	"A": "PMMA",
+	"PFG": "PTFE Food Grade",
 }
 
 
@@ -219,7 +221,7 @@ def _build_component_description(
 		_description_line("Channel Size", _format_channel_size(parts[4])),
 	])
 	material_label = "Plug Material" if item_group == "Plug" else "Valve Material"
-	lines.append(_description_line(material_label, MATERIAL_MAP.get(parts[5], parts[5])))
+	lines.append(_description_line(material_label, ("PEI" if item_group == "Valve Seat" and parts[5] == "U" else MATERIAL_MAP.get(parts[5], parts[5]))))
 	return "".join(lines)
 
 
@@ -241,8 +243,8 @@ def _build_valve_head_description(item_name):
 		_description_line("Valve Head", item_name),
 		_description_line("Number of Stages", parts[2]),
 		_description_line("Number of Ports", parts[3]),
-		_description_line("Channel Size", _format_channel_size(parts[4], decimals=1)),
-		_description_line("Valve Material", MATERIAL_MAP.get(parts[5], parts[5])),
+		_description_line("Channel Size", _format_channel_size(parts[4])),
+		_description_line("Valve Material", "PEI" if parts[5] == "U" else MATERIAL_MAP.get(parts[5], parts[5])),
 		_description_line("Plug Material", MATERIAL_MAP.get(parts[6], parts[6])),
 	])
 
@@ -273,8 +275,10 @@ def _description_line(label, value):
 
 
 def _format_channel_size(channel_code, decimals=2):
+	parts = re.split(r"([+/])", cstr(channel_code))
 	try:
-		value = float(channel_code) / 100
-		return ("{0:.%df} mm" % decimals).format(value)
+		formatted = [part if part in ("+", "/") else ("{0:.%df}" % decimals).format(float(part) / 100)
+			for part in parts]
+		return "".join(formatted) + " mm"
 	except (TypeError, ValueError):
 		return "{0} mm".format(channel_code)

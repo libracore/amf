@@ -965,7 +965,7 @@ function showBomManagedItemDialog(frm) {
             {
                 fieldtype: "Data",
                 fieldname: "family_suffix",
-                label: __("Shared Last 4 Digits"),
+                label: __("Shared Head Suffix (3 Characters)"),
                 read_only: 1,
             },
             {
@@ -977,7 +977,7 @@ function showBomManagedItemDialog(frm) {
             {
                 fieldtype: "Small Text",
                 fieldname: "reserved_codes",
-                label: __("Reserved Family Codes"),
+                label: __("Family Codes (Reserved When Saved)"),
                 read_only: 1,
             },
         ],

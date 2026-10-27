@@ -38,7 +38,7 @@ from amf.amf.utils.sales_order_otif import get_skip_otif_kpi_condition
 
 REPORT_DOCTYPE = "Operations KPI Report"
 SETTINGS_DOCTYPE = "Operations KPI Report Settings"
-MACHINING_ITEM_PATTERN = r"^(10|20)[0-9]{4}$"
+MACHINING_ITEM_PATTERN = r"^(10|20)[0-9A-Z]{4}$"
 
 OTIF_TARGET = 90.0
 STRICT_OTIF_TARGET = 88.0

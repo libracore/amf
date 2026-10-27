@@ -67,7 +67,7 @@ def get_components(search=None, series=None, drawing_status=None, include_disabl
 				limit 1
 			)
 		where tabItem.docstatus < 2
-			and tabItem.item_code regexp '^(10|20)[0-9]{{4}}$'
+			and tabItem.item_code regexp '^(10|20)[0-9A-Z]{{4}}$'
 			and (%(include_disabled)s = 1 or tabItem.disabled = 0)
 			and (
 				%(search)s = ''

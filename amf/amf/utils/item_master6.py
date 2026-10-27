@@ -109,7 +109,7 @@ def correct_item(row, items, log):
     return None
 
 def update_item(item, item_name, new_item_code, reference_name, description, log):
-    if not re.match(r'^\d{6}$', item['name']):
+    if not re.match(r'^[0-9A-Z]{6}$', item['name']):
         frappe.db.set_value('Item', item['name'], 'item_code', new_item_code)
         frappe.db.set_value('Item', item['name'], 'item_name', item_name.upper())
         frappe.db.set_value('Item', item['name'], 'reference_name', reference_name)

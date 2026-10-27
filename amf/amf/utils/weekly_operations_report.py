@@ -41,7 +41,7 @@ from amf.amf.utils.sales_order_otif import get_skip_otif_kpi_condition
 
 REPORT_DOCTYPE = "Weekly Operations Report"
 SETTINGS_DOCTYPE = "Operations KPI Report Settings"
-MACHINING_ITEM_PATTERN = r"^(10|20)[0-9]{4}$"
+MACHINING_ITEM_PATTERN = r"^(10|20)[0-9A-Z]{4}$"
 DEFAULT_QC_WAREHOUSE = "Quality Control - AMF21"
 DEFAULT_OWNER = "ATR"
 DEFAULT_LOOKBACK_DAYS = 7

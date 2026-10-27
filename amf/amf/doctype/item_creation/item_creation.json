@@ -5,6 +5,10 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "creation_guide",
+  "company",
+  "default_warehouse",
+  "replace_boms",
   "title",
   "naming_series",
   "section_break_1",
@@ -27,6 +31,9 @@
   "seat_rnd",
   "seat_acc",
   "seat_mat",
+  "seat_raw_material",
+  "seat_raw_qty",
+  "seat_raw_uom",
   "seat_drawing",
   "seat_item",
   "column_break_21",
@@ -38,6 +45,9 @@
   "plug_rnd",
   "plug_acc",
   "plug_mat",
+  "plug_raw_material",
+  "plug_raw_qty",
+  "plug_raw_uom",
   "plug_drawing",
   "plug_item",
   "section_break_3",
@@ -56,6 +66,17 @@
   "column_break_42",
   "pump_hv_check",
   "pump_hv_preview",
+  "product_variants_section",
+  "product_variants",
+  "review_section",
+  "review_status",
+  "reviewed_by",
+  "reviewed_at",
+  "plan_preview",
+  "review_history",
+  "approved_plan_hash",
+  "approved_input_hash",
+  "creation_result",
   "amended_from"
  ],
  "fields": [
@@ -86,7 +107,7 @@
    "fieldname": "head_rnd",
    "fieldtype": "Data",
    "label": "R&D Code",
-   "read_only": 1
+   "read_only": 0
   },
   {
    "default": "SEAT-",
@@ -94,7 +115,7 @@
    "fieldname": "seat_name",
    "fieldtype": "Data",
    "label": "Item Name",
-   "read_only": 1
+   "read_only": 0
   },
   {
    "depends_on": "eval:doc.seat_check=='Yes'",
@@ -115,14 +136,14 @@
    "fieldname": "seat_acc",
    "fieldtype": "Int",
    "label": "No. of Pins",
-   "read_only": 1
+   "read_only": 0
   },
   {
    "depends_on": "eval:doc.seat_check=='Yes'",
    "fieldname": "seat_mat",
    "fieldtype": "Data",
-   "label": "Raw Material",
-   "read_only": 1
+   "label": "Seat Material Tag",
+   "read_only": 0
   },
   {
    "default": "PLUG-",
@@ -130,7 +151,7 @@
    "fieldname": "plug_name",
    "fieldtype": "Data",
    "label": "Item Name",
-   "read_only": 1
+   "read_only": 0
   },
   {
    "depends_on": "eval:doc.plug_check=='Yes'",
@@ -154,9 +175,9 @@
   {
    "depends_on": "eval:doc.plug_check=='Yes'",
    "fieldname": "plug_mat",
-   "fieldtype": "Select",
-   "label": "Raw Material",
-   "read_only": 1
+   "fieldtype": "Data",
+   "label": "Plug Material Tag",
+   "read_only": 0
   },
   {
    "default": "SEAT CREATION",
@@ -309,32 +330,33 @@
   {
    "fieldname": "4_compatible_bodies",
    "fieldtype": "Heading",
-   "label": "4. Compatible Bodies"
+   "label": "4. Product Configurations"
   },
   {
    "default": "0",
    "fieldname": "rvm_check",
    "fieldtype": "Check",
-   "label": "RVM"
+   "label": "Rotary Valves (RVM)"
   },
   {
    "default": "0",
    "fieldname": "pump_check",
    "fieldtype": "Check",
-   "label": "PUMP"
+   "label": "Low-Volume Pumps"
   },
   {
    "default": "0",
    "fieldname": "pump_hv_check",
    "fieldtype": "Check",
-   "label": "PUMP HV"
+   "label": "High-Volume Pumps"
   },
   {
    "depends_on": "eval:doc.rvm_check",
    "fieldname": "rvm_preview",
    "fieldtype": "HTML",
    "label": "RVM Preview",
-   "read_only": 1
+   "read_only": 1,
+   "hidden": 1
   },
   {
    "fieldname": "column_break_41",
@@ -345,7 +367,8 @@
    "fieldname": "pump_preview",
    "fieldtype": "HTML",
    "label": "PUMP Preview",
-   "read_only": 1
+   "read_only": 1,
+   "hidden": 1
   },
   {
    "fieldname": "column_break_42",
@@ -356,7 +379,8 @@
    "fieldname": "pump_hv_preview",
    "fieldtype": "HTML",
    "label": "PUMP HV Preview",
-   "read_only": 1
+   "read_only": 1,
+   "hidden": 1
   },
   {
    "fieldname": "head_check",
@@ -379,6 +403,158 @@
    "label": "Series",
    "options": "Item Creation-",
    "reqd": 1
+  },
+  {
+   "fieldname": "creation_guide",
+   "fieldtype": "HTML",
+   "label": "Creation Guide",
+   "options": "<p>1. Define head and components &nbsp; \u2192 &nbsp; 2. Select product variants &nbsp; \u2192 &nbsp; 3. Preview and engineering review &nbsp; \u2192 &nbsp; 4. Submit</p>"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_warehouse",
+   "fieldtype": "Link",
+   "label": "Manufacturing Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "fieldname": "replace_boms",
+   "fieldtype": "Check",
+   "label": "Propose Replacement BOMs",
+   "default": "0",
+   "description": "Show changes against existing defaults for engineering approval. Existing parent revisions retain their child BOM links."
+  },
+  {
+   "fieldname": "plug_raw_material",
+   "fieldtype": "Link",
+   "label": "Raw Stock Item",
+   "options": "Item",
+   "depends_on": "eval:doc.plug_check=='Yes'",
+   "description": "Select the exact material grade and stock dimensions."
+  },
+  {
+   "fieldname": "plug_raw_qty",
+   "fieldtype": "Float",
+   "label": "Stock Quantity per Component",
+   "precision": "6",
+   "depends_on": "eval:doc.plug_check=='Yes'",
+   "description": "Explicit engineering input in the stock UOM; no universal quantity is assumed."
+  },
+  {
+   "fieldname": "plug_raw_uom",
+   "fieldtype": "Link",
+   "label": "Stock UOM",
+   "options": "UOM",
+   "read_only": 1,
+   "depends_on": "eval:doc.plug_check=='Yes'"
+  },
+  {
+   "fieldname": "seat_raw_material",
+   "fieldtype": "Link",
+   "label": "Raw Stock Item",
+   "options": "Item",
+   "depends_on": "eval:doc.seat_check=='Yes'",
+   "description": "Select the exact material grade and stock dimensions."
+  },
+  {
+   "fieldname": "seat_raw_qty",
+   "fieldtype": "Float",
+   "label": "Stock Quantity per Component",
+   "precision": "6",
+   "depends_on": "eval:doc.seat_check=='Yes'",
+   "description": "Explicit engineering input in the stock UOM; no universal quantity is assumed."
+  },
+  {
+   "fieldname": "seat_raw_uom",
+   "fieldtype": "Link",
+   "label": "Stock UOM",
+   "options": "UOM",
+   "read_only": 1,
+   "depends_on": "eval:doc.seat_check=='Yes'"
+  },
+  {
+   "fieldname": "product_variants_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "product_variants",
+   "fieldtype": "Table",
+   "label": "Selected Product Configurations",
+   "options": "Item Creation Variant"
+  },
+  {
+   "fieldname": "review_section",
+   "fieldtype": "Section Break",
+   "label": "5. Preview and Engineering Review"
+  },
+  {
+   "fieldname": "review_status",
+   "fieldtype": "Select",
+   "label": "Review Status",
+   "options": "Draft\nReviewed\nStale\nCreated",
+   "default": "Draft",
+   "read_only": 1,
+   "no_copy": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "approved_plan_hash",
+   "fieldtype": "Data",
+   "label": "Approved Plan Hash",
+   "hidden": 1,
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "approved_input_hash",
+   "fieldtype": "Data",
+   "label": "Approved Input Hash",
+   "hidden": 1,
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "reviewed_by",
+   "fieldtype": "Link",
+   "label": "Reviewed By",
+   "options": "User",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "reviewed_at",
+   "fieldtype": "Datetime",
+   "label": "Reviewed At",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "plan_preview",
+   "fieldtype": "HTML",
+   "label": "Complete Creation Plan"
+  },
+  {
+   "fieldname": "review_history",
+   "fieldtype": "Table",
+   "label": "Review History",
+   "options": "Item Creation Review",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "creation_result",
+   "fieldtype": "Long Text",
+   "label": "Creation Result",
+   "read_only": 1,
+   "hidden": 1,
+   "no_copy": 1
   }
  ],
  "hide_toolbar": 1,
@@ -400,7 +576,8 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
-   "write": 1
+   "write": 1,
+   "submit": 1
   }
  ],
  "sort_field": "modified",

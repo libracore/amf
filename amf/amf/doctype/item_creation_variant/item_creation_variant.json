@@ -1,0 +1,47 @@
+{
+ "doctype": "DocType",
+ "name": "Item Creation Variant",
+ "module": "AMF",
+ "istable": 1,
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "selected",
+  "body",
+  "syringe",
+  "configuration"
+ ],
+ "fields": [
+  {
+   "fieldname": "selected",
+   "fieldtype": "Check",
+   "label": "Selected",
+   "default": "0",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "body",
+   "fieldtype": "Link",
+   "label": "Body",
+   "options": "Item",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "syringe",
+   "fieldtype": "Link",
+   "label": "Syringe",
+   "options": "Item",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "configuration",
+   "fieldtype": "Data",
+   "label": "Configuration",
+   "read_only": 1,
+   "in_list_view": 1
+  }
+ ],
+ "permissions": [],
+ "track_changes": 1
+}

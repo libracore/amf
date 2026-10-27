@@ -695,6 +695,8 @@ def custom_try(func, *args, **kwargs):
     try:
         return func(*args, **kwargs)
     except Exception as e:
+        if getattr(frappe.local, "amf_atomic_family_creation", False):
+            raise
         frappe.log_error(message=str(e), title=f"Error in {func.__name__}")
         frappe.db.rollback()
         return None

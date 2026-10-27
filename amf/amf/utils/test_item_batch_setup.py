@@ -17,11 +17,11 @@ class FakeDoc(SimpleNamespace):
 
 
 class TestItemBatchSetup(unittest.TestCase):
-	def test_target_item_code_requires_allowed_prefix_and_six_digits(self):
-		for item_code in ("100001", "110001", "200001", "210001", "300001"):
+	def test_target_item_code_requires_allowed_prefix_and_six_characters(self):
+		for item_code in ("100001", "110001", "200001", "210001", "300001", "10A001", "100ABC", "210ABC"):
 			self.assertTrue(item_batch_setup.is_target_item_code(item_code))
 
-		for item_code in ("70E000", "120001", "310001", "10001", "1000010", "10A001", ""):
+		for item_code in ("70E000", "120001", "310001", "10001", "1000010", "10A_01", ""):
 			self.assertFalse(item_batch_setup.is_target_item_code(item_code))
 
 	def test_receipt_batch_item_code_is_explicit_special_case(self):

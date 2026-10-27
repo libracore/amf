@@ -66,7 +66,7 @@ def _add_value(record, category, amount):
 def _scope(field, item_code, only_4xxxxx=False):
 	condition = " AND {0} = %(item_code)s".format(field) if item_code else ""
 	if only_4xxxxx:
-		condition += " AND {0} REGEXP '^4[0-9]{{5}}$'".format(field)
+		condition += " AND {0} REGEXP '^4[0-9A-Z]{{5}}$'".format(field)
 	return condition
 
 

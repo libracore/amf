@@ -396,7 +396,7 @@ def write_4xxxxx_reachability(namespace, company, findings):
 		writer = csv.DictWriter(file, fieldnames=fields)
 		writer.writeheader()
 		for code in sorted(defaults):
-			if not re.match(r"^4[0-9]{5}$", code):
+			if not re.match(r"^4[0-9A-Z]{5}$", code):
 				continue
 			root = defaults[code]
 			visited = set()

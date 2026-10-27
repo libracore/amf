@@ -11,9 +11,9 @@ from frappe.utils import add_months, getdate, today
 SCRAP_WAREHOUSE = "Scrap - AMF21"
 
 ITEM_CODE_PATTERNS = {
-	"All": r"^(10|20)[0-9]{4}$",
-	"Plugs (10)": r"^10[0-9]{4}$",
-	"Valve Seats (20)": r"^20[0-9]{4}$",
+	"All": r"^(10|20)[0-9A-Z]{4}$",
+	"Plugs (10)": r"^10[0-9A-Z]{4}$",
+	"Valve Seats (20)": r"^20[0-9A-Z]{4}$",
 }
 
 

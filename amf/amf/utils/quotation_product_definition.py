@@ -261,9 +261,15 @@ def resolve_product_definition_item(body_item_code, head_item_code, syringe_item
     expected_reference_code = make_expected_reference_code(body, head, syringe)
     fallback_item_code = make_fallback_item_code(body, head, syringe)
     item = get_product_item_by_reference(expected_reference_code)
-
+    rejected = None
+    if item and not product_matches_configuration(item, body, head, syringe):
+        rejected, item = item, None
     if not item and fallback_item_code:
-        item = get_product_item_by_code(fallback_item_code)
+        candidate = get_product_item_by_code(fallback_item_code)
+        if candidate and product_matches_configuration(candidate, body, head, syringe):
+            item = candidate
+        elif candidate:
+            rejected = candidate
 
     if item:
         item.update(
@@ -274,11 +280,39 @@ def resolve_product_definition_item(body_item_code, head_item_code, syringe_item
         )
         return item
 
+    if rejected:
+        return {
+            "error": "configuration_mismatch",
+            "message": "The existing Product does not match the selected head/body/syringe. A reviewed replacement is required.",
+            "expected_reference_code": expected_reference_code,
+            "fallback_item_code": fallback_item_code,
+        }
     return {
         "missing": 1,
         "expected_reference_code": expected_reference_code,
         "fallback_item_code": fallback_item_code,
     }
+
+
+def product_matches_configuration(item, body, head, syringe=None):
+    code = item.get("item_code") or item.get("name") or ""
+    head_code = head.get("item_code") or head.get("name")
+    if item.get("disabled") or any(part.get("disabled") for part in (body, head, syringe) if part):
+        return False
+    if len(code) != 6 or code[-3:] != head_code[-3:]:
+        return False
+    bom_name = frappe.db.get_value("Item", item["name"], "default_bom")
+    if not bom_name:
+        return False
+    bom = frappe.get_doc("BOM", bom_name)
+    if bom.item != item["name"] or bom.docstatus != 1 or not bom.is_active:
+        return False
+    codes = [row.item_code for row in bom.items]
+    groups = {row.name: row.item_group for row in frappe.get_all(
+        "Item", filters={"name": ["in", codes]}, fields=["name", "item_group"])}
+    actual = sorted(code for code in codes if groups.get(code) in ("Body", "Valve Head", "Syringe"))
+    expected = sorted(part.get("item_code") or part.get("name") for part in (body, head, syringe) if part)
+    return actual == expected
 
 
 @frappe.whitelist()
@@ -333,6 +367,8 @@ def make_fallback_item_code(body, head, syringe=None):
         return None
 
     syringe_digit = "0"
+    if body_code in ("5D1001", "5D1002"):
+        syringe_digit = body_code[-1]
     if syringe:
         syringe_code = cstr(syringe.get("item_code") or syringe.get("name"))
         if len(syringe_code) < 3:

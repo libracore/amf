@@ -89,7 +89,9 @@ doc_events = {
         "on_update": "amf.amf.utils.bin_bom_sync.sync_item_bom_stock_qty_on_bin_update",
     },
     "BOM": {
+        "before_submit": "amf.amf.utils.item_code_family.validate_new_bom_family",
         "before_save": [
+            "amf.amf.utils.item_code_family.validate_new_bom_family",
             "amf.amf.utils.bom_updating.bom_before_save",
             "amf.amf.utils.bom_child_bom_resolver.apply_item_default_boms_to_rows",
         ],
@@ -134,6 +136,7 @@ doc_events = {
     "Item": {
         "onload": "amf.amf.utils.item_costing.populate_item_batch_costing_table",
         "before_insert": [
+            "amf.amf.utils.item_code_family.validate_new_item_family",
             "amf.amf.utils.item_batch_setup.apply_batch_tracking_rule",
             # "amf.amf.utils.item_code_governance.validate_item_code_governance",
         ],
