@@ -5,8 +5,8 @@ Updated 27 October 2026. This extends the [numbering implementation](item_creati
 ## User workflow
 
 1. Define a new head or select an existing enabled head. Component names, references, material tags and drawings remain explicit engineering inputs. Ordinary names receive suggestions; custom names are not reconstructed by guessing missing fields.
-2. For each newly machined plug/seat, choose the exact raw-stock Item and enter its consumption per finished component. The current stock UOM is displayed automatically. Quantities are positive, limited to the v12 BOM field capacity, and expressed in that stock UOM. Different grades and diameters are separate stock choices. No universal rod or consumption is selected automatically.
-3. Enable the desired product families, open **Choose Product Configurations**, and select individual supported body/syringe combinations. The selection is retained as child rows; family checkboxes alone no longer generate a Cartesian product.
+2. For each newly machined plug/seat, choose the exact raw-stock Item and review consumption per finished component. At the user's request, new documents prefill `0.02` for the plug and `0.03` for the seat; both are editable and expressed in the selected stock UOM, which is displayed automatically. Quantities remain positive and limited to the v12 BOM field capacity. Different grades and diameters are separate stock choices; no stock Item is selected automatically.
+3. Enable the desired product families, open **Choose Product Configurations**, and select individual supported body/syringe combinations. The chooser displays every available combination in enabled families, including HV and HD, with highlighted head-requirement notes where geometry is incomplete or incompatible. Resolve those requirements before review. The selection is retained as child rows; family checkboxes alone do not generate a Cartesian product.
 4. Save the request, then open **Refresh Complete Plan**. Resolve every error. The plan displays every planned Item/BOM action, materials, quantities per output unit, stock UOMs, manufacturing flags, scrap outputs and exact child BOM revisions. Existing dependency recipes can be expanded.
 5. When a default BOM differs, explicitly enable **Propose Replacement BOMs**. Review the existing/proposed definitions side by side, including removed operations and affected parent revisions.
 6. A System Manager with request write/submit permission records engineering review notes. The server stores the exact plan, dependency snapshot, input/plan hashes, reviewer and timestamp in protected review history. Review does not create Items or BOMs.
@@ -34,9 +34,20 @@ The rule-version change invalidates earlier draft approvals at submission; refre
 
 These rules enforce the supported standard configuration matrix, head type and volume class. The review records the engineering decision for the exact geometry, materials, stock dimensions and accessory quantities; catalogue frequency is not proof of physical compatibility for a new design.
 
+AMF `0.7.6` makes HV and HD choices explicit instead of hiding choices whose head requirements have not yet been met. Both pump-family checkboxes say **including HD**. Chooser labels identify LV/HV and the HD drive; head errors use the same helper as the server's selection validation. Showing a configuration does not approve incompatible head geometry.
+
+| Configuration | Body Item | Chooser family/drive | Syringes |
+| --- | --- | --- | --- |
+| P100-O / P100-L | `551000` / `571000` | LV | Standard LV set, including approved U variants |
+| P110-O / P110-L | `591000` / `5B1000` | LV / HD | Same LV set |
+| P101-O / P101-L | `561000` / `581000` | HV | `70E000` (`S-2500-P`), `70F000` (`S-5000-P`) |
+| P111-O / P111-L | `5A1000` / `5C1000` | HV / HD | Same HV set |
+
 ## Complete recipes and replacements
 
 Each newly defined component now receives its own raw-material BOM before its subassembly BOM. A complete new head therefore creates five Items and five submitted BOMs: raw-stock-to-plug, plug subassembly, raw-stock-to-seat, seat subassembly and head.
+
+AMF `0.7.6` adds the user-requested new-document consumption defaults: seat `0.03`, plug `0.02`. They are editable suggestions in the selected stock UOM and remain part of the engineering review. Changing stock or refreshing the form does not overwrite an entered consumption. Existing saved request quantities are not backfilled or altered.
 
 Pins/magnets are explicit quantities. Zero means a reviewed design without that accessory; negative quantities are rejected. LV laboratory recipes include `T100` and retain adapter scrap treatment. HV recipes consume the adapter and include the selected screw quantity. Syringe descriptions use µL and show the corresponding mL value where useful. The planner includes the Item-derived manufacturing flag, matching v12's BOM field fetch behavior.
 

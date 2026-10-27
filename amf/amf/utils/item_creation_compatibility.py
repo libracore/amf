@@ -66,30 +66,42 @@ def allowed_families(head_name):
     return {"HV"} if has_hv_marker(head_name) else {"RVM", "LV"}
 
 
+def head_requirement_error(head_name, rule):
+    if rule["family"] not in allowed_families(head_name):
+        return "{0} needs {1} head geometry; check the -HV designation.".format(
+            rule["key"], "high-volume" if rule["family"] == "HV" else "standard")
+    parts = (head_name or "").upper().split("-")
+    head_type = parts[1] if len(parts) > 1 else ""
+    if head_type not in HEAD_TYPES[rule["family"]]:
+        return "Head type {0} has no standard {1} compatibility rule; define a reviewed engineering rule first.".format(
+            head_type or "(custom)", rule["family"])
+    return ""
+
+
+def configuration_label(rule, syringe_reference=""):
+    drive = " / HD" if rule["motor"] in ("9", "B", "A", "C") else ""
+    label = rule["body_label"] + " (" + rule["family"] + drive + ")"
+    return label + (" / " + syringe_reference if syringe_reference else "")
+
+
 def validate_selections(doc):
     """Return explicit supported selections and field errors, without DB work."""
     selected, errors, seen = [], [], set()
     rows = doc.get("product_variants") or []
     if len(rows) > len(CONFIGURATIONS):
         return [], ["Too many product variants; select only supported configurations."]
-    allowed = allowed_families(doc.get("head_name"))
-    parts = (doc.get("head_name") or "").upper().split("-")
-    head_type = parts[1] if len(parts) > 1 else ""
     for row in rows:
         if not checked(row.get("selected")):
             continue
         key = selection_key(row)
         rule = BY_KEY.get(key)
+        head_error = head_requirement_error(doc.get("head_name"), rule) if rule else ""
         if not rule:
             errors.append("Unsupported body/syringe combination: {0}.".format(key))
         elif key in seen:
             errors.append("Duplicate product configuration: {0}.".format(key))
-        elif rule["family"] not in allowed:
-            errors.append("{0} needs {1} head geometry; check the -HV designation.".format(
-                key, "high-volume" if rule["family"] == "HV" else "standard"))
-        elif head_type not in HEAD_TYPES[rule["family"]]:
-            errors.append("Head type {0} has no standard {1} compatibility rule; define a reviewed engineering rule first.".format(
-                head_type or "(custom)", rule["family"]))
+        elif head_error:
+            errors.append(head_error)
         elif not checked(doc.get(FAMILY_FLAGS[rule["family"]])):
             errors.append("Enable the {0} product family for {1}.".format(rule["family"], key))
         else:

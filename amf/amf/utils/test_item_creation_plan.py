@@ -163,6 +163,40 @@ class TestItemCreationPlan(unittest.TestCase):
         self.assertEqual(pairs, {(body, syringe) for body in ("551000", "571000", "591000", "5B1000")
                                 for syringe in ("704000", "709000")})
 
+    def test_hv_chooser_shows_all_hv_and_hd_choices_with_head_requirements(self):
+        for head_name, needs_geometry in (("VALVE HEAD-D-1-6-050-C-P", True),
+                                          ("VALVE HEAD-DS-1-6-050-C-P-HV", False)):
+            doc = source(head_name=head_name, pump_hv_check=1)
+            with patch.object(workflow, "_source_for_preview", return_value=doc), \
+                    patch.object(frappe, "get_all", return_value=[frappe._dict(row) for row in catalogue().tables["Item"]]):
+                rows = workflow.get_compatible_variants({})
+            self.assertEqual({(row["body"], row["syringe"]) for row in rows},
+                {(body, syringe) for body in ("561000", "581000", "5A1000", "5C1000")
+                 for syringe in ("70E000", "70F000")})
+            self.assertTrue(all(bool(row["compatibility_note"]) == needs_geometry for row in rows))
+            for row in rows:
+                reference = "S-2500-P" if row["syringe"] == "70E000" else "S-5000-P"
+                self.assertIn(reference, row["configuration"])
+                self.assertEqual("HV / HD" in row["configuration"], row["body"] in ("5A1000", "5C1000"))
+
+    def test_all_hv_and_hd_products_use_the_selected_large_syringe(self):
+        for body, motor in (("561000", "6"), ("581000", "8"), ("5A1000", "A"), ("5C1000", "C")):
+            for syringe in ("70E000", "70F000"):
+                with self.subTest(body=body, syringe=syringe):
+                    plan = plans.build_plan(source(head_name="VALVE HEAD-D-1-6-050-C-P-HV", pump_hv_check=1,
+                        product_variants=[dict(selected=1, body=body, syringe=syringe)]), catalogue=catalogue())
+                    self.assertTrue(plan["ready"], plan["errors"])
+                    product = plan["actions"][-1]
+                    self.assertEqual(product["item"]["item_code"], "4" + motor + syringe[2] + "ABC")
+                    self.assertIn(syringe, [row["item_code"] for row in product["materials"]])
+                    self.assertTrue(product["item"]["reference_code"].endswith(
+                        "S2500P" if syringe == "70E000" else "S5000P"))
+
+    def test_hd_low_volume_choices_are_labelled_explicitly(self):
+        for body in ("591000", "5B1000"):
+            rule = compatibility.BY_KEY[body + ":709000"]
+            self.assertIn("LV / HD", compatibility.configuration_label(rule, "S-500-U"))
+
     def test_compatibility_rule_change_invalidates_a_previous_draft_approval(self):
         doc = source(review_status="Reviewed", plug_code="100ABC", seat_code="200ABC")
         with patch.object(compatibility, "RULE_VERSION", "2026-10-27.1"):

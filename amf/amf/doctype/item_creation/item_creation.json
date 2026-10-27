@@ -349,13 +349,15 @@
    "default": "0",
    "fieldname": "pump_check",
    "fieldtype": "Check",
-   "label": "Low-Volume Pumps"
+   "label": "Low-Volume Pumps (including HD)",
+   "description": "P100-O/L and HD P110-O/L."
   },
   {
    "default": "0",
    "fieldname": "pump_hv_check",
    "fieldtype": "Check",
-   "label": "High-Volume Pumps"
+   "label": "High-Volume Pumps (including HD)",
+   "description": "P101-O/L and HD P111-O/L, with S-2500-P or S-5000-P. Requires an HV head."
   },
   {
    "depends_on": "eval:doc.rvm_check",
@@ -452,7 +454,8 @@
    "label": "Stock Quantity per Component",
    "precision": "6",
    "depends_on": "eval:doc.plug_check=='Yes'",
-   "description": "Explicit engineering input in the stock UOM; no universal quantity is assumed."
+   "description": "Suggested consumption per component in the stock UOM. Review and adjust for the selected stock dimensions.",
+   "default": "0.02"
   },
   {
    "fieldname": "plug_raw_uom",
@@ -476,7 +479,8 @@
    "label": "Stock Quantity per Component",
    "precision": "6",
    "depends_on": "eval:doc.seat_check=='Yes'",
-   "description": "Explicit engineering input in the stock UOM; no universal quantity is assumed."
+   "description": "Suggested consumption per component in the stock UOM. Review and adjust for the selected stock dimensions.",
+   "default": "0.03"
   },
   {
    "fieldname": "seat_raw_uom",

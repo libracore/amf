@@ -127,6 +127,20 @@ events.refresh(frm);
 assert.strictEqual(queries.body().filters.item_code[1], "5_1___");
 assert.ok(queries.syringe().query.endsWith(".syringe_item_query"));
 
+// HV/HD choices remain visible and explain geometry requirements safely.
+calls.length = 0;
+frm = form({head_name: "VALVE HEAD-D-1-6-050-C-P", pump_hv_check: 1, product_variants: []});
+sandbox.chooseItemCreationVariants(frm);
+calls[0].callback({message: [
+    {body: "561000", syringe: "70E000", configuration: "P101-O (HV) / S-2500-P", compatibility_note: "Requires <HV> head"},
+    {body: "5C1000", syringe: "70F000", configuration: "P111-L (HV / HD) / S-5000-P", compatibility_note: "Requires HV head"},
+]});
+const choices = dialog.fields.find(field => field.fieldname === "variants").options;
+assert.strictEqual(choices.length, 2);
+assert.strictEqual(choices[0].danger, true);
+assert.ok(choices[0].label.includes("Requires &lt;HV&gt; head"));
+assert.ok(choices[1].label.includes("P111-L (HV / HD) / S-5000-P"));
+
 // Reverse links from either Item or BOM open the same report with exact filters.
 let route;
 sandbox.frappe.model = {can_read: () => true};

@@ -158,18 +158,22 @@ function chooseItemCreationVariants(frm) {
     frappe.call({method: itemCreationWorkflow + "get_compatible_variants", args: {document: frm.doc}, callback: response => {
         if (stamp !== itemCreationInputs(frm) || !response.message) return;
         const variants = response.message;
-        if (!variants.length) return frappe.msgprint(__("Select an eligible product family and head first. HV heads support HV variants; standard heads support RVM/LV variants."));
+        if (!variants.length) return frappe.msgprint(__("Enable a product family first. Its available Body/Syringe Items must be enabled and match the configured references."));
         const selected = new Set((frm.doc.product_variants || []).filter(row => row.selected).map(row => row.body + ":" + (row.syringe || "")));
-        const dialog = new frappe.ui.Dialog({title: __("Choose Supported Product Configurations"), fields: [{
+        const dialog = new frappe.ui.Dialog({title: __("Choose Product Configurations"), fields: [{
+            fieldtype: "HTML", options: '<p>' + __("P110/P111 identify HD drives. P101/P111 use S-2500-P or S-5000-P and require an HV head. Highlighted choices show head requirements to resolve before engineering review.") + '</p>',
+        }, {
             fieldname: "variants", fieldtype: "MultiCheck", label: __("Configurations"), columns: 2, select_all: true,
             options: variants.map(row => ({value: row.body + ":" + row.syringe,
-                label: itemCreationEscape(row.configuration), checked: selected.has(row.body + ":" + row.syringe)})),
+                label: itemCreationEscape(row.configuration + (row.compatibility_note ? " — " + row.compatibility_note : "")),
+                danger: !!row.compatibility_note, checked: selected.has(row.body + ":" + row.syringe)})),
         }], primary_action_label: __("Apply Selection"), primary_action: values => {
             if (stamp !== itemCreationInputs(frm)) return frappe.msgprint(__("The definition changed. Open the configuration selection again."));
             const choices = new Set(values.variants || []);
             frm.clear_table("product_variants");
             variants.filter(row => choices.has(row.body + ":" + row.syringe)).forEach(row => {
-                Object.assign(frm.add_child("product_variants"), row, {selected: 1});
+                Object.assign(frm.add_child("product_variants"), {body: row.body, syringe: row.syringe,
+                    configuration: row.configuration, selected: 1});
             });
             frm.refresh_field("product_variants");
             frm.dirty();

@@ -95,17 +95,17 @@ def get_compatible_variants(document):
         head = frappe.get_doc("Item", source.head_item)
         head.check_permission("read")
         source.head_name = head.item_name
-    allowed = compatibility.allowed_families(source.get("head_name"))
-    parts = (source.get("head_name") or "").upper().split("-")
-    head_type = parts[1] if len(parts) > 1 else ""
-    rules = [row for row in compatibility.CONFIGURATIONS if row["family"] in allowed
-             and head_type in compatibility.HEAD_TYPES[row["family"]]
-             and compatibility.checked(source.get(compatibility.FAMILY_FLAGS[row["family"]]))]
+    # Show enabled product families even before the head geometry is finalized.
+    # Preview/review/submission still enforce the same shared head requirements.
+    rules = [row for row in compatibility.CONFIGURATIONS
+             if compatibility.checked(source.get(compatibility.FAMILY_FLAGS[row["family"]]))]
     names = {row["body"] for row in rules} | {row["syringe"] for row in rules if row["syringe"]}
     available = {row.name: row for row in frappe.get_all("Item", filters={"name": ["in", sorted(names)], "disabled": 0},
                  fields=["name", "item_name", "item_group", "reference_code"])} if names else {}
     return [dict(body=row["body"], syringe=row["syringe"], family=row["family"],
-                 configuration=row["body_label"] + (" / " + (available[row["syringe"]].reference_code or row["syringe"]) if row["syringe"] else ""))
+                 compatibility_note=compatibility.head_requirement_error(source.get("head_name"), row),
+                 configuration=compatibility.configuration_label(row,
+                     available[row["syringe"]].reference_code if row["syringe"] else ""))
             for row in rules if row["body"] in available and available[row["body"]].item_group == "Body"
             and available[row["body"]].reference_code == row["body_label"]
             and (not row["syringe"] or (row["syringe"] in available and available[row["syringe"]].item_group == "Syringe"
