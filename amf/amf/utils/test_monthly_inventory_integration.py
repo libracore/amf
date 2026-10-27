@@ -43,7 +43,7 @@ class TestMonthlyInventoryIntegration(unittest.TestCase):
             AND (end_of_life IS NULL OR end_of_life >= %s)
             AND NOT EXISTS (SELECT 1 FROM `tabMonthly Inventory Check Row` r
                 JOIN `tabMonthly Inventory Check` c ON c.name=r.parent
-                WHERE r.item_code=tabItem.name AND c.company=%s AND c.status!='Passed')
+                WHERE r.item_code=tabItem.name AND c.company=%s AND c.status NOT IN ('Passed', 'Cancelled'))
             ORDER BY name LIMIT 10""", (frappe.utils.nowdate(), self.company))
         self.assertEqual(len(references), 10)
         settings = frappe.get_single(inventory.SETTINGS)
@@ -86,6 +86,133 @@ class TestMonthlyInventoryIntegration(unittest.TestCase):
             doc.rows[0].reason = "Integration test physical count"
         doc.save()
         return doc
+
+    def role_user(self, role):
+        email = "mic-permission-" + uuid4().hex + "@example.invalid"
+        frappe.get_doc({"doctype": "User", "email": email, "first_name": "MIC permission test",
+            "enabled": 1, "user_type": "System User", "send_welcome_email": 0,
+            "roles": [{"role": role}]}).insert(ignore_permissions=True)
+        self.addCleanup(frappe.clear_cache, user=email)
+        return email
+
+    def test_stock_manager_can_cancel_and_delete_without_losing_counts(self):
+        doc = self.confirm()
+        def counts(check):
+            return [{key: value for key, value in row.as_dict().items() if key not in ("modified", "modified_by")}
+                    for row in check.rows]
+        before = counts(doc)
+        manager = self.role_user("Stock Manager")
+        frappe.set_user(manager)
+        self.assertTrue(frappe.has_permission(inventory.CHECK, "delete", doc=doc))
+        self.assertNotIn("System Manager", frappe.get_roles())
+        self.assertEqual(inventory.cancel_check(self.name), self.name)
+        doc.reload()
+        self.assertEqual(doc.status, "Cancelled")
+        self.assertEqual(doc.cancelled_by, manager)
+        self.assertTrue(doc.cancelled_on)
+        self.assertEqual(counts(doc), before)
+        self.assertEqual(frappe.db.get_value("ToDo", {"reference_type": inventory.CHECK,
+            "reference_name": self.name}, "status"), "Closed")
+        self.assertEqual(inventory.cancel_check(self.name), self.name)
+        for action in (inventory.refresh_stock, inventory.create_reconciliation, inventory.complete_check):
+            with self.assertRaisesRegex(frappe.ValidationError, "cancelled inventory check"):
+                action(self.name)
+        self.assertEqual(inventory.get_stale_rows(self.name), [])
+        doc.notes = "Try changing cancelled counts"
+        with self.assertRaisesRegex(frappe.ValidationError, "cancelled inventory check"):
+            doc.save()
+        frappe.delete_doc(inventory.CHECK, self.name)
+        self.assertFalse(frappe.db.exists(inventory.CHECK, self.name))
+        self.assertFalse(frappe.db.count("Monthly Inventory Check Row", {"parent": self.name}))
+        self.assertTrue(frappe.db.exists("Deleted Document", {"deleted_doctype": inventory.CHECK,
+            "deleted_name": self.name}))
+
+    def test_assignee_without_manager_role_cannot_cancel_delete_or_forge_cancellation(self):
+        user = self.role_user("Stock User")
+        doc = frappe.get_doc(inventory.CHECK, self.name)
+        doc.db_set("assigned_to", user)
+        frappe.share.add(inventory.CHECK, self.name, user, write=1, flags={"ignore_share_permission": True})
+        frappe.set_user(user)
+        self.assertTrue(frappe.has_permission(inventory.CHECK, "write", doc=doc))
+        self.assertFalse(frappe.has_permission(inventory.CHECK, "delete", doc=doc))
+        with self.assertRaises(frappe.PermissionError):
+            inventory.cancel_check(self.name)
+        with self.assertRaises(frappe.PermissionError):
+            frappe.delete_doc(inventory.CHECK, self.name)
+        # The controller still rejects deletion when an API caller supplies
+        # ignore_permissions, unless the caller actually has a manager role.
+        with self.assertRaises(frappe.PermissionError):
+            frappe.delete_doc(inventory.CHECK, self.name, ignore_permissions=True)
+        doc.status, doc.cancelled_by = "Cancelled", user
+        with self.assertRaisesRegex(frappe.ValidationError, "managed by the system"):
+            doc.save()
+
+    def test_cancel_with_draft_blocks_posting_and_delete_retains_the_voucher(self):
+        self.confirm(difference=True)
+        voucher = inventory.create_reconciliation(self.name)
+        original = frappe.get_doc("Stock Reconciliation", voucher)
+        manager = self.role_user("Stock Manager")
+        frappe.set_user(manager)
+        inventory.cancel_check(self.name)
+        with self.assertRaisesRegex(frappe.ValidationError, "cancelled inventory check"):
+            frappe.get_doc("Stock Reconciliation", voucher).submit()
+        frappe.delete_doc(inventory.CHECK, self.name)
+        reco = frappe.get_doc("Stock Reconciliation", voucher)
+        self.assertEqual(reco.docstatus, 0)
+        self.assertFalse(reco.monthly_inventory_check)
+        self.assertEqual(reco.modified, original.modified)
+        self.assertEqual([row.as_dict() for row in reco.items], [row.as_dict() for row in original.items])
+        self.assertFalse(frappe.db.count("Stock Ledger Entry", {"voucher_type": "Stock Reconciliation", "voucher_no": voucher}))
+        self.assertTrue(frappe.db.exists("Comment", {"reference_doctype": "Stock Reconciliation",
+            "reference_name": voucher, "content": ["like", "%" + self.name + "%"]}))
+
+    def test_manager_can_delete_passed_check_preserving_posted_stock_and_gl(self):
+        self.confirm(difference=True)
+        voucher = inventory.create_reconciliation(self.name)
+        frappe.get_doc("Stock Reconciliation", voucher).submit()
+        inventory.complete_check(self.name)
+        filters = {"voucher_type": "Stock Reconciliation", "voucher_no": voucher}
+        before_stock = frappe.get_all("Stock Ledger Entry", filters=filters, fields=["*"], order_by="name")
+        before_gl = frappe.get_all("GL Entry", filters=filters, fields=["*"], order_by="name")
+        self.assertTrue(before_stock)
+        self.assertTrue(before_gl)
+        manager = self.role_user("Stock Manager")
+        frappe.set_user(manager)
+        frappe.delete_doc(inventory.CHECK, self.name)
+        reco = frappe.get_doc("Stock Reconciliation", voucher)
+        self.assertEqual(reco.docstatus, 1)
+        self.assertFalse(reco.monthly_inventory_check)
+        self.assertEqual(frappe.get_all("Stock Ledger Entry", filters=filters, fields=["*"], order_by="name"), before_stock)
+        self.assertEqual(frappe.get_all("GL Entry", filters=filters, fields=["*"], order_by="name"), before_gl)
+
+    def test_stock_correction_cancellation_does_not_reopen_cancelled_check(self):
+        self.confirm(difference=True)
+        voucher = inventory.create_reconciliation(self.name)
+        reco = frappe.get_doc("Stock Reconciliation", voucher)
+        reco.submit()
+        inventory.cancel_check(self.name)
+        cancelled = frappe.get_doc(inventory.CHECK, self.name)
+        reco.cancel()
+        current = frappe.get_doc(inventory.CHECK, self.name)
+        self.assertEqual(current.status, "Cancelled")
+        self.assertEqual(current.cancelled_on, cancelled.cancelled_on)
+        self.assertEqual([row.as_dict() for row in current.rows], [row.as_dict() for row in cancelled.rows])
+        self.assertEqual(frappe.db.get_value("ToDo", {"reference_type": inventory.CHECK,
+            "reference_name": self.name}, "status"), "Closed")
+
+    def test_scheduler_does_not_recreate_deleted_check_and_manual_generation_can(self):
+        frappe.delete_doc(inventory.CHECK, self.name)
+        self.assertIsNone(inventory.generate_check(automatic=True))
+        self.assertFalse(frappe.db.exists(inventory.CHECK, self.name))
+        self.assertEqual(inventory.generate_current_month(), self.name)
+        self.assertTrue(frappe.db.exists(inventory.CHECK, self.name))
+
+    def test_cancelled_check_releases_references_for_future_checks(self):
+        inventory.cancel_check(self.name)
+        with patch.object(inventory, "check_name", return_value="MIC-TEST-NEXT-" + uuid4().hex):
+            next_name = inventory.generate_current_month()
+        selected = json.loads(frappe.db.get_value(inventory.CHECK, next_name, "selected_items"))
+        self.assertEqual(selected, self.references)
 
     def test_generation_idempotent_and_assignment_writable(self):
         self.assertEqual(inventory.generate_current_month(), self.name)

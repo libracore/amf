@@ -71,6 +71,7 @@ check. Normal stock correction creation and submission permissions still apply.
    its descendants, and explicit excluded references always take precedence.
    Filter inactive, expired, non-stock, variant-template and cancelled items.
    Exclude any reference already present in an unfinished check for this company.
+   Cancelled checks no longer reserve references.
 5. Require at least ten available candidates; never silently reduce the sample.
 6. Use the system random generator to select ten distinct references uniformly
    without replacement. Prior selection dates do not bias the random sample.
@@ -238,10 +239,35 @@ reads use InnoDB's consistent-read snapshot, as described in the official
 Snapshot fields, selected references, row scope, derived differences, audit
 users/timestamps, status, and completion stamps are validated on the server.
 They cannot be forged by changing browser fields or posting JSON directly.
-Checks are retained as audit records and cannot be deleted through the normal
-document API. Standard Frappe version tracking retains count and refresh
-history. Non-manager stock users can access checks assigned to them; the
+Standard Frappe version tracking retains count and refresh history.
+Stock Managers and System Managers can cancel and delete checks. Non-manager
+stock users can access checks assigned to them; the
 assignee's explicit document share supports users without a Stock User role.
+
+## Cancellation and deletion
+
+Stock Managers and System Managers can use **Cancel Check** on an open or
+passed check. MICs remain non-submittable checklists; cancellation is a managed
+`Cancelled` business status rather than a stock/accounting document cancellation.
+The action records who cancelled and when, closes assignments, and keeps all
+saved counts and correction documents. Cancelled checks are read-only and
+cannot be refreshed, completed, or used to submit generated reconciliations.
+Cancelling a linked correction later does not reopen a cancelled MIC.
+
+Managers can use the standard form **Menu → Delete** or list deletion on open,
+passed, or cancelled MICs. The server requires a manager role as well as delete
+permission. It closes assignments and removes the checklist and child rows.
+Frappe retains its full data in **Deleted Document**. Linked Stock Reconciliations
+remain intact, including drafts, submitted vouchers, stock ledger entries and
+accounting entries. Only their MIC backlink is cleared; an Info comment on each
+voucher records the deleted check and acting user. Manual stock corrections also
+remain intact. The normal link checks still apply to other documents that may
+reference the MIC.
+
+Cancelling a check releases its references for later monthly selections. The
+daily scheduler does not recreate a check deleted in the same month. A manager
+can explicitly use **Generate Current Month** to create a replacement after
+deletion. Keeping a cancelled check retains the single company/month record.
 
 ## Deployment and validation
 

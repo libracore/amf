@@ -1,5 +1,3 @@
-import frappe
-from frappe import _
 from frappe.model.document import Document
 from amf.amf.utils import monthly_inventory
 
@@ -12,4 +10,4 @@ class MonthlyInventoryCheck(Document):
         monthly_inventory.validate_check(self)
 
     def on_trash(self):
-        frappe.throw(_("Inventory checks are audit records and cannot be deleted."))
+        monthly_inventory.trash_check(self)
