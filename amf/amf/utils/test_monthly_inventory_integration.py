@@ -214,6 +214,77 @@ class TestMonthlyInventoryIntegration(unittest.TestCase):
         selected = json.loads(frappe.db.get_value(inventory.CHECK, next_name, "selected_items"))
         self.assertEqual(selected, self.references)
 
+    def test_initial_singleton_and_setup_allow_missing_company_and_default_assignee(self):
+        for table in ("Monthly Inventory Item Group", "Monthly Inventory Exclusion", "Monthly Inventory Reference"):
+            frappe.db.sql("DELETE FROM `tab{0}` WHERE parent=%s AND parenttype=%s".format(table),
+                          (inventory.SETTINGS, inventory.SETTINGS))
+        frappe.db.sql("DELETE FROM tabSingles WHERE doctype=%s", inventory.SETTINGS)
+        frappe.clear_cache(doctype=inventory.SETTINGS)
+        original_get_value = frappe.db.get_value
+        original_global_default = frappe.defaults.get_global_default
+        original_defaults = frappe.defaults.get_defaults
+
+        def missing_assignee(*args, **kwargs):
+            if len(args) >= 2 and args[0] == "User" and args[1] == inventory.DEFAULT_ASSIGNEE:
+                return None
+            return original_get_value(*args, **kwargs)
+
+        def no_company_default(key, *args, **kwargs):
+            return None if key == "company" else original_global_default(key, *args, **kwargs)
+
+        def no_company_defaults(*args, **kwargs):
+            defaults = dict(original_defaults(*args, **kwargs))
+            defaults.pop("company", None)
+            return defaults
+
+        with patch.object(frappe.defaults, "get_global_default", side_effect=no_company_default), patch.object(
+                frappe.defaults, "get_defaults", side_effect=no_company_defaults), patch.object(
+                frappe.db, "get_value", side_effect=missing_assignee), patch(
+                "frappe.custom.doctype.custom_field.custom_field.create_custom_fields"):
+            frappe.local.new_doc_templates.pop(inventory.SETTINGS, None)
+            initial = frappe.new_doc(inventory.SETTINGS)
+            self.assertFalse(initial.assigned_to)
+            # Match installer.init_singles: links are still validated here.
+            initial.flags.ignore_mandatory = initial.flags.ignore_validate = True
+            initial.save(ignore_permissions=True)
+            inventory.setup_monthly_inventory()
+            configured = frappe.get_single(inventory.SETTINGS)
+            self.assertFalse(configured.enabled)
+            self.assertFalse(configured.company)
+            self.assertFalse(configured.assigned_to)
+            self.assertEqual(len(configured.item_groups), len(inventory.get_inventory_item_groups()))
+            self.assertFalse(next(row.enabled for row in configured.item_groups if row.item_group == "Product"))
+            modified = configured.modified
+            inventory.setup_monthly_inventory()
+            self.assertEqual(frappe.get_single(inventory.SETTINGS).modified, modified)
+        self.sendmail.assert_called_once()  # only the ordinary setUp generation
+
+    def test_setup_preserves_existing_preferences_and_counts_without_a_production_scope(self):
+        settings = frappe.get_single(inventory.SETTINGS)
+        settings.due_day = 22
+        settings.append("excluded_items", {"item_code": self.references[0], "reason": "Retain this exception"})
+        for row in settings.item_groups:
+            if row.item_group == "Part":
+                row.enabled = 0
+        settings.save()
+        before_settings = settings.as_dict()
+        before_check = frappe.get_doc(inventory.CHECK, self.name).as_dict()
+        # Synchronize a newly introduced group without validating an unavailable
+        # operational scope or recreating the existing checklist.
+        row = next(row for row in settings.item_groups if row.item_group == "Product")
+        frappe.db.sql("DELETE FROM `tabMonthly Inventory Item Group` WHERE name=%s", row.name)
+        with patch.object(inventory, "production_root", return_value=None), patch(
+                "frappe.custom.doctype.custom_field.custom_field.create_custom_fields"):
+            inventory.setup_monthly_inventory()
+        after = frappe.get_single(inventory.SETTINGS)
+        for field in ("enabled", "company", "assigned_to", "due_day", "warehouse_root"):
+            self.assertEqual(after.get(field), before_settings[field])
+        self.assertEqual([(row.item_code, row.reason) for row in after.excluded_items],
+                         [(row["item_code"], row["reason"]) for row in before_settings["excluded_items"]])
+        self.assertFalse(next(row.enabled for row in after.item_groups if row.item_group == "Part"))
+        self.assertFalse(next(row.enabled for row in after.item_groups if row.item_group == "Product"))
+        self.assertEqual(frappe.get_doc(inventory.CHECK, self.name).as_dict(), before_check)
+
     def test_generation_idempotent_and_assignment_writable(self):
         self.assertEqual(inventory.generate_current_month(), self.name)
         self.assertEqual(self.sendmail.call_count, 1)

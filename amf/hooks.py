@@ -328,6 +328,8 @@ override_doctype_dashboards = {
     "Sales Order": "amf.amf.utils.dashboards.modify_so_dashboard",
 }
 
+# Initial setup runs once on app installation. Existing sites are initialized
+# by the versioned monthly inventory patch, not by every migration.
 after_install = [
     "amf.amf.utils.project_id.after_install",
     "amf.amf.utils.monthly_inventory.setup_monthly_inventory",
@@ -336,7 +338,6 @@ after_install = [
 # Migration Hook
 # --------------
 after_migrate = [
-    "amf.amf.utils.monthly_inventory.setup_monthly_inventory",
     "amf.amf.utils.leave_event.setup_leave_event_integration",
     "amf.master_crm.migration.translate_customer_to_organization",
     "amf.master_crm.customer_marketing.sync_customer_marketing_custom_fields",

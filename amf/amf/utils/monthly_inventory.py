@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from html import escape
 
 import frappe
+import frappe.defaults
 from frappe import _
 from frappe.utils import cint, flt, getdate, get_url_to_form, now_datetime, nowdate
 from erpnext.stock.utils import get_stock_balance
@@ -300,14 +301,16 @@ def generate_check(automatic=False):
     return doc.name
 
 
-def production_root(company):
+def production_root(company, required=True):
     roots = frappe.db.sql("""SELECT w.name, w.lft, w.rgt, w.disabled, w.is_group,
         p.disabled AS parent_disabled FROM tabWarehouse w
         JOIN tabWarehouse p ON p.name=w.parent_warehouse AND p.company=w.company
         WHERE w.company=%s AND w.warehouse_name='Production'
         AND p.warehouse_name='AMF Warehouse'""", company, as_dict=True)
     if len(roots) != 1 or roots[0].disabled or roots[0].parent_disabled or not roots[0].is_group:
-        frappe.throw(_("An enabled Production warehouse group directly under AMF Warehouse is required for company {0}.").format(company))
+        if required:
+            frappe.throw(_("An enabled Production warehouse group directly under AMF Warehouse is required for company {0}.").format(company))
+        return None
     return roots[0]
 
 
@@ -737,7 +740,12 @@ def on_reconciliation_trash(doc, method=None):
 
 
 def setup_monthly_inventory():
-    """Idempotent installation; preserve choices and never enable mail implicitly."""
+    """Provision metadata/defaults without requiring operational master data.
+
+    Installation and the one-time upgrade patch may run before a Company's
+    warehouse hierarchy or assignee exists. Their absence must not block
+    deployment. Runtime configuration/generation retain strict validation.
+    """
     # v12 retains a separate column cache when this Single was loaded before sync.
     frappe.clear_cache(doctype=SETTINGS)
     frappe.local.valid_columns.pop(SETTINGS, None)
@@ -746,22 +754,32 @@ def setup_monthly_inventory():
         "fieldname": "monthly_inventory_check", "label": "Monthly Inventory Check",
         "fieldtype": "Link", "options": CHECK, "insert_after": "company",
         "read_only": 1, "no_copy": 1}]})
-    existing = {row[0] for row in frappe.db.sql("SELECT field FROM tabSingles WHERE doctype=%s", SETTINGS)}
-    defaults = {"enabled": 0, "assigned_to": DEFAULT_ASSIGNEE, "sample_size": SAMPLE_SIZE,
+    existing = frappe.db.get_singles_dict(SETTINGS)
+    assignee = frappe.db.get_value("User", DEFAULT_ASSIGNEE, ["enabled", "user_type"], as_dict=True)
+    default_assignee = DEFAULT_ASSIGNEE if assignee and assignee.enabled and assignee.user_type == "System User" else None
+    defaults = {"enabled": 0, "assigned_to": default_assignee, "sample_size": SAMPLE_SIZE,
                 "minimum_items": SAMPLE_SIZE, "maximum_items": SAMPLE_SIZE, "due_day": 15,
                 "company": frappe.defaults.get_global_default("company")}
     for field, value in defaults.items():
-        if field not in existing and value is not None:
+        if (field not in existing or (field == "assigned_to" and not existing[field])) and value is not None:
             frappe.db.set_value(SETTINGS, SETTINGS, field, value, update_modified=False)
     settings = frappe.get_single(SETTINGS)
     before = [(row.item_group, row.enabled) for row in settings.item_groups]
     previous_scope = tuple(settings.get(field) for field in (
         "sample_size", "minimum_items", "maximum_items", "warehouse_root"))
     settings.sample_size = settings.minimum_items = settings.maximum_items = SAMPLE_SIZE
-    settings.warehouse_root = production_root(settings.company).name if settings.company else None
+    root = production_root(settings.company, required=False) if settings.company else None
+    if root:
+        settings.warehouse_root = root.name
     synchronize_group_rows(settings, get_inventory_item_groups())
     if before != [(row.item_group, row.enabled) for row in settings.item_groups] or previous_scope != (
             settings.sample_size, settings.minimum_items, settings.maximum_items, settings.warehouse_root):
+        # This is a metadata backfill, not an operator enabling the feature.
+        # Save valid group rows even if the assignee/Company is not configured
+        # or an existing operational configuration needs administrator repair.
+        settings.flags.ignore_validate = True
+        settings.flags.ignore_links = True
+        settings.flags.ignore_mandatory = True
         settings.save(ignore_permissions=True)
 
 

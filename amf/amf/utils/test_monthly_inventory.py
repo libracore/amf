@@ -338,5 +338,88 @@ class TestMonthlyInventory(unittest.TestCase):
         self.assertIn("tabBin", queries[1])
 
 
+class TestMonthlyInventorySetup(unittest.TestCase):
+    def setUp(self):
+        patches = [patch.object(inventory, "_", side_effect=lambda text: text),
+            patch.object(frappe, "local", frappe._dict(valid_columns={})),
+            patch.object(frappe, "db", MagicMock()),
+            patch.object(frappe, "clear_cache"),
+            patch.object(frappe.defaults, "get_global_default", return_value=None),
+            patch.object(inventory, "get_inventory_item_groups", return_value=GROUPS),
+            patch("frappe.custom.doctype.custom_field.custom_field.create_custom_fields")]
+        for mock in patches:
+            mock.start()
+        self.addCleanup(lambda: [mock.stop() for mock in reversed(patches)])
+        frappe.db.sql.return_value = []
+        frappe.db.get_value.return_value = None
+
+    def setup_document(self, **values):
+        doc = settings(**values)
+        doc.warehouse_root = values.get("warehouse_root")
+        doc.flags = frappe._dict()
+        doc.get = lambda field: getattr(doc, field, None)
+        doc.save = MagicMock()
+        return doc
+
+    def test_optional_scope_allows_missing_master_data_but_runtime_remains_strict(self):
+        self.assertIsNone(inventory.production_root("AMF", required=False))
+        with patch.object(frappe, "throw", side_effect=TestMonthlyInventory.throw):
+            with self.assertRaisesRegex(frappe.ValidationError, "enabled Production warehouse group"):
+                inventory.production_root("AMF")
+
+    def test_lifecycle_setup_is_registered_for_installation_not_every_migration(self):
+        from amf import hooks
+        self.assertEqual(hooks.after_install.count("amf.amf.utils.monthly_inventory.setup_monthly_inventory"), 1)
+        self.assertIn("amf.amf.utils.project_id.after_install", hooks.after_install)
+        self.assertNotIn("amf.amf.utils.monthly_inventory.setup_monthly_inventory", hooks.after_migrate)
+
+    def test_new_site_setup_does_not_require_company_or_default_assignee(self):
+        doc = self.setup_document(company=None, assigned_to=None)
+        frappe.db.get_singles_dict.return_value = {}
+        with patch.object(frappe, "get_single", return_value=doc):
+            inventory.setup_monthly_inventory()
+        self.assertEqual(len(doc.item_groups), len(GROUPS))
+        self.assertEqual([row.item_group for row in doc.item_groups if not row.enabled], ["Product"])
+        self.assertEqual(doc.enabled, 0)
+        self.assertIsNone(doc.assigned_to)
+        self.assertFalse(any(call.args[2] == "assigned_to" for call in frappe.db.set_value.call_args_list))
+        doc.save.assert_called_once_with(ignore_permissions=True)
+        self.assertTrue(doc.flags.ignore_validate and doc.flags.ignore_links and doc.flags.ignore_mandatory)
+
+    def test_migration_preserves_configuration_when_production_scope_is_unavailable(self):
+        doc = self.setup_document(enabled=1, assigned_to="existing@example.com", due_day=22,
+            warehouse_root="Existing Scope", item_groups=[frappe._dict(item_group="Part", enabled=0)],
+            excluded_items=[frappe._dict(item_code="EXCLUDE")])
+        frappe.db.get_singles_dict.return_value = {field: doc.get(field) for field in (
+            "enabled", "assigned_to", "company", "sample_size", "minimum_items", "maximum_items", "due_day")}
+        with patch.object(frappe, "get_single", return_value=doc):
+            inventory.setup_monthly_inventory()
+        self.assertEqual((doc.enabled, doc.assigned_to, doc.due_day, doc.warehouse_root),
+                         (1, "existing@example.com", 22, "Existing Scope"))
+        self.assertFalse(next(row.enabled for row in doc.item_groups if row.item_group == "Part"))
+        self.assertEqual(doc.excluded_items[0].item_code, "EXCLUDE")
+        frappe.db.set_value.assert_not_called()
+
+    def test_default_assignee_is_filled_only_if_an_enabled_system_user_exists(self):
+        doc = self.setup_document(company=None, assigned_to=None)
+        frappe.db.get_singles_dict.return_value = {"assigned_to": None}
+        frappe.db.get_value.return_value = frappe._dict(enabled=1, user_type="System User")
+        with patch.object(frappe, "get_single", return_value=doc):
+            inventory.setup_monthly_inventory()
+        self.assertTrue(any(call.args[2:4] == ("assigned_to", inventory.DEFAULT_ASSIGNEE)
+                            for call in frappe.db.set_value.call_args_list))
+
+    def test_repeated_setup_does_not_resave_unchanged_settings(self):
+        doc = self.setup_document(company=None)
+        inventory.synchronize_group_rows(doc, GROUPS)
+        frappe.db.get_singles_dict.return_value = {field: doc.get(field) for field in (
+            "enabled", "assigned_to", "company", "sample_size", "minimum_items", "maximum_items", "due_day")}
+        with patch.object(frappe, "get_single", return_value=doc):
+            inventory.setup_monthly_inventory()
+            inventory.setup_monthly_inventory()
+        doc.save.assert_not_called()
+        frappe.db.set_value.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -291,9 +291,23 @@ link, fills only missing settings defaults, adds missing item groups without
 resetting saved choices, and clears relevant caches. The former reference
 whitelist is retained in a hidden legacy field for compatibility; it does not
 control eligibility and is never inverted into the exclusion list.
-It avoids running unrelated pending patches. Standard `bench migrate` also
-runs the idempotent setup hook. App installation runs setup after its DocTypes
-are synchronized. Use the site's usual worker/web reload procedure when
+It avoids running unrelated pending patches. New app installations run setup
+once through `after_install`, after their DocTypes are synchronized. Existing
+sites receive `amf.patches.v12_0.install_monthly_inventory_checks` once through
+the Patch Log. The patch reloads this feature's DocTypes because v12 runs patches
+before its normal model sync. Monthly inventory setup is not an `after_migrate`
+hook and does not re-run on every migration.
+
+Initialization adds metadata and missing defaults; it does not require a Company,
+Production warehouse hierarchy or assignee to exist yet. It assigns Alexandre
+only when that enabled System User exists. Otherwise the assignee stays empty
+until configured. Runtime settings validation and generation still require the
+proper warehouse scope and enabled assignee. Initialization does not enable the
+schedule, create inventory checks, or send notifications. Existing choices,
+counts and reconciliations are preserved. Subsequent monthly checks are created
+by the daily scheduler independently of setup.
+
+Use the site's usual worker/web reload procedure when
 deploying source changes to persistent processes.
 
 Unit tests:
