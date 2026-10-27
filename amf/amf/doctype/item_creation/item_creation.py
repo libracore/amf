@@ -12,8 +12,14 @@ from frappe.model.document import Document
 
 
 class ItemCreation(Document):
+    def before_insert(self):
+        from amf.amf.utils.item_creation_traceability import prepare_amendment
+        prepare_amendment(self)
+
     def validate(self):
         from amf.amf.utils.item_creation_workflow import protect_review_fields
+        from amf.amf.utils.item_creation_traceability import validate_amendment
+        validate_amendment(self)
         _validate_source_family(self)
         protect_review_fields(self)
 
@@ -24,9 +30,20 @@ class ItemCreation(Document):
     def on_submit(self):
         _execute_creation_plan(self)
 
+    def before_update_after_submit(self):
+        frappe.throw(_("Submitted Item Creation requests cannot be edited. Cancel and amend the request with a fresh engineering review."))
+
+    def before_cancel(self):
+        from amf.amf.utils.item_creation_traceability import before_cancel
+        before_cancel(self)
+
+    def on_cancel(self):
+        from amf.amf.utils.item_creation_traceability import on_cancel
+        on_cancel(self)
+
     def on_trash(self):
-        if self.get("review_history") or self.get("creation_result"):
-            frappe.throw(_("Requests with engineering review history must be retained and cannot be deleted."))
+        if self.docstatus == 2 or self.get("amended_from") or self.get("review_history") or self.get("creation_result") or self.get("execution_results"):
+            frappe.throw(_("Cancelled requests, amendments and requests with review or execution history must be retained and cannot be deleted."))
 
 
 def _validate_source_family(doc):
@@ -68,6 +85,21 @@ def _validate_source_family(doc):
 
 def _validate_existing_head_family(head_code):
     item_code_family.validate_existing_head_family(head_code)
+
+
+@frappe.whitelist()
+def syringe_item_query(doctype, txt, searchfield, start, page_len, filters=None, as_dict=False):
+    """Any six-character 70X___ Item, where X is a digit or letter."""
+    from frappe.desk.reportview import get_match_cond
+
+    if doctype != "Item" or not frappe.has_permission("Item", "read"):
+        frappe.throw(_("Item read permission is required."), frappe.PermissionError)
+    return frappe.db.sql("""SELECT name, item_name FROM `tabItem`
+        WHERE item_code REGEXP %(pattern)s
+        AND (name LIKE %(txt)s OR item_name LIKE %(txt)s OR reference_code LIKE %(txt)s)
+        {match} ORDER BY name LIMIT %(start)s, %(page_len)s""".format(match=get_match_cond("Item")),
+        dict(pattern="^70[0-9A-Za-z]...$", txt="%" + (txt or "") + "%", start=max(0, cint(start)),
+             page_len=min(100, max(1, cint(page_len) or 20))), as_dict=as_dict)
 
 
 def _build_creation_plan(doc):

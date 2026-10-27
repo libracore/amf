@@ -11,7 +11,7 @@ let dialog;
 const sandbox = {
     frappe: {
         ui: {form: {on: (doctype, events) => { handlers[doctype] = Object.assign(handlers[doctype] || {}, events); }},
-            Dialog: function(options) { dialog = options; this.show = () => {}; this.hide = () => {}; }},
+            Dialog: function(options) { dialog = options; sandbox.lastDialog = this; this.show = () => {}; this.hide = () => {}; }},
         call: options => { calls.push(options); }, msgprint: () => {},
         throw: message => { throw new Error(message); },
         user_roles: ["System Manager"], session: {user: "Administrator"},
@@ -105,4 +105,38 @@ assert.strictEqual(calls.length, 1);
 assert.ok(calls[0].method.endsWith(".record_engineering_review"));
 assert.strictEqual(calls[0].args.fingerprint, "HASH");
 assert.strictEqual(calls[0].type, "POST");
+
+// Cancellation asks for a reason and dismissal stops the native cancel action.
+frm = form({name: "COMPLETED", docstatus: 1});
+sandbox.frappe.validated = true;
+events.before_cancel(frm);
+dialog.primary_action({reason: "  Reviewed replacement required  "});
+assert.strictEqual(frm.doc.cancellation_reason, "Reviewed replacement required");
+sandbox.lastDialog.onhide();
+assert.strictEqual(sandbox.frappe.validated, true);
+events.before_cancel(frm);
+sandbox.lastDialog.onhide();
+assert.strictEqual(sandbox.frappe.validated, false);
+
+// Child selectors retain the Body pattern and use the alphanumeric syringe query.
+const queries = {};
+frm = form({name: "DRAFT", docstatus: 0});
+frm.set_query = (field, parent, query) => { queries[field] = query || parent; };
+frm.add_custom_button = () => {};
+events.refresh(frm);
+assert.strictEqual(queries.body().filters.item_code[1], "5_1___");
+assert.ok(queries.syringe().query.endsWith(".syringe_item_query"));
+
+// Reverse links from either Item or BOM open the same report with exact filters.
+let route;
+sandbox.frappe.model = {can_read: () => true};
+sandbox.frappe.set_route = (...args) => { route = args; };
+vm.runInContext(fs.readFileSync(path.join(__dirname, "../../..", "public/js/item_creation_history.js"), "utf8"), sandbox);
+["Item", "BOM"].forEach(doctype => {
+    let action;
+    handlers[doctype].refresh({doc: {name: "LINKED"}, add_custom_button: (label, callback) => { action = callback; }});
+    action();
+    assert.strictEqual(sandbox.frappe.route_options[doctype === "Item" ? "item_code" : "bom"], "LINKED");
+    assert.strictEqual(route[1], "Item Creation Results");
+});
 console.log("Item Creation guided-form, review, preview and numbering tests passed.");

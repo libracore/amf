@@ -31,3 +31,4 @@ amf.patches.v12_0.clean_client_description_metadata_2026_10_22
 amf.patches.v12_0.create_4d_interface_variants_2026_10_26
 amf.patches.v12_0.install_monthly_inventory_checks
 amf.patches.v12_0.install_item_creation_engineering_workflow
+amf.patches.v12_0.install_item_creation_traceability

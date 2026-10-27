@@ -77,7 +77,14 @@
   "approved_plan_hash",
   "approved_input_hash",
   "creation_result",
-  "amended_from"
+  "results_section",
+  "execution_results",
+  "lifecycle_section",
+  "amended_from",
+  "amendment_reason",
+  "cancellation_reason",
+  "cancelled_by",
+  "cancelled_at"
  ],
  "fields": [
   {
@@ -498,7 +505,7 @@
    "fieldname": "review_status",
    "fieldtype": "Select",
    "label": "Review Status",
-   "options": "Draft\nReviewed\nStale\nCreated",
+   "options": "Draft\nReviewed\nStale\nCreated\nCancelled",
    "default": "Draft",
    "read_only": 1,
    "no_copy": 1,
@@ -555,6 +562,59 @@
    "read_only": 1,
    "hidden": 1,
    "no_copy": 1
+  },
+  {
+   "fieldname": "results_section",
+   "fieldtype": "Section Break",
+   "label": "6. Execution Results"
+  },
+  {
+   "fieldname": "execution_results",
+   "fieldtype": "Table",
+   "label": "Items and BOM Revisions",
+   "options": "Item Creation Result",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "lifecycle_section",
+   "fieldtype": "Section Break",
+   "label": "7. Amendments and Cancellation"
+  },
+  {
+   "fieldname": "amendment_reason",
+   "fieldtype": "Small Text",
+   "label": "Amendment Reason",
+   "depends_on": "eval:doc.amended_from",
+   "no_copy": 1
+  },
+  {
+   "fieldname": "cancellation_reason",
+   "fieldtype": "Small Text",
+   "label": "Cancellation Reason",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.docstatus == 2"
+  },
+  {
+   "fieldname": "cancelled_by",
+   "fieldtype": "Link",
+   "options": "User",
+   "label": "Cancelled By",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.docstatus == 2"
+  },
+  {
+   "fieldname": "cancelled_at",
+   "fieldtype": "Datetime",
+   "label": "Cancelled At",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.docstatus == 2"
   }
  ],
  "hide_toolbar": 1,
@@ -577,10 +637,13 @@
    "role": "System Manager",
    "share": 1,
    "write": 1,
-   "submit": 1
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1
   }
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "track_changes": 1
+ "track_changes": 1,
+ "search_fields": "head_code,head_name"
 }

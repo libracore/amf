@@ -17,7 +17,8 @@ function itemCreationInputs(frm) {
     // Exclude review/status fields. This stamp also rejects responses to unsaved edits.
     const values = {};
     Object.keys(frm.doc).sort().forEach(key => {
-        if (!key.startsWith("_") && !["modified", "review_history", "creation_result", "review_status",
+        if (!key.startsWith("_") && !["modified", "review_history", "creation_result", "execution_results", "review_status",
+            "cancellation_reason", "cancelled_by", "cancelled_at",
             "reviewed_by", "reviewed_at", "approved_plan_hash", "approved_input_hash"].includes(key)) {
             values[key] = frm.doc[key];
         }
@@ -200,13 +201,54 @@ function reviewItemCreationPlan(frm) {
     dialog.show();
 }
 
+function cancelItemCreationRequest(frm) {
+    return new Promise(resolve => {
+        let accepted = false;
+        const dialog = new frappe.ui.Dialog({title: __("Cancel Item Creation Request"), fields: [
+            {fieldtype: "HTML", options: '<p>' + __("Generated Items, submitted BOMs, review history and the head suffix reservation will be retained. Review retirement separately.") + '</p>'},
+            {fieldname: "reason", fieldtype: "Small Text", label: __("Cancellation Reason"), reqd: 1},
+        ], primary_action_label: __("Cancel Request"), primary_action(values) {
+            if (!(values.reason || "").trim()) return;
+            frm.doc.cancellation_reason = values.reason.trim();
+            accepted = true;
+            dialog.hide();
+            resolve();
+        }});
+        dialog.onhide = () => {
+            if (!accepted) {
+                frappe.validated = false;
+                resolve();
+            }
+        };
+        dialog.show();
+    });
+}
+
+function amendItemCreationRequest(frm) {
+    const dialog = new frappe.ui.Dialog({title: __("Create Amendment"), fields: [
+        {fieldtype: "HTML", options: '<p>' + __("The amendment reuses this head family and starts with a fresh engineering review.") + '</p>'},
+        {fieldname: "reason", fieldtype: "Small Text", label: __("Amendment Reason"), reqd: 1},
+    ], primary_action_label: __("Create Draft Amendment"), primary_action(values) {
+        if (!(values.reason || "").trim()) return;
+        frappe.call({method: "amf.amf.utils.item_creation_traceability.make_amendment", type: "POST",
+            args: {name: frm.doc.name, reason: values.reason.trim()}, freeze: true,
+            callback: response => {
+                if (response.exc || !response.message) return;
+                dialog.hide();
+                frappe.set_route("Form", "Item Creation", response.message);
+            }});
+    }});
+    dialog.show();
+}
+
 frappe.ui.form.on("Item Creation", {
     refresh(frm) {
         frm.set_query("default_warehouse", () => ({filters: {company: frm.doc.company, is_group: 0, disabled: 0}}));
         frm.set_query("head_item", () => ({filters: {item_group: "Valve Head", disabled: 0}}));
         // Each underscore matches one character, preserving six-character item codes.
         frm.set_query("body", "product_variants", () => ({filters: {item_code: ["like", "5_1___"]}}));
-        frm.set_query("syringe", "product_variants", () => ({filters: {item_code: ["like", "70____"]}}));
+        frm.set_query("syringe", "product_variants", () => ({query: itemCreationController + "syringe_item_query"}));
+        frm.set_df_property("amendment_reason", "reqd", !!frm.doc.amended_from);
         ["plug", "seat"].forEach(group => {
             frm.set_query(group + "_item", () => ({filters: {item_group: group === "plug" ? "Plug" : "Valve Seat", disabled: 0}}));
             frm.set_query(group + "_raw_material", () => ({filters: {item_group: "Raw Material", tag_raw_mat: frm.doc[group + "_mat"], disabled: 0}}));
@@ -215,13 +257,26 @@ frappe.ui.form.on("Item Creation", {
         frm.set_query("screw_type", () => ({filters: [["Item", "item_name", "like", "%Screw%"], ["Item", "disabled", "=", 0]]}));
         frm.set_query("cap_type", () => ({filters: {name: ["in", ["RVM.3038", "RVM.3039", "RVM.3040"]], disabled: 0}}));
         frm.add_custom_button(__("Refresh Complete Plan"), () => refreshItemCreationPlan(frm));
+        if (frm.doc.docstatus === 2) {
+            frm.add_custom_button(__("Create Amendment"), () => amendItemCreationRequest(frm));
+        }
+        if (frm.doc.docstatus > 0) {
+            frm.add_custom_button(__("Search Execution Results"), () => {
+                frappe.route_options = {request: frm.doc.name};
+                frappe.set_route("query-report", "Item Creation Results");
+            });
+        }
         if (frm.doc.docstatus === 0) {
             frm.add_custom_button(__("Choose Product Configurations"), () => chooseItemCreationVariants(frm));
             if ((frappe.user_roles || []).includes("System Manager") || frappe.session.user === "Administrator") {
                 frm.add_custom_button(__("Record Engineering Review"), () => reviewItemCreationPlan(frm));
             }
         }
-        frm.set_intro(frm.doc.review_status === "Reviewed"
+        frm.set_intro(frm.doc.docstatus === 2
+            ? __("This request was cancelled. Generated Items, BOM revisions and suffix reservations are retained. Create an amendment to propose reviewed changes.")
+            : frm.doc.docstatus === 1
+            ? __("Execution completed. Search the result links below. Further changes require cancellation and a freshly reviewed amendment.")
+            : frm.doc.review_status === "Reviewed"
             ? __("Engineering review recorded. Submission will recheck the exact plan and automatically submit its BOMs.")
             : __("Define the parts and raw stock, choose supported configurations, save, then review the complete plan before submission."));
         scheduleItemCreationPlan(frm);
@@ -273,13 +328,15 @@ frappe.ui.form.on("Item Creation", {
     company(frm) { frm.set_value("default_warehouse", ""); scheduleItemCreationPlan(frm); },
     head_description_check(frm) { frm.set_df_property("head_description", "read_only", !frm.doc.head_description_check); },
     on_submit(frm) { frm.reload_doc(); },
+    before_cancel: cancelItemCreationRequest,
+    after_cancel(frm) { frm.reload_doc(); },
 });
 
 // All recipe-affecting fields invalidate the cached plan immediately, then debounce IO.
 const itemCreationPlanEvents = {};
 ["head_rnd", "head_description", "plug_name", "plug_rnd", "plug_mat", "plug_acc", "plug_drawing", "seat_name",
     "seat_rnd", "seat_mat", "seat_acc", "seat_drawing", "plug_raw_qty", "plug_raw_uom", "seat_raw_qty", "seat_raw_uom",
-    "screw_type", "screw_quantity", "cap_type", "rvm_check", "pump_check", "pump_hv_check", "replace_boms", "default_warehouse"]
+    "screw_type", "screw_quantity", "cap_type", "rvm_check", "pump_check", "pump_hv_check", "replace_boms", "default_warehouse", "amendment_reason"]
     .forEach(field => { itemCreationPlanEvents[field] = scheduleItemCreationPlan; });
 frappe.ui.form.on("Item Creation", itemCreationPlanEvents);
 frappe.ui.form.on("Item Creation Variant", {selected: scheduleItemCreationPlan, body: scheduleItemCreationPlan,

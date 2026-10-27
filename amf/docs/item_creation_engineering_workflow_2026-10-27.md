@@ -71,6 +71,8 @@ Additional checks and final test counts are recorded in the improvement tracker.
 
 ## Deployment and remaining scope
 
+The [AMF 0.7.3 traceability extension](item_creation_traceability_2026-10-27.md) adds searchable execution result rows, reverse Item/BOM links and the request-only cancellation/amendment policy. Its registered patch follows the original workflow patch below. Syringe selection now explicitly enforces `70X___`, with a digit or letter at `X`; existing engineering compatibility rules still apply.
+
 AMF `0.7.2` registers `amf.patches.v12_0.install_item_creation_engineering_workflow` in `amf/patches.txt`, so the next standard migration installs the child tables before the parent form and updates the Work Order estimated-time fields for alphanumeric codes. The patch is safe to repeat and performs no historical Item/BOM repair or reservation backfill. The Product Configurations table has its own full-width section; its Body and Syringe selectors use six-character code patterns `5_1___` and `70____` without an Item Group restriction. Server-side engineering compatibility validation still applies.
 
 The three affected DocType schemas were reloaded on `site1.local` with the targeted `sync_item_creation_schema()` helper. No broad migration or unrelated pending patches ran. Historical manufacturing data and pending 4D BOMs were not repaired or activated.

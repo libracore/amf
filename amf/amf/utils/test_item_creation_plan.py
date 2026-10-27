@@ -8,6 +8,7 @@ import frappe
 from amf.amf.utils import item_creation_compatibility as compatibility
 from amf.amf.utils import item_creation_plan as plans
 from amf.amf.utils import item_creation_workflow as workflow
+from amf.amf.utils import item_creation_traceability as traceability
 
 
 class MemoryCatalogue(plans.Catalogue):
@@ -230,6 +231,14 @@ class TestItemCreationPlan(unittest.TestCase):
         doc.plug_raw_qty = 0.03
         self.assertNotEqual(original, plans.input_hash(doc))
 
+    def test_amendment_plan_approval_includes_predecessor_and_reason(self):
+        doc = source(amended_from="CANCELLED-REQUEST", amendment_reason="Approved screw change",
+                     plug_code="100ABC", seat_code="200ABC")
+        plan = plans.build_plan(doc, catalogue=catalogue())
+        self.assertEqual(plan["inputs"]["amended_from"], doc.amended_from)
+        self.assertEqual(plan["inputs"]["amendment_reason"], doc.amendment_reason)
+        self.assertEqual(plan["input_hash"], plans.input_hash(doc))
+
     def test_historical_submitted_requests_do_not_invent_a_reviewed_plan(self):
         historical = source(docstatus=1, review_history=[])
         with patch.object(workflow, "_source_for_preview", return_value=historical), \
@@ -295,8 +304,10 @@ class TestItemCreationPlan(unittest.TestCase):
         self.db.commit, self.db.rollback = Mock(), Mock()
         with patch.object(frappe, "get_doc", side_effect=get_doc), \
                 patch.object(workflow, "_new_bom", return_value="BOM-NEW"), \
+                patch.object(traceability, "store_results") as store, \
                 patch.object(workflow, "now_datetime", return_value="2026-10-27 12:01:00"):
             result = workflow.execute_reviewed_plan(doc)
+        store.assert_called_once_with(doc, result)
         self.assertEqual(created[0].has_batch_no, 0)
         self.assertEqual(result["records"][0]["bom"], "BOM-NEW")
         self.assertEqual(doc.review_status, "Created")

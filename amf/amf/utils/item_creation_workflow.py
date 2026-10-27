@@ -13,7 +13,7 @@ from amf.amf.utils.item_creation_plan import INPUT_FIELDS, build_plan, encode, i
 
 
 PROTECTED_FIELDS = ("review_status", "approved_plan_hash", "approved_input_hash", "reviewed_by",
-                    "reviewed_at", "creation_result")
+                    "reviewed_at", "creation_result", "cancelled_by", "cancelled_at")
 HISTORY_FIELDS = ("name", "idx", "reviewed_by", "reviewed_at", "plan_hash", "input_hash", "review_notes", "plan_snapshot")
 
 
@@ -39,6 +39,11 @@ def protect_review_fields(doc):
                               for row in source.get("review_history") or []] if source else []
     if history(doc) != history(previous):
         frappe.throw(_("Engineering review history cannot be changed or deleted."))
+    from amf.amf.utils.item_creation_traceability import RESULT_FIELDS
+    results = lambda source: [{key: str(row.get(key) or "") for key in ("name", "idx") + RESULT_FIELDS}
+                             for row in source.get("execution_results") or []] if source else []
+    if results(doc) != results(previous):
+        frappe.throw(_("Execution result links cannot be changed or deleted."))
     if doc.get("approved_input_hash") and input_hash(doc) != doc.approved_input_hash:
         doc.review_status = "Stale"
         doc.approved_plan_hash = doc.approved_input_hash = None
@@ -61,6 +66,7 @@ def _source_for_preview(payload):
         frappe.throw(_("You cannot prepare Item Creation requests."), frappe.PermissionError)
     values = frappe._dict({field: data.get(field) for field in INPUT_FIELDS})
     values.update(dict(name=name, doctype="Item Creation", product_variants=data.get("product_variants") or []))
+    values.update(dict(amended_from=data.get("amended_from"), amendment_reason=data.get("amendment_reason")))
     if not isinstance(values.product_variants, list) or any(not isinstance(row, dict) for row in values.product_variants):
         frappe.throw(_("Product configurations must be a table of body/syringe selections."))
     if len(values.product_variants) > len(compatibility.CONFIGURATIONS):
@@ -209,12 +215,14 @@ def execute_reviewed_plan(source):
         source.review_status = "Created"
         source.creation_result = encode(result)
         frappe.db.set_value(source.doctype, source.name, dict(review_status="Created", creation_result=source.creation_result), update_modified=False)
+        from amf.amf.utils.item_creation_traceability import store_results
+        store_results(source, result)
     source.add_comment("Comment", _("Created/verified {0} Items using engineering review {1}.").format(len(results), plan["fingerprint"]))
     return result
 
 
 def sync_item_creation_schema():
     """Targeted additive schema reload; does not run unrelated pending patches."""
-    for doctype in ("item_creation_variant", "item_creation_review", "item_creation"):
+    for doctype in ("item_creation_variant", "item_creation_review", "item_creation_result", "item_creation"):
         frappe.reload_doc("amf", "doctype", doctype, force=True)
     frappe.clear_cache(doctype="Item Creation")

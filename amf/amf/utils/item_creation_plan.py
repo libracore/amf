@@ -55,6 +55,9 @@ def inputs(doc):
          for row in doc.get("product_variants") or [] if cint(row.get("selected"))],
         key=lambda row: (row["body"] or "", row["syringe"]),
     )
+    # Keep existing, non-amendment approvals stable when adding lifecycle metadata.
+    if doc.get("amended_from"):
+        values.update(amended_from=doc.amended_from, amendment_reason=(doc.get("amendment_reason") or "").strip())
     return values
 
 
@@ -187,6 +190,7 @@ class Planner:
     def __init__(self, doc, catalogue=None, lock=False):
         # Work on explicit inputs only; preview must not mutate its source Doc.
         self.doc = frappe._dict({field: doc.get(field) for field in INPUT_FIELDS})
+        self.doc.update(dict(amended_from=doc.get("amended_from"), amendment_reason=doc.get("amendment_reason")))
         self.doc.product_variants = doc.get("product_variants") or []
         self.catalogue = catalogue or Catalogue(lock=lock)
         self.errors, self.warnings, self.actions = [], [], []
