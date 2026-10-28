@@ -33,3 +33,4 @@ amf.patches.v12_0.install_monthly_inventory_checks
 amf.patches.v12_0.install_item_creation_engineering_workflow
 amf.patches.v12_0.install_item_creation_traceability
 amf.patches.v12_0.update_item_creation_configuration_guidance
+amf.patches.v12_0.create_acoustic_mixer_items_2026_10_28
