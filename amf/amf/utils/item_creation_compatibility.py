@@ -6,7 +6,7 @@ new combinations from the existence of a Body or Syringe Item.
 import re
 
 
-RULE_VERSION = "2026-10-27.2"
+RULE_VERSION = "2026-10-28.1"
 LV_SYRINGES = ("2", "3", "4", "5", "8", "9", "D")
 HV_SYRINGES = ("E", "F")
 SYRINGE_REFERENCES = {"2": "S-50-P", "3": "S-100-P", "4": "S-100-U", "5": "S-250-P",
@@ -105,7 +105,13 @@ def validate_selections(doc):
         elif not checked(doc.get(FAMILY_FLAGS[rule["family"]])):
             errors.append("Enable the {0} product family for {1}.".format(rule["family"], key))
         else:
-            selected.append(dict(rule))
+            product_code = (row.get("product_code") or "").strip().upper()
+            if product_code and (not re.fullmatch(r"[0-9A-Z]{6}", product_code)
+                                 or not product_code.startswith(rule["prefix"]) or product_code[-3:] == "000"):
+                errors.append("Product code {0} must start with {1} and have three letters/digits other than 000.".format(
+                    product_code, rule["prefix"]))
+            else:
+                selected.append(dict(rule, product_code=product_code))
         seen.add(key)
     for family, flag in FAMILY_FLAGS.items():
         if checked(doc.get(flag)) and not any(row["family"] == family for row in selected):

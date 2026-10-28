@@ -29,6 +29,7 @@
   "seat_name",
   "seat_code",
   "seat_rnd",
+  "seat_pin_item",
   "seat_acc",
   "seat_mat",
   "seat_raw_material",
@@ -136,6 +137,15 @@
    "fieldname": "seat_rnd",
    "fieldtype": "Data",
    "label": "R&D Code"
+  },
+  {
+   "default": "SPL.3039",
+   "depends_on": "eval:doc.seat_check=='Yes'",
+   "fieldname": "seat_pin_item",
+   "fieldtype": "Link",
+   "label": "Pins",
+   "options": "Item",
+   "description": "Select the pin Item consumed by the seat sub-assembly."
   },
   {
    "default": "2",

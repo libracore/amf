@@ -158,10 +158,24 @@ class TestItemCodeFamily(unittest.TestCase):
             with self.assertRaisesRegex(frappe.ValidationError, "already allocated"):
                 family.validate_new_item_family(Doc(item_code="110ABC", item_group="Plug"))
 
-    def test_new_product_bom_cannot_use_a_different_head(self):
+    def test_new_product_bom_allows_a_different_head_suffix(self):
         doc = Doc(__islocal=1, item="46EABC", items=[Doc(item_code="300ABD")])
-        with self.assertRaisesRegex(frappe.ValidationError, "exactly one head"):
-            family.validate_new_bom_family(doc)
+        family.validate_new_bom_family(doc)
+
+    def test_product_in_a_creation_context_does_not_claim_its_own_head_suffix(self):
+        source = ("Item Creation", "REQUEST-A")
+        family.reserve_suffix("ABC", source)
+        family.reserve_suffix("XYZ", ("Item Creation", "OTHER-HEAD"))
+        with family.family_creation(source, "ABC"):
+            family.validate_new_item_family(Doc(item_code="46EXYZ", item_group="Product"))
+        self.assertIn(family.MEMBER_PREFIX + "46EXYZ", self.db.series)
+        self.assertFalse(family.is_reserved_for("XYZ", source))
+
+    def test_standalone_product_reserves_its_referenced_head_family(self):
+        self.db.get_value = Mock(return_value=frappe._dict(item_group="Valve Head", disabled=0))
+        with patch.object(family, "validate_existing_head_family"):
+            source = family._product_head_source(Doc(reference_code="P101O300ABDS2500P"), "46EXYZ")
+        self.assertEqual(source, ("Item", "300ABD"))
 
     def test_new_head_bom_checks_retired_component_aliases_too(self):
         doc = Doc(__islocal=1, item="300ABC", items=[Doc(item_code="/100ABD")])
@@ -191,15 +205,16 @@ class TestItemCodeFamily(unittest.TestCase):
 
     def test_draft_changes_and_direct_submission_are_rechecked(self):
         for docstatus, method in ((0, "before_save"), (1, "before_submit")):
-            with self.subTest(method=method), self.assertRaisesRegex(frappe.ValidationError, "exactly one head"):
+            with self.subTest(method=method), self.assertRaisesRegex(frappe.ValidationError, "exactly one Valve Head"):
                 family.validate_new_bom_family(Doc(docstatus=docstatus, item="46EABC",
-                                                  items=[Doc(item_code="300ABD")]), method)
+                                                  items=[]), method)
 
-    def test_custom_product_bom_must_also_match_the_head(self):
+    def test_custom_product_bom_still_requires_exactly_one_head(self):
         self.db.get_value = Mock(return_value="Product")
-        with self.assertRaisesRegex(frappe.ValidationError, "exactly one head"):
+        family.validate_new_bom_family(Doc(__islocal=1, item="UF0ABC", items=[Doc(item_code="300ABD")]))
+        with self.assertRaisesRegex(frappe.ValidationError, "exactly one Valve Head"):
             family.validate_new_bom_family(Doc(__islocal=1, item="UF0ABC",
-                                              items=[Doc(item_code="300ABD")]))
+                                              items=[Doc(item_code="300ABD"), Doc(item_code="300ABC")]))
 
     def test_family_context_leaves_transaction_methods_with_the_request(self):
         commit, rollback = self.db.commit, self.db.rollback

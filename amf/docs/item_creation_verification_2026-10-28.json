@@ -1,0 +1,2932 @@
+{
+  "date": "2026-10-28",
+  "timezone": "Europe/Zurich",
+  "site": "site1.local",
+  "baseline_commit": "2abf264",
+  "baseline": {
+    "scope": "site1.local; MariaDB read-only transaction; rollback in finally",
+    "versions": {
+      "frappe": "2023.6.2",
+      "erpnext": "2023.8.3",
+      "amf": "0.7.6"
+    },
+    "records": [
+      {
+        "name": "0bae9e37b6",
+        "docstatus": 1,
+        "head_check": "Yes",
+        "head_code": "300134",
+        "head_item": "",
+        "company": null,
+        "default_warehouse": null,
+        "review_status": "Draft",
+        "reviewed_at": null,
+        "reviews": 0,
+        "results": 0,
+        "creation": "2025-11-19 10:47:13.869708",
+        "modified": "2025-11-19 10:50:34.906999"
+      },
+      {
+        "name": "9721c2ee05",
+        "docstatus": 1,
+        "head_check": "Yes",
+        "head_code": "300135",
+        "head_item": "",
+        "company": null,
+        "default_warehouse": null,
+        "review_status": "Draft",
+        "reviewed_at": null,
+        "reviews": 0,
+        "results": 0,
+        "creation": "2025-11-27 10:43:13.417755",
+        "modified": "2025-11-27 10:46:01.274325"
+      },
+      {
+        "name": "Item Creation-00001",
+        "docstatus": 1,
+        "head_check": "Yes",
+        "head_code": "300136",
+        "head_item": "",
+        "company": null,
+        "default_warehouse": null,
+        "review_status": "Draft",
+        "reviewed_at": null,
+        "reviews": 0,
+        "results": 0,
+        "creation": "2026-01-07 08:43:36.661150",
+        "modified": "2026-01-07 08:45:02.488687"
+      },
+      {
+        "name": "Item Creation-00002",
+        "docstatus": 0,
+        "head_check": "No",
+        "head_code": "",
+        "head_item": "300126",
+        "company": null,
+        "default_warehouse": null,
+        "review_status": "Draft",
+        "reviewed_at": null,
+        "reviews": 0,
+        "results": 0,
+        "creation": "2026-02-12 16:03:49.495762",
+        "modified": "2026-02-12 16:03:49.495762"
+      },
+      {
+        "name": "Item Creation-00003",
+        "docstatus": 1,
+        "head_check": "Yes",
+        "head_code": "300085",
+        "head_item": "",
+        "company": null,
+        "default_warehouse": null,
+        "review_status": "Draft",
+        "reviewed_at": null,
+        "reviews": 0,
+        "results": 0,
+        "creation": "2026-10-26 17:21:25.175535",
+        "modified": "2026-10-26 17:22:17.445697"
+      }
+    ],
+    "custom_fields": [],
+    "property_setters": [
+      {
+        "field_name": "naming_series",
+        "property": "options",
+        "value": "Item Creation-"
+      }
+    ],
+    "custom_scripts": [],
+    "workflows": [],
+    "permissions": [
+      {
+        "parent": "BOM",
+        "role": "Manufacturing Manager",
+        "read": 1,
+        "write": 1,
+        "create": 1,
+        "submit": 1,
+        "cancel": 1,
+        "amend": 0
+      },
+      {
+        "parent": "BOM",
+        "role": "Manufacturing User",
+        "read": 1,
+        "write": 1,
+        "create": 1,
+        "submit": 1,
+        "cancel": 1,
+        "amend": 0
+      },
+      {
+        "parent": "Item",
+        "role": "Accounts User",
+        "read": 1,
+        "write": 0,
+        "create": 0,
+        "submit": 0,
+        "cancel": 0,
+        "amend": 0
+      },
+      {
+        "parent": "Item",
+        "role": "Item Manager",
+        "read": 1,
+        "write": 1,
+        "create": 1,
+        "submit": 0,
+        "cancel": 0,
+        "amend": 0
+      },
+      {
+        "parent": "Item",
+        "role": "Maintenance User",
+        "read": 1,
+        "write": 0,
+        "create": 0,
+        "submit": 0,
+        "cancel": 0,
+        "amend": 0
+      },
+      {
+        "parent": "Item",
+        "role": "Manufacturing User",
+        "read": 1,
+        "write": 0,
+        "create": 0,
+        "submit": 0,
+        "cancel": 0,
+        "amend": 0
+      },
+      {
+        "parent": "Item",
+        "role": "Purchase User",
+        "read": 1,
+        "write": 0,
+        "create": 0,
+        "submit": 0,
+        "cancel": 0,
+        "amend": 0
+      },
+      {
+        "parent": "Item",
+        "role": "Sales User",
+        "read": 1,
+        "write": 0,
+        "create": 0,
+        "submit": 0,
+        "cancel": 0,
+        "amend": 0
+      },
+      {
+        "parent": "Item",
+        "role": "Stock Manager",
+        "read": 1,
+        "write": 0,
+        "create": 0,
+        "submit": 0,
+        "cancel": 0,
+        "amend": 0
+      },
+      {
+        "parent": "Item",
+        "role": "Stock User",
+        "read": 1,
+        "write": 0,
+        "create": 0,
+        "submit": 0,
+        "cancel": 0,
+        "amend": 0
+      },
+      {
+        "parent": "Item Creation",
+        "role": "System Manager",
+        "read": 1,
+        "write": 1,
+        "create": 1,
+        "submit": 1,
+        "cancel": 1,
+        "amend": 1
+      }
+    ],
+    "custom_permissions": [
+      {
+        "parent": "BOM",
+        "role": "Manufacturing Manager",
+        "read": 1,
+        "write": 1,
+        "create": 1,
+        "submit": 1,
+        "cancel": 1,
+        "amend": 1
+      },
+      {
+        "parent": "BOM",
+        "role": "Manufacturing User",
+        "read": 1,
+        "write": 0,
+        "create": 0,
+        "submit": 0,
+        "cancel": 0,
+        "amend": 0
+      },
+      {
+        "parent": "Item",
+        "role": "Accounts Manager",
+        "read": 1,
+        "write": 0,
+        "create": 0,
+        "submit": 0,
+        "cancel": 0,
+        "amend": 0
+      },
+      {
+        "parent": "Item",
+        "role": "Accounts User",
+        "read": 1,
+        "write": 0,
+        "create": 0,
+        "submit": 0,
+        "cancel": 0,
+        "amend": 0
+      },
+      {
+        "parent": "Item",
+        "role": "Item Manager",
+        "read": 1,
+        "write": 1,
+        "create": 1,
+        "submit": 0,
+        "cancel": 0,
+        "amend": 0
+      },
+      {
+        "parent": "Item",
+        "role": "Maintenance User",
+        "read": 1,
+        "write": 0,
+        "create": 0,
+        "submit": 0,
+        "cancel": 0,
+        "amend": 0
+      },
+      {
+        "parent": "Item",
+        "role": "Manufacturing User",
+        "read": 1,
+        "write": 0,
+        "create": 0,
+        "submit": 0,
+        "cancel": 0,
+        "amend": 0
+      },
+      {
+        "parent": "Item",
+        "role": "Purchase User",
+        "read": 1,
+        "write": 0,
+        "create": 0,
+        "submit": 0,
+        "cancel": 0,
+        "amend": 0
+      },
+      {
+        "parent": "Item",
+        "role": "Sales User",
+        "read": 1,
+        "write": 0,
+        "create": 0,
+        "submit": 0,
+        "cancel": 0,
+        "amend": 0
+      },
+      {
+        "parent": "Item",
+        "role": "Stock Manager",
+        "read": 1,
+        "write": 0,
+        "create": 0,
+        "submit": 0,
+        "cancel": 0,
+        "amend": 0
+      },
+      {
+        "parent": "Item",
+        "role": "Stock User",
+        "read": 1,
+        "write": 1,
+        "create": 1,
+        "submit": 0,
+        "cancel": 0,
+        "amend": 0
+      },
+      {
+        "parent": "Item Creation",
+        "role": "System Manager",
+        "read": 1,
+        "write": 1,
+        "create": 1,
+        "submit": 1,
+        "cancel": 1,
+        "amend": 1
+      }
+    ],
+    "patches": [
+      {
+        "patch": "amf.patches.v12_0.install_item_creation_engineering_workflow"
+      },
+      {
+        "patch": "amf.patches.v12_0.install_item_creation_traceability"
+      },
+      {
+        "patch": "amf.patches.v12_0.update_item_creation_configuration_guidance"
+      }
+    ],
+    "metadata_differences": [],
+    "catalogue": {
+      "total_items": 3372,
+      "items_by_group": {
+        "Product": 2144,
+        "Valve Head": 109,
+        "Body": 46,
+        "Marketing Material": 7,
+        "Part": 85,
+        "Raw Material": 38,
+        "Generic Item": 168,
+        "Valve Seat": 143,
+        "Plug": 162,
+        "All Item Groups": 10,
+        "Assembly": 12,
+        "Glass": 7,
+        "Service": 11,
+        "Tool": 69,
+        "Electrical Testing Instruments": 1,
+        "Machinery": 1,
+        "Electronic Board": 33,
+        "Electrical Connectors and Wiring": 41,
+        "Fluidic Components": 21,
+        "Motors and Motion": 24,
+        "Fasteners": 59,
+        "Springs": 14,
+        "Sensors and Magnets": 9,
+        "Bearings and Bushings": 10,
+        "Custom Mechanical Parts": 26,
+        "General Mechanical Parts": 5,
+        "Packaging": 8,
+        "Accessory": 8,
+        "Syringe": 16,
+        "Cable": 18,
+        "System": 2,
+        "Sub Assembly": 1,
+        "Software": 4,
+        "Custom": 5,
+        "Kit": 7,
+        "Seals and Elastomers": 6,
+        "Storage": 1,
+        "Transport": 1,
+        "Electronic Components": 20,
+        "Plunger": 9,
+        "Thermal Components": 11
+      },
+      "reservations": 0,
+      "next_suffix": "117"
+    },
+    "preview_context": {
+      "company": "Advanced Microfluidics SA",
+      "warehouse": "Mecatix - AMF21"
+    },
+    "existing_head_plans": [
+      {
+        "head": "300126",
+        "bom": "BOM-300126-007",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 200057 does not share head suffix 126; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110026 does not share head suffix 126; define a reviewed replacement.",
+            "field": ""
+          }
+        ],
+        "seconds": 0.031
+      },
+      {
+        "head": "300135",
+        "bom": "BOM-300135-002",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 110060 does not share head suffix 135; define a reviewed replacement.",
+            "field": ""
+          }
+        ],
+        "seconds": 0.027
+      },
+      {
+        "head": "300040",
+        "bom": "BOM-300040-011",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-100040-008 has invalid quantities or an outdated stock UOM for MAT.1016; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-200040-010 has invalid quantities or an outdated stock UOM for MAT.1013; propose a reviewed replacement.",
+            "field": ""
+          }
+        ],
+        "seconds": 0.018
+      },
+      {
+        "head": "300055",
+        "bom": "BOM-300055-008",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 110040 does not share head suffix 055; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 200040 does not share head suffix 055; define a reviewed replacement.",
+            "field": ""
+          }
+        ],
+        "seconds": 0.005
+      }
+    ],
+    "head_catalogue": {
+      "enabled": 100,
+      "without_default_bom": [
+        "300057",
+        "300100",
+        "300110",
+        "300111",
+        "300138",
+        "V-Template"
+      ],
+      "direct_mismatched_component_rows": [
+        {
+          "head": "300007",
+          "bom": "BOM-300007-007",
+          "component": "210006",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210006-004"
+        },
+        {
+          "head": "300023",
+          "bom": "BOM-300023-005",
+          "component": "110022",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110022-003"
+        },
+        {
+          "head": "300034",
+          "bom": "BOM-300034-006",
+          "component": "210033",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210033-003"
+        },
+        {
+          "head": "300036",
+          "bom": "BOM-300036-007",
+          "component": "210035",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210035-003"
+        },
+        {
+          "head": "300039",
+          "bom": "BOM-300039-008",
+          "component": "210038",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210038-003"
+        },
+        {
+          "head": "300041",
+          "bom": "BOM-300041-008",
+          "component": "210040",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210040-004-1"
+        },
+        {
+          "head": "300044",
+          "bom": "BOM-300044-006",
+          "component": "210043",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210043-003"
+        },
+        {
+          "head": "300045",
+          "bom": "BOM-300045-006",
+          "component": "210037",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210037-003"
+        },
+        {
+          "head": "300049",
+          "bom": "BOM-300049-001",
+          "component": "110004",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110004-003"
+        },
+        {
+          "head": "300050",
+          "bom": "BOM-300050-006",
+          "component": "210056",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210056-004"
+        },
+        {
+          "head": "300052",
+          "bom": "BOM-300052-003",
+          "component": "210012",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210012-004"
+        },
+        {
+          "head": "300055",
+          "bom": "BOM-300055-008",
+          "component": "110040",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110040-004"
+        },
+        {
+          "head": "300059",
+          "bom": "BOM-300059-008",
+          "component": "210032",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210032-006"
+        },
+        {
+          "head": "300060",
+          "bom": "BOM-300060-010",
+          "component": "110133",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110133-002"
+        },
+        {
+          "head": "300060",
+          "bom": "BOM-300060-010",
+          "component": "210005",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210005-004"
+        },
+        {
+          "head": "300061",
+          "bom": "BOM-300061-008",
+          "component": "210010",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210010-006"
+        },
+        {
+          "head": "300064",
+          "bom": "BOM-300064-006",
+          "component": "210038",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210038-003"
+        },
+        {
+          "head": "300064",
+          "bom": "BOM-300064-006",
+          "component": "110015",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110015-003"
+        },
+        {
+          "head": "300065",
+          "bom": "BOM-300065-007",
+          "component": "210052",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210052-004"
+        },
+        {
+          "head": "300065",
+          "bom": "BOM-300065-007",
+          "component": "110024",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110024-004"
+        },
+        {
+          "head": "300066",
+          "bom": "BOM-300066-006",
+          "component": "210006",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210006-004"
+        },
+        {
+          "head": "300066",
+          "bom": "BOM-300066-006",
+          "component": "110008",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110008-003"
+        },
+        {
+          "head": "300067",
+          "bom": "BOM-300067-004",
+          "component": "210042",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210042-003"
+        },
+        {
+          "head": "300069",
+          "bom": "BOM-300069-006",
+          "component": "110018",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110018-003"
+        },
+        {
+          "head": "300069",
+          "bom": "BOM-300069-006",
+          "component": "210051",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210051-004"
+        },
+        {
+          "head": "300070",
+          "bom": "BOM-300070-005",
+          "component": "210048",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210048-003"
+        },
+        {
+          "head": "300070",
+          "bom": "BOM-300070-005",
+          "component": "110001",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110001-003"
+        },
+        {
+          "head": "300072",
+          "bom": "BOM-300072-005",
+          "component": "110011",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110011-003"
+        },
+        {
+          "head": "300072",
+          "bom": "BOM-300072-005",
+          "component": "210040",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210040-004-1"
+        },
+        {
+          "head": "300073",
+          "bom": "BOM-300073-005",
+          "component": "210006",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210006-004"
+        },
+        {
+          "head": "300073",
+          "bom": "BOM-300073-005",
+          "component": "110028",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110028-003"
+        },
+        {
+          "head": "300074",
+          "bom": "BOM-300074-004",
+          "component": "210053",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210053-003"
+        },
+        {
+          "head": "300074",
+          "bom": "BOM-300074-004",
+          "component": "110027",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110027-003"
+        },
+        {
+          "head": "300075",
+          "bom": "BOM-300075-005",
+          "component": "110047",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110047-005"
+        },
+        {
+          "head": "300075",
+          "bom": "BOM-300075-005",
+          "component": "210043",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210043-003"
+        },
+        {
+          "head": "300077",
+          "bom": "BOM-300077-008",
+          "component": "300024",
+          "item_group": "Valve Head",
+          "qty": 1.0,
+          "bom_no": "BOM-300024-009"
+        },
+        {
+          "head": "300078",
+          "bom": "BOM-300078-009",
+          "component": "300032",
+          "item_group": "Valve Head",
+          "qty": 1.0,
+          "bom_no": "BOM-300032-007"
+        },
+        {
+          "head": "300079",
+          "bom": "BOM-300079-010",
+          "component": "210010",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210010-006"
+        },
+        {
+          "head": "300079",
+          "bom": "BOM-300079-010",
+          "component": "110009",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110009-006"
+        },
+        {
+          "head": "300080",
+          "bom": "BOM-300080-001",
+          "component": "210056",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210056-004"
+        },
+        {
+          "head": "300080",
+          "bom": "BOM-300080-001",
+          "component": "110137",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110137-001"
+        },
+        {
+          "head": "300081",
+          "bom": "BOM-300081-003",
+          "component": "210058",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210056-003"
+        },
+        {
+          "head": "300081",
+          "bom": "BOM-300081-003",
+          "component": "110051",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110051-003"
+        },
+        {
+          "head": "300084",
+          "bom": "BOM-300084-001",
+          "component": "110040",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110040-004"
+        },
+        {
+          "head": "300084",
+          "bom": "BOM-300084-001",
+          "component": "210082",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210082-001"
+        },
+        {
+          "head": "300088",
+          "bom": "BOM-300088-002",
+          "component": "210096",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-200098-001"
+        },
+        {
+          "head": "300088",
+          "bom": "BOM-300088-002",
+          "component": "110094",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110094-001"
+        },
+        {
+          "head": "300090",
+          "bom": "BOM-300090-005",
+          "component": "210040",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210040-004-1"
+        },
+        {
+          "head": "300092",
+          "bom": "BOM-300092-004",
+          "component": "210033",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210033-003"
+        },
+        {
+          "head": "300093",
+          "bom": "BOM-300093-001",
+          "component": "110060",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110060-001"
+        },
+        {
+          "head": "300093",
+          "bom": "BOM-300093-001",
+          "component": "210060",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210060-001"
+        },
+        {
+          "head": "300095",
+          "bom": "BOM-300095-002",
+          "component": "210040",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210040-004-1"
+        },
+        {
+          "head": "300096",
+          "bom": "BOM-300096-002",
+          "component": "210055",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210055-006"
+        },
+        {
+          "head": "300096",
+          "bom": "BOM-300096-002",
+          "component": "110090",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110090-002"
+        },
+        {
+          "head": "300097",
+          "bom": "BOM-300097-002",
+          "component": "110033",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110033-003"
+        },
+        {
+          "head": "300098",
+          "bom": "BOM-300098-002",
+          "component": "110034",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110034-003"
+        },
+        {
+          "head": "300098",
+          "bom": "BOM-300098-002",
+          "component": "210097",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210097-004"
+        },
+        {
+          "head": "300099",
+          "bom": "BOM-300099-002",
+          "component": "110035",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110035-003"
+        },
+        {
+          "head": "300101",
+          "bom": "BOM-300101-002",
+          "component": "110037",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110037-003"
+        },
+        {
+          "head": "300102",
+          "bom": "BOM-300102-002",
+          "component": "110038",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110038-003"
+        },
+        {
+          "head": "300103",
+          "bom": "BOM-300103-002",
+          "component": "210102",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210102-001"
+        },
+        {
+          "head": "300103",
+          "bom": "BOM-300103-002",
+          "component": "110039",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110039-003"
+        },
+        {
+          "head": "300104",
+          "bom": "BOM-300104-002",
+          "component": "210055",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210055-006"
+        },
+        {
+          "head": "300104",
+          "bom": "BOM-300104-002",
+          "component": "110041",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110041-003"
+        },
+        {
+          "head": "300105",
+          "bom": "BOM-300105-002",
+          "component": "210112",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210112-001"
+        },
+        {
+          "head": "300105",
+          "bom": "BOM-300105-002",
+          "component": "110042",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110042-003"
+        },
+        {
+          "head": "300106",
+          "bom": "BOM-300106-002",
+          "component": "110043",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110043-003"
+        },
+        {
+          "head": "300107",
+          "bom": "BOM-300107-002",
+          "component": "210106",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210106-001"
+        },
+        {
+          "head": "300107",
+          "bom": "BOM-300107-002",
+          "component": "110044",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110044-003"
+        },
+        {
+          "head": "300108",
+          "bom": "BOM-300108-002",
+          "component": "110045",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110045-003"
+        },
+        {
+          "head": "300108",
+          "bom": "BOM-300108-002",
+          "component": "210101",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210101-001"
+        },
+        {
+          "head": "300109",
+          "bom": "BOM-300109-002",
+          "component": "110046",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110046-003"
+        },
+        {
+          "head": "300114",
+          "bom": "BOM-300114-001",
+          "component": "210033",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210033-003"
+        },
+        {
+          "head": "300114",
+          "bom": "BOM-300114-001",
+          "component": "110033",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110033-003"
+        },
+        {
+          "head": "300124",
+          "bom": "BOM-300124-001",
+          "component": "210120",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210122-001"
+        },
+        {
+          "head": "300124",
+          "bom": "BOM-300124-001",
+          "component": "110116",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110118-001"
+        },
+        {
+          "head": "300126",
+          "bom": "BOM-300126-007",
+          "component": "200057",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-200057-009"
+        },
+        {
+          "head": "300126",
+          "bom": "BOM-300126-007",
+          "component": "110026",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110026-003"
+        },
+        {
+          "head": "300130",
+          "bom": "BOM-300130-005",
+          "component": "110030",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110030-003"
+        },
+        {
+          "head": "300130",
+          "bom": "BOM-300130-005",
+          "component": "210030",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-210030-008"
+        },
+        {
+          "head": "300135",
+          "bom": "BOM-300135-002",
+          "component": "110060",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110060-001"
+        },
+        {
+          "head": "300137",
+          "bom": "BOM-300137-001",
+          "component": "200135",
+          "item_group": "Valve Seat",
+          "qty": 1.0,
+          "bom_no": "BOM-200135-001"
+        },
+        {
+          "head": "300137",
+          "bom": "BOM-300137-001",
+          "component": "110060",
+          "item_group": "Plug",
+          "qty": 1.0,
+          "bom_no": "BOM-110060-001"
+        }
+      ],
+      "heads_with_direct_suffix_mismatch": 55
+    },
+    "product_catalogue": {
+      "head_rows": 583,
+      "suffix_disagreements": [
+        {
+          "product": "410063",
+          "reference_code": "P200O300063",
+          "bom": "BOM-410063-003",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300052"
+        },
+        {
+          "product": "420015",
+          "reference_code": "P201O300005RSB",
+          "bom": "BOM-420015-007",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300005"
+        },
+        {
+          "product": "420047",
+          "reference_code": "P201O300040RS485",
+          "bom": "BOM-420047-005",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300040"
+        },
+        {
+          "product": "420048",
+          "reference_code": "P201O300005RS485",
+          "bom": "BOM-420048-005",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300005"
+        },
+        {
+          "product": "420049",
+          "reference_code": "P201O300033RS485",
+          "bom": "BOM-420049-006",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300033"
+        },
+        {
+          "product": "420063",
+          "reference_code": "P201O300063",
+          "bom": "BOM-420063-006",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300052"
+        },
+        {
+          "product": "420078",
+          "reference_code": "P201O300077",
+          "bom": "BOM-420078-013",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300077"
+        },
+        {
+          "product": "420081",
+          "reference_code": "P201O300036I2C1LPH",
+          "bom": "BOM-420081-009",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300036"
+        },
+        {
+          "product": "420082",
+          "reference_code": "P201O300041I2C2LPH",
+          "bom": "BOM-420082-010",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300041"
+        },
+        {
+          "product": "420083",
+          "reference_code": "P201O300041I2C3LPH",
+          "bom": "BOM-420083-009",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300041"
+        },
+        {
+          "product": "420084",
+          "reference_code": "P201O300045I2C4LPH",
+          "bom": "BOM-420084-009",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300045"
+        },
+        {
+          "product": "420086",
+          "reference_code": "P201O300041MTY",
+          "bom": "BOM-420086-004",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300041"
+        },
+        {
+          "product": "420087",
+          "reference_code": "P201O300040ELV",
+          "bom": "BOM-420087-006",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300040"
+        },
+        {
+          "product": "420088",
+          "reference_code": "P201O300012ELV",
+          "bom": "BOM-420088-007",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300012"
+        },
+        {
+          "product": "420089",
+          "reference_code": "P201O300014SYS",
+          "bom": "BOM-420089-003",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300014"
+        },
+        {
+          "product": "420090",
+          "reference_code": "P201O300006AIR",
+          "bom": "BOM-420090-002",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300006"
+        },
+        {
+          "product": "420091",
+          "reference_code": "P201O300088OKO",
+          "bom": "BOM-420091-003",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300088"
+        },
+        {
+          "product": "420092",
+          "reference_code": "P201O300077BR/RP",
+          "bom": "BOM-420092-002",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300077"
+        },
+        {
+          "product": "420096",
+          "reference_code": "P201O300029RS485",
+          "bom": "BOM-420096-006",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300029"
+        },
+        {
+          "product": "420097",
+          "reference_code": "P201O300095RS485",
+          "bom": "BOM-420097-005",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300095"
+        },
+        {
+          "product": "420098",
+          "reference_code": "P201O300115",
+          "bom": "BOM-420098-002",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300115"
+        },
+        {
+          "product": "420099",
+          "reference_code": "P201O300080RS485",
+          "bom": "BOM-420099-002",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300080"
+        },
+        {
+          "product": "420135",
+          "reference_code": null,
+          "bom": "BOM-420135-001",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300037"
+        },
+        {
+          "product": "46F077",
+          "reference_code": "P101O300106S5000P",
+          "bom": "BOM-46F077-006",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300106"
+        },
+        {
+          "product": "4D004D",
+          "reference_code": "P202O300042",
+          "bom": "BOM-4D004D-001",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300042"
+        },
+        {
+          "product": "4D0063",
+          "reference_code": "P202O300063",
+          "bom": "BOM-4D0063-001",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300052"
+        },
+        {
+          "product": "4D104D",
+          "reference_code": "P202O300042/RS485",
+          "bom": "BOM-4D104D-001",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300042"
+        },
+        {
+          "product": "4D1063",
+          "reference_code": "P202O300063/RS485",
+          "bom": "BOM-4D1063-001",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300052"
+        },
+        {
+          "product": "4D204D",
+          "reference_code": "P202O300042/CAN",
+          "bom": "BOM-4D204D-001",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300042"
+        },
+        {
+          "product": "4D2063",
+          "reference_code": "P202O300063/CAN",
+          "bom": "BOM-4D2063-001",
+          "company": "Advanced Microfluidics SA",
+          "docstatus": 1,
+          "is_active": 1,
+          "is_default": 1,
+          "head": "300052"
+        }
+      ]
+    },
+    "site_initialized_unit_tests": {
+      "run": 134,
+      "failures": 0,
+      "errors": 0
+    },
+    "guest_permissions": {
+      "Item": false,
+      "BOM": false,
+      "Item Creation": false
+    },
+    "guest_direct_helper_calls": {
+      "legacy_component_lookup": {
+        "returned": true,
+        "row_count": 2,
+        "sample": [
+          {
+            "item_code": "100062",
+            "item_name": "PLUG-SL-1-2-075-P",
+            "tag_raw_mat": "PTFE",
+            "reference_code": "RVM.1306-P",
+            "family_suffix": "062",
+            "sub_assembly_item_code": "110062"
+          },
+          {
+            "item_code": "100063",
+            "item_name": "PLUG-OS-2-4-050-P",
+            "tag_raw_mat": "PTFE",
+            "reference_code": "RVM.1319-P",
+            "family_suffix": "063",
+            "sub_assembly_item_code": "110063"
+          }
+        ]
+      },
+      "legacy_number_suggestion": {
+        "returned": true,
+        "row_count": null,
+        "sample": {
+          "item_group": "Valve Head",
+          "item_type": "Sub-Assembly",
+          "family_suffix": "117",
+          "item_code": "300117",
+          "family_codes": {
+            "plug_component": "100117",
+            "plug_sub_assembly": "110117",
+            "seat_component": "200117",
+            "seat_sub_assembly": "210117",
+            "head": "300117"
+          },
+          "reserved_codes": [
+            "100117",
+            "110117",
+            "200117",
+            "210117",
+            "300117"
+          ],
+          "tag_raw_mat": "",
+          "reuse_component_item": "",
+          "reuse_component_item_name": "",
+          "reuse_sub_assembly_item_code": "",
+          "reuse_candidates": [],
+          "rule": "The final three characters are accepted only when unused across all Product, head, sub-assembly and component variants, including retired codes and reservations."
+        }
+      },
+      "new_preview": {
+        "returned": false,
+        "error": "PermissionError",
+        "message": "Item and BOM read permissions are required for engineering preview."
+      }
+    },
+    "server_scripts": []
+  },
+  "followup": {
+    "head_readiness": [
+      {
+        "head": "300002",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200002-002 has invalid quantities or an outdated stock UOM for MAT.1009; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100002-005 has invalid quantities or an outdated stock UOM for MAT.1001; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300003",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-100003-005 has invalid quantities or an outdated stock UOM for MAT.1001; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-200003-002 has invalid quantities or an outdated stock UOM for MAT.1009; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300005",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200005-007 has invalid quantities or an outdated stock UOM for MAT.1012; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100005-005 has invalid quantities or an outdated stock UOM for MAT.1001; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300006",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200006-009 has invalid quantities or an outdated stock UOM for MAT.1012; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100006-007 has invalid quantities or an outdated stock UOM for MAT.1016; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300007",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-100007-003 has invalid quantities or an outdated stock UOM for MAT.1003; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 210006 does not share head suffix 007; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300009",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-100009-005 has invalid quantities or an outdated stock UOM for MAT.1001; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-200009-007 has invalid quantities or an outdated stock UOM for MAT.1012; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300010",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200010-004 has invalid quantities or an outdated stock UOM for MAT.1007; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300012",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200012-007 has invalid quantities or an outdated stock UOM for MAT.1012; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100012-005 has invalid quantities or an outdated stock UOM for MAT.1001; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300013",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-100013-005 has invalid quantities or an outdated stock UOM for MAT.1001; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-200013-007 has invalid quantities or an outdated stock UOM for MAT.1012; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300014",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200014-008 has invalid quantities or an outdated stock UOM for MAT.1012; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100014-006 has invalid quantities or an outdated stock UOM for MAT.1016; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300016",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-100016-005 has invalid quantities or an outdated stock UOM for MAT.1001; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-200016-007 has invalid quantities or an outdated stock UOM for MAT.1012; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300017",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-100017-005 has invalid quantities or an outdated stock UOM for MAT.1001; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-200017-007 has invalid quantities or an outdated stock UOM for MAT.1012; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300019",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200019-007 has invalid quantities or an outdated stock UOM for MAT.1012; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100019-005 has invalid quantities or an outdated stock UOM for MAT.1001; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300020",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200020-007 has invalid quantities or an outdated stock UOM for MAT.1012; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100020-005 has invalid quantities or an outdated stock UOM for MAT.1001; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300021",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200021-010 has invalid quantities or an outdated stock UOM for MAT.1012; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100021-005 has invalid quantities or an outdated stock UOM for MAT.1001; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300022",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-100022-006 has invalid quantities or an outdated stock UOM for MAT.1016; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-200022-004 has invalid quantities or an outdated stock UOM for MAT.1011; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300023",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 110022 does not share head suffix 023; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-200023-010 has invalid quantities or an outdated stock UOM for MAT.1005; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300024",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200024-007 has invalid quantities or an outdated stock UOM for MAT.1012; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100024-005 has invalid quantities or an outdated stock UOM for MAT.1001; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300025",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200025-007 has invalid quantities or an outdated stock UOM for MAT.1012; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100025-005 has invalid quantities or an outdated stock UOM for MAT.1001; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300026",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200026-003 has invalid quantities or an outdated stock UOM for MAT.1010; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100026-007 has invalid quantities or an outdated stock UOM for MAT.1016; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300029",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200029-009 has invalid quantities or an outdated stock UOM for MAT.1013; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100029-006 has invalid quantities or an outdated stock UOM for MAT.1016; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300030",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200030-017 has invalid quantities or an outdated stock UOM for MAT.1013; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100030-006 has invalid quantities or an outdated stock UOM for MAT.1016; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300031",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-100031-005 has invalid quantities or an outdated stock UOM for MAT.1001; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-200031-004 has invalid quantities or an outdated stock UOM for MAT.1007; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300032",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200032-008 has invalid quantities or an outdated stock UOM for MAT.1012; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100032-006 has invalid quantities or an outdated stock UOM for MAT.1016; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300033",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-100033-006 has invalid quantities or an outdated stock UOM for MAT.1007; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-200033-007 has invalid quantities or an outdated stock UOM for MAT.1012; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300034",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-100034-003 has invalid quantities or an outdated stock UOM for MAT.1003; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 210033 does not share head suffix 034; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300035",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200035-010 has invalid quantities or an outdated stock UOM for MAT.1013; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100035-005 has invalid quantities or an outdated stock UOM for MAT.1001; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300036",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-100036-003 has invalid quantities or an outdated stock UOM for MAT.1003; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 210035 does not share head suffix 036; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300037",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-100037-007 has invalid quantities or an outdated stock UOM for MAT.1001; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-200037-010 has invalid quantities or an outdated stock UOM for MAT.1013; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300038",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200038-007 has invalid quantities or an outdated stock UOM for MAT.1012; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100038-007 has invalid quantities or an outdated stock UOM for MAT.1016; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300039",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210038 does not share head suffix 039; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100039-003 has invalid quantities or an outdated stock UOM for MAT.1003; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300040",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-100040-008 has invalid quantities or an outdated stock UOM for MAT.1016; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-200040-010 has invalid quantities or an outdated stock UOM for MAT.1013; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300041",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210040 does not share head suffix 041; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100041-003 has invalid quantities or an outdated stock UOM for MAT.1003; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300042",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-100042-003 has invalid quantities or an outdated stock UOM for MAT.1003; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-200042-009 has invalid quantities or an outdated stock UOM for MAT.1013; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300043",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200043-009 has invalid quantities or an outdated stock UOM for MAT.1013; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100043-005 has invalid quantities or an outdated stock UOM for MAT.1001; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300044",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-100044-002 has invalid quantities or an outdated stock UOM for MAT.1003; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 210043 does not share head suffix 044; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300045",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210037 does not share head suffix 045; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100045-003 has invalid quantities or an outdated stock UOM for MAT.1003; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300046",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200046-009 has invalid quantities or an outdated stock UOM for MAT.1013; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100046-003 has invalid quantities or an outdated stock UOM for MAT.1003; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300049",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200049-003 has invalid quantities or an outdated stock UOM for MAT.1009; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110004 does not share head suffix 049; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300050",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210056 does not share head suffix 050; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300052",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210012 does not share head suffix 052; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300055",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 110040 does not share head suffix 055; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 200040 does not share head suffix 055; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300057",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Item 300057 needs an active submitted BOM for the selected company (none).",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300059",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210032 does not share head suffix 059; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300060",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 110133 does not share head suffix 060; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 210005 does not share head suffix 060; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300061",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210010 does not share head suffix 061; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300062",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200062-002 has invalid quantities or an outdated stock UOM for MAT.1002; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-100062-002 has invalid quantities or an outdated stock UOM for MAT.1016; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300064",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210038 does not share head suffix 064; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110015 does not share head suffix 064; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300065",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210052 does not share head suffix 065; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110024 does not share head suffix 065; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300066",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210006 does not share head suffix 066; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110008 does not share head suffix 066; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300067",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210042 does not share head suffix 067; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300068",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200068-002 has invalid quantities or an outdated stock UOM for MAT.1013; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300069",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 110018 does not share head suffix 069; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 210051 does not share head suffix 069; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300070",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210048 does not share head suffix 070; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110001 does not share head suffix 070; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300071",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200071-002 has invalid quantities or an outdated stock UOM for MAT.1020; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300072",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 110011 does not share head suffix 072; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 210040 does not share head suffix 072; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300073",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210006 does not share head suffix 073; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110028 does not share head suffix 073; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300074",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210053 does not share head suffix 074; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110027 does not share head suffix 074; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300075",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 110047 does not share head suffix 075; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 210043 does not share head suffix 075; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300076",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200076-002 has invalid quantities or an outdated stock UOM for MAT.1020; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300077",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 300024 does not share head suffix 077; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300078",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 300032 does not share head suffix 078; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300079",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210010 does not share head suffix 079; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110009 does not share head suffix 079; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300080",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210056 does not share head suffix 080; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110137 does not share head suffix 080; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300081",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210058 does not share head suffix 081; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110051 does not share head suffix 081; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300083",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-100083-002 has invalid quantities or an outdated stock UOM for MAT.1016; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300084",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 110040 does not share head suffix 084; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 210082 does not share head suffix 084; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300085",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Item 100085 needs an active submitted BOM for the selected company (none).",
+            "field": ""
+          },
+          {
+            "message": "Item 200085 needs an active submitted BOM for the selected company (none).",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300088",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210096 does not share head suffix 088; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110094 does not share head suffix 088; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300090",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210040 does not share head suffix 090; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300092",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-300092-004 has invalid quantities or an outdated stock UOM for RVM.1204; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 210033 does not share head suffix 092; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300093",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 110060 does not share head suffix 093; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 210060 does not share head suffix 093; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300095",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210040 does not share head suffix 095; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300096",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210055 does not share head suffix 096; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110090 does not share head suffix 096; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300097",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 110033 does not share head suffix 097; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-200097-002 has invalid quantities or an outdated stock UOM for MAT.1006; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300098",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 110034 does not share head suffix 098; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 210097 does not share head suffix 098; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300099",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 200035 does not share head suffix 099; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110035 does not share head suffix 099; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300100",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Item 300100 needs an active submitted BOM for the selected company (none).",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300101",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 110037 does not share head suffix 101; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "BOM BOM-200101-002 has invalid quantities or an outdated stock UOM for MAT.1013; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300102",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200102-002 has invalid quantities or an outdated stock UOM for MAT.1006; propose a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110038 does not share head suffix 102; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300103",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210102 does not share head suffix 103; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110039 does not share head suffix 103; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300104",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210055 does not share head suffix 104; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110041 does not share head suffix 104; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300105",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210112 does not share head suffix 105; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110042 does not share head suffix 105; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300106",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 110043 does not share head suffix 106; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 200043 does not share head suffix 106; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300107",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210106 does not share head suffix 107; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110044 does not share head suffix 107; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300108",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 110045 does not share head suffix 108; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 210101 does not share head suffix 108; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300109",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 110046 does not share head suffix 109; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 200046 does not share head suffix 109; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300110",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Item 300110 needs an active submitted BOM for the selected company (none).",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300111",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Item 300111 needs an active submitted BOM for the selected company (none).",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300112",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 200042 does not share head suffix 112; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300114",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210033 does not share head suffix 114; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110033 does not share head suffix 114; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300115",
+        "ready": false,
+        "errors": [
+          {
+            "message": "BOM BOM-200115-002 has invalid quantities or an outdated stock UOM for MAT.1002; propose a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300124",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 210120 does not share head suffix 124; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110116 does not share head suffix 124; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300126",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 200057 does not share head suffix 126; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110026 does not share head suffix 126; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300130",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 110030 does not share head suffix 130; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 210030 does not share head suffix 130; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300134",
+        "ready": true,
+        "errors": []
+      },
+      {
+        "head": "300135",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 110060 does not share head suffix 135; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300137",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Component 200135 does not share head suffix 137; define a reviewed replacement.",
+            "field": ""
+          },
+          {
+            "message": "Component 110060 does not share head suffix 137; define a reviewed replacement.",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "300138",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Item 300138 needs an active submitted BOM for the selected company (none).",
+            "field": ""
+          }
+        ]
+      },
+      {
+        "head": "V-Template",
+        "ready": false,
+        "errors": [
+          {
+            "message": "Select or define a six-character Valve Head code starting with 30, with a nonzero shared suffix.",
+            "field": "head_code"
+          },
+          {
+            "message": "Select an enabled Valve Head and refresh its definition.",
+            "field": ""
+          },
+          {
+            "message": "The request has no Items to create or verify.",
+            "field": ""
+          }
+        ]
+      }
+    ],
+    "head_readiness_summary": {
+      "total": 100,
+      "ready": 1,
+      "blocked": 99
+    },
+    "head_readiness_error_categories": {
+      "raw_quantity_or_uom": 79,
+      "cross_suffix": 88,
+      "missing_or_invalid_bom": 7,
+      "other": 3
+    },
+    "raw_recipe_examples": [
+      {
+        "parent": "BOM-100040-008",
+        "item_code": "MAT.1016",
+        "qty": 0.02,
+        "stock_qty": 0.02,
+        "conversion_factor": 1.0,
+        "uom": "Meter",
+        "stock_uom": "Nos",
+        "current_stock_uom": "Meter"
+      },
+      {
+        "parent": "BOM-200040-010",
+        "item_code": "MAT.1013",
+        "qty": 0.03,
+        "stock_qty": 0.03,
+        "conversion_factor": 1.0,
+        "uom": "Meter",
+        "stock_uom": "Nos",
+        "current_stock_uom": "Meter"
+      }
+    ],
+    "limited_authenticated_helper_probe": {
+      "available_principal": true,
+      "item_read_permission": false,
+      "dispatcher_whitelist_allowed": true,
+      "helper_returned_rows": 2,
+      "roles": [
+        "Employee",
+        "Projects User",
+        "Projects Manager",
+        "HR User",
+        "All",
+        "Guest"
+      ],
+      "scope": "Direct whitelist/helper call; no HTTP session created"
+    }
+  },
+  "schema": {
+    "patch": "amf.patches.v12_0.update_item_creation_product_codes_and_pins",
+    "applied": true,
+    "business_signatures": {
+      "Item": {
+        "count": 3372,
+        "sha256": "f6e315784b38884a8ad5b54a69a22cd6da0f76e25d1ce7b34d13fd64ae9299b3"
+      },
+      "BOM": {
+        "count": 8185,
+        "sha256": "b83e8af9b80702839307686668ecff7503c433e9d520af8f374ecf39faa80af2"
+      },
+      "BOM Item": {
+        "count": 39816,
+        "sha256": "bf815dc58d301ebc5c4bf12bd19ef0ab4c7942eccc15a911c73cbe9f9a2f07e8"
+      },
+      "Item Creation": {
+        "count": 5,
+        "sha256": "59714f29e524a7b644441b0f363608f0f6c332dd657617d04b6f272cb3bb5b5c"
+      }
+    },
+    "unchanged": true,
+    "new_document_pin_default": "SPL.3039"
+  },
+  "changes": {
+    "unit_tests": {
+      "run": 142,
+      "failures": 0,
+      "errors": 0
+    },
+    "integration": {
+      "request": "Item Creation-00004",
+      "head": "300Z7A",
+      "product": "420Z7B",
+      "product_bom": "BOM-420Z7B-001",
+      "pin_item": "700015",
+      "pin_name": "Pin ISO 2338 - D1x8",
+      "pin_quantity": 3,
+      "seat_bom": "BOM-210Z7A-001",
+      "result_links": 6,
+      "standalone_product": "410Z7B",
+      "quotation_resolved": "420Z7B",
+      "changed_pin_review_rejected": true,
+      "nested_commits_prohibited": true
+    },
+    "integration_seconds": 17.728,
+    "rollback_verified": true,
+    "qr_cleanup_verified": true,
+    "business_counts_after": {
+      "Item": 3372,
+      "BOM": 8185,
+      "BOM Item": 39816,
+      "Item Creation": 5,
+      "Item Creation Review": 0,
+      "Item Creation Result": 0,
+      "Series": 336,
+      "File": 50019
+    }
+  }
+}

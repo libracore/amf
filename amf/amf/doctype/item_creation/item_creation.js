@@ -159,6 +159,7 @@ function chooseItemCreationVariants(frm) {
         if (stamp !== itemCreationInputs(frm) || !response.message) return;
         const variants = response.message;
         if (!variants.length) return frappe.msgprint(__("Enable a product family first. Its available Body/Syringe Items must be enabled and match the configured references."));
+        const previous = new Map((frm.doc.product_variants || []).map(row => [row.body + ":" + (row.syringe || ""), row]));
         const selected = new Set((frm.doc.product_variants || []).filter(row => row.selected).map(row => row.body + ":" + (row.syringe || "")));
         const dialog = new frappe.ui.Dialog({title: __("Choose Product Configurations"), fields: [{
             fieldtype: "HTML", options: '<p>' + __("P110/P111 identify HD drives. P101/P111 use S-2500-P or S-5000-P and require an HV head. Highlighted choices show head requirements to resolve before engineering review.") + '</p>',
@@ -173,7 +174,8 @@ function chooseItemCreationVariants(frm) {
             frm.clear_table("product_variants");
             variants.filter(row => choices.has(row.body + ":" + row.syringe)).forEach(row => {
                 Object.assign(frm.add_child("product_variants"), {body: row.body, syringe: row.syringe,
-                    configuration: row.configuration, selected: 1});
+                    configuration: row.configuration, selected: 1,
+                    product_code: (previous.get(row.body + ":" + row.syringe) || {}).product_code || ""});
             });
             frm.refresh_field("product_variants");
             frm.dirty();
@@ -260,6 +262,7 @@ frappe.ui.form.on("Item Creation", {
         // Fasteners may belong to child groups; avoid the former exact Part filter.
         frm.set_query("screw_type", () => ({filters: [["Item", "item_name", "like", "%Screw%"], ["Item", "disabled", "=", 0]]}));
         frm.set_query("cap_type", () => ({filters: {name: ["in", ["RVM.3038", "RVM.3039", "RVM.3040"]], disabled: 0}}));
+        frm.set_query("seat_pin_item", () => ({filters: {disabled: 0}}));
         frm.add_custom_button(__("Refresh Complete Plan"), () => refreshItemCreationPlan(frm));
         if (frm.doc.docstatus === 2) {
             frm.add_custom_button(__("Create Amendment"), () => amendItemCreationRequest(frm));
@@ -339,9 +342,10 @@ frappe.ui.form.on("Item Creation", {
 // All recipe-affecting fields invalidate the cached plan immediately, then debounce IO.
 const itemCreationPlanEvents = {};
 ["head_rnd", "head_description", "plug_name", "plug_rnd", "plug_mat", "plug_acc", "plug_drawing", "seat_name",
-    "seat_rnd", "seat_mat", "seat_acc", "seat_drawing", "plug_raw_qty", "plug_raw_uom", "seat_raw_qty", "seat_raw_uom",
+    "seat_rnd", "seat_mat", "seat_pin_item", "seat_acc", "seat_drawing", "plug_raw_qty", "plug_raw_uom", "seat_raw_qty", "seat_raw_uom",
     "screw_type", "screw_quantity", "cap_type", "rvm_check", "pump_check", "pump_hv_check", "replace_boms", "default_warehouse", "amendment_reason"]
     .forEach(field => { itemCreationPlanEvents[field] = scheduleItemCreationPlan; });
 frappe.ui.form.on("Item Creation", itemCreationPlanEvents);
 frappe.ui.form.on("Item Creation Variant", {selected: scheduleItemCreationPlan, body: scheduleItemCreationPlan,
+    product_code: scheduleItemCreationPlan,
     syringe: scheduleItemCreationPlan, product_variants_remove: scheduleItemCreationPlan});

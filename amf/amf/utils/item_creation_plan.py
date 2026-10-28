@@ -18,12 +18,12 @@ from amf.amf.utils.item_learned_defaults import build_item_description
 from amf.amf.utils.item_creation_recipes import component_definition, product_definition
 
 
-PLAN_VERSION = 2
+PLAN_VERSION = 3
 INPUT_FIELDS = (
     "head_check", "head_item", "head_code", "head_name", "head_rnd", "head_description",
     "plug_check", "plug_item", "plug_code", "plug_name", "plug_rnd",
     "plug_mat", "plug_acc", "plug_drawing", "seat_check", "seat_item", "seat_code", "seat_name",
-    "seat_rnd", "seat_mat", "seat_acc", "seat_drawing", "screw_type", "screw_quantity", "cap_type",
+    "seat_rnd", "seat_mat", "seat_pin_item", "seat_acc", "seat_drawing", "screw_type", "screw_quantity", "cap_type",
     "rvm_check", "pump_check", "pump_hv_check", "company", "default_warehouse",
     "plug_raw_material", "plug_raw_qty", "plug_raw_uom", "seat_raw_material", "seat_raw_qty",
     "seat_raw_uom", "replace_boms",
@@ -51,7 +51,8 @@ def inputs(doc):
     values = {field: number(doc.get(field)) if field in numeric else cint(doc.get(field))
               if field in checks else str(doc.get(field) or "").strip() for field in INPUT_FIELDS}
     values["product_variants"] = sorted(
-        [{"body": row.get("body"), "syringe": row.get("syringe") or ""}
+        [{"body": row.get("body"), "syringe": row.get("syringe") or "",
+          "product_code": (row.get("product_code") or "").strip().upper()}
          for row in doc.get("product_variants") or [] if cint(row.get("selected"))],
         key=lambda row: (row["body"] or "", row["syringe"]),
     )
@@ -328,6 +329,8 @@ class Planner:
             return None
         if number(self.doc.get(group + "_acc")) < 0:
             self.error("The {0} accessory quantity cannot be negative; enter zero explicitly for a design without this accessory.".format(group))
+        if group == "seat" and number(self.doc.get("seat_acc")) > 0 and not self.doc.get("seat_pin_item"):
+            self.error("Select the pin Item for the seat sub-assembly.", "seat_pin_item")
         data, assembly, upper_materials = component_definition(self.doc, group)
         raw_code = self.doc.get(group + "_raw_material")
         raw = self.enabled(raw_code, "Raw Material") if raw_code else None
@@ -361,7 +364,8 @@ class Planner:
         self.doc["head_code"] = code
         self.suffix = code[-3:]
         # Collect only explicitly selected supported configurations before IO.
-        selections = [compatibility.BY_KEY[compatibility.selection_key(row)]
+        selections = [dict(compatibility.BY_KEY[compatibility.selection_key(row)],
+                           product_code=(row.get("product_code") or "").strip().upper())
                       for row in self.doc.get("product_variants") or []
                       if cint(row.get("selected")) and compatibility.selection_key(row) in compatibility.BY_KEY]
         valid_code = bool(families.ITEM_RE.match(code) and code.startswith("30") and code[-3:] != "000")
@@ -384,9 +388,10 @@ class Planner:
                 needed.update([prefix + code[2:], prefix[0] + "1" + code[2:]])
                 if self.doc.get(group + "_check") == "Yes":
                     self.doc[group + "_code"] = prefix + code[2:]
-                    needed.add("SPL.3013" if group == "plug" else "SPL.3039")
+                    if number(self.doc.get(group + "_acc")) > 0:
+                        needed.add("SPL.3013" if group == "plug" else self.doc.get("seat_pin_item"))
         for row in selections:
-            needed.update([row["body"], row["syringe"], row["prefix"] + self.suffix])
+            needed.update([row["body"], row["syringe"], row.get("product_code") or row["prefix"] + self.suffix])
         self.catalogue.load_dependencies(set(filter(None, needed)))
         head = self.catalogue.items.get(self.doc.get("head_item"))
         if self.doc.get("head_check") == "No" and head:

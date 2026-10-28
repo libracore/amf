@@ -1,13 +1,14 @@
 # Item Creation improvement tracker
 
-Updated: 27 October 2026. Evidence: [audit](item_creation_audit_2026-10-27.md), [catalogue specification](item_creation_catalogue_specification_2026-10-27.md).
+Updated: 28 October 2026. Evidence: [current audit and requested changes](item_creation_audit_2026-10-28.md), [original audit](item_creation_audit_2026-10-27.md), [catalogue specification](item_creation_catalogue_specification_2026-10-27.md).
 
 | Improvement | Status | Scope / next action |
 | --- | --- | --- |
-| Shared suffix allocation | Implemented and tested | Global three-character reservations and six-character alphanumeric identifiers. |
+| Head/component suffix allocation and Product code protection | Implemented and tested | Existing global suggestions and head/component reservations remain. Products may override the suggested code and use another suffix; exact code collision/reservation checks remain. |
 | Complete preview and engineering review | Implemented and tested | One read-only plan, exact recipe differences/parent impact, protected review history and dependency-aware stale-review rejection. Reviewed requests/history cannot be deleted through document APIs. |
 | Explicit compatibility rules | Implemented and tested | Individual standard body/syringe selections, reference/volume/material identity checks and head-type/LV/HV rules. User-authorized `704000`/`709000` U syringes are supported on all four standard LV bodies. New families/custom compatibility require a reviewed rule update. |
 | Complete raw-material BOMs | Implemented and tested | Exact stock selection, positive reviewed consumption and current stock UOM for every newly machined component. User-requested editable defaults: seat `0.03`, plug `0.02`. Five Items/five BOMs for a complete new head. |
+| Selectable seat pins | Implemented and tested | Enabled Item selector plus existing pin quantity; defaults to `SPL.3039`. Selected Item, quantity and dependencies participate in engineering review. |
 | Guided form and accurate previews | Implemented and tested | Full-width configuration table, explicit LV/HV/HD chooser labels and visible head requirements. Code-based Body (`5_1___`) and Syringe (`70X___`, X a digit 1–9 or a letter) selectors, complete shared plan, safe rendering, stale-response handling and live errors. |
 | Simpler execution and performance | Implemented and tested | Pure shared recipes, bulk/cache-limited dependency reads, pinned BOM revisions and request-owned transactions without monkey-patching database methods. |
 | Formal application-wide permission policy | Proposed | Retain existing authorized roles for this work; audit other helpers and define broader role separation separately. |
@@ -41,3 +42,5 @@ Release verification: the registered `0.7.2` migration was executed twice direct
 The broader stock-repair test group has two pre-existing failures: the manufacture wrapper's expected 2024 date differs from the unchanged 2026 default, and the serialized wrapper's expected dry-run flag differs from its unchanged default. Both failures were reproduced with the baseline `custom_try` helper restored in memory. They are outside this update; the full financial Stock Entry fixture suite was not run on the business site.
 
 Deployment: AMF `0.7.3` registers `amf.patches.v12_0.install_item_creation_traceability` after the existing `0.7.2` workflow patch. It reloads the four child/parent schemas, installs the results report, indexes recorded execution results and clears metadata/script caches. It performs no historical Item/BOM repair or reservation backfill. Targeted schema/report migration was verified twice on `site1.local`; no broad migration ran. Deploy Python/form code together with the installation's normal web/worker reload and browser refresh. No pending 4D BOMs or paused cost writers were activated.
+
+AMF `0.7.7` implements the user-requested independent Product suffixes while retaining existing suggestions, optional per-configuration Product code overrides, and selectable seat pin Items with the existing quantity field. The targeted additive patch is installed on `site1.local`. Verification passed 142 initialized Python tests, actual form-script checks, and rollback-only creation of a head with a differently suffixed Product and a selected alternative pin Item. The [current audit](item_creation_audit_2026-10-28.md) records the remaining legacy-head reuse, helper authorization and hook-containment findings.

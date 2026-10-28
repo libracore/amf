@@ -296,10 +296,9 @@ def resolve_product_definition_item(body_item_code, head_item_code, syringe_item
 
 def product_matches_configuration(item, body, head, syringe=None):
     code = item.get("item_code") or item.get("name") or ""
-    head_code = head.get("item_code") or head.get("name")
     if item.get("disabled") or any(part.get("disabled") for part in (body, head, syringe) if part):
         return False
-    if len(code) != 6 or code[-3:] != head_code[-3:]:
+    if len(code) != 6:
         return False
     bom_name = frappe.db.get_value("Item", item["name"], "default_bom")
     if not bom_name:
