@@ -40,7 +40,7 @@ def source(**fields):
     result = frappe._dict(doctype="Item Creation", name="TEST-REQUEST", head_check="Yes", head_code="300ABC",
         head_name="VALVE HEAD-D-1-6-050-C-P", head_rnd="V-D-1-6-050-C-P", head_description="Reviewed head",
         plug_check="Yes", plug_name="PLUG-D-1-6-050-P", plug_rnd="P-TEST", plug_mat="PTFE", plug_acc=6,
-        seat_check="Yes", seat_name="SEAT-D-1-6-050-C", seat_rnd="S-TEST", seat_mat="PCTFE", seat_acc=2,
+        seat_check="Yes", seat_name="SEAT-D-1-6-050-C", seat_rnd="S-TEST", seat_mat="PCTFE", seat_pin_item="SPL.3039", seat_acc=2,
         plug_raw_material="RAW-P", plug_raw_qty=0.02, plug_raw_uom="Meter",
         seat_raw_material="RAW-C", seat_raw_qty=0.03, seat_raw_uom="Meter", company="AMF", default_warehouse="Main",
         screw_type="SCREW", screw_quantity=2, cap_type="CAP", product_variants=[], rvm_check=0, pump_check=0, pump_hv_check=0)
@@ -125,6 +125,38 @@ class TestItemCreationPlan(unittest.TestCase):
         self.assertEqual(len(plan["actions"]), 6)
         self.assertEqual(plan["actions"][-1]["item"]["item_code"], "420ABC")
         self.assertNotIn("410ABC", [row["item"]["item_code"] for row in plan["actions"]])
+
+    def test_product_code_override_keeps_the_selected_head_and_configuration(self):
+        doc = source(rvm_check=1, product_variants=[dict(selected=1, body="521000", syringe="", product_code="420XYZ")])
+        plan = plans.build_plan(doc, catalogue=catalogue())
+        self.assertTrue(plan["ready"], plan["errors"])
+        product = plan["actions"][-1]
+        self.assertEqual(product["item"]["item_code"], "420XYZ")
+        self.assertEqual(product["item"]["reference_code"], "P201O300ABC")
+        self.assertIn("300ABC", [row["item_code"] for row in product["materials"]])
+        self.assertNotEqual(plans.input_hash(doc), plans.input_hash(source(rvm_check=1,
+            product_variants=[dict(selected=1, body="521000", syringe="")])))
+
+    def test_product_override_cannot_reuse_a_conflicting_identity_or_configuration_prefix(self):
+        doc = source(rvm_check=1, product_variants=[dict(selected=1, body="521000", syringe="", product_code="420XYZ")])
+        data = catalogue()
+        data.tables["Item"].append(item("420XYZ", "Product"))
+        plan = plans.build_plan(doc, catalogue=data)
+        self.assertTrue(any("different identity" in row["message"] for row in plan["errors"]))
+        for code in ("410XYZ", "420000", "420XY_", "420XYZ-extra"):
+            doc.product_variants[0]["product_code"] = code
+            plan = plans.build_plan(doc, catalogue=catalogue())
+            self.assertFalse(plan["ready"])
+            self.assertTrue(any("Product code" in row["message"] for row in plan["errors"]))
+
+    def test_matching_product_with_a_different_head_suffix_is_reused(self):
+        doc = source(rvm_check=1, product_variants=[dict(selected=1, body="521000", syringe="", product_code="420XYZ")])
+        data = catalogue()
+        materialize(plans.build_plan(doc, catalogue=data), data)
+        plan = plans.build_plan(doc, catalogue=MemoryCatalogue(data.tables))
+        self.assertTrue(plan["ready"], plan["errors"])
+        self.assertEqual(plan["actions"][-1]["item_action"], "reuse")
+        self.assertEqual(plan["actions"][-1]["bom_action"], "reuse")
 
     def test_approved_u_syringes_generate_the_correct_product_for_each_lv_body(self):
         for body, motor in (("551000", "5"), ("571000", "7"), ("591000", "9"), ("5B1000", "B")):
@@ -248,6 +280,25 @@ class TestItemCreationPlan(unittest.TestCase):
         self.assertTrue(plan["ready"])
         self.assertEqual([row["item_code"] for row in plan["actions"][3]["materials"]], ["200ABC"])
         self.assertFalse(plans.build_plan(source(seat_acc=-1), catalogue=catalogue())["ready"])
+
+    def test_selected_pin_item_and_quantity_are_used_and_reviewed(self):
+        data = catalogue()
+        data.tables["Item"].append(item("ALTERNATE-PIN", "Fasteners"))
+        default_plan = plans.build_plan(source(), catalogue=data)
+        plan = plans.build_plan(source(seat_pin_item="ALTERNATE-PIN", seat_acc=3), catalogue=MemoryCatalogue(data.tables))
+        self.assertTrue(plan["ready"], plan["errors"])
+        pins = [row for row in plan["actions"][3]["materials"] if row["item_code"] != "200ABC"]
+        self.assertEqual([(row["item_code"], row["qty"]) for row in pins], [("ALTERNATE-PIN", 3)])
+        self.assertNotEqual(default_plan["fingerprint"], plan["fingerprint"])
+        self.assertNotEqual(default_plan["input_hash"], plan["input_hash"])
+
+    def test_positive_pin_quantity_requires_an_enabled_item_but_zero_needs_none(self):
+        self.assertFalse(plans.build_plan(source(seat_pin_item=""), catalogue=catalogue())["ready"])
+        data = catalogue()
+        next(row for row in data.tables["Item"] if row["name"] == "SPL.3039")["disabled"] = 1
+        self.assertFalse(plans.build_plan(source(), catalogue=data)["ready"])
+        plan = plans.build_plan(source(seat_acc=0, seat_pin_item=""), catalogue=catalogue())
+        self.assertTrue(plan["ready"], plan["errors"])
 
     def test_existing_matching_items_and_boms_are_reused(self):
         data = catalogue()

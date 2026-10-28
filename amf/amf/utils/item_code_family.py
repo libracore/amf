@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Allocate the final three characters once for an entire AMF head family.
+"""Allocate head/component families and protect exact Product identifiers.
 
 tabSeries supplies the existing v12 transactional naming registry. A suffix row
 is a permanent reservation; a companion row records its source's SHA-256 key.
@@ -217,8 +217,8 @@ def _product_head_source(doc, code):
     if code[:2] not in STANDARD_PRODUCT_PREFIXES and doc.get("item_group") not in PRODUCT_GROUPS:
         return None
     references = re.findall(r"30[0-9A-Z]{4}", (doc.get("reference_code") or "").upper())
-    if len(references) != 1 or references[0][-3:] != code[-3:]:
-        frappe.throw(_("Product {0} must explicitly reference a head with shared suffix {1}.").format(code, code[-3:]))
+    if len(references) != 1:
+        frappe.throw(_("Product {0} must explicitly reference exactly one Valve Head.").format(code))
     head = references[0]
     values = frappe.db.get_value("Item", head, ["item_group", "disabled"], as_dict=True)
     if not values or values.item_group != "Valve Head" or values.disabled:
@@ -237,14 +237,15 @@ def validate_new_item_family(doc, method=None):
         frappe.throw(_("New managed Item codes must contain exactly six letters/digits. Historical aliases remain reserved."))
     doc.item_code = code
     suffix = validate_suffix(code[-3:])
+    product = code.startswith("4") or doc.get("item_group") in PRODUCT_GROUPS
     context = getattr(frappe.local, "amf_item_code_family", None)
     if context:
         source, expected_suffix = context
-        if suffix != expected_suffix:
+        if not product and suffix != expected_suffix:
             frappe.throw(_("Item {0} must use the source request's shared head suffix {1}.").format(code, expected_suffix))
         state = getattr(frappe.local, "amf_item_code_family_state", None)
         if state is None or not state["verified"]:
-            reserve_suffix(suffix, source)
+            reserve_suffix(expected_suffix, source)
             if state is not None:
                 state["verified"] = True
                 state["codes"] = {canonical_chain_code(row.get("item_code"), row.get("item_group"))
@@ -252,7 +253,8 @@ def validate_new_item_family(doc, method=None):
         _reserve_member_code(code, state["codes"] if state is not None else None)
         return
     source = _existing_component_source(doc, code) or _product_head_source(doc, code)
-    reserve_suffix(suffix, source or ("Item", code), continuation=bool(source))
+    reserve_suffix(source[1][-3:] if product and source else suffix,
+                   source or ("Item", code), continuation=bool(source))
     _reserve_member_code(code)
 
 
@@ -284,8 +286,8 @@ def validate_new_bom_family(doc, method=None):
     elif code.startswith("4") or frappe.db.get_value("Item", code, "item_group") in PRODUCT_GROUPS:
         heads = [canonical_chain_code(row.item_code) for row in doc.items or []
                  if (canonical_chain_code(row.item_code) or "").startswith("30")]
-        if len(heads) != 1 or heads[0][-3:] != code[-3:]:
-            frappe.throw(_("Product {0} must use exactly one head with suffix {1}.").format(code, code[-3:]))
+        if len(heads) != 1:
+            frappe.throw(_("Product {0} must use exactly one Valve Head.").format(code))
 
 
 @contextmanager

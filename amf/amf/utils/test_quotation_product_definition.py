@@ -39,9 +39,19 @@ class TestProductFamilyResolution(unittest.TestCase):
         self.body.item_code = "511000"
         self.assertFalse(self.matches())
 
-    def test_historical_product_suffix_must_match_the_selected_head(self):
+    def test_product_suffix_can_differ_when_the_actual_bom_matches(self):
         self.product.item_code = "420085"
-        self.assertFalse(self.matches())
+        self.product.name = self.bom.item = "420085"
+        self.assertTrue(self.matches())
+
+    def test_resolver_accepts_the_reference_match_with_a_different_product_suffix(self):
+        self.product.name = self.product.item_code = self.bom.item = "420XYZ"
+        with patch.object(products, "get_item_reference", side_effect=[self.body, self.head]), \
+                patch.object(products, "get_product_item_by_reference", return_value=self.product), \
+                patch.object(products, "get_product_item_by_code") as fallback:
+            result = products.resolve_product_definition_item("521000", "300ABC")
+        self.assertEqual(result["item_code"], "420XYZ")
+        fallback.assert_not_called()
 
     def test_reference_match_cannot_override_actual_head(self):
         self.bom.items[1].item_code = "300033"

@@ -9,6 +9,7 @@
   "selected",
   "body",
   "syringe",
+  "product_code",
   "configuration"
  ],
  "fields": [
@@ -32,6 +33,13 @@
    "fieldtype": "Link",
    "label": "Syringe",
    "options": "Item",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "product_code",
+   "fieldtype": "Data",
+   "label": "Product Code",
+   "description": "Optional override. Leave blank to use the current suggestion based on the configuration and head code. The Product suffix may differ from the head suffix.",
    "in_list_view": 1
   },
   {

@@ -126,6 +126,14 @@ frm.add_custom_button = () => {};
 events.refresh(frm);
 assert.strictEqual(queries.body().filters.item_code[1], "5_1___");
 assert.ok(queries.syringe().query.endsWith(".syringe_item_query"));
+assert.strictEqual(queries.seat_pin_item().filters.disabled, 0);
+
+// Pin selection and Product code edits invalidate a previously displayed plan.
+[() => events.seat_pin_item(frm), () => handlers["Item Creation Variant"].product_code(frm)].forEach(change => {
+    frm.__creation_plan = {ready: true};
+    change();
+    assert.strictEqual(frm.__creation_plan, null);
+});
 
 // HV/HD choices remain visible and explain geometry requirements safely.
 calls.length = 0;
@@ -140,6 +148,19 @@ assert.strictEqual(choices.length, 2);
 assert.strictEqual(choices[0].danger, true);
 assert.ok(choices[0].label.includes("Requires &lt;HV&gt; head"));
 assert.ok(choices[1].label.includes("P111-L (HV / HD) / S-5000-P"));
+
+// Reopening the configuration chooser retains an explicit Product code override.
+calls.length = 0;
+frm = form({head_code: "300ABC", rvm_check: 1,
+    product_variants: [{body: "521000", syringe: "", selected: 1, product_code: "420XYZ"}]});
+frm.clear_table = field => { frm.doc[field] = []; };
+frm.add_child = field => { const row = {}; frm.doc[field].push(row); return row; };
+frm.refresh_field = () => {};
+frm.dirty = () => {};
+sandbox.chooseItemCreationVariants(frm);
+calls[0].callback({message: [{body: "521000", syringe: "", configuration: "P201-O (RVM)"}]});
+dialog.primary_action({variants: ["521000:"]});
+assert.strictEqual(frm.doc.product_variants[0].product_code, "420XYZ");
 
 // Reverse links from either Item or BOM open the same report with exact filters.
 let route;
