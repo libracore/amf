@@ -7,14 +7,17 @@ def occupied_product_codes(inventory, reservations, planned=()):
             for row in inventory} | set(reservations) | set(planned)
 
 
-def suggest_product_code(expected, prefix, inventory, reservations, planned):
+def suggest_product_code(expected, prefix, inventory, reservations, planned, legacy_prefixes=()):
     preferred = expected["item_code"]
     # The unique engineering reference identifies body/head/syringe. Preserve
     # an existing Product's display name instead of guessing a missing head R&D label.
     same_identity = lambda row: (not row.get("disabled") and row.get("item_group") in families.PRODUCT_GROUPS
         and (row.get("reference_code") or "").strip().upper() == (expected.get("reference_code") or "").strip().upper())
+    # Explicit historical namespaces apply only to identity reuse. New codes
+    # always use the current configuration prefix and the normal occupancy checks.
+    reuse_prefixes = (prefix,) + tuple(legacy_prefixes)
     matches = sorted(row.get("item_code") or row.get("name") for row in inventory
-                     if (row.get("item_code") or row.get("name") or "").startswith(prefix)
+                     if (row.get("item_code") or row.get("name") or "").startswith(reuse_prefixes)
                      and same_identity(row) and families.ITEM_RE.fullmatch(row.get("item_code") or row.get("name") or ""))
     for code in [preferred] + matches:
         if code in matches and code not in planned:

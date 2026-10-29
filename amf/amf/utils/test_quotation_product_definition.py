@@ -94,15 +94,33 @@ class TestProductFamilyResolution(unittest.TestCase):
 
     def test_rvm_variant_references_and_special_body_prefix_match_creation(self):
         for body, reference, expected, code in (
-                ("521002", "P201-O.RS485", "P201O300ABCRS485", "420ABC"),
+                ("521002", "P201-O.RS485", "P201O300ABCRS485", "422ABC"),
                 ("5D1001", "P202-O RS485", "P202O300ABC/RS485", "4D1ABC"),
                 ("5D1002", "P202-O CAN", "P202O300ABC/CAN", "4D2ABC"),
-                ("521101", "P211-O.NM.TH", "P211O300ABC", "430ABC"),
+                ("521101", "P211-O.NM.TH", "P211O300ABC", "421ABC"),
+                ("531000", "P211-O.NMD", "P211O300ABC", "430ABC"),
                 ("511001", "P200-O.RS485", "P200O300ABCRS485", "410ABC")):
             with self.subTest(body=body):
                 value = dict(item_code=body, reference_code=reference)
                 self.assertEqual(products.make_expected_reference_code(value, self.head), expected)
                 self.assertEqual(products.make_fallback_item_code(value, self.head), code)
+
+    def test_legacy_interface_products_resolve_before_the_new_numbering_fallback(self):
+        for body_code, reference, old_code, new_code in (
+                ("521002", "P201-O.RS485", "420099", "422ABC"),
+                ("521101", "P211-O.NM.TH", "430081", "421ABC")):
+            with self.subTest(body=body_code):
+                self.body.update(dict(name=body_code, item_code=body_code, reference_code=reference))
+                self.product.name = self.product.item_code = self.bom.item = old_code
+                self.bom.items[0].item_code = body_code
+                self.groups[body_code] = "Body"
+                with patch.object(products, "get_item_reference", side_effect=[self.body, self.head]), \
+                        patch.object(products, "get_product_item_by_reference", return_value=self.product), \
+                        patch.object(products, "get_product_item_by_code") as fallback:
+                    result = products.resolve_product_definition_item(body_code, "300ABC")
+                self.assertEqual(result["item_code"], old_code)
+                self.assertEqual(result["fallback_item_code"], new_code)
+                fallback.assert_not_called()
 
     def test_head_selector_keeps_the_interface_suffix(self):
         body = frappe._dict(name="521002", item_code="521002", reference_code="P201-O.RS485")

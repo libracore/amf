@@ -517,7 +517,8 @@ class Planner:
                 reason = "Entered Product code" if row.get("product_code") else "Configuration prefix + head suffix"
                 if suggest_codes and not row.get("product_code"):
                     try:
-                        code_suggestion, reason = suggest_product_code(data, row["prefix"], inventory, reservations, planned_codes | entered_codes)
+                        code_suggestion, reason = suggest_product_code(data, row["prefix"], inventory, reservations,
+                            planned_codes | entered_codes, legacy_prefixes=row.get("legacy_prefixes", ()))
                     except ValueError as error:
                         self.error(str(error), "product_variants")
                         continue

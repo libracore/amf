@@ -358,7 +358,7 @@
    "fieldname": "rvm_check",
    "fieldtype": "Check",
    "label": "Rotary Valves (including RVM mini)",
-   "description": "All enabled 511___/521___ body variants, plus RVM mini 5D1000 (base), 5D1001 (RS485) and 5D1002 (CAN)."
+   "description": "All enabled 511___/521___ body variants, plus RVM mini 5D1000 (base), 5D1001 (RS485) and 5D1002 (CAN). New 521101 NM/TH Products use 421xxx; 521002 RS485 Products use 422xxx."
   },
   {
    "default": "0",

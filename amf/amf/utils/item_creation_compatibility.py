@@ -6,11 +6,21 @@ new combinations from the existence of a Body or Syringe Item.
 import re
 
 
-RULE_VERSION = "2026-10-29.2"
+RULE_VERSION = "2026-10-29.3"
 MAX_VARIANTS = 256
 RVM_BODY_RE = re.compile(r"^(511|521)[0-9A-Z]{3}$")
 RVM_REFERENCE_MOTORS = {"P200-O": "1", "P201-O": "2", "P211-O": "3", "P221-O": "4"}
-RVM_PRODUCT_PREFIXES = tuple("4" + motor + "0" for motor in RVM_REFERENCE_MOTORS.values()) + ("4D0", "4D1", "4D2")
+# Keep the physical/reference family separate from its reviewed Product numbering.
+# Historical prefixes permit identity reuse only, never new code allocation.
+RVM_NUMBERING_OVERRIDES = {
+    "521101": dict(prefix="421", legacy_prefixes=("430",)),
+    "521002": dict(prefix="422", legacy_prefixes=("420",)),
+}
+RVM_PRODUCT_PREFIXES = (
+    tuple("4" + motor + "0" for motor in RVM_REFERENCE_MOTORS.values())
+    + tuple(rule["prefix"] for rule in RVM_NUMBERING_OVERRIDES.values())
+    + ("4D0", "4D1", "4D2")
+)
 LV_SYRINGES = ("2", "3", "4", "5", "8", "9", "D")
 HV_SYRINGES = ("E", "F")
 SYRINGE_REFERENCES = {"2": "S-50-P", "3": "S-100-P", "4": "S-100-U", "5": "S-250-P",
@@ -86,6 +96,7 @@ def configurations(rvm_bodies=()):
                         family=family, motor=motor, token=token, prefix="4" + motor + token, body_label=label)
             if family == "RVM":
                 rule.update(rvm_profile(body, label))
+                rule.update(RVM_NUMBERING_OVERRIDES.get(body, {}))
                 if body not in static_bodies and label.partition(".")[0] not in RVM_REFERENCE_MOTORS:
                     rule["configuration_error"] = "Body {0} needs a supported RVM reference (P200-O/P201-O/P211-O/P221-O with an optional dot variant). Review its Item master.".format(body)
                 if body == "521003":

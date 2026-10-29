@@ -39,3 +39,4 @@ amf.patches.v12_0.update_item_creation_existing_head_products
 amf.patches.v12_0.update_item_creation_product_references
 amf.patches.v12_0.update_item_creation_rvm_mini
 amf.patches.v12_0.update_item_creation_rvm_variants
+amf.patches.v12_0.update_item_creation_rvm_numbering

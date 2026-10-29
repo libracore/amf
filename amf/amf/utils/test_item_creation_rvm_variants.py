@@ -13,10 +13,10 @@ from amf.amf.utils.test_item_creation_plan import MemoryCatalogue, catalogue, it
 
 RVM_EXPECTED = {
     "511000": ("410", "P200O300ABC"), "521000": ("420", "P201O300ABC"),
-    "521001": ("420", "P201O300ABCRSB"), "521002": ("420", "P201O300ABCRS485"),
+    "521001": ("420", "P201O300ABCRSB"), "521002": ("422", "P201O300ABCRS485"),
     "521003": ("420", "P201O300ABCLPH"), "521004": ("420", "P201O300ABCAIR"),
     "521005": ("420", "P201O300ABCELV"), "521006": ("420", "P201O300ABCSYS"),
-    "521101": ("430", "P211O300ABC"), "5D1000": ("4D0", "P202O300ABC"),
+    "521101": ("421", "P211O300ABC"), "5D1000": ("4D0", "P202O300ABC"),
     "5D1001": ("4D1", "P202O300ABC/RS485"), "5D1002": ("4D2", "P202O300ABC/CAN"),
 }
 
@@ -44,6 +44,8 @@ class TestRvmVariants(unittest.TestCase):
         products = {next(row["item_code"] for row in action["materials"] if row["item_code"] in RVM_EXPECTED): action
                     for action in plan["actions"] if action["item"]["item_group"] == "Product"}
         self.assertEqual(products["521000"]["item"]["item_code"], "420ABC")
+        self.assertEqual(products["521101"]["item"]["item_code"], "421ABC")
+        self.assertEqual(products["521002"]["item"]["item_code"], "422ABC")
         self.assertEqual(products["521101"]["item"]["weight_per_unit"], .7)
         for body in ("5D1000", "5D1001", "5D1002"):
             self.assertEqual(products[body]["item"]["weight_per_unit"], .1)
@@ -59,12 +61,68 @@ class TestRvmVariants(unittest.TestCase):
         self.assertEqual(first["fingerprint"], second["fingerprint"])
 
     def test_entered_codes_are_kept_free_for_their_rows_during_automatic_allocation(self):
-        doc = self.request(("521000", "521001", "521002"))
+        doc = self.request(("521000", "521001", "521004"))
         doc.product_variants[-1]["product_code"] = "420001"
         plan = plans.build_plan(doc, catalogue=catalogue())
         self.assertTrue(plan["ready"], plan["errors"])
         self.assertEqual({row["body"]: row["product_code"] for row in plan["product_suggestions"]},
-                         {"521000": "420ABC", "521001": "420002", "521002": "420001"})
+                         {"521000": "420ABC", "521001": "420002", "521004": "420001"})
+
+    def legacy_variant_catalogue(self):
+        doc, data = self.request(("521002", "521101")), catalogue()
+        original = plans.build_plan(doc, catalogue=data)
+        mapping = {"422ABC": "420099", "421ABC": "430081"}
+        for action in original["actions"]:
+            code = action["item"]["item_code"]
+            action["item"]["item_code"] = mapping.get(code, code)
+        materialize(original, data)
+        doc.update(dict(product_only=1, head_check="No", head_item="300ABC", plug_check="No", seat_check="No"))
+        return doc, data
+
+    def test_legacy_rs485_and_nmth_products_are_reused_without_renumbering(self):
+        doc, data = self.legacy_variant_catalogue()
+        before = copy.deepcopy(data.tables)
+        plan = plans.build_plan(doc, catalogue=MemoryCatalogue(data.tables))
+        self.assertTrue(plan["ready"], plan["errors"])
+        self.assertEqual({row["body"]: row["product_code"] for row in plan["product_suggestions"]},
+                         {"521002": "420099", "521101": "430081"})
+        self.assertTrue(all(row["item_action"] == row["bom_action"] == "reuse" for row in plan["actions"]))
+        self.assertEqual({key: data.tables[key] for key in before}, before)
+
+    def test_legacy_reference_reuse_still_requires_the_reviewed_bom_composition(self):
+        doc, data = self.legacy_variant_catalogue()
+        row = next(row for row in data.tables["BOM Item"]
+                   if row["parent"] == "BOM-420099" and row["item_code"] == "521002")
+        row["item_code"] = "521000"
+        plan = plans.build_plan(doc, catalogue=MemoryCatalogue(data.tables))
+        self.assertFalse(plan["ready"])
+        self.assertEqual(next(row for row in plan["product_suggestions"] if row["body"] == "521002")["product_code"],
+                         "420099")
+        self.assertEqual(row["item_code"], "521000")
+
+    def test_new_overrides_use_dedicated_prefixes_and_old_prefixes_are_reuse_only(self):
+        for body, old_code, new_code in (("521002", "420XYZ", "422XYZ"), ("521101", "430XYZ", "421XYZ")):
+            with self.subTest(body=body):
+                doc = self.request((body,))
+                doc.product_variants[0]["product_code"] = old_code
+                self.assertFalse(plans.build_plan(doc, catalogue=catalogue())["ready"])
+                doc.product_variants[0]["product_code"] = new_code
+                plan = plans.build_plan(doc, catalogue=catalogue())
+                self.assertTrue(plan["ready"], plan["errors"])
+                self.assertEqual(plan["product_suggestions"][0]["product_code"], new_code)
+
+    def test_disabled_and_retired_legacy_reference_owners_block_duplicates(self):
+        for problem in ("disabled", "retired"):
+            with self.subTest(problem=problem):
+                doc, data = self.legacy_variant_catalogue()
+                owner = next(row for row in data.tables["Item"] if row["name"] == "420099")
+                if problem == "disabled":
+                    owner["disabled"] = 1
+                else:
+                    owner["name"] = "/420099"
+                plan = plans.build_plan(doc, catalogue=MemoryCatalogue(data.tables))
+                self.assertFalse(plan["ready"])
+                self.assertTrue(any("already belongs to" in row["message"] for row in plan["errors"]))
 
     def test_existing_exact_variant_references_reuse_items_and_boms(self):
         doc, data = self.request(), catalogue()
