@@ -31,6 +31,10 @@ For existing-head requests, blank overrides first reuse an enabled Product with 
 
 In the inspected catalogue, P201-O with head `300080` suggests existing Product `420100`, which already owns reference `P201O300080`. Its missing Product BOM can be created after review. The retired `/420080` alias remains reserved. A duplicate Product is not created just to retain suffix `080`; the existing Item name/reference are preserved.
 
+AMF `0.7.9` adds **Change Product Reference** directly beside a reference-conflict error. The dialog shows the generated reference and existing owner. Enter a unique reference, apply it, save the request and refresh/review the complete plan. For example, the disabled `/410080` owns `P200O300080`; an entered `P200O300080-R1` can distinguish the planned Product if that reference is available. The optional **Product Reference** field is also available in the expanded configuration row. Clearing it restores the generated reference. Reopening the chooser retains the entered value.
+
+The override applies to the planned Product; existing Item masters retain their identities. It must contain the selected head code exactly once, be a single line of at most 140 characters, and be unique against existing Items and other selected configurations. An explicit code pointing to an existing Item with another reference remains an identity conflict: clear the Product Code override to obtain an available code, or review that master separately. Reference changes invalidate approval. Assembly screw/cap selections and quantities remain required by their Product recipes. See the [reference-override release record](item_creation_product_references_2026-10-29.md).
+
 Some legacy raw-material rows retain a stale `stock_uom` label. Reuse is permitted with an explicit plan warning only when the row's `uom` already equals the current Item stock UOM, conversion is exactly `1`, and `stock_qty` equals `qty`. No submitted row is rewritten. Invalid quantities, inconsistent conversions, disabled components, missing/inactive/unsubmitted BOMs, cycles and company mismatches remain errors.
 
 ## Explicit compatibility policy
@@ -117,5 +121,7 @@ bench --site <site> execute amf.amf.utils.item_creation_workflow.sync_item_creat
 Existing draft requests need explicit raw-stock quantities, supported variant selections and recorded engineering review before submission. Historical submitted requests retain their existing records.
 
 AMF `0.7.8` registers `amf.patches.v12_0.update_item_creation_existing_head_products` to reload the parent/variant schemas and clear their caches. Plan version `4` invalidates earlier draft approvals at validation; refresh/review them before submission. Submitted/cancelled review snapshots remain intact. Product-only requests do not require raw-stock inputs for the preserved head components.
+
+AMF `0.7.9` registers `amf.patches.v12_0.update_item_creation_product_references` to add the optional variant field and clear variant/parent caches. Plan version `5` supersedes version `4` for new reviews; earlier draft approvals require refresh/review. The patch changes no historical Item reference or BOM.
 
 Broader permission roles, formal versioned engineering-template maintenance, dedicated structured geometry fields, company-wide costing/settings policy, historical catalogue repair and a platform upgrade remain on the separate backlog. A full browser session and the entire repository test suite are outside the recorded verification above.

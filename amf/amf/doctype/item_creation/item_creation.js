@@ -61,7 +61,7 @@ function itemCreationRecipe(recipe, itemMap) {
     return html;
 }
 
-function renderItemCreationPlan(plan) {
+function renderItemCreationPlan(plan, editable = false) {
     const summary = plan.summary || {};
     const itemMap = Object.create(null);
     ((plan.dependencies || {}).items || []).forEach(item => { itemMap[item.name] = item; });
@@ -70,7 +70,10 @@ function renderItemCreationPlan(plan) {
         __("{0} Items, {1} new BOMs, {2} replacement BOMs, {3} reused BOMs", [summary.items || 0,
             summary.new_boms || 0, summary.replacement_boms || 0, summary.reused_boms || 0]) + '</p>';
     if (plan.errors && plan.errors.length) html += '<div class="alert alert-danger"><b>' + __("Resolve before review") +
-        '</b><ul>' + plan.errors.map(row => '<li>' + itemCreationEscape(row.message) + '</li>').join("") + '</ul></div>';
+        '</b><ul>' + plan.errors.map(row => '<li>' + itemCreationEscape(row.message) +
+            (editable && row.reference_conflict ? ' <button type="button" class="btn btn-xs btn-default item-creation-edit-reference" data-configuration="' +
+                itemCreationEscape(row.reference_conflict.configuration) + '">' + __("Change Product Reference") + '</button>' : '') +
+            '</li>').join("") + '</ul></div>';
     if (plan.warnings && plan.warnings.length) html += '<div class="alert alert-warning">' +
         plan.warnings.map(itemCreationEscape).join('<br>') + '</div>';
     if (plan.product_only) html += '<p>' + __("Products only: the existing head and its submitted component BOMs remain pinned dependencies.") + '</p>';
@@ -82,6 +85,8 @@ function renderItemCreationPlan(plan) {
         const title = itemCreationEscape(action.item.item_code + " · " + action.item.item_name);
         let detail = '<details' + (action.bom_action === "replace" ? ' open' : '') + '><summary><b>' + title + '</b> · ' +
             itemCreationEscape(__(action.item_action)) + ' Item · ' + itemCreationEscape(__(action.bom_action)) + ' BOM</summary>';
+        if (["Product", "Products"].includes(action.item.item_group)) detail += '<p><b>' + __("Product Reference") +
+            ':</b> ' + itemCreationEscape(action.item.reference_code) + '</p>';
         if (action.existing_bom) detail += '<p>' + __("Existing BOM") + ': ' + itemCreationLink("BOM", action.existing_bom) + '</p>';
         if (action.bom_action === "replace") {
             const before = Object.assign({}, action.proposed);
@@ -119,7 +124,8 @@ function refreshItemCreationPlan(frm) {
                 return;
             }
             frm.__creation_plan = response.message;
-            frm.set_df_property("plan_preview", "options", renderItemCreationPlan(response.message));
+            frm.set_df_property("plan_preview", "options", renderItemCreationPlan(response.message, frm.doc.docstatus === 0));
+            bindItemCreationPlanActions(frm);
             if (response.message.product_suggestions) applyItemCreationProductSuggestions(frm, response.message.product_suggestions);
             if (frm.doc.docstatus === 0 && frm.doc.approved_plan_hash &&
                     frm.doc.approved_plan_hash !== response.message.fingerprint) {
@@ -186,6 +192,43 @@ function suggestItemCreationProductCodes(frm) {
         }});
 }
 
+function bindItemCreationPlanActions(frm) {
+    const field = (frm.fields_dict || {}).plan_preview;
+    if (!field || !field.$wrapper) return;
+    field.$wrapper.off("click.itemCreationReference").on("click.itemCreationReference", ".item-creation-edit-reference", event => {
+        event.preventDefault();
+        editItemCreationProductReference(frm, event.currentTarget.getAttribute("data-configuration"));
+    });
+}
+
+function editItemCreationProductReference(frm, configuration) {
+    if (frm.doc.docstatus !== 0) return;
+    const key = row => (row.body || "").trim().toUpperCase() + ":" + (row.syringe || "").trim().toUpperCase();
+    const row = (frm.doc.product_variants || []).find(value => value.selected && key(value) === configuration);
+    const plan = frm.__creation_plan;
+    if (!row || !plan) return frappe.msgprint(__("Refresh the complete plan before changing this reference."));
+    const suggestion = (plan.product_suggestions || []).find(value => key(value) === configuration);
+    const conflict = (plan.errors || []).map(value => value.reference_conflict).find(value => value && value.configuration === configuration);
+    const stamp = itemCreationInputs(frm);
+    const owners = conflict && conflict.owners.length ? '<p>' + __("Existing reference owners") + ': ' +
+        conflict.owners.map(name => itemCreationLink("Item", name)).join(", ") + '</p>' : '';
+    const dialog = new frappe.ui.Dialog({title: __("Change Product Reference"), fields: [
+        {fieldtype: "HTML", options: '<p>' + __("Generated reference") + ': <b>' +
+            itemCreationEscape(suggestion ? suggestion.default_reference : "") + '</b></p>' + owners},
+        {fieldname: "product_reference", fieldtype: "Data", label: __("Product Reference"),
+            default: row.product_reference || (suggestion ? suggestion.product_reference : conflict && conflict.reference) || "",
+            description: __("Enter a unique reference containing the selected head code exactly once. Leave blank to restore the generated reference. Existing Items are preserved; save and record fresh engineering review before submission.")},
+    ], primary_action_label: __("Apply Reference"), primary_action: values => {
+        if (stamp !== itemCreationInputs(frm)) return frappe.msgprint(__("The definition changed. Refresh the plan and open this reference again."));
+        row.product_reference = (values.product_reference || "").trim();
+        frm.refresh_field("product_variants");
+        frm.dirty();
+        dialog.hide();
+        scheduleItemCreationPlan(frm);
+    }});
+    dialog.show();
+}
+
 function chooseItemCreationVariants(frm) {
     const stamp = itemCreationInputs(frm);
     frappe.call({method: itemCreationWorkflow + "get_compatible_variants", args: {document: frm.doc}, callback: response => {
@@ -208,7 +251,8 @@ function chooseItemCreationVariants(frm) {
             variants.filter(row => choices.has(row.body + ":" + row.syringe)).forEach(row => {
                 Object.assign(frm.add_child("product_variants"), {body: row.body, syringe: row.syringe,
                     configuration: row.configuration, selected: 1,
-                    product_code: (previous.get(row.body + ":" + row.syringe) || {}).product_code || ""});
+                    product_code: (previous.get(row.body + ":" + row.syringe) || {}).product_code || "",
+                    product_reference: (previous.get(row.body + ":" + row.syringe) || {}).product_reference || ""});
             });
             frm.refresh_field("product_variants");
             frm.dirty();
@@ -401,5 +445,5 @@ const itemCreationPlanEvents = {};
     .forEach(field => { itemCreationPlanEvents[field] = scheduleItemCreationPlan; });
 frappe.ui.form.on("Item Creation", itemCreationPlanEvents);
 frappe.ui.form.on("Item Creation Variant", {selected: scheduleItemCreationPlan, body: scheduleItemCreationPlan,
-    product_code: scheduleItemCreationPlan,
+    product_code: scheduleItemCreationPlan, product_reference: scheduleItemCreationPlan,
     syringe: scheduleItemCreationPlan, product_variants_remove: scheduleItemCreationPlan});

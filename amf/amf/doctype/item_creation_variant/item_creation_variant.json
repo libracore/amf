@@ -11,6 +11,7 @@
   "syringe",
   "code_suggestion",
   "product_code",
+  "product_reference",
   "configuration"
  ],
  "fields": [
@@ -42,6 +43,12 @@
    "label": "Product Code",
    "description": "Optional explicit override. Leave blank to use the reviewed suggestion. When reusing a head, collisions advance to the next free code in the same configuration prefix.",
    "in_list_view": 1
+  },
+  {
+   "fieldname": "product_reference",
+   "fieldtype": "Data",
+   "label": "Product Reference",
+   "description": "Optional override for this configuration. Leave blank for the generated reference. Keep the selected head code exactly once. Existing Item masters are never renamed."
   },
   {
    "fieldname": "configuration",

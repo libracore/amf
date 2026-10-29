@@ -15,10 +15,10 @@ from frappe.utils import cint
 from amf.amf.utils import item_code_family as families
 from amf.amf.utils import item_creation_compatibility as compatibility
 from amf.amf.utils.item_learned_defaults import build_item_description
-from amf.amf.utils.item_creation_recipes import component_definition, product_definition
+from amf.amf.utils.item_creation_recipes import component_definition, product_definition, standard_product_reference
 
 
-PLAN_VERSION = 4
+PLAN_VERSION = 5
 INPUT_FIELDS = (
     "head_check", "head_item", "head_code", "head_name", "head_rnd", "head_description",
     "plug_check", "plug_item", "plug_code", "plug_name", "plug_rnd",
@@ -52,7 +52,8 @@ def inputs(doc):
               if field in checks else str(doc.get(field) or "").strip() for field in INPUT_FIELDS}
     values["product_variants"] = sorted(
         [{"body": row.get("body"), "syringe": row.get("syringe") or "",
-          "product_code": (row.get("product_code") or "").strip().upper()}
+          "product_code": (row.get("product_code") or "").strip().upper(),
+          "product_reference": (row.get("product_reference") or "").strip()}
          for row in doc.get("product_variants") or [] if cint(row.get("selected"))],
         key=lambda row: (row["body"] or "", row["syringe"]),
     )
@@ -213,8 +214,8 @@ class Planner:
         self.product_suggestions = []
         self.suffix = (doc.get("head_code") or "")[-3:]
 
-    def error(self, message, field=None):
-        self.errors.append(dict(message=message, field=field or ""))
+    def error(self, message, field=None, **details):
+        self.errors.append(dict(message=message, field=field or "", **details))
 
     def enabled(self, code, group=None):
         row = self.catalogue.items.get(code)
@@ -475,15 +476,16 @@ class Planner:
             else:
                 self.error("Select the existing Valve Head Item.", "head_item")
             suggest_codes = self.doc.get("head_check") == "No"
-            check_codes = selections and (suggest_codes or any(row.get("product_code") for row in selections))
-            expected_references = {row["body_label"].replace("-", "") + self.doc["head_code"]
-                + (compatibility.SYRINGE_REFERENCES[row["token"]].replace("-", "") if row["syringe"] else "")
+            check_codes = selections and (suggest_codes or any(row.get("product_code") or row.get("product_reference") for row in selections))
+            expected_references = {row.get("product_reference") or standard_product_reference(self.doc["head_code"], row["body_label"],
+                compatibility.SYRINGE_REFERENCES[row["token"]] if row["syringe"] else "")
                 for row in selections}
             inventory = self.catalogue.product_code_inventory(expected_references) if check_codes else []
             reservations = self.catalogue.reserved_product_codes() if check_codes else set()
             from amf.amf.utils.item_creation_product_codes import occupied_product_codes, suggest_product_code
             occupied_codes = occupied_product_codes(inventory, reservations)
             planned_codes = set()
+            planned_references = {}
             for row in selections:
                 body, syringe = self.enabled(row["body"], "Body"), None
                 if row["syringe"]:
@@ -500,6 +502,8 @@ class Planner:
                             syringe["name"], compatibility.SYRINGE_REFERENCES[row["token"]]))
                         continue
                 data, materials, scraps = product_definition(self.doc, row, body, syringe)
+                default_reference = standard_product_reference(self.doc["head_code"], row["body_label"],
+                    syringe["reference_code"] if syringe else "")
                 reason = "Entered Product code" if row.get("product_code") else "Configuration prefix + head suffix"
                 if suggest_codes and not row.get("product_code"):
                     try:
@@ -525,11 +529,22 @@ class Planner:
                     if (item.get("reference_code") or "").strip().upper() == (data.get("reference_code") or "").strip().upper()
                     and (item.get("name") or item.get("item_code")) != data["item_code"]]
                 if reference_owners:
-                    self.error("Product reference {0} already belongs to {1}. Review that Item master before creating a duplicate; no Item will be reactivated or renamed automatically.".format(
-                        data["reference_code"], ", ".join(reference_owners)), "product_variants")
+                    self.error("Product reference {0} already belongs to {1}. Enter a different Product Reference for this configuration, or review that Item master.".format(
+                        data["reference_code"], ", ".join(sorted(reference_owners))), "product_variants",
+                        reference_conflict=dict(configuration=row["key"], reference=data["reference_code"], owners=sorted(reference_owners)))
+                reference_key = data["reference_code"].strip().upper()
+                if reference_key in planned_references:
+                    self.error("Product reference {0} is also used by another selected configuration ({1}). Enter a different Product Reference.".format(
+                        data["reference_code"], planned_references[reference_key]), "product_variants",
+                        reference_conflict=dict(configuration=row["key"], reference=data["reference_code"], owners=[]))
+                planned_references[reference_key] = row["key"]
+                if row.get("product_reference") and row["product_reference"] != default_reference:
+                    self.warnings.append("Product {0} uses entered reference {1}; generated configuration reference is {2}.".format(
+                        data["item_code"], data["reference_code"], default_reference))
                 planned_codes.add(data["item_code"])
                 self.product_suggestions.append(dict(body=row["body"], syringe=row["syringe"],
-                    product_code=data["item_code"], reason=reason))
+                    product_code=data["item_code"], reason=reason,
+                    product_reference=data["reference_code"], default_reference=default_reference))
                 self.add(data, materials, scraps)
         if not self.actions:
             self.error("The request has no Items to create or verify.")

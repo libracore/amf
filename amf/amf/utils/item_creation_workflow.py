@@ -5,7 +5,7 @@ from contextlib import contextmanager
 
 import frappe
 from frappe import _
-from frappe.utils import now_datetime
+from frappe.utils import escape_html, now_datetime
 
 from amf.amf.utils import item_code_family as families
 from amf.amf.utils import item_creation_compatibility as compatibility
@@ -124,8 +124,8 @@ def _lock_source(name):
 
 def require_ready(plan):
     if plan["errors"]:
-        frappe.throw(_("Resolve the creation plan errors before review or submission:") + "\n" +
-                     "\n".join(row["message"] for row in plan["errors"]))
+        frappe.throw(escape_html(_("Resolve the creation plan errors before review or submission:") + "\n" +
+                     "\n".join(row["message"] for row in plan["errors"])))
 
 
 @frappe.whitelist(methods=["POST"])

@@ -106,12 +106,18 @@ def validate_selections(doc):
             errors.append("Enable the {0} product family for {1}.".format(rule["family"], key))
         else:
             product_code = (row.get("product_code") or "").strip().upper()
+            product_reference = (row.get("product_reference") or "").strip()
             if product_code and (not re.fullmatch(r"[0-9A-Z]{6}", product_code)
                                  or not product_code.startswith(rule["prefix"]) or product_code[-3:] == "000"):
                 errors.append("Product code {0} must start with {1} and have three letters/digits other than 000.".format(
                     product_code, rule["prefix"]))
+            elif product_reference and (len(product_reference) > 140 or re.search(r"[\x00-\x1f\x7f]", product_reference)):
+                errors.append("Product Reference for {0} must be a single line of at most 140 characters.".format(key))
+            elif product_reference and re.findall(r"30[0-9A-Z]{4}", product_reference.upper()) != [doc.get("head_code")]:
+                errors.append("Product Reference for {0} must contain selected head code {1} exactly once and no other head code.".format(
+                    key, doc.get("head_code") or "(select a head)"))
             else:
-                selected.append(dict(rule, product_code=product_code))
+                selected.append(dict(rule, product_code=product_code, product_reference=product_reference))
         seen.add(key)
     for family, flag in FAMILY_FLAGS.items():
         if checked(doc.get(flag)) and not any(row["family"] == family for row in selected):
