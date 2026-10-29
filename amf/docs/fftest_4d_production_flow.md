@@ -41,12 +41,19 @@ Only Work Orders whose production item starts with `4D` use the new sequence.
 The actual component codes and linked BOMs are read from the selected product's
 BOM; the implementation is not limited to `5D0000`/`5D1000`.
 
-For a previously unused operator-entered serial:
+For a product consuming purchased `5D0000`, enter the serial already recorded
+on the received item in `Main Stock - AMF21`:
 
-1. Manufacture one `5D0___` from its manufacturing BOM, assigning that serial.
-2. Manufacture one `5D1___`, consuming the `5D0___` and assigning the same serial
+1. Validate the existing `5D0000` serial and its source batch. There is no BOM
+   lookup or Work Order creation for this purchased item.
+2. Manufacture one `5D1___`, consuming the `5D0000` and assigning the same serial
    to the output within the same Manufacture entry.
 3. Manufacture one `4D____`, consuming the `5D1___`.
+
+An unknown serial is a stock-validation error: receive the purchased item first
+and enter the serial as recorded in ERP. It never triggers manufacture of
+`5D0000`. Other manufactured `5D0` variants retain their raw-body manufacturing
+stage for previously unused serials.
 
 ERPNext V12 explicitly permits carrying a serial between a consumed item and an
 output item in a Manufacture entry. Its native
@@ -61,7 +68,7 @@ The final Stock Entry output records the value in `product_serial_no` when that
 custom field exists. If the 4D item itself is serialized, its output also carries
 the same Serial No using the native mechanism.
 
-An available existing serial for the exact `5D0___` component resumes at step 2.
+An available existing serial for the exact `5D0___` component starts at step 2.
 An available existing serial for the exact `5D1___` component resumes at step 3.
 Consumed serials and serials for other items/companies are rejected. A serial in
 WIP must belong to the correct submitted manufacturing transfer and configured
@@ -80,10 +87,11 @@ The 4D branch returns the submitted **final-product** Stock Entry. Failures retu
 - Both components must be enabled, serialized stock items. Additional serialized
   input components require a separate serial and are rejected by this one-serial
   API.
-- To manufacture a new `5D0___`, it needs a submitted, active manufacturing BOM
-  and available component stock. The code does not manufacture stock through an
-  unsupported Material Receipt when a BOM is missing. An already manufactured
-  available `5D0___` can be consumed without a raw-layer BOM.
+- Purchased `5D0000` needs an existing, available serial, not a manufacturing BOM
+  or Work Order. Its received batch is taken from the Serial No record. A valid
+  transfer into the selected body Work Order's WIP can also be resumed.
+- Other `5D0` variants that are manufactured need a submitted, active manufacturing
+  BOM and available component stock if their serial does not yet exist.
 - Existing component Work Orders must match the item, selected BOM, company,
   Sales Order scope and parent scope. Suitable orders are reused; otherwise new
   component Work Orders are submitted with single-level BOMs and parent links.
@@ -123,7 +131,9 @@ env/bin/python -m unittest \
 ```
 
 The new tests use an in-memory document/stock adapter and the installed ERPNext
-V12 serial validator. They cover the full chain, serial carryover, normalized BOM
+V12 serial validator. They cover purchased `5D0000` with no raw BOM/Work Order,
+missing received serials, rollback restoring the purchased serial, the full chain
+for other manufactured raw variants, serial carryover, normalized BOM
 quantities, existing-stage reuse, custom WIP, automatic and explicit batches,
 Work Order creation/scope, preview behavior, unchanged non-4D routing, and rollback
 after a final-stage failure. They do not initialize a site or post live stock.

@@ -5,8 +5,10 @@ This is an independent copy of fftest_master_debug. Point a caller at
 Keep the public response shape stable: FFTest treats ``{"error": ...}`` as a
 failure. Stock documents are committed by the request, never between stages.
 
-For a 4D product, manufacture its BOM's 5D0 component, then its 5D1 component,
-then the product, preserving the operator's serial. ERPNext V12 natively carries
+For a 4D product using purchased 5D0000, consume its received serial to manufacture
+the BOM's 5D1 component, then manufacture the product, preserving the serial.
+Purchased 5D0000 requires no manufacturing BOM or Work Order. Other manufactured
+5D0 variants retain their raw-body production stage. ERPNext V12 natively carries
 one Serial No record between items in a Manufacture entry. For other products,
 the original P202 serial mapping and production flow remain available.
 """
@@ -2304,6 +2306,14 @@ def _plan_4d_stock_entry_flow(root, serial_no, batch_rows, create_missing=False,
         )
     body_bom = _4d_bom(body_row.item_code, body_row.bom_no, root.company)
     raw_row = _4d_component(body_bom, "5D0")
+    purchased_raw = raw_row.item_code == P202_RAW_ITEM_CODE
+    if purchased_raw and not serial:
+        raise ValidationError(
+            _(
+                "Serial No {0} must already exist for purchased Item {1} in {2}. "
+                "Enter the serial recorded on the received item."
+            ).format(serial_no, raw_row.item_code, MAIN_STOCK_WAREHOUSE)
+        )
     start = 0
     if serial:
         if (
@@ -2338,7 +2348,7 @@ def _plan_4d_stock_entry_flow(root, serial_no, batch_rows, create_missing=False,
     elif serial.warehouse != MAIN_STOCK_WAREHOUSE:
         _4d_wip_owner(serial, final, root, root.get("parent_work_order"))
 
-    if start == 0:
+    if start == 0 and not purchased_raw:
         raw_bom = _4d_bom(raw_row.item_code, raw_row.bom_no, root.company)
         raw = {
             "item_code": raw_row.item_code, "bom": raw_bom,

@@ -298,8 +298,9 @@ class TestFFTest4DFlow(unittest.TestCase):
 
     def seed_serial(self, item, warehouse=None, transferred_for=None):
         warehouse = warehouse or flow.MAIN_STOCK_WAREHOUSE
-        batch = "EXISTING-BATCH"
-        self.database.docs["Batch"][batch] = _dict(name=batch, item=item, disabled=0)
+        batch = "EXISTING-BATCH" if self.database.docs["Item"][item].has_batch_no else None
+        if batch:
+            self.database.docs["Batch"][batch] = _dict(name=batch, item=item, disabled=0)
         self.database.docs["Serial No"]["HAND-0070"] = Document(
             name="HAND-0070", serial_no="HAND-0070", item_code=item, warehouse=warehouse,
             batch_no=batch, purchase_document_no="EXISTING-TRANSFER", company=flow.COMPANY,
@@ -312,6 +313,28 @@ class TestFFTest4DFlow(unittest.TestCase):
             )
             self.database.docs["Work Order"][transferred_for].material_transferred_for_manufacturing = 1
         self.database.begin_snapshot()
+
+    def use_purchased_5d0000(self, seed_serial=True):
+        """Match purchased 5D0000 -> serialized, non-batched 5D1000 -> 4D."""
+        raw = self.database.docs["Item"].pop("5D00AB")
+        raw.name = "5D0000"
+        self.database.docs["Item"][raw.name] = raw
+        body = self.database.docs["Item"].pop("5D10AB")
+        body.name = "5D1000"
+        body.has_batch_no = 0
+        self.database.docs["Item"][body.name] = body
+        self.database.docs["BOM"]["BOM-4D00AB"].items[0].item_code = body.name
+        body_bom = self.database.docs["BOM"]["BOM-5D10AB"]
+        body_bom.item = body.name
+        body_bom.items[0].item_code = raw.name
+        body_bom.items[0].bom_no = None
+        self.database.docs["Work Order"]["WO-5D10AB"].production_item = body.name
+        del self.database.docs["BOM"]["BOM-5D00AB"]
+        del self.database.docs["Work Order"]["WO-5D00AB"]
+        if seed_serial:
+            self.seed_serial(raw.name)
+        else:
+            self.database.begin_snapshot()
 
     def test_manufactures_all_three_layers_with_native_same_serial_and_normalized_qty(self):
         result = self.execute(" hand-0070 ")
@@ -532,6 +555,77 @@ class TestFFTest4DFlow(unittest.TestCase):
         report = flow.debug_stock_entry_flow("WO-4D00AB", "HAND-0070")
         self.assertFalse(report["ok"])
         self.assertIn("invalid Batch", report["errors"][0])
+
+    def test_purchased_5d0000_preview_needs_no_raw_bom_or_work_order(self):
+        self.use_purchased_5d0000()
+        before = copy.deepcopy(self.database.docs)
+        with patch.object(flow, "get_default_bom", side_effect=AssertionError("No raw BOM lookup")):
+            report = flow.debug_stock_entry_flow("WO-4D00AB", "HAND-0070")
+        self.assertTrue(report["ok"], report["errors"])
+        manufactured = [doc for doc in report["planned_documents"] if doc["purpose"] == "Manufacture"]
+        self.assertEqual([doc["produce_item"] for doc in manufactured], ["5D1000", "4D00AB"])
+        self.assertEqual(manufactured[0]["consume_item"], "5D0000")
+        self.assertEqual(manufactured[0]["consume_serial"], "HAND-0070")
+        self.assertEqual(before, self.database.docs)
+        self.assertEqual(self.database.entries, [])
+
+    def test_purchased_5d0000_is_consumed_without_manufacturing_or_creating_an_order_for_it(self):
+        self.use_purchased_5d0000()
+        with patch.object(flow, "get_default_bom", side_effect=AssertionError("No raw BOM lookup")), patch.object(
+            flow, "create_new_wo", side_effect=AssertionError("No new Work Orders needed")
+        ):
+            result = self.execute()
+        self.assertNotIn("error", result)
+        manufactured = [entry for entry in self.database.entries if entry.purpose == "Manufacture"]
+        self.assertEqual([self.database.docs["Work Order"][entry.work_order].production_item for entry in manufactured],
+                         ["5D1000", "4D00AB"])
+        self.assertEqual(manufactured[0].items[0].serial_no, "HAND-0070")
+        self.assertEqual(manufactured[0].items[0].batch_no, "EXISTING-BATCH")
+        self.assertEqual(manufactured[0].items[-1].serial_no, "HAND-0070")
+        self.assertEqual(self.database.stock[("5D0000", "EXISTING-BATCH", flow.MAIN_STOCK_WAREHOUSE)], 0)
+        self.assertEqual(set(self.database.docs["Work Order"]), {"WO-4D00AB", "WO-5D10AB"})
+
+    def test_missing_purchased_serial_is_a_stock_validation_error_in_preview_and_execution(self):
+        self.use_purchased_5d0000(seed_serial=False)
+        with patch.object(flow, "get_default_bom", side_effect=AssertionError("No raw BOM lookup")), patch.object(
+            flow, "create_new_wo", side_effect=AssertionError("No Work Orders may be created")
+        ):
+            report = flow.debug_stock_entry_flow("WO-4D00AB", "HAND-0070")
+            result = self.execute()
+        self.assertFalse(report["ok"])
+        self.assertIn("must already exist for purchased Item 5D0000", report["errors"][0])
+        self.assertIn("Main Stock - AMF21", result["error"])
+        self.assertEqual(self.database.entries, [])
+        self.assertEqual(self.database.docs["Serial No"], {})
+
+    def test_only_body_work_order_is_created_for_purchased_5d0000(self):
+        self.use_purchased_5d0000()
+        del self.database.docs["Work Order"]["WO-5D10AB"]
+        with patch.object(flow, "create_new_wo", wraps=flow.create_new_wo) as create:
+            result = self.execute()
+        self.assertNotIn("error", result)
+        self.assertEqual([call.kwargs["item_code"] for call in create.call_args_list], ["5D1000"])
+
+    def test_received_5d0000_in_custom_wip_resumes_its_body_order(self):
+        self.use_purchased_5d0000(seed_serial=False)
+        self.seed_serial("5D0000", "Custom WIP 5D10AB", "WO-5D10AB")
+        self.assertNotIn("error", self.execute())
+        self.assertEqual([entry.purpose for entry in self.database.entries], ["Manufacture", "Manufacture"])
+
+    def test_purchased_5d0000_in_unrelated_warehouse_is_rejected(self):
+        self.use_purchased_5d0000(seed_serial=False)
+        self.seed_serial("5D0000", "Other warehouse")
+        self.assertIn("error", self.execute())
+        self.assertEqual(self.database.entries, [])
+
+    def test_purchased_5d0000_is_restored_if_final_manufacture_fails(self):
+        self.use_purchased_5d0000()
+        self.database.fail_item = "4D00AB"
+        self.assertIn("Simulated final-stage", self.execute()["error"])
+        serial = self.database.docs["Serial No"]["HAND-0070"]
+        self.assertEqual((serial.item_code, serial.warehouse), ("5D0000", flow.MAIN_STOCK_WAREHOUSE))
+        self.assertEqual(self.database.stock[("5D0000", "EXISTING-BATCH", flow.MAIN_STOCK_WAREHOUSE)], 1)
+        self.assertEqual(self.database.entries, [])
 
 
 if __name__ == "__main__":
