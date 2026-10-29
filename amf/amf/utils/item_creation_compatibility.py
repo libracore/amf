@@ -6,7 +6,7 @@ new combinations from the existence of a Body or Syringe Item.
 import re
 
 
-RULE_VERSION = "2026-10-28.1"
+RULE_VERSION = "2026-10-29.1"
 LV_SYRINGES = ("2", "3", "4", "5", "8", "9", "D")
 HV_SYRINGES = ("E", "F")
 SYRINGE_REFERENCES = {"2": "S-50-P", "3": "S-100-P", "4": "S-100-U", "5": "S-250-P",
@@ -15,6 +15,7 @@ SYRINGE_REFERENCES = {"2": "S-50-P", "3": "S-100-P", "4": "S-100-U", "5": "S-250
 BODY_RULES = (
     ("511000", "RVM", "1", ("0",), "P200-O"),
     ("521000", "RVM", "2", ("0",), "P201-O"),
+    ("5D1000", "RVM", "D", ("0",), "P202-O"),
     ("551000", "LV", "5", LV_SYRINGES, "P100-O"),
     ("571000", "LV", "7", LV_SYRINGES, "P100-L"),
     ("591000", "LV", "9", LV_SYRINGES, "P110-O"),
@@ -80,7 +81,8 @@ def head_requirement_error(head_name, rule):
 
 def configuration_label(rule, syringe_reference=""):
     drive = " / HD" if rule["motor"] in ("9", "B", "A", "C") else ""
-    label = rule["body_label"] + " (" + rule["family"] + drive + ")"
+    family = "RVM mini" if rule["body"] == "5D1000" else rule["family"]
+    label = rule["body_label"] + " (" + family + drive + ")"
     return label + (" / " + syringe_reference if syringe_reference else "")
 
 

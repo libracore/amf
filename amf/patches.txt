@@ -37,3 +37,4 @@ amf.patches.v12_0.create_acoustic_mixer_items_2026_10_28
 amf.patches.v12_0.update_item_creation_product_codes_and_pins
 amf.patches.v12_0.update_item_creation_existing_head_products
 amf.patches.v12_0.update_item_creation_product_references
+amf.patches.v12_0.update_item_creation_rvm_mini

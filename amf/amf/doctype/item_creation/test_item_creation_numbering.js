@@ -150,6 +150,21 @@ assert.strictEqual(choices[0].danger, true);
 assert.ok(choices[0].label.includes("Requires &lt;HV&gt; head"));
 assert.ok(choices[1].label.includes("P111-L (HV / HD) / S-5000-P"));
 
+// RVM mini is an explicit RVM configuration and requires no syringe.
+calls.length = 0;
+frm = form({rvm_check: 1, product_variants: []});
+frm.clear_table = field => { frm.doc[field] = []; };
+frm.add_child = field => { const row = {}; frm.doc[field].push(row); return row; };
+frm.refresh_field = () => {};
+frm.dirty = () => {};
+sandbox.chooseItemCreationVariants(frm);
+calls[0].callback({message: [{body: "5D1000", syringe: "", configuration: "P202-O (RVM mini)", compatibility_note: ""}]});
+assert.ok(dialog.fields.find(field => field.fieldname === "variants").options[0].label.includes("P202-O (RVM mini)"));
+dialog.primary_action({variants: ["5D1000:"]});
+assert.strictEqual(frm.doc.product_variants[0].body, "5D1000");
+assert.strictEqual(frm.doc.product_variants[0].syringe, "");
+assert.strictEqual(frm.doc.product_variants[0].selected, 1);
+
 // Reopening the configuration chooser retains an explicit Product code override.
 calls.length = 0;
 frm = form({head_code: "300ABC", rvm_check: 1,

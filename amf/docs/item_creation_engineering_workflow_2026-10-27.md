@@ -43,7 +43,7 @@ Some legacy raw-material rows retain a stale `stock_uom` label. Reuse is permitt
 
 | Family | Bodies | Syringe tokens | Head requirements |
 | --- | --- | --- | --- |
-| RVM | `511000`, `521000` | No syringe | Standard head; observed D, DS, O, OS, S, B, DA, SA, SL, T, SPLIT and SPLITS types. |
+| RVM | `511000`, `521000`, `5D1000` (RVM mini) | No syringe | Standard head; observed D, DS, O, OS, S, B, DA, SA, SL, T, SPLIT and SPLITS types. |
 | LV | `551000`, `571000`, `591000`, `5B1000` | `2`, `3`, `4`, `5`, `8`, `9`, `D` | Standard D/DS head. |
 | HV | `561000`, `581000`, `5A1000`, `5C1000` | `E`, `F` | D/DS head with an explicit HV designation. Customer suffixes such as `-HV MGA` are recognized. |
 
@@ -51,7 +51,7 @@ Every selected Body/Syringe must also exist, be enabled and belong to its correc
 
 AMF `0.7.5`, rule version `2026-10-27.2`, permits `704000` (`S-100-U`) and `709000` (`S-500-U`) with all four standard LV bodies, as explicitly authorized by the user. The chooser and manually selected rows use the same rules. Their enabled state, exact U reference, head geometry and request engineering review remain required. Historical disabled Products are not reactivated. HV bodies continue to permit only `70E000` and `70F000`. Other interfaces/families, including the pending 4D interface BOMs, still require a reviewed rule update.
 
-The rule-version change invalidates earlier draft approvals at submission; refresh the complete plan and record a fresh engineering review. Submitted/cancelled requests retain their original recorded snapshots. The expanded maximum standard selection is five head-chain Items plus thirty Products: 35 Items/BOMs.
+The rule-version change invalidates earlier draft approvals at submission; refresh the complete plan and record a fresh engineering review. Submitted/cancelled requests retain their original recorded snapshots. With the `0.7.10` RVM mini addition, the maximum standard selection is five head-chain Items plus 31 Products: 36 Items/BOMs.
 
 These rules enforce the supported standard configuration matrix, head type and volume class. The review records the engineering decision for the exact geometry, materials, stock dimensions and accessory quantities; catalogue frequency is not proof of physical compatibility for a new design.
 
@@ -59,10 +59,15 @@ AMF `0.7.6` makes HV and HD choices explicit instead of hiding choices whose hea
 
 | Configuration | Body Item | Chooser family/drive | Syringes |
 | --- | --- | --- | --- |
+| P202-O | `5D1000` | RVM mini | None |
 | P100-O / P100-L | `551000` / `571000` | LV | Standard LV set, including approved U variants |
 | P110-O / P110-L | `591000` / `5B1000` | LV / HD | Same LV set |
 | P101-O / P101-L | `561000` / `581000` | HV | `70E000` (`S-2500-P`), `70F000` (`S-5000-P`) |
 | P111-O / P111-L | `5A1000` / `5C1000` | HV / HD | Same HV set |
+
+AMF `0.7.10`, compatibility version `2026-10-29.1`, adds **P202-O (RVM mini)** under **Rotary Valves (including RVM mini)**. Enable that family, open **Choose Product Configurations** and select body `5D1000` without a syringe. Its suggested Product code is `4D0` plus the head suffix, subject to existing matching-Product reuse and collision handling. Its generated reference is `P202O` plus the full head code. Code/reference overrides, Product-only mode, engineering review and automatic BOM submission use the same workflow as other RVM configurations.
+
+Mini assembly recipes consume one body, one selected head, the selected assembly-screw quantity and one selected head cap. These accessories remain explicit inputs. New Mini Products use the observed `0.10 Kg` catalogue weight; reused Item weights are preserved. Existing recipe exceptions remain visible and require reviewed replacements; for example, `4D0040` includes shipping foam. RS485/CAN bodies `5D1001`/`5D1002` and pending interface BOMs are not enabled by adding the requested base configuration. The registered `update_item_creation_rvm_mini` patch reloads only parent-form guidance metadata and clears its cache. See the [RVM mini release record](item_creation_rvm_mini_2026-10-29.md).
 
 ## Complete recipes and replacements
 

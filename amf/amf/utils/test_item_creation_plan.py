@@ -350,7 +350,7 @@ class TestItemCreationPlan(unittest.TestCase):
         data = catalogue()
         plan = plans.build_plan(source(rvm_check=1, pump_check=1, product_variants=variants), catalogue=data)
         self.assertEqual(plan["errors"], [])
-        self.assertEqual(len(plan["actions"]), 35)
+        self.assertEqual(len(plan["actions"]), 36)
         self.assertEqual(self.db.get_value.call_count, 1)  # Warehouse, never repeated syringe lookups.
         self.assertEqual(sum(row[0] == "Item" for row in data.reads), 1)
 

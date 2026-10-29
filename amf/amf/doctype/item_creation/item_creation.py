@@ -552,7 +552,7 @@ def get_last_item_code(*args, **kwargs):
 def get_data_for_preview(doc, group=None):
     from amf.amf.utils.item_creation_workflow import get_creation_plan
     plan = get_creation_plan(doc)
-    prefixes = {"rvm": ("41", "42"), "pump": ("45", "47", "49", "4B"),
+    prefixes = {"rvm": ("41", "42", "4D0"), "pump": ("45", "47", "49", "4B"),
                 "pump_hv": ("46", "48", "4A", "4C")}.get(group)
     if not prefixes:
         frappe.throw(_("Select a supported product family."))

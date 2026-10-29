@@ -66,5 +66,6 @@ def product_definition(doc, rule, body, syringe=None):
         reference_code=rule.get("product_reference") or standard_product_reference(head, label, reference),
         reference_name=code + ": " + name, description=description, has_batch_no=0, is_purchase_item=0,
         country_of_origin="Switzerland", is_sales_item=1, item_defaults=item_defaults(doc),
-        weight_per_unit=0.53 if rule["family"] == "RVM" else 2.18, weight_uom="Kg")
+        weight_per_unit=0.1 if rule["body"] == "5D1000" else 0.53 if rule["family"] == "RVM" else 2.18,
+        weight_uom="Kg")
     return data, materials, scraps
