@@ -9,6 +9,7 @@
   "selected",
   "body",
   "syringe",
+  "code_suggestion",
   "product_code",
   "configuration"
  ],
@@ -39,7 +40,7 @@
    "fieldname": "product_code",
    "fieldtype": "Data",
    "label": "Product Code",
-   "description": "Optional override. Leave blank to use the current suggestion based on the configuration and head code. The Product suffix may differ from the head suffix.",
+   "description": "Optional explicit override. Leave blank to use the reviewed suggestion. When reusing a head, collisions advance to the next free code in the same configuration prefix.",
    "in_list_view": 1
   },
   {
@@ -48,6 +49,14 @@
    "label": "Configuration",
    "read_only": 1,
    "in_list_view": 1
+  },
+  {
+   "fieldname": "code_suggestion",
+   "fieldtype": "Data",
+   "label": "Suggested Product Code",
+   "read_only": 1,
+   "in_list_view": 1,
+   "description": "Live read-only suggestion; availability is rechecked at engineering review and submission."
   }
  ],
  "permissions": [],

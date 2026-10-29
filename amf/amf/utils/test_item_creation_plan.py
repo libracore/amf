@@ -28,6 +28,12 @@ class MemoryCatalogue(plans.Catalogue):
         return [dict(row) for row in self.tables["Item"] if row["item_group"] == "Raw Material"
                 and row.get("tag_raw_mat") in tags and not row.get("disabled")]
 
+    def product_code_inventory(self, references=()):
+        return self.tables["Item"]
+
+    def reserved_product_codes(self):
+        return set()
+
 
 def item(code, group, **fields):
     return dict(name=code, item_name=code, item_group=group, reference_code=code,

@@ -174,4 +174,33 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, "../../..", "public/js/item
     assert.strictEqual(sandbox.frappe.route_options[doctype === "Item" ? "item_code" : "bom"], "LINKED");
     assert.strictEqual(route[1], "Item Creation Results");
 });
-console.log("Item Creation guided-form, review, preview and numbering tests passed.");
+// Derived suggestions cannot overwrite overrides or invalidate an in-flight plan.
+calls.length = 0;
+frm = form({head_check: "No", head_item: "300080", product_only: 1,
+    product_variants: [{selected: 1, body: "521000", syringe: "", product_code: "420XYZ"}]});
+frm.refresh_field = () => {};
+const beforeSuggestion = sandbox.itemCreationInputs(frm);
+sandbox.suggestItemCreationProductCodes(frm);
+calls[0].callback({message: [{body: "521000", syringe: "", product_code: "420XYZ"}]});
+assert.strictEqual(frm.doc.product_variants[0].product_code, "420XYZ");
+assert.strictEqual(frm.doc.product_variants[0].code_suggestion, "420XYZ");
+assert.strictEqual(sandbox.itemCreationInputs(frm), beforeSuggestion);
+sandbox.suggestItemCreationProductCodes(frm);
+frm.doc.head_item = "300081";
+calls[1].callback({message: [{body: "521000", syringe: "", product_code: "420OLD"}]});
+assert.strictEqual(frm.doc.product_variants[0].code_suggestion, "420XYZ");
+
+(async () => {
+    const modeForm = form({product_only: 1, head_check: "No", head_item: "300080", head_code: "300080",
+        seat_check: "Yes", plug_check: "Yes", replace_boms: 1});
+    const changed = events.product_only(modeForm);
+    events.head_check(modeForm); // Mode transition must retain the selected existing head.
+    await changed;
+    assert.strictEqual(modeForm.doc.head_item, "300080");
+    assert.strictEqual(modeForm.doc.head_check, "No");
+    assert.strictEqual(modeForm.doc.seat_check, "No");
+    assert.strictEqual(modeForm.doc.plug_check, "No");
+    assert.strictEqual(modeForm.doc.replace_boms, 0);
+    assert.strictEqual(modeForm.properties["head_name:read_only"], true);
+    console.log("Item Creation guided-form, review, preview, numbering and product-only tests passed.");
+})().catch(error => { console.error(error); process.exitCode = 1; });

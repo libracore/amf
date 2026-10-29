@@ -34,7 +34,7 @@ def product_definition(doc, rule, body, syringe=None):
     reference = syringe.get("reference_code") if syringe else ""
     label = body.get("reference_code") or rule["body_label"]
     code = rule.get("product_code") or rule["prefix"] + head[-3:]
-    name = label + "/" + (doc.get("head_rnd") or "") + ("/" + reference if reference else "")
+    name = label + "/" + (doc.get("head_rnd") or head) + ("/" + reference if reference else "")
     materials = [dict(item_code=rule["body"], qty=1), dict(item_code=head, qty=1),
                  dict(item_code=doc.get("screw_type"), qty=doc.get("screw_quantity"))]
     scraps = []

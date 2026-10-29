@@ -1,6 +1,6 @@
 # Item Creation: engineering workflow implementation
 
-Updated 27 October 2026. This extends the [numbering implementation](item_creation_algorithm_implementation_2026-10-27.md) and implements the five improvements selected after the [audit](item_creation_audit_2026-10-27.md). The maintained backlog is [item_creation_improvements.md](item_creation_improvements.md).
+Updated 29 October 2026. This extends the [numbering implementation](item_creation_algorithm_implementation_2026-10-27.md) and implements the five improvements selected after the [original audit](item_creation_audit_2026-10-27.md), plus the [existing-head/Product-only update](item_creation_audit_2026-10-29.md). The maintained backlog is [item_creation_improvements.md](item_creation_improvements.md).
 
 ## User workflow
 
@@ -16,6 +16,23 @@ Editing reviewed inputs marks the request **Stale** and clears its current appro
 
 The existing System Manager authorization is retained. Separate engineering roles and mandatory separation of preparer/reviewer remain a distinct permissions-policy improvement.
 
+## Existing heads and Create Products Only
+
+Existing heads may use existing plug/seat Items with independent suffixes. The actual submitted BOM revisions determine their composition. For example, head `300080` already consumes plug `110137` and seat `210056`; this is accepted and shown in the review. New heads, new machined components and their new sub-assemblies still use matching suffixes. Selecting different parts for an existing head requires **Propose Replacement BOMs**, review of the exact differences and a new default head revision. Existing submitted revisions and their parents keep their links.
+
+To assemble Products using a head as it stands:
+
+1. Enable **Create Products Only** and select the existing **Valve Head**. The head definition is read from its Item master; seat/plug creation fields are hidden.
+2. Select the company/warehouse and the Product accessories/quantities required by the existing recipes. Enable the Product families, then use **Choose Product Configurations** to select individual combinations.
+3. Use **Suggest Product Codes**, or refresh the complete plan. The configuration table displays a read-only **Suggested Product Code** beside the optional editable **Product Code** override. A suggestion never overwrites an explicit override.
+4. Save, refresh the plan, record engineering review and submit. Only Product actions execute. The existing head/component BOMs are pinned dependencies and are preserved, including when **Propose Replacement BOMs** is used to review an existing Product recipe.
+
+For existing-head requests, blank overrides first reuse an enabled Product with the same body/head/syringe engineering reference. Otherwise, the suggestion uses the configuration prefix plus the head suffix when free. If occupied or retired, it takes the first free suffix in that same three-character prefix: `001`–`999`, then the remaining uppercase alphanumeric tokens. All codes retain six characters. Disabled Items, retired aliases and member reservations block reallocation. Availability and dependencies are rechecked at review/submission; a changed suggestion invalidates the approval.
+
+In the inspected catalogue, P201-O with head `300080` suggests existing Product `420100`, which already owns reference `P201O300080`. Its missing Product BOM can be created after review. The retired `/420080` alias remains reserved. A duplicate Product is not created just to retain suffix `080`; the existing Item name/reference are preserved.
+
+Some legacy raw-material rows retain a stale `stock_uom` label. Reuse is permitted with an explicit plan warning only when the row's `uom` already equals the current Item stock UOM, conversion is exactly `1`, and `stock_qty` equals `qty`. No submitted row is rewritten. Invalid quantities, inconsistent conversions, disabled components, missing/inactive/unsubmitted BOMs, cycles and company mismatches remain errors.
+
 ## Explicit compatibility policy
 
 [item_creation_compatibility.py](../amf/utils/item_creation_compatibility.py) owns the versioned rules. They combine the catalogue relationships evaluated in the audit with the user's explicit authorization of both U syringes for standard LV bodies on 27 October 2026.
@@ -26,7 +43,7 @@ The existing System Manager authorization is retained. Separate engineering role
 | LV | `551000`, `571000`, `591000`, `5B1000` | `2`, `3`, `4`, `5`, `8`, `9`, `D` | Standard D/DS head. |
 | HV | `561000`, `581000`, `5A1000`, `5C1000` | `E`, `F` | D/DS head with an explicit HV designation. Customer suffixes such as `-HV MGA` are recognized. |
 
-Every selected Body/Syringe must also exist, be enabled and belong to its correct Item Group. Duplicate combinations, unsupported pairs and selections whose family checkbox is cleared are errors. Selected configurations use the same reserved head suffix at every layer.
+Every selected Body/Syringe must also exist, be enabled and belong to its correct Item Group. Duplicate combinations, unsupported pairs and selections whose family checkbox is cleared are errors. New head/component families use the same reserved suffix; Products may use independently numbered codes while their reference and BOM identify the selected head.
 
 AMF `0.7.5`, rule version `2026-10-27.2`, permits `704000` (`S-100-U`) and `709000` (`S-500-U`) with all four standard LV bodies, as explicitly authorized by the user. The chooser and manually selected rows use the same rules. Their enabled state, exact U reference, head geometry and request engineering review remain required. Historical disabled Products are not reactivated. HV bodies continue to permit only `70E000` and `70F000`. Other interfaces/families, including the pending 4D interface BOMs, still require a reviewed rule update.
 
@@ -98,5 +115,7 @@ bench --site <site> execute amf.amf.utils.item_creation_workflow.sync_item_creat
 ```
 
 Existing draft requests need explicit raw-stock quantities, supported variant selections and recorded engineering review before submission. Historical submitted requests retain their existing records.
+
+AMF `0.7.8` registers `amf.patches.v12_0.update_item_creation_existing_head_products` to reload the parent/variant schemas and clear their caches. Plan version `4` invalidates earlier draft approvals at validation; refresh/review them before submission. Submitted/cancelled review snapshots remain intact. Product-only requests do not require raw-stock inputs for the preserved head components.
 
 Broader permission roles, formal versioned engineering-template maintenance, dedicated structured geometry fields, company-wide costing/settings policy, historical catalogue repair and a platform upgrade remain on the separate backlog. A full browser session and the entire repository test suite are outside the recorded verification above.

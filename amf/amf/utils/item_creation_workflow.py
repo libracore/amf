@@ -112,6 +112,12 @@ def get_compatible_variants(document):
                  and available[row["syringe"]].reference_code == compatibility.SYRINGE_REFERENCES[row["token"]]))]
 
 
+@frappe.whitelist()
+def suggest_product_codes(document):
+    """Read-only suggestions; execution rechecks the exact approved identifiers."""
+    return build_plan(_source_for_preview(document)).get("product_suggestions", [])
+
+
 def _lock_source(name):
     frappe.db.sql("SELECT name FROM `tabItem Creation` WHERE name = %s FOR UPDATE", name)
 
@@ -192,7 +198,8 @@ def execute_reviewed_plan(source):
     if not plan or plan["fingerprint"] != source.approved_plan_hash:
         frappe.throw(_("A freshly validated engineering plan is required for execution."))
     results, resolved = [], {}
-    with families.atomic_family_creation(), families.family_creation((source.doctype, source.name), source.head_code[-3:]):
+    with families.atomic_family_creation(), families.family_creation((source.doctype, source.name), source.head_code[-3:],
+            existing_head=source.head_code if source.head_check == "No" else None):
         for action in plan["actions"]:
             data = action["item"]
             code = data["item_code"]

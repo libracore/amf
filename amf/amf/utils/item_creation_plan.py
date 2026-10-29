@@ -18,7 +18,7 @@ from amf.amf.utils.item_learned_defaults import build_item_description
 from amf.amf.utils.item_creation_recipes import component_definition, product_definition
 
 
-PLAN_VERSION = 3
+PLAN_VERSION = 4
 INPUT_FIELDS = (
     "head_check", "head_item", "head_code", "head_name", "head_rnd", "head_description",
     "plug_check", "plug_item", "plug_code", "plug_name", "plug_rnd",
@@ -26,7 +26,7 @@ INPUT_FIELDS = (
     "seat_rnd", "seat_mat", "seat_pin_item", "seat_acc", "seat_drawing", "screw_type", "screw_quantity", "cap_type",
     "rvm_check", "pump_check", "pump_hv_check", "company", "default_warehouse",
     "plug_raw_material", "plug_raw_qty", "plug_raw_uom", "seat_raw_material", "seat_raw_qty",
-    "seat_raw_uom", "replace_boms",
+    "seat_raw_uom", "replace_boms", "product_only",
 )
 ITEM_FIELDS = ("name", "item_name", "item_group", "reference_code", "description", "tag_raw_mat",
                "disabled", "default_bom", "stock_uom", "include_item_in_manufacturing", "modified")
@@ -47,7 +47,7 @@ def digest(value):
 
 def inputs(doc):
     numeric = {"screw_quantity", "plug_acc", "seat_acc", "plug_raw_qty", "seat_raw_qty"}
-    checks = {"rvm_check", "pump_check", "pump_hv_check", "replace_boms"}
+    checks = {"rvm_check", "pump_check", "pump_hv_check", "replace_boms", "product_only"}
     values = {field: number(doc.get(field)) if field in numeric else cint(doc.get(field))
               if field in checks else str(doc.get(field) or "").strip() for field in INPUT_FIELDS}
     values["product_variants"] = sorted(
@@ -83,6 +83,18 @@ class Catalogue:
         self.operations = defaultdict(list)
         self.other_boms = defaultdict(list)
         self._item_reads, self._bom_reads = set(), set()
+
+    def product_code_inventory(self, references=()):
+        condition = " OR reference_code IN %s" if references else ""
+        return frappe.db.sql("""SELECT name, item_code, item_group, item_name, reference_code, disabled
+            FROM `tabItem` WHERE item_code REGEXP '^/*4' OR item_group IN ('Product', 'Products')"""
+            + condition + (" FOR UPDATE" if self.lock else ""),
+            (tuple(sorted(references)),) if references else None, as_dict=True)
+
+    def reserved_product_codes(self):
+        rows = frappe.db.sql("SELECT name FROM `tabSeries` WHERE name LIKE %s" + (" FOR UPDATE" if self.lock else ""),
+                             families.MEMBER_PREFIX + "4%")
+        return {row[0][len(families.MEMBER_PREFIX):] for row in rows}
 
     def rows(self, doctype, fields, key, names):
         if not names:
@@ -196,6 +208,9 @@ class Planner:
         self.catalogue = catalogue or Catalogue(lock=lock)
         self.errors, self.warnings, self.actions = [], [], []
         self.by_code = {}
+        self._validated_chains = set()
+        self._legacy_components = set()
+        self.product_suggestions = []
         self.suffix = (doc.get("head_code") or "")[-3:]
 
     def error(self, message, field=None):
@@ -228,20 +243,32 @@ class Planner:
         if not item:
             return
         canonical = families.canonical_chain_code(code, item["item_group"]) or ""
-        if canonical[-3:] != self.suffix:
+        if canonical[-3:] != self.suffix and self.doc.get("head_check") == "Yes":
             self.error("Component {0} does not share head suffix {1}; define a reviewed replacement.".format(code, self.suffix))
             return
+        if canonical[-3:] != self.suffix:
+            self._legacy_components.add(code)
         name = bom_name or item.get("default_bom")
+        if (code, name) in self._validated_chains:
+            return
         if not self.bom_valid(code, name):
             return
         for row in self.catalogue.materials[name]:
             child = self.enabled(row["item_code"])
-            if child and (number(row.get("qty")) <= 0 or number(row.get("stock_qty")) <= 0
-                          or number(row.get("conversion_factor")) <= 0
-                          or row.get("stock_uom") != child.get("stock_uom")):
-                self.error("BOM {0} has invalid quantities or an outdated stock UOM for {1}; propose a reviewed replacement.".format(name, child["name"]))
+            if child:
+                if (number(row.get("qty")) <= 0 or number(row.get("stock_qty")) <= 0
+                        or number(row.get("conversion_factor")) <= 0):
+                    self.error("BOM {0} has invalid quantities for {1}; propose a reviewed replacement.".format(name, child["name"]))
+                elif row.get("stock_uom") != child.get("stock_uom"):
+                    if (self.doc.get("head_check") == "No" and row.get("uom") == child.get("stock_uom")
+                            and number(row.get("conversion_factor")) == 1
+                            and number(row.get("stock_qty")) == number(row.get("qty"))):
+                        self.warnings.append("Preserved BOM {0} records an old stock-UOM label for {1}. Its quantity is already in current stock UOM {2}; review the pinned revision. No historical BOM will be rewritten.".format(name, child["name"], child["stock_uom"]))
+                    else:
+                        self.error("BOM {0} has an inconsistent stock UOM for {1}; propose a reviewed replacement.".format(name, child["name"]))
             if child and (families.canonical_chain_code(child["name"], child["item_group"]) or "").startswith(families.COMPONENT_PREFIXES):
                 self.validate_existing_chain(child["name"], path + (code,), row.get("bom_no"))
+        self._validated_chains.add((code, name))
 
     def add(self, data, materials=None, scraps=None, preserve=False):
         code = data["item_code"]
@@ -321,7 +348,8 @@ class Planner:
             code = self.doc.get(group + "_item") or self.doc.get(group + "_code")
             item = self.enabled(code, "Plug" if group == "plug" else "Valve Seat")
             if item:
-                if not code.startswith(("10", "11") if group == "plug" else ("20", "21")) or code[-3:] != self.suffix:
+                if (not code.startswith(("10", "11") if group == "plug" else ("20", "21"))
+                        or (self.doc.get("head_check") == "Yes" and code[-3:] != self.suffix)):
                     self.error("Selected {0} must share head suffix {1}.".format(group, self.suffix))
             return code
         if not all(self.doc.get(group + suffix) for suffix in ("_name", "_code", "_rnd", "_mat")):
@@ -359,6 +387,7 @@ class Planner:
         return assembly["item_code"]
 
     def build(self):
+        product_only = cint(self.doc.get("product_only"))
         code = (self.doc.get("head_item") if self.doc.get("head_check") == "No" else self.doc.get("head_code")) or ""
         code = code.strip().upper()
         self.doc["head_code"] = code
@@ -382,7 +411,7 @@ class Planner:
             needed.update(["C100", "C101"])
         if any(row["motor"] in ("7", "B") for row in selections):
             needed.add("T100")
-        for group, prefix in (("plug", "10"), ("seat", "20")):
+        for group, prefix in (() if product_only else (("plug", "10"), ("seat", "20"))):
             needed.update([self.doc.get(group + "_item"), self.doc.get(group + "_code"), self.doc.get(group + "_raw_material")])
             if valid_code:
                 needed.update([prefix + code[2:], prefix[0] + "1" + code[2:]])
@@ -405,6 +434,11 @@ class Planner:
             self.error(error, "product_variants")
         if self.doc.get("head_check") not in ("Yes", "No"):
             self.error("Choose whether to create or reuse the Valve Head.", "head_check")
+        if product_only:
+            if self.doc.get("head_check") != "No" or any(self.doc.get(group + "_check") == "Yes" for group in ("plug", "seat")):
+                self.error("Create Products Only requires an existing head and cannot create a seat or plug.", "product_only")
+            if not selections:
+                self.error("Select at least one Product configuration.", "product_variants")
         if not self.doc.get("company") or not self.doc.get("default_warehouse"):
             self.error("Select a company and manufacturing warehouse.", "company")
         else:
@@ -412,23 +446,44 @@ class Planner:
             if not warehouse or warehouse.company != self.doc.get("company") or warehouse.is_group or warehouse.disabled:
                 self.error("Select an enabled stock warehouse belonging to the selected company.", "default_warehouse")
         if valid_code:
-            if self.doc.get("head_check") == "Yes" or cint(self.doc.get("replace_boms")):
+            if product_only:
+                if head:
+                    self.validate_existing_chain(code)
+                else:
+                    self.error("Select the existing Valve Head Item.", "head_item")
+            elif self.doc.get("head_check") == "Yes" or cint(self.doc.get("replace_boms")):
                 plug, seat = self.component("plug"), self.component("seat")
                 head_data = dict(item_code=code, item_name=self.doc.get("head_name"), item_group="Valve Head",
                     item_type="Sub-Assembly", reference_code=self.doc.get("head_rnd"), stock_uom="Nos",
                     description=self.doc.get("head_description") or build_item_description(code, self.doc.get("head_name"), "Valve Head"),
                     is_purchase_item=0, is_sales_item=1, country_of_origin="Switzerland",
                     item_defaults=[dict(company=self.doc.get("company"), default_warehouse=self.doc.get("default_warehouse"))])
-                if not head_data["item_name"] or not head_data["reference_code"]:
+                if not head_data["item_name"] or (self.doc.get("head_check") == "Yes" and not head_data["reference_code"]):
                     self.error("Set the head name and R&D reference.")
                 self.add(head_data, [dict(item_code=plug, qty=1), dict(item_code=seat, qty=1)])
             elif head:
                 if any(self.doc.get(group + "_check") == "Yes" for group in ("plug", "seat")):
                     self.error("Enable reviewed BOM replacements before defining new parts for an existing head.", "replace_boms")
+                for group, item_group in (("plug", "Plug"), ("seat", "Valve Seat")):
+                    selected = self.doc.get(group + "_item")
+                    actual = {row["item_code"] for row in self.catalogue.materials.get(head.get("default_bom"), [])
+                              if self.catalogue.items.get(row["item_code"], {}).get("item_group") == item_group}
+                    if selected and selected not in actual:
+                        self.error("Selected {0} {1} differs from the existing head BOM. Enable Propose Replacement BOMs to review that change, or use Create Products Only to preserve the head.".format(group, selected), "replace_boms")
                 self.add(dict(item_code=code, item_name=head["item_name"], item_group=head["item_group"],
                               reference_code=head.get("reference_code"), stock_uom=head["stock_uom"]), preserve=True)
             else:
                 self.error("Select the existing Valve Head Item.", "head_item")
+            suggest_codes = self.doc.get("head_check") == "No"
+            check_codes = selections and (suggest_codes or any(row.get("product_code") for row in selections))
+            expected_references = {row["body_label"].replace("-", "") + self.doc["head_code"]
+                + (compatibility.SYRINGE_REFERENCES[row["token"]].replace("-", "") if row["syringe"] else "")
+                for row in selections}
+            inventory = self.catalogue.product_code_inventory(expected_references) if check_codes else []
+            reservations = self.catalogue.reserved_product_codes() if check_codes else set()
+            from amf.amf.utils.item_creation_product_codes import occupied_product_codes, suggest_product_code
+            occupied_codes = occupied_product_codes(inventory, reservations)
+            planned_codes = set()
             for row in selections:
                 body, syringe = self.enabled(row["body"], "Body"), None
                 if row["syringe"]:
@@ -445,6 +500,36 @@ class Planner:
                             syringe["name"], compatibility.SYRINGE_REFERENCES[row["token"]]))
                         continue
                 data, materials, scraps = product_definition(self.doc, row, body, syringe)
+                reason = "Entered Product code" if row.get("product_code") else "Configuration prefix + head suffix"
+                if suggest_codes and not row.get("product_code"):
+                    try:
+                        code_suggestion, reason = suggest_product_code(data, row["prefix"], inventory, reservations, planned_codes)
+                    except ValueError as error:
+                        self.error(str(error), "product_variants")
+                        continue
+                    data["item_code"] = code_suggestion
+                    data["reference_name"] = code_suggestion + ": " + data["item_name"]
+                    self.catalogue.load_dependencies({code_suggestion})
+                if (row.get("product_code") and data["item_code"] in occupied_codes
+                        and data["item_code"] not in self.catalogue.items):
+                    self.error("Product code {0} is retired or reserved. Leave the override blank for an available suggestion.".format(data["item_code"]), "product_variants")
+                existing_product = self.catalogue.items.get(data["item_code"])
+                if (existing_product and existing_product.get("item_group") in families.PRODUCT_GROUPS
+                        and (existing_product.get("reference_code") or "").strip().upper()
+                        == (data.get("reference_code") or "").strip().upper()):
+                    data["item_group"] = existing_product["item_group"]
+                    data["item_name"] = existing_product["item_name"]
+                    data["reference_code"] = existing_product["reference_code"]
+                    data["reference_name"] = data["item_code"] + ": " + data["item_name"]
+                reference_owners = [item.get("name") or item.get("item_code") for item in inventory
+                    if (item.get("reference_code") or "").strip().upper() == (data.get("reference_code") or "").strip().upper()
+                    and (item.get("name") or item.get("item_code")) != data["item_code"]]
+                if reference_owners:
+                    self.error("Product reference {0} already belongs to {1}. Review that Item master before creating a duplicate; no Item will be reactivated or renamed automatically.".format(
+                        data["reference_code"], ", ".join(reference_owners)), "product_variants")
+                planned_codes.add(data["item_code"])
+                self.product_suggestions.append(dict(body=row["body"], syringe=row["syringe"],
+                    product_code=data["item_code"], reason=reason))
                 self.add(data, materials, scraps)
         if not self.actions:
             self.error("The request has no Items to create or verify.")
@@ -452,10 +537,13 @@ class Planner:
         parents = self.catalogue.parents(replacements)
         if replacements:
             self.warnings.append("Replacement BOMs become the selected defaults. Existing parent BOM revisions retain their original child links.")
+        if self._legacy_components:
+            self.warnings.append("Existing head {0} reuses independently numbered components: {1}. Submitted component revisions are preserved.".format(
+                self.doc.get("head_code"), ", ".join(sorted(self._legacy_components))))
         dependencies = dict(items=sorted(self.catalogue.items.values(), key=lambda row: row["name"]),
                             boms=sorted(self.catalogue.boms.values(), key=lambda row: row["name"]))
         plan = dict(version=PLAN_VERSION, rule_version=compatibility.RULE_VERSION, inputs=inputs(self.doc),
-                    actions=self.actions, errors=self.errors, warnings=self.warnings,
+                    product_only=bool(product_only), actions=self.actions, errors=self.errors, warnings=self.warnings, product_suggestions=self.product_suggestions,
                     affected_parents=parents, dependencies=dependencies,
                     dependency_recipes={name: current_recipe(self.catalogue, name) for name in sorted(self.catalogue.boms)})
         plan["fingerprint"] = digest(plan)
@@ -470,7 +558,7 @@ class Planner:
         plan["dependency_boms"] = [dict(name=name, item=header["item"], recipe=current_recipe(self.catalogue, name))
                                    for name, header in sorted(self.catalogue.boms.items()) if name not in shown]
         tags = {self.doc.get(group + "_mat") for group in ("plug", "seat")} - {None, ""}
-        plan["raw_material_candidates"] = [dict(row) for row in self.catalogue.raw_candidates(tags)]
+        plan["raw_material_candidates"] = [] if product_only else [dict(row) for row in self.catalogue.raw_candidates(tags)]
         return plan
 
 

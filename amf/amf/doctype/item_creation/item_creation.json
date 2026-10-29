@@ -6,6 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "creation_guide",
+  "product_only",
   "company",
   "default_warehouse",
   "replace_boms",
@@ -223,14 +224,16 @@
    "fieldtype": "Select",
    "label": "Do you need to create the <strong>Seat</strong> ?",
    "options": "\nYes\nNo",
-   "reqd": 1
+   "reqd": 1,
+   "depends_on": "eval:!doc.product_only"
   },
   {
    "fieldname": "plug_check",
    "fieldtype": "Select",
    "label": "Do you need to create the <strong>Plug</strong> ?",
    "options": "\nYes\nNo",
-   "reqd": 1
+   "reqd": 1,
+   "depends_on": "eval:!doc.product_only"
   },
   {
    "fieldname": "screw_type",
@@ -334,7 +337,8 @@
   },
   {
    "fieldname": "section_break_2",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "depends_on": "eval:!doc.product_only"
   },
   {
    "fieldname": "column_break_21",
@@ -406,7 +410,8 @@
    "fieldtype": "Select",
    "label": "Do you need to create the <strong>Valve Head</strong> ?",
    "options": "\nYes\nNo",
-   "reqd": 1
+   "reqd": 1,
+   "depends_on": "eval:!doc.product_only"
   },
   {
    "depends_on": "eval:doc.head_check=='No'",
@@ -629,6 +634,13 @@
    "no_copy": 1,
    "allow_on_submit": 1,
    "depends_on": "eval:doc.docstatus == 2"
+  },
+  {
+   "fieldname": "product_only",
+   "fieldtype": "Check",
+   "label": "Create Products Only",
+   "default": "0",
+   "description": "Use the selected head and its submitted component BOMs as they are. Create or review only the selected Product BOMs."
   }
  ],
  "hide_toolbar": 1,

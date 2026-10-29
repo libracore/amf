@@ -157,11 +157,11 @@ def reserve_suffix(suffix, source, continuation=False):
 
 
 @contextmanager
-def family_creation(source, suffix):
+def family_creation(source, suffix, existing_head=None):
     previous = getattr(frappe.local, "amf_item_code_family", None)
     previous_state = getattr(frappe.local, "amf_item_code_family_state", None)
     frappe.local.amf_item_code_family = (tuple(source), normalize_suffix(suffix))
-    frappe.local.amf_item_code_family_state = dict(verified=False, codes=None)
+    frappe.local.amf_item_code_family_state = dict(verified=False, codes=None, existing_head=existing_head)
     try:
         yield
     finally:
@@ -203,8 +203,6 @@ def validate_existing_head_family(head_code):
             component = canonical_chain_code(row.item_code) or ""
             if not component.startswith(COMPONENT_PREFIXES):
                 continue
-            if component[-3:] != head_code[-3:]:
-                frappe.throw(_("Family BOM {0} uses component {1} from another suffix. A reviewed replacement is required.").format(bom.name, row.item_code))
             child = frappe.get_doc("Item", row.item_code)
             if child.disabled:
                 frappe.throw(_("Family component {0} is disabled. A reviewed replacement is required.").format(row.item_code))
@@ -282,6 +280,13 @@ def validate_new_bom_family(doc, method=None):
         for row in doc.items or []:
             part = canonical_chain_code(row.item_code) or ""
             if part.startswith(COMPONENT_PREFIXES) and part[-3:] != code[-3:]:
+                state = getattr(frappe.local, "amf_item_code_family_state", None)
+                if code.startswith("30") and state and state.get("existing_head") == code:
+                    # Only a reviewed replacement of an existing head may reuse
+                    # independently numbered, existing components.
+                    child = frappe.db.get_value("Item", row.item_code, ["name", "disabled"], as_dict=True)
+                    if child and not child.disabled:
+                        continue
                 frappe.throw(_("BOM for {0} uses component {1} from another head suffix. A reviewed replacement is required.").format(code, part))
     elif code.startswith("4") or frappe.db.get_value("Item", code, "item_group") in PRODUCT_GROUPS:
         heads = [canonical_chain_code(row.item_code) for row in doc.items or []
