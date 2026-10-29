@@ -158,10 +158,18 @@ frm.add_child = field => { const row = {}; frm.doc[field].push(row); return row;
 frm.refresh_field = () => {};
 frm.dirty = () => {};
 sandbox.chooseItemCreationVariants(frm);
-calls[0].callback({message: [{body: "5D1000", syringe: "", configuration: "P202-O (RVM mini)", compatibility_note: ""}]});
+calls[0].callback({message: [
+    {body: "5D1000", syringe: "", configuration: "P202-O (RVM mini)", compatibility_note: ""},
+    {body: "5D1001", syringe: "", configuration: "P202-O RS485 (RVM mini)", compatibility_note: ""},
+    {body: "5D1002", syringe: "", configuration: "P202-O CAN (RVM mini)", compatibility_note: ""},
+    {body: "521003", syringe: "", configuration: "P201-O.LPH (RVM)", compatibility_note: "", configuration_note: "Review I2C <address>"},
+]});
 assert.ok(dialog.fields.find(field => field.fieldname === "variants").options[0].label.includes("P202-O (RVM mini)"));
-dialog.primary_action({variants: ["5D1000:"]});
+assert.ok(dialog.fields.find(field => field.fieldname === "variants").options[3].label.includes("Review I2C &lt;address&gt;"));
+dialog.primary_action({variants: ["5D1000:", "5D1001:", "5D1002:"]});
 assert.strictEqual(frm.doc.product_variants[0].body, "5D1000");
+assert.strictEqual(frm.doc.product_variants[1].body, "5D1001");
+assert.strictEqual(frm.doc.product_variants[2].body, "5D1002");
 assert.strictEqual(frm.doc.product_variants[0].syringe, "");
 assert.strictEqual(frm.doc.product_variants[0].selected, 1);
 

@@ -41,7 +41,7 @@ class TestItemCreationRvmMini(unittest.TestCase):
         with patch.object(workflow, "_source_for_preview", return_value=doc), \
                 patch.object(frappe, "get_all", return_value=[frappe._dict(row) for row in data.tables["Item"]]):
             rows = workflow.get_compatible_variants({})
-        self.assertEqual({row["body"] for row in rows}, {"511000", "521000", "5D1000"})
+        self.assertTrue({"511000", "521000", "5D1000", "5D1001", "5D1002"}.issubset({row["body"] for row in rows}))
         mini = next(row for row in rows if row["body"] == "5D1000")
         self.assertEqual(mini["configuration"], "P202-O (RVM mini)")
         self.assertEqual(mini["syringe"], "")
@@ -65,9 +65,9 @@ class TestItemCreationRvmMini(unittest.TestCase):
                 next(row for row in data.tables["Item"] if row["name"] == "5D1000").update(change)
                 self.assertFalse(plans.build_plan(self.request(), catalogue=data)["ready"])
 
-    def test_mini_does_not_enable_unrequested_interfaces_syringes_or_hv_heads(self):
+    def test_mini_does_not_enable_prototypes_syringes_or_hv_heads(self):
         variants = [dict(selected=1, body="5D1000", syringe="703000"),
-                    dict(selected=1, body="5D1001", syringe=""), dict(selected=1, body="5D1002", syringe="")]
+                    dict(selected=1, body="5D100A", syringe="")]
         for variant in variants:
             with self.subTest(variant=variant):
                 self.assertFalse(plans.build_plan(source(rvm_check=1, product_variants=[variant]), catalogue=catalogue())["ready"])

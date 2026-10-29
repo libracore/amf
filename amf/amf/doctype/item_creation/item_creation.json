@@ -358,7 +358,7 @@
    "fieldname": "rvm_check",
    "fieldtype": "Check",
    "label": "Rotary Valves (including RVM mini)",
-   "description": "P200-O, P201-O and RVM mini P202-O (body 5D1000)."
+   "description": "All enabled 511___/521___ body variants, plus RVM mini 5D1000 (base), 5D1001 (RS485) and 5D1002 (CAN)."
   },
   {
    "default": "0",

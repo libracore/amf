@@ -238,11 +238,12 @@ function chooseItemCreationVariants(frm) {
         const previous = new Map((frm.doc.product_variants || []).map(row => [row.body + ":" + (row.syringe || ""), row]));
         const selected = new Set((frm.doc.product_variants || []).filter(row => row.selected).map(row => row.body + ":" + (row.syringe || "")));
         const dialog = new frappe.ui.Dialog({title: __("Choose Product Configurations"), fields: [{
-            fieldtype: "HTML", options: '<p>' + __("P202-O is RVM mini. P110/P111 identify HD drives. P101/P111 use S-2500-P or S-5000-P and require an HV head. Highlighted choices show head requirements to resolve before engineering review.") + '</p>',
+            fieldtype: "HTML", options: '<p>' + __("RVM includes body variants and RVM mini base/RS485/CAN. P110/P111 identify HD drives. P101/P111 use S-2500-P or S-5000-P and require an HV head. Highlighted choices show requirements to resolve before engineering review.") + '</p>',
         }, {
             fieldname: "variants", fieldtype: "MultiCheck", label: __("Configurations"), columns: 2, select_all: true,
             options: variants.map(row => ({value: row.body + ":" + row.syringe,
-                label: itemCreationEscape(row.configuration + (row.compatibility_note ? " — " + row.compatibility_note : "")),
+                label: itemCreationEscape(row.configuration + (row.compatibility_note ? " — " + row.compatibility_note : "") +
+                    (row.configuration_note ? " — " + row.configuration_note : "")),
                 danger: !!row.compatibility_note, checked: selected.has(row.body + ":" + row.syringe)})),
         }], primary_action_label: __("Apply Selection"), primary_action: values => {
             if (stamp !== itemCreationInputs(frm)) return frappe.msgprint(__("The definition changed. Open the configuration selection again."));

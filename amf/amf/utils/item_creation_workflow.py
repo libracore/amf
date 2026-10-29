@@ -69,7 +69,7 @@ def _source_for_preview(payload):
     values.update(dict(amended_from=data.get("amended_from"), amendment_reason=data.get("amendment_reason")))
     if not isinstance(values.product_variants, list) or any(not isinstance(row, dict) for row in values.product_variants):
         frappe.throw(_("Product configurations must be a table of body/syringe selections."))
-    if len(values.product_variants) > len(compatibility.CONFIGURATIONS):
+    if len(values.product_variants) > compatibility.MAX_VARIANTS:
         frappe.throw(_("The request contains too many product configurations."))
     return values
 
@@ -97,17 +97,21 @@ def get_compatible_variants(document):
         source.head_name = head.item_name
     # Show enabled product families even before the head geometry is finalized.
     # Preview/review/submission still enforce the same shared head requirements.
-    rules = [row for row in compatibility.CONFIGURATIONS
+    bodies = frappe.get_all("Item", filters={"item_group": "Body"},
+        or_filters=[["item_code", "like", "511___"], ["item_code", "like", "521___"]],
+        fields=["name", "item_group", "reference_code"]) if compatibility.checked(source.get("rvm_check")) else []
+    rules = [row for row in compatibility.configurations(bodies)
              if compatibility.checked(source.get(compatibility.FAMILY_FLAGS[row["family"]]))]
     names = {row["body"] for row in rules} | {row["syringe"] for row in rules if row["syringe"]}
     available = {row.name: row for row in frappe.get_all("Item", filters={"name": ["in", sorted(names)], "disabled": 0},
                  fields=["name", "item_name", "item_group", "reference_code"])} if names else {}
     return [dict(body=row["body"], syringe=row["syringe"], family=row["family"],
                  compatibility_note=compatibility.head_requirement_error(source.get("head_name"), row),
+                 configuration_note=row.get("review_note", ""),
                  configuration=compatibility.configuration_label(row,
                      available[row["syringe"]].reference_code if row["syringe"] else ""))
             for row in rules if row["body"] in available and available[row["body"]].item_group == "Body"
-            and available[row["body"]].reference_code == row["body_label"]
+            and (row.get("configuration_error") or available[row["body"]].reference_code == row["body_label"])
             and (not row["syringe"] or (row["syringe"] in available and available[row["syringe"]].item_group == "Syringe"
                  and available[row["syringe"]].reference_code == compatibility.SYRINGE_REFERENCES[row["token"]]))]
 
@@ -170,6 +174,20 @@ def validate_submission(source):
     source.flags.amf_reviewed_creation_plan = plan
 
 
+def _set_available_bom_name(bom):
+    # ERPNext v12 checks revisions by BOM.item; renamed Items can leave an
+    # occupied BOM name outside that query. Keep those historical names intact.
+    bom.set_new_name()
+    prefix = "BOM-" + bom.item + "-"
+    occupied = {row[0].upper() for row in frappe.db.sql("SELECT name FROM `tabBOM` WHERE name LIKE %s FOR UPDATE", prefix + "%")}
+    if bom.name.upper() not in occupied:
+        return
+    revision = int(bom.name[len(prefix):])
+    while (prefix + str(revision).zfill(3)).upper() in occupied:
+        revision += 1
+    bom.name = prefix + str(revision).zfill(3)
+
+
 def _new_bom(action, company, resolved):
     materials = []
     for source_row in action["materials"]:
@@ -184,6 +202,7 @@ def _new_bom(action, company, resolved):
         quantity=1, uom=action["item"].get("stock_uom", "Nos"), is_active=1, is_default=1,
         with_operations=0, rm_cost_as_per="Valuation Rate", items=materials,
         scrap_items=[dict(row) for row in action["scraps"]]))
+    _set_available_bom_name(bom)
     bom.insert(ignore_permissions=True)
     bom.submit()
     # Hooks must preserve the exact reviewed quantities, UOMs and child links.

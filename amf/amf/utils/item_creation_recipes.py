@@ -29,7 +29,9 @@ def component_definition(doc, group):
     return component, assembly, materials
 
 
-def standard_product_reference(head, body_reference, syringe_reference=""):
+def standard_product_reference(head, body_reference, syringe_reference="", rule=None):
+    if rule and rule.get("family") == "RVM":
+        return rule["reference_base"].replace("-", "") + head + rule["reference_suffix"]
     return body_reference.replace("-", "") + head + syringe_reference.replace("-", "")
 
 
@@ -39,6 +41,10 @@ def product_definition(doc, rule, body, syringe=None):
     label = body.get("reference_code") or rule["body_label"]
     code = rule.get("product_code") or rule["prefix"] + head[-3:]
     name = label + "/" + (doc.get("head_rnd") or head) + ("/" + reference if reference else "")
+    if rule["family"] == "RVM":
+        name = rule["name_base"] + "/" + (doc.get("head_rnd") or head)
+        if rule["name_suffix"]:
+            name += "/" + rule["name_suffix"]
     materials = [dict(item_code=rule["body"], qty=1), dict(item_code=head, qty=1),
                  dict(item_code=doc.get("screw_type"), qty=doc.get("screw_quantity"))]
     scraps = []
@@ -63,9 +69,9 @@ def product_definition(doc, rule, body, syringe=None):
             volume_label += " ({0:g} mL)".format(volume / 1000)
         description += "<br><b>Syringe:</b> {0} · {1}".format(escape_html(volume_label), escape_html(reference))
     data = dict(item_code=code, item_name=name, item_group="Product", item_type="Finished Good", stock_uom="Nos",
-        reference_code=rule.get("product_reference") or standard_product_reference(head, label, reference),
+        reference_code=rule.get("product_reference") or standard_product_reference(head, label, reference, rule),
         reference_name=code + ": " + name, description=description, has_batch_no=0, is_purchase_item=0,
         country_of_origin="Switzerland", is_sales_item=1, item_defaults=item_defaults(doc),
-        weight_per_unit=0.1 if rule["body"] == "5D1000" else 0.53 if rule["family"] == "RVM" else 2.18,
+        weight_per_unit=rule.get("product_weight", 2.18),
         weight_uom="Kg")
     return data, materials, scraps

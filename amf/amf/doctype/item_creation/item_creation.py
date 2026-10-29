@@ -551,11 +551,14 @@ def get_last_item_code(*args, **kwargs):
 @frappe.whitelist()
 def get_data_for_preview(doc, group=None):
     from amf.amf.utils.item_creation_workflow import get_creation_plan
+    from amf.amf.utils.item_creation_compatibility import CONFIGURATIONS, RVM_PRODUCT_PREFIXES
     plan = get_creation_plan(doc)
-    prefixes = {"rvm": ("41", "42", "4D0"), "pump": ("45", "47", "49", "4B"),
-                "pump_hv": ("46", "48", "4A", "4C")}.get(group)
-    if not prefixes:
+    family = {"rvm": "RVM", "pump": "LV", "pump_hv": "HV"}.get(group)
+    if not family:
         frappe.throw(_("Select a supported product family."))
+    prefixes = tuple(sorted({row["prefix"] for row in CONFIGURATIONS if row["family"] == family}))
+    if family == "RVM":
+        prefixes = RVM_PRODUCT_PREFIXES
     return [dict(item_code=row["item"]["item_code"], item_name=row["item"]["item_name"])
             for row in plan["actions"] if row["item"]["item_code"].startswith(prefixes)]
 

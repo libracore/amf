@@ -92,6 +92,25 @@ class TestProductFamilyResolution(unittest.TestCase):
             self.assertEqual(products.make_fallback_item_code(
                 {"item_code": body_code}, self.head), expected)
 
+    def test_rvm_variant_references_and_special_body_prefix_match_creation(self):
+        for body, reference, expected, code in (
+                ("521002", "P201-O.RS485", "P201O300ABCRS485", "420ABC"),
+                ("5D1001", "P202-O RS485", "P202O300ABC/RS485", "4D1ABC"),
+                ("5D1002", "P202-O CAN", "P202O300ABC/CAN", "4D2ABC"),
+                ("521101", "P211-O.NM.TH", "P211O300ABC", "430ABC"),
+                ("511001", "P200-O.RS485", "P200O300ABCRS485", "410ABC")):
+            with self.subTest(body=body):
+                value = dict(item_code=body, reference_code=reference)
+                self.assertEqual(products.make_expected_reference_code(value, self.head), expected)
+                self.assertEqual(products.make_fallback_item_code(value, self.head), code)
+
+    def test_head_selector_keeps_the_interface_suffix(self):
+        body = frappe._dict(name="521002", item_code="521002", reference_code="P201-O.RS485")
+        with patch.object(products, "get_item_reference", return_value=body), \
+                patch.object(products, "get_existing_product_heads", return_value=[]) as lookup:
+            products.get_product_definition_head_query("Item", "", "name", 0, 20, {"body_item_code": "521002"})
+        lookup.assert_called_once_with("P201O", "RS485", "", 0, 20)
+
 
 if __name__ == "__main__":
     unittest.main()

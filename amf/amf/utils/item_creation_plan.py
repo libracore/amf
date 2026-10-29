@@ -85,6 +85,11 @@ class Catalogue:
         self.other_boms = defaultdict(list)
         self._item_reads, self._bom_reads = set(), set()
 
+    def rvm_bodies(self):
+        return frappe.db.sql("""SELECT name, item_code, item_group, reference_code FROM `tabItem`
+            WHERE item_group = 'Body' AND item_code REGEXP '^(511|521)[0-9A-Z]{3}$'"""
+            + (" FOR UPDATE" if self.lock else ""), as_dict=True)
+
     def product_code_inventory(self, references=()):
         condition = " OR reference_code IN %s" if references else ""
         return frappe.db.sql("""SELECT name, item_code, item_group, item_name, reference_code, disabled
@@ -393,11 +398,13 @@ class Planner:
         code = code.strip().upper()
         self.doc["head_code"] = code
         self.suffix = code[-3:]
+        rules = compatibility.configurations(self.catalogue.rvm_bodies() if cint(self.doc.get("rvm_check")) else ())
+        by_key = {row["key"]: row for row in rules}
         # Collect only explicitly selected supported configurations before IO.
-        selections = [dict(compatibility.BY_KEY[compatibility.selection_key(row)],
+        selections = [dict(by_key[compatibility.selection_key(row)],
                            product_code=(row.get("product_code") or "").strip().upper())
                       for row in self.doc.get("product_variants") or []
-                      if cint(row.get("selected")) and compatibility.selection_key(row) in compatibility.BY_KEY]
+                      if cint(row.get("selected")) and compatibility.selection_key(row) in by_key]
         valid_code = bool(families.ITEM_RE.match(code) and code.startswith("30") and code[-3:] != "000")
         if not valid_code:
             self.error("Select or define a six-character Valve Head code starting with 30, with a nonzero shared suffix.", "head_code")
@@ -430,7 +437,7 @@ class Planner:
                 self.doc[target] = head.get(source)
             if head["name"] != code or head["item_group"] != "Valve Head" or head["disabled"]:
                 self.error("Select an enabled Valve Head and refresh its definition.")
-        selections, selection_errors = compatibility.validate_selections(self.doc)
+        selections, selection_errors = compatibility.validate_selections(self.doc, rules)
         for error in selection_errors:
             self.error(error, "product_variants")
         if self.doc.get("head_check") not in ("Yes", "No"):
@@ -475,10 +482,11 @@ class Planner:
                               reference_code=head.get("reference_code"), stock_uom=head["stock_uom"]), preserve=True)
             else:
                 self.error("Select the existing Valve Head Item.", "head_item")
-            suggest_codes = self.doc.get("head_check") == "No"
+            # Variants can share a Product prefix even in a new head family.
+            suggest_codes = self.doc.get("head_check") == "No" or len({row["prefix"] for row in selections}) < len(selections)
             check_codes = selections and (suggest_codes or any(row.get("product_code") or row.get("product_reference") for row in selections))
             expected_references = {row.get("product_reference") or standard_product_reference(self.doc["head_code"], row["body_label"],
-                compatibility.SYRINGE_REFERENCES[row["token"]] if row["syringe"] else "")
+                compatibility.SYRINGE_REFERENCES[row["token"]] if row["syringe"] else "", row)
                 for row in selections}
             inventory = self.catalogue.product_code_inventory(expected_references) if check_codes else []
             reservations = self.catalogue.reserved_product_codes() if check_codes else set()
@@ -486,6 +494,8 @@ class Planner:
             occupied_codes = occupied_product_codes(inventory, reservations)
             planned_codes = set()
             planned_references = {}
+            entered_codes = {row["product_code"] for row in selections if row.get("product_code")}
+            prepared_products = []
             for row in selections:
                 body, syringe = self.enabled(row["body"], "Body"), None
                 if row["syringe"]:
@@ -503,17 +513,21 @@ class Planner:
                         continue
                 data, materials, scraps = product_definition(self.doc, row, body, syringe)
                 default_reference = standard_product_reference(self.doc["head_code"], row["body_label"],
-                    syringe["reference_code"] if syringe else "")
+                    syringe["reference_code"] if syringe else "", row)
                 reason = "Entered Product code" if row.get("product_code") else "Configuration prefix + head suffix"
                 if suggest_codes and not row.get("product_code"):
                     try:
-                        code_suggestion, reason = suggest_product_code(data, row["prefix"], inventory, reservations, planned_codes)
+                        code_suggestion, reason = suggest_product_code(data, row["prefix"], inventory, reservations, planned_codes | entered_codes)
                     except ValueError as error:
                         self.error(str(error), "product_variants")
                         continue
                     data["item_code"] = code_suggestion
                     data["reference_name"] = code_suggestion + ": " + data["item_name"]
-                    self.catalogue.load_dependencies({code_suggestion})
+                planned_codes.add(data["item_code"])
+                prepared_products.append((row, data, materials, scraps, default_reference, reason))
+            # Load newly selected existing Products and their BOM graphs in one batch.
+            self.catalogue.load_dependencies({data["item_code"] for _, data, _, _, _, _ in prepared_products})
+            for row, data, materials, scraps, default_reference, reason in prepared_products:
                 if (row.get("product_code") and data["item_code"] in occupied_codes
                         and data["item_code"] not in self.catalogue.items):
                     self.error("Product code {0} is retired or reserved. Leave the override blank for an available suggestion.".format(data["item_code"]), "product_variants")
@@ -541,7 +555,8 @@ class Planner:
                 if row.get("product_reference") and row["product_reference"] != default_reference:
                     self.warnings.append("Product {0} uses entered reference {1}; generated configuration reference is {2}.".format(
                         data["item_code"], data["reference_code"], default_reference))
-                planned_codes.add(data["item_code"])
+                if row.get("review_note"):
+                    self.warnings.append("{0}: {1}".format(data["item_code"], row["review_note"]))
                 self.product_suggestions.append(dict(body=row["body"], syringe=row["syringe"],
                     product_code=data["item_code"], reason=reason,
                     product_reference=data["reference_code"], default_reference=default_reference))
