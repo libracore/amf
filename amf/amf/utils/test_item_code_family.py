@@ -191,14 +191,24 @@ class TestItemCodeFamily(unittest.TestCase):
         docs = {
             ("Item", "300ABC"): Doc(default_bom="HEAD-BOM"),
             ("Item", "110ABC"): Doc(disabled=0, default_bom="PLUG-BOM"),
+            ("Item", "100ABD"): Doc(disabled=1, default_bom=None),
             ("BOM", "HEAD-BOM"): Doc(name="HEAD-BOM", item="300ABC", docstatus=1,
                 is_active=1, items=[Doc(item_code="110ABC", bom_no="PLUG-BOM")]),
             ("BOM", "PLUG-BOM"): Doc(name="PLUG-BOM", item="110ABC", docstatus=1,
                 is_active=1, items=[Doc(item_code="100ABD")]),
         }
         with patch.object(frappe, "get_doc", side_effect=lambda *key: docs[key]):
-            with self.assertRaisesRegex(frappe.ValidationError, "another suffix"):
+            with self.assertRaisesRegex(frappe.ValidationError, "disabled"):
                 item_creation._validate_existing_head_family("300ABC")
+
+    def test_only_reviewed_existing_head_replacements_may_use_other_suffixes(self):
+        doc = Doc(__islocal=1, item="300ABC", items=[Doc(item_code="110XYZ")])
+        self.db.get_value = Mock(return_value=frappe._dict(name="110XYZ", disabled=0))
+        with family.family_creation(("Item Creation", "REVIEWED"), "ABC", existing_head="300ABC"):
+            family.validate_new_bom_family(doc)
+        with family.family_creation(("Item Creation", "NEW"), "ABC"):
+            with self.assertRaisesRegex(frappe.ValidationError, "another head suffix"):
+                family.validate_new_bom_family(doc)
 
     def test_old_bom_edits_do_not_automatically_rewrite_legacy_data(self):
         family.validate_new_bom_family(Doc(item="46EABC", items=[Doc(item_code="300ABD")]))

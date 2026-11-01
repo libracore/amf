@@ -48,6 +48,9 @@ class ItemCreation(Document):
 
 def _validate_source_family(doc):
     new_head = doc.get("head_check") == "Yes"
+    if cint(doc.get("product_only")) and (doc.get("head_check") != "No" or not doc.get("head_item")
+            or any(doc.get(group + "_check") == "Yes" for group in ("plug", "seat"))):
+        frappe.throw(_("Create Products Only requires an existing Valve Head and cannot create a seat or plug."))
     if not new_head and doc.get("head_item"):
         head = frappe.get_doc("Item", doc.head_item)
         head.check_permission("read")
@@ -66,13 +69,13 @@ def _validate_source_family(doc):
     for group, prefix in (("plug", "10"), ("seat", "20")):
         if doc.get(group + "_check") == "Yes":
             doc.set(group + "_code", prefix + code[2:])
-        elif new_head or cint(doc.get("replace_boms")):
+        elif new_head or (cint(doc.get("replace_boms")) and not cint(doc.get("product_only"))):
             selected = doc.get(group + "_item") or doc.get(group + "_code")
             if selected:
                 selected = selected.strip().upper()
                 allowed = (prefix, prefix[0] + "1")
                 if (not re.match(r"^[0-9A-Z]{6}$", selected)
-                        or selected[:2] not in allowed or selected[-3:] != suffix):
+                        or selected[:2] not in allowed or (new_head and selected[-3:] != suffix)):
                     frappe.throw(_("Selected {0} {1} does not share head suffix {2}. A reviewed replacement is required.").format(group, selected, suffix))
                 doc.set(group + "_code", selected)
     if not new_head:
@@ -548,11 +551,14 @@ def get_last_item_code(*args, **kwargs):
 @frappe.whitelist()
 def get_data_for_preview(doc, group=None):
     from amf.amf.utils.item_creation_workflow import get_creation_plan
+    from amf.amf.utils.item_creation_compatibility import CONFIGURATIONS, RVM_PRODUCT_PREFIXES
     plan = get_creation_plan(doc)
-    prefixes = {"rvm": ("41", "42"), "pump": ("45", "47", "49", "4B"),
-                "pump_hv": ("46", "48", "4A", "4C")}.get(group)
-    if not prefixes:
+    family = {"rvm": "RVM", "pump": "LV", "pump_hv": "HV"}.get(group)
+    if not family:
         frappe.throw(_("Select a supported product family."))
+    prefixes = tuple(sorted({row["prefix"] for row in CONFIGURATIONS if row["family"] == family}))
+    if family == "RVM":
+        prefixes = RVM_PRODUCT_PREFIXES
     return [dict(item_code=row["item"]["item_code"], item_name=row["item"]["item_name"])
             for row in plan["actions"] if row["item"]["item_code"].startswith(prefixes)]
 

@@ -16,6 +16,7 @@ class MemoryCatalogue(plans.Catalogue):
         super().__init__()
         self.tables = tables or defaultdict(list)
         self.reads = []
+        self.variant_reads = 0
 
     def rows(self, doctype, fields, key, names):
         if not names:
@@ -27,6 +28,17 @@ class MemoryCatalogue(plans.Catalogue):
     def raw_candidates(self, tags):
         return [dict(row) for row in self.tables["Item"] if row["item_group"] == "Raw Material"
                 and row.get("tag_raw_mat") in tags and not row.get("disabled")]
+
+    def product_code_inventory(self, references=()):
+        return self.tables["Item"]
+
+    def rvm_bodies(self):
+        self.variant_reads += 1
+        return [dict(row) for row in self.tables["Item"] if row["item_group"] == "Body"
+                and compatibility.RVM_BODY_RE.fullmatch(row["name"])]
+
+    def reserved_product_codes(self):
+        return set()
 
 
 def item(code, group, **fields):
@@ -344,9 +356,10 @@ class TestItemCreationPlan(unittest.TestCase):
         data = catalogue()
         plan = plans.build_plan(source(rvm_check=1, pump_check=1, product_variants=variants), catalogue=data)
         self.assertEqual(plan["errors"], [])
-        self.assertEqual(len(plan["actions"]), 35)
+        self.assertEqual(len(plan["actions"]), 45)
         self.assertEqual(self.db.get_value.call_count, 1)  # Warehouse, never repeated syringe lookups.
-        self.assertEqual(sum(row[0] == "Item" for row in data.reads), 1)
+        self.assertEqual(sum(row[0] == "Item" for row in data.reads), 2)
+        self.assertEqual(data.variant_reads, 1)
 
     def test_input_hash_ignores_review_fields_and_numeric_serialization(self):
         doc = source()

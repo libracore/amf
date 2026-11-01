@@ -129,7 +129,8 @@ assert.ok(queries.syringe().query.endsWith(".syringe_item_query"));
 assert.strictEqual(queries.seat_pin_item().filters.disabled, 0);
 
 // Pin selection and Product code edits invalidate a previously displayed plan.
-[() => events.seat_pin_item(frm), () => handlers["Item Creation Variant"].product_code(frm)].forEach(change => {
+[() => events.seat_pin_item(frm), () => handlers["Item Creation Variant"].product_code(frm),
+    () => handlers["Item Creation Variant"].product_reference(frm)].forEach(change => {
     frm.__creation_plan = {ready: true};
     change();
     assert.strictEqual(frm.__creation_plan, null);
@@ -149,10 +150,33 @@ assert.strictEqual(choices[0].danger, true);
 assert.ok(choices[0].label.includes("Requires &lt;HV&gt; head"));
 assert.ok(choices[1].label.includes("P111-L (HV / HD) / S-5000-P"));
 
+// RVM mini is an explicit RVM configuration and requires no syringe.
+calls.length = 0;
+frm = form({rvm_check: 1, product_variants: []});
+frm.clear_table = field => { frm.doc[field] = []; };
+frm.add_child = field => { const row = {}; frm.doc[field].push(row); return row; };
+frm.refresh_field = () => {};
+frm.dirty = () => {};
+sandbox.chooseItemCreationVariants(frm);
+calls[0].callback({message: [
+    {body: "5D1000", syringe: "", configuration: "P202-O (RVM mini)", compatibility_note: ""},
+    {body: "5D1001", syringe: "", configuration: "P202-O RS485 (RVM mini)", compatibility_note: ""},
+    {body: "5D1002", syringe: "", configuration: "P202-O CAN (RVM mini)", compatibility_note: ""},
+    {body: "521003", syringe: "", configuration: "P201-O.LPH (RVM)", compatibility_note: "", configuration_note: "Review I2C <address>"},
+]});
+assert.ok(dialog.fields.find(field => field.fieldname === "variants").options[0].label.includes("P202-O (RVM mini)"));
+assert.ok(dialog.fields.find(field => field.fieldname === "variants").options[3].label.includes("Review I2C &lt;address&gt;"));
+dialog.primary_action({variants: ["5D1000:", "5D1001:", "5D1002:"]});
+assert.strictEqual(frm.doc.product_variants[0].body, "5D1000");
+assert.strictEqual(frm.doc.product_variants[1].body, "5D1001");
+assert.strictEqual(frm.doc.product_variants[2].body, "5D1002");
+assert.strictEqual(frm.doc.product_variants[0].syringe, "");
+assert.strictEqual(frm.doc.product_variants[0].selected, 1);
+
 // Reopening the configuration chooser retains an explicit Product code override.
 calls.length = 0;
 frm = form({head_code: "300ABC", rvm_check: 1,
-    product_variants: [{body: "521000", syringe: "", selected: 1, product_code: "420XYZ"}]});
+    product_variants: [{body: "521000", syringe: "", selected: 1, product_code: "420XYZ", product_reference: "P201O300ABC-R1"}]});
 frm.clear_table = field => { frm.doc[field] = []; };
 frm.add_child = field => { const row = {}; frm.doc[field].push(row); return row; };
 frm.refresh_field = () => {};
@@ -161,6 +185,38 @@ sandbox.chooseItemCreationVariants(frm);
 calls[0].callback({message: [{body: "521000", syringe: "", configuration: "P201-O (RVM)"}]});
 dialog.primary_action({variants: ["521000:"]});
 assert.strictEqual(frm.doc.product_variants[0].product_code, "420XYZ");
+assert.strictEqual(frm.doc.product_variants[0].product_reference, "P201O300ABC-R1");
+
+// A reference conflict opens an editor for the exact row, without changing its code.
+calls.length = 0; timers.clear();
+frm = form({docstatus: 0, head_code: "300080", product_variants: [
+    {selected: 1, body: "511000", syringe: "", product_code: "410001"}]});
+let markedDirty = false;
+frm.dirty = () => { markedDirty = true; };
+frm.refresh_field = () => {};
+let editReferenceClick;
+const wrapper = {off: () => wrapper, on: (event, selector, callback) => { editReferenceClick = callback; return wrapper; }};
+frm.fields_dict = {plan_preview: {$wrapper: wrapper}};
+const conflictPlan = {summary: {}, actions: [], errors: [{message: "Reference conflict", reference_conflict:
+    {configuration: "511000:", reference: "P200O300080", owners: ["/410080"]}}], product_suggestions: [
+    {body: "511000", syringe: "", product_code: "410001", product_reference: "P200O300080", default_reference: "P200O300080"}]};
+sandbox.refreshItemCreationPlan(frm);
+calls[0].callback({message: conflictPlan});
+assert.ok(frm.properties["plan_preview:options"].includes("Change Product Reference"));
+assert.ok(!sandbox.renderItemCreationPlan(conflictPlan, false).includes("Change Product Reference"));
+editReferenceClick({preventDefault: () => {}, currentTarget: {getAttribute: () => "511000:"}});
+assert.strictEqual(dialog.fields.find(field => field.fieldname === "product_reference").default, "P200O300080");
+dialog.primary_action({product_reference: " P200O300080-R1 "});
+assert.strictEqual(frm.doc.product_variants[0].product_reference, "P200O300080-R1");
+assert.strictEqual(frm.doc.product_variants[0].product_code, "410001");
+assert.strictEqual(markedDirty, true);
+assert.strictEqual(frm.__creation_plan, null);
+// A dialog opened against old inputs cannot overwrite newer edits.
+frm.__creation_plan = conflictPlan;
+sandbox.editItemCreationProductReference(frm, "511000:");
+frm.doc.head_code = "300081";
+dialog.primary_action({product_reference: "OLD-300080"});
+assert.strictEqual(frm.doc.product_variants[0].product_reference, "P200O300080-R1");
 
 // Reverse links from either Item or BOM open the same report with exact filters.
 let route;
@@ -174,4 +230,33 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, "../../..", "public/js/item
     assert.strictEqual(sandbox.frappe.route_options[doctype === "Item" ? "item_code" : "bom"], "LINKED");
     assert.strictEqual(route[1], "Item Creation Results");
 });
-console.log("Item Creation guided-form, review, preview and numbering tests passed.");
+// Derived suggestions cannot overwrite overrides or invalidate an in-flight plan.
+calls.length = 0;
+frm = form({head_check: "No", head_item: "300080", product_only: 1,
+    product_variants: [{selected: 1, body: "521000", syringe: "", product_code: "420XYZ"}]});
+frm.refresh_field = () => {};
+const beforeSuggestion = sandbox.itemCreationInputs(frm);
+sandbox.suggestItemCreationProductCodes(frm);
+calls[0].callback({message: [{body: "521000", syringe: "", product_code: "420XYZ"}]});
+assert.strictEqual(frm.doc.product_variants[0].product_code, "420XYZ");
+assert.strictEqual(frm.doc.product_variants[0].code_suggestion, "420XYZ");
+assert.strictEqual(sandbox.itemCreationInputs(frm), beforeSuggestion);
+sandbox.suggestItemCreationProductCodes(frm);
+frm.doc.head_item = "300081";
+calls[1].callback({message: [{body: "521000", syringe: "", product_code: "420OLD"}]});
+assert.strictEqual(frm.doc.product_variants[0].code_suggestion, "420XYZ");
+
+(async () => {
+    const modeForm = form({product_only: 1, head_check: "No", head_item: "300080", head_code: "300080",
+        seat_check: "Yes", plug_check: "Yes", replace_boms: 1});
+    const changed = events.product_only(modeForm);
+    events.head_check(modeForm); // Mode transition must retain the selected existing head.
+    await changed;
+    assert.strictEqual(modeForm.doc.head_item, "300080");
+    assert.strictEqual(modeForm.doc.head_check, "No");
+    assert.strictEqual(modeForm.doc.seat_check, "No");
+    assert.strictEqual(modeForm.doc.plug_check, "No");
+    assert.strictEqual(modeForm.doc.replace_boms, 0);
+    assert.strictEqual(modeForm.properties["head_name:read_only"], true);
+    console.log("Item Creation guided-form, review, preview, numbering and product-only tests passed.");
+})().catch(error => { console.error(error); process.exitCode = 1; });

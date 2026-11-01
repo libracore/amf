@@ -20,7 +20,11 @@ function itemCreationInputs(frm) {
         if (!key.startsWith("_") && !["modified", "review_history", "creation_result", "execution_results", "review_status",
             "cancellation_reason", "cancelled_by", "cancelled_at",
             "reviewed_by", "reviewed_at", "approved_plan_hash", "approved_input_hash"].includes(key)) {
-            values[key] = frm.doc[key];
+            values[key] = key === "product_variants" ? (frm.doc[key] || []).map(row => {
+                const value = Object.assign({}, row);
+                delete value.code_suggestion;
+                return value;
+            }) : frm.doc[key];
         }
     });
     return JSON.stringify(values);
@@ -57,7 +61,7 @@ function itemCreationRecipe(recipe, itemMap) {
     return html;
 }
 
-function renderItemCreationPlan(plan) {
+function renderItemCreationPlan(plan, editable = false) {
     const summary = plan.summary || {};
     const itemMap = Object.create(null);
     ((plan.dependencies || {}).items || []).forEach(item => { itemMap[item.name] = item; });
@@ -66,13 +70,23 @@ function renderItemCreationPlan(plan) {
         __("{0} Items, {1} new BOMs, {2} replacement BOMs, {3} reused BOMs", [summary.items || 0,
             summary.new_boms || 0, summary.replacement_boms || 0, summary.reused_boms || 0]) + '</p>';
     if (plan.errors && plan.errors.length) html += '<div class="alert alert-danger"><b>' + __("Resolve before review") +
-        '</b><ul>' + plan.errors.map(row => '<li>' + itemCreationEscape(row.message) + '</li>').join("") + '</ul></div>';
+        '</b><ul>' + plan.errors.map(row => '<li>' + itemCreationEscape(row.message) +
+            (editable && row.reference_conflict ? ' <button type="button" class="btn btn-xs btn-default item-creation-edit-reference" data-configuration="' +
+                itemCreationEscape(row.reference_conflict.configuration) + '">' + __("Change Product Reference") + '</button>' : '') +
+            '</li>').join("") + '</ul></div>';
     if (plan.warnings && plan.warnings.length) html += '<div class="alert alert-warning">' +
         plan.warnings.map(itemCreationEscape).join('<br>') + '</div>';
+    if (plan.product_only) html += '<p>' + __("Products only: the existing head and its submitted component BOMs remain pinned dependencies.") + '</p>';
+    if (plan.product_suggestions && plan.product_suggestions.length) html += '<p><b>' + __("Product code suggestions") + '</b></p><ul>' +
+        plan.product_suggestions.map(row => '<li>' + itemCreationEscape(row.product_code) + ' · ' +
+            itemCreationLink("Item", row.body) + (row.syringe ? ' / ' + itemCreationLink("Item", row.syringe) : '') +
+            ' · ' + itemCreationEscape(row.reason) + '</li>').join("") + '</ul>';
     html += (plan.actions || []).map(action => {
         const title = itemCreationEscape(action.item.item_code + " · " + action.item.item_name);
         let detail = '<details' + (action.bom_action === "replace" ? ' open' : '') + '><summary><b>' + title + '</b> · ' +
             itemCreationEscape(__(action.item_action)) + ' Item · ' + itemCreationEscape(__(action.bom_action)) + ' BOM</summary>';
+        if (["Product", "Products"].includes(action.item.item_group)) detail += '<p><b>' + __("Product Reference") +
+            ':</b> ' + itemCreationEscape(action.item.reference_code) + '</p>';
         if (action.existing_bom) detail += '<p>' + __("Existing BOM") + ': ' + itemCreationLink("BOM", action.existing_bom) + '</p>';
         if (action.bom_action === "replace") {
             const before = Object.assign({}, action.proposed);
@@ -110,7 +124,9 @@ function refreshItemCreationPlan(frm) {
                 return;
             }
             frm.__creation_plan = response.message;
-            frm.set_df_property("plan_preview", "options", renderItemCreationPlan(response.message));
+            frm.set_df_property("plan_preview", "options", renderItemCreationPlan(response.message, frm.doc.docstatus === 0));
+            bindItemCreationPlanActions(frm);
+            if (response.message.product_suggestions) applyItemCreationProductSuggestions(frm, response.message.product_suggestions);
             if (frm.doc.docstatus === 0 && frm.doc.approved_plan_hash &&
                     frm.doc.approved_plan_hash !== response.message.fingerprint) {
                 frm.set_intro(__("The recorded review is stale because the plan or its dependencies changed. Review the refreshed plan before submission."));
@@ -153,6 +169,66 @@ function updateItemCreationStockUom(frm, group) {
         }});
 }
 
+function updateItemCreationModeFields(frm) {
+    ["head_name", "head_rnd"].forEach(field => frm.set_df_property(field, "read_only", !!frm.doc.product_only));
+    frm.set_df_property("head_description", "read_only", !!frm.doc.product_only || !frm.doc.head_description_check);
+}
+
+function applyItemCreationProductSuggestions(frm, rows) {
+    const suggestions = new Map(rows.map(row => [row.body + ":" + row.syringe, row.product_code]));
+    (frm.doc.product_variants || []).forEach(row => {
+        row.code_suggestion = row.selected ? suggestions.get(row.body + ":" + (row.syringe || "")) || "" : "";
+    });
+    frm.refresh_field("product_variants");
+}
+
+function suggestItemCreationProductCodes(frm) {
+    const stamp = itemCreationInputs(frm);
+    return frappe.call({method: itemCreationWorkflow + "suggest_product_codes", args: {document: frm.doc},
+        callback: response => {
+            if (stamp !== itemCreationInputs(frm) || response.exc || !response.message) return;
+            applyItemCreationProductSuggestions(frm, response.message);
+            // Suggestions are derived display data, never Product Code overrides.
+        }});
+}
+
+function bindItemCreationPlanActions(frm) {
+    const field = (frm.fields_dict || {}).plan_preview;
+    if (!field || !field.$wrapper) return;
+    field.$wrapper.off("click.itemCreationReference").on("click.itemCreationReference", ".item-creation-edit-reference", event => {
+        event.preventDefault();
+        editItemCreationProductReference(frm, event.currentTarget.getAttribute("data-configuration"));
+    });
+}
+
+function editItemCreationProductReference(frm, configuration) {
+    if (frm.doc.docstatus !== 0) return;
+    const key = row => (row.body || "").trim().toUpperCase() + ":" + (row.syringe || "").trim().toUpperCase();
+    const row = (frm.doc.product_variants || []).find(value => value.selected && key(value) === configuration);
+    const plan = frm.__creation_plan;
+    if (!row || !plan) return frappe.msgprint(__("Refresh the complete plan before changing this reference."));
+    const suggestion = (plan.product_suggestions || []).find(value => key(value) === configuration);
+    const conflict = (plan.errors || []).map(value => value.reference_conflict).find(value => value && value.configuration === configuration);
+    const stamp = itemCreationInputs(frm);
+    const owners = conflict && conflict.owners.length ? '<p>' + __("Existing reference owners") + ': ' +
+        conflict.owners.map(name => itemCreationLink("Item", name)).join(", ") + '</p>' : '';
+    const dialog = new frappe.ui.Dialog({title: __("Change Product Reference"), fields: [
+        {fieldtype: "HTML", options: '<p>' + __("Generated reference") + ': <b>' +
+            itemCreationEscape(suggestion ? suggestion.default_reference : "") + '</b></p>' + owners},
+        {fieldname: "product_reference", fieldtype: "Data", label: __("Product Reference"),
+            default: row.product_reference || (suggestion ? suggestion.product_reference : conflict && conflict.reference) || "",
+            description: __("Enter a unique reference containing the selected head code exactly once. Leave blank to restore the generated reference. Existing Items are preserved; save and record fresh engineering review before submission.")},
+    ], primary_action_label: __("Apply Reference"), primary_action: values => {
+        if (stamp !== itemCreationInputs(frm)) return frappe.msgprint(__("The definition changed. Refresh the plan and open this reference again."));
+        row.product_reference = (values.product_reference || "").trim();
+        frm.refresh_field("product_variants");
+        frm.dirty();
+        dialog.hide();
+        scheduleItemCreationPlan(frm);
+    }});
+    dialog.show();
+}
+
 function chooseItemCreationVariants(frm) {
     const stamp = itemCreationInputs(frm);
     frappe.call({method: itemCreationWorkflow + "get_compatible_variants", args: {document: frm.doc}, callback: response => {
@@ -162,11 +238,12 @@ function chooseItemCreationVariants(frm) {
         const previous = new Map((frm.doc.product_variants || []).map(row => [row.body + ":" + (row.syringe || ""), row]));
         const selected = new Set((frm.doc.product_variants || []).filter(row => row.selected).map(row => row.body + ":" + (row.syringe || "")));
         const dialog = new frappe.ui.Dialog({title: __("Choose Product Configurations"), fields: [{
-            fieldtype: "HTML", options: '<p>' + __("P110/P111 identify HD drives. P101/P111 use S-2500-P or S-5000-P and require an HV head. Highlighted choices show head requirements to resolve before engineering review.") + '</p>',
+            fieldtype: "HTML", options: '<p>' + __("RVM includes body variants and RVM mini base/RS485/CAN. P110/P111 identify HD drives. P101/P111 use S-2500-P or S-5000-P and require an HV head. Highlighted choices show requirements to resolve before engineering review.") + '</p>',
         }, {
             fieldname: "variants", fieldtype: "MultiCheck", label: __("Configurations"), columns: 2, select_all: true,
             options: variants.map(row => ({value: row.body + ":" + row.syringe,
-                label: itemCreationEscape(row.configuration + (row.compatibility_note ? " — " + row.compatibility_note : "")),
+                label: itemCreationEscape(row.configuration + (row.compatibility_note ? " — " + row.compatibility_note : "") +
+                    (row.configuration_note ? " — " + row.configuration_note : "")),
                 danger: !!row.compatibility_note, checked: selected.has(row.body + ":" + row.syringe)})),
         }], primary_action_label: __("Apply Selection"), primary_action: values => {
             if (stamp !== itemCreationInputs(frm)) return frappe.msgprint(__("The definition changed. Open the configuration selection again."));
@@ -175,12 +252,14 @@ function chooseItemCreationVariants(frm) {
             variants.filter(row => choices.has(row.body + ":" + row.syringe)).forEach(row => {
                 Object.assign(frm.add_child("product_variants"), {body: row.body, syringe: row.syringe,
                     configuration: row.configuration, selected: 1,
-                    product_code: (previous.get(row.body + ":" + row.syringe) || {}).product_code || ""});
+                    product_code: (previous.get(row.body + ":" + row.syringe) || {}).product_code || "",
+                    product_reference: (previous.get(row.body + ":" + row.syringe) || {}).product_reference || ""});
             });
             frm.refresh_field("product_variants");
             frm.dirty();
             dialog.hide();
             scheduleItemCreationPlan(frm);
+            if (frm.doc.product_only && frm.doc.head_item) suggestItemCreationProductCodes(frm);
         }});
         dialog.show();
     }});
@@ -249,6 +328,7 @@ function amendItemCreationRequest(frm) {
 
 frappe.ui.form.on("Item Creation", {
     refresh(frm) {
+        updateItemCreationModeFields(frm);
         frm.set_query("default_warehouse", () => ({filters: {company: frm.doc.company, is_group: 0, disabled: 0}}));
         frm.set_query("head_item", () => ({filters: {item_group: "Valve Head", disabled: 0}}));
         // Each underscore matches one character, preserving six-character item codes.
@@ -275,6 +355,7 @@ frappe.ui.form.on("Item Creation", {
         }
         if (frm.doc.docstatus === 0) {
             frm.add_custom_button(__("Choose Product Configurations"), () => chooseItemCreationVariants(frm));
+            frm.add_custom_button(__("Suggest Product Codes"), () => suggestItemCreationProductCodes(frm));
             if ((frappe.user_roles || []).includes("System Manager") || frappe.session.user === "Administrator") {
                 frm.add_custom_button(__("Record Engineering Review"), () => reviewItemCreationPlan(frm));
             }
@@ -285,6 +366,8 @@ frappe.ui.form.on("Item Creation", {
             ? __("Execution completed. Search the result links below. Further changes require cancellation and a freshly reviewed amendment.")
             : frm.doc.review_status === "Reviewed"
             ? __("Engineering review recorded. Submission will recheck the exact plan and automatically submit its BOMs.")
+            : frm.doc.product_only
+            ? __("Select an existing head and Product configurations. Its submitted head/component BOMs are preserved; only the selected Products are created or reviewed. Use Suggest Product Codes, save, then record engineering review.")
             : __("Define the parts and raw stock, choose supported configurations, save, then review the complete plan before submission."));
         scheduleItemCreationPlan(frm);
     },
@@ -317,12 +400,28 @@ frappe.ui.form.on("Item Creation", {
                 plug_item: response.message.plug_code, seat_item: response.message.seat_code});
             frm.set_value(values);
             scheduleItemCreationPlan(frm);
+            if (frm.doc.product_only) suggestItemCreationProductCodes(frm);
         }});
     },
     head_check(frm) {
+        if (frm.__changing_creation_mode) return;
         frm.__head_request = (frm.__head_request || 0) + 1;
         frm.set_value({head_item: "", head_code: "", head_name: "VALVE HEAD-", head_rnd: "", head_description: "",
             plug_item: "", seat_item: "", plug_check: "", seat_check: "", plug_code: "", seat_code: "", replace_boms: 0});
+        scheduleItemCreationPlan(frm);
+    },
+    async product_only(frm) {
+        if (frm.doc.product_only) {
+            const existing = frm.doc.head_check === "No" ? frm.doc.head_item : "";
+            frm.__changing_creation_mode = true;
+            try {
+                await frm.set_value({head_check: "No", head_item: existing || "", head_code: existing || "",
+                    plug_check: "No", seat_check: "No", plug_item: "", seat_item: "", replace_boms: 0});
+            } finally {
+                frm.__changing_creation_mode = false;
+            }
+        }
+        updateItemCreationModeFields(frm);
         scheduleItemCreationPlan(frm);
     },
     head_code: updateItemCreationFamilyCodes,
@@ -333,7 +432,7 @@ frappe.ui.form.on("Item Creation", {
     plug_raw_material(frm) { updateItemCreationStockUom(frm, "plug"); },
     seat_raw_material(frm) { updateItemCreationStockUom(frm, "seat"); },
     company(frm) { frm.set_value("default_warehouse", ""); scheduleItemCreationPlan(frm); },
-    head_description_check(frm) { frm.set_df_property("head_description", "read_only", !frm.doc.head_description_check); },
+    head_description_check: updateItemCreationModeFields,
     on_submit(frm) { frm.reload_doc(); },
     before_cancel: cancelItemCreationRequest,
     after_cancel(frm) { frm.reload_doc(); },
@@ -347,5 +446,5 @@ const itemCreationPlanEvents = {};
     .forEach(field => { itemCreationPlanEvents[field] = scheduleItemCreationPlan; });
 frappe.ui.form.on("Item Creation", itemCreationPlanEvents);
 frappe.ui.form.on("Item Creation Variant", {selected: scheduleItemCreationPlan, body: scheduleItemCreationPlan,
-    product_code: scheduleItemCreationPlan,
+    product_code: scheduleItemCreationPlan, product_reference: scheduleItemCreationPlan,
     syringe: scheduleItemCreationPlan, product_variants_remove: scheduleItemCreationPlan});

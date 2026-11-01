@@ -9,6 +9,7 @@ import json
 import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.utils import cint, cstr
+from amf.amf.utils.item_creation_compatibility import rvm_configuration_for_body
 
 
 QUOTATION_DOCTYPE = "Quotation"
@@ -322,8 +323,7 @@ def get_product_definition_head_query(doctype, txt, searchfield, start, page_len
     syringe = get_item_reference(filters.get("syringe_item_code")) if filters.get("syringe_item_code") else None
 
     if body:
-        body_ref = normalize_reference(get_base_reference(body.get("reference_code")))
-        syringe_ref = normalize_reference(syringe.get("reference_code")) if syringe else ""
+        body_ref, syringe_ref = product_reference_parts(body, syringe)
         return get_existing_product_heads(body_ref, syringe_ref, txt, start, page_len)
 
     return get_generic_valve_heads(txt, start, page_len)
@@ -353,10 +353,17 @@ def get_item_reference(item_code):
 
 
 def make_expected_reference_code(body, head, syringe=None):
-    body_ref = normalize_reference(get_base_reference(body.get("reference_code")))
+    body_ref, syringe_ref = product_reference_parts(body, syringe)
     head_code = cstr(head.get("item_code") or head.get("name"))
-    syringe_ref = normalize_reference(syringe.get("reference_code")) if syringe else ""
     return "{0}{1}{2}".format(body_ref, head_code, syringe_ref)
+
+
+def product_reference_parts(body, syringe=None):
+    rule = rvm_configuration_for_body(body) if not syringe else None
+    if rule and not rule.get("configuration_error"):
+        return rule["reference_base"].replace("-", ""), rule["reference_suffix"]
+    return (normalize_reference(get_base_reference(body.get("reference_code"))),
+            normalize_reference(syringe.get("reference_code")) if syringe else "")
 
 
 def make_fallback_item_code(body, head, syringe=None):
@@ -364,10 +371,11 @@ def make_fallback_item_code(body, head, syringe=None):
     head_code = cstr(head.get("item_code") or head.get("name"))
     if len(body_code) < 2 or len(head_code) < 3:
         return None
+    rule = rvm_configuration_for_body(body) if not syringe else None
+    if rule and not rule.get("configuration_error"):
+        return rule["prefix"] + head_code[-3:]
 
     syringe_digit = "0"
-    if body_code in ("5D1001", "5D1002"):
-        syringe_digit = body_code[-1]
     if syringe:
         syringe_code = cstr(syringe.get("item_code") or syringe.get("name"))
         if len(syringe_code) < 3:
