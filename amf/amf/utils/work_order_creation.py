@@ -117,6 +117,12 @@ def check_and_create_work_orders(work_order, method=None):
         print(item)
         stock_qty = get_stock(item['item_code'])
         total_qty = sum(stock['actual_qty'] for stock in stock_qty)
+        # A matching magnet sub-assembly already contains this machined part.
+        # Keep this legacy check's warehouse scope (get_stock excludes OLD).
+        magnet_item_code = _get_magnet_sub_assembly_item_code(item['item_code'])
+        if magnet_item_code and frappe.db.exists('Item', magnet_item_code):
+            magnet_stock = get_stock(magnet_item_code)
+            total_qty += max(sum(flt(stock['actual_qty']) for stock in magnet_stock), 0)
         print(stock_qty, total_qty)
          # Use the required_qty from the required_items
         required_qty = required_qty_dict.get(item['item_code'], 0)
@@ -292,6 +298,7 @@ def make_stock_entry(work_order_id, purpose, qty=None):
 #####################################
 MACHINING_ITEM_PREFIXES = ("10", "20")
 MACHINING_ITEM_CODE_LENGTH = 6
+MACHINING_MAGNET_ITEM_PREFIXES = {"10": "11", "20": "21"}
 MACHINING_STOCK_WAREHOUSES = ("Main Stock - AMF21", "Assemblies - AMF21")
 MACHINING_WIP_WAREHOUSE = "Work In Progress - AMF21"
 MACHINING_FG_WAREHOUSE = "Quality Control - AMF21"
@@ -321,7 +328,8 @@ def plan_machining_work_orders_from_sales_orders(
          10 or 20, because those are the machining planning items.
       3. Groups the demand by machining item, regardless of Sales Order dates.
       4. Uses the shortest Sales Order shipping date for the Work Order dates.
-      5. Allocates existing stock and open non-planner Work Orders.
+      5. Allocates existing stock (including matching 11/21 magnet assemblies)
+         and open non-planner Work Orders for the machining item itself.
       6. Creates, updates, or deletes planner-owned draft Work Orders so there
          is only one draft Work Order per machining item.
 
@@ -692,9 +700,22 @@ def _get_sorted_demand_rows(demand_map):
 
 
 def _get_stock_balance_for_items(item_codes, warehouses=None):
+    """Return planning coverage, including the exact 11/21 magnet counterpart.
+
+    One stocked magnet sub-assembly covers one matching 10/20 machining part.
+    Only positive net counterpart stock contributes; base-item negative stock
+    retains its existing meaning. Missing counterpart Bins contribute zero.
+    This does not transfer stock, change BOMs, or count future assembly WOs.
+    """
     if not item_codes:
         return {}
 
+    magnet_item_by_item = {
+        item_code: _get_magnet_sub_assembly_item_code(item_code)
+        for item_code in item_codes
+    }
+    stock_item_codes = set(item_codes)
+    stock_item_codes.update(code for code in magnet_item_by_item.values() if code)
     warehouses = tuple(warehouses or MACHINING_STOCK_WAREHOUSES)
     rows = frappe.db.sql(
         """
@@ -705,12 +726,34 @@ def _get_stock_balance_for_items(item_codes, warehouses=None):
         GROUP BY item_code
         """,
         {
-            "item_codes": tuple(item_codes),
+            "item_codes": tuple(sorted(stock_item_codes)),
             "warehouses": warehouses,
         },
         as_dict=True,
     )
-    return {row.item_code: flt(row.actual_qty) for row in rows}
+    stock_by_item = {row.item_code: flt(row.actual_qty) for row in rows}
+    return {
+        item_code: flt(stock_by_item.get(item_code)) + max(
+            flt(stock_by_item.get(magnet_item_by_item[item_code])), 0
+        )
+        for item_code in item_codes
+    }
+
+
+def _get_magnet_sub_assembly_item_code(item_code):
+    """Map 10xxxx -> 11xxxx or 20xxxx -> 21xxxx, preserving the exact suffix.
+
+    Use the existing six-character, uppercase alphanumeric machining-code rule.
+    Set site config ``machining_include_magnet_stock`` to 0 to restore the
+    original stock checks in all three planning paths without reverting code.
+    See amf/docs/work_order_magnet_stock_audit_2026-11-03.md for rollback.
+    """
+    item_code = str(item_code or "")
+    if not _is_machining_item_code(item_code):
+        return None
+    if not cint(frappe.conf.get("machining_include_magnet_stock", 1)):
+        return None
+    return MACHINING_MAGNET_ITEM_PREFIXES[item_code[:2]] + item_code[2:]
 
 
 def _get_open_work_orders_by_item(item_codes):
@@ -1194,14 +1237,9 @@ def create_work_orders_based_on_reorder_levels():
         else:
             delete_draft_wo(item["name"])
 
-def get_stock_balance(item_code, warehouse=("Main Stock - AMF21", "Assemblies - AMF21")):
-    """Get current stock balance for an item in a specific warehouse."""
-    stock_ledger_entry = frappe.db.sql("""
-        SELECT SUM(actual_qty) as actual_qty 
-        FROM `tabBin`
-        WHERE item_code = %s AND warehouse IN %s
-    """, (item_code, warehouse), as_dict=True)
-    return flt(stock_ledger_entry[0].get("actual_qty", 0)) if stock_ledger_entry else 0
+def get_stock_balance(item_code, warehouse=MACHINING_STOCK_WAREHOUSES):
+    """Get planning stock, including a matching stocked magnet sub-assembly."""
+    return _get_stock_balance_for_items([item_code], warehouses=warehouse).get(item_code, 0)
 
 def process_bom_and_create_work_orders(item_code, required_qty, parent_work_order=None):
     """Process BOM and create work orders for items and sub-assemblies."""
