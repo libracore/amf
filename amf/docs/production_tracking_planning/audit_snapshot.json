@@ -1,0 +1,344 @@
+{
+  "audit_date": "2026-11-03",
+  "site": "site1.local",
+  "original_web_page": {
+    "name": "production-tracking",
+    "route": "production-tracking",
+    "modified": "2025-12-08 10:29:27.199378",
+    "sha256": "d53ad80cbebc7f626282ef617d1b6973bc4d103c6042265dcea089f068de1d03",
+    "unchanged": true
+  },
+  "master_files": [
+    {
+      "path": "amf/www/production_tracking.py",
+      "sha256": "7441d1ddfa353952536c398c208ceaf8d4d552e23d50c1ead4b1432e18f721b1",
+      "unchanged": true
+    },
+    {
+      "path": "amf/hooks.py",
+      "sha256": "f9b17080cef87a8159809493aaee597bda09d5bce31486f8a7d75ebb09f4b243",
+      "unchanged": true
+    }
+  ],
+  "source_reports": [
+    {
+      "name": "Plug à usiner...",
+      "unchanged": true,
+      "original_sha256": "63d568821fd03dd3142292f60e4142179ca0af1e110be54e0a38e551914c7adc",
+      "config": {
+        "filters": [
+          [
+            "Work Order",
+            "status",
+            "!=",
+            "Cancelled",
+            false
+          ],
+          [
+            "Work Order",
+            "status",
+            "!=",
+            "Completed",
+            false
+          ],
+          [
+            "Work Order",
+            "status",
+            "!=",
+            "Stopped",
+            false
+          ],
+          [
+            "Work Order",
+            "production_item",
+            "like",
+            "10_%",
+            false
+          ],
+          [
+            "Work Order",
+            "progress",
+            "!=",
+            "QC",
+            false
+          ],
+          [
+            "Work Order",
+            "priority",
+            "<=",
+            5,
+            false
+          ]
+        ],
+        "fields": [
+          [
+            "name",
+            "Work Order"
+          ],
+          [
+            "production_item",
+            "Work Order"
+          ],
+          [
+            "item_name",
+            "Work Order"
+          ],
+          [
+            "rd_code",
+            "Work Order"
+          ],
+          [
+            "qty",
+            "Work Order"
+          ],
+          [
+            "progress",
+            "Work Order"
+          ],
+          [
+            "expected_delivery_date_",
+            "Work Order"
+          ],
+          [
+            "priority",
+            "Work Order"
+          ],
+          [
+            "machine",
+            "Work Order"
+          ],
+          [
+            "raw_material",
+            "Work Order"
+          ],
+          [
+            "drawing",
+            "Work Order"
+          ],
+          [
+            "docstatus",
+            "Work Order"
+          ],
+          [
+            "temps_de_fabrication_estime_jours",
+            "Work Order"
+          ]
+        ],
+        "order_by": "`tabWork Order`.`priority` asc",
+        "add_totals_row": 0,
+        "page_length": 500,
+        "column_widths": {
+          "name": 79,
+          "production_item": 235,
+          "item_name": 200,
+          "rd_code": 96,
+          "qty": 120,
+          "progress": 96,
+          "expected_delivery_date_": 120,
+          "priority": 31,
+          "machine": 120,
+          "raw_material": 120,
+          "drawing": 342,
+          "temps_de_fabrication_estime_jours": 120
+        },
+        "group_by": null
+      }
+    },
+    {
+      "name": "Valve Seat à usiner...",
+      "unchanged": true,
+      "original_sha256": "14434907e8b428b3c9d90aae389e24b3ddf9a6b017db74394bd6498f03cd5d88",
+      "config": {
+        "filters": [
+          [
+            "Work Order",
+            "status",
+            "!=",
+            "Cancelled",
+            false
+          ],
+          [
+            "Work Order",
+            "status",
+            "!=",
+            "Completed",
+            false
+          ],
+          [
+            "Work Order",
+            "status",
+            "!=",
+            "Stopped",
+            false
+          ],
+          [
+            "Work Order",
+            "production_item",
+            "like",
+            "20_%",
+            false
+          ],
+          [
+            "Work Order",
+            "progress",
+            "!=",
+            "QC",
+            false
+          ],
+          [
+            "Work Order",
+            "priority",
+            "<=",
+            5,
+            false
+          ]
+        ],
+        "fields": [
+          [
+            "name",
+            "Work Order"
+          ],
+          [
+            "production_item",
+            "Work Order"
+          ],
+          [
+            "item_name",
+            "Work Order"
+          ],
+          [
+            "rd_code",
+            "Work Order"
+          ],
+          [
+            "qty",
+            "Work Order"
+          ],
+          [
+            "progress",
+            "Work Order"
+          ],
+          [
+            "expected_delivery_date_",
+            "Work Order"
+          ],
+          [
+            "priority",
+            "Work Order"
+          ],
+          [
+            "machine",
+            "Work Order"
+          ],
+          [
+            "raw_material",
+            "Work Order"
+          ],
+          [
+            "drawing",
+            "Work Order"
+          ],
+          [
+            "docstatus",
+            "Work Order"
+          ],
+          [
+            "temps_de_fabrication_estime_jours",
+            "Work Order"
+          ]
+        ],
+        "order_by": "`tabWork Order`.`priority` asc",
+        "add_totals_row": 0,
+        "page_length": 500,
+        "column_widths": {
+          "name": 79,
+          "production_item": 207,
+          "item_name": 180,
+          "rd_code": 96,
+          "qty": 120,
+          "progress": 84,
+          "expected_delivery_date_": 120,
+          "priority": 30,
+          "machine": 120,
+          "raw_material": 120,
+          "drawing": 401,
+          "temps_de_fabrication_estime_jours": 120
+        },
+        "group_by": null
+      }
+    }
+  ],
+  "duplicate": {
+    "name": "production-tracking-planning",
+    "route": "production-tracking-planning",
+    "published": 1,
+    "modified": "2026-11-03 12:22:35.999720",
+    "counts": {
+      "Plug à usiner...": 9,
+      "Valve Seat à usiner...": 15
+    },
+    "distinct_rows": 24,
+    "report_columns": 13,
+    "undated_rows": 1,
+    "editable_fields": [
+      "production_item",
+      "qty",
+      "progress",
+      "expected_delivery_date_",
+      "priority",
+      "machine",
+      "raw_material",
+      "drawing"
+    ],
+    "protected_fields": [
+      "name",
+      "item_name",
+      "rd_code",
+      "docstatus",
+      "temps_de_fabrication_estime_jours"
+    ]
+  },
+  "validation": {
+    "integration_tests_passed": 25,
+    "integration_test_writes": "rolled back after every test",
+    "firefox_checks": "passed using unpublished private loopback preview",
+    "browser_test_writes": "all rolled back",
+    "javascript_syntax": "passed",
+    "python_compilation": "passed",
+    "deletion_tests": "Passed on transaction-only fixtures; all 5467 production Work Orders and timestamps unchanged",
+    "deletion_browser_checks": "Passed: permission states, confirmation cancellation, rejection retaining edits, native fixture deletion and refresh preserving another draft"
+  },
+  "publication": {
+    "status": "published",
+    "authorized_by": "Explicit user instruction to publish the copy and commit the changes",
+    "verified_at_site_time": "2026-11-03 12:22:36.734657",
+    "resolved_route": "production-tracking-planning",
+    "original_page_unchanged": true,
+    "source_reports_unchanged": true,
+    "distinct_rows": 24,
+    "report_columns": 13,
+    "http_verification": {
+      "status": 200,
+      "transport": "HTTP localhost:8000",
+      "machining_tab_present": true,
+      "uses_separate_backend": true
+    }
+  },
+  "deletion_feature": {
+    "endpoint": "amf.www.production_tracking_planning.delete_machining_work_order",
+    "method": "POST",
+    "document_scope": "Draft Work Orders matching the two machining reports",
+    "requires": "Read and delete permissions; current modified timestamp",
+    "native_link_checks": true,
+    "confirmation_deletes_actual_work_order": true,
+    "production_work_orders_deleted_during_tests": 0,
+    "live_http_verification": {
+      "published_page_http": 200,
+      "live_planning_api_http": 200,
+      "rows": 24,
+      "deletion_metadata_present": true,
+      "deployed_delete_endpoint": "registered; nonexistent Work Order rejected with 404",
+      "production_records_targeted": 0
+    }
+  }
+}

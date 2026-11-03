@@ -272,7 +272,10 @@ doc_events = {
     "Work Order": {
         # Frappe V12 runs on_update after both insert and update, i.e. after save.
         "on_update": "amf.amf.utils.work_order_estimated_time.update_work_order_estimated_time",
-        "after_insert": "amf.amf.utils.on_work_order_submit.generate_wo_qr",
+        "after_insert": [
+            "amf.amf.utils.on_work_order_submit.generate_wo_qr",
+            "amf.amf.utils.manual_work_order_assignment.assign_manual_machining_work_order",
+        ],
     },
 
     # "Sales Invoice": {
