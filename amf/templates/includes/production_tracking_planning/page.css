@@ -499,6 +499,8 @@
 .pt-page .pt-table .pt-actions { position: sticky; right: 0; min-width: 145px; box-shadow: -3px 0 5px #1a315112; z-index: 1; }
 .pt-page .pt-actions button { display: block; padding: 6px 9px; margin: 3px 0; width: 100%; border: 1px solid #d3daea; border-radius: 4px; cursor: pointer; background: #fff; }
 .pt-page .pt-actions button[data-action=save]:enabled { color: #fff; background: #2b47d9; border-color: #2b47d9; }
+.pt-page .pt-actions button[data-action=delete]:enabled { color: #a82b30; border-color: #deb9bd; }
+.pt-page .pt-actions button[data-action=delete]:enabled:hover { background: #fff1f1; border-color: #a82b30; }
 .pt-page button:disabled { opacity: .5; cursor: default; }
 .pt-page .pt-empty { padding: 40px; text-align: center; }
 .pt-page .pt-drawing-link { display: inline-block; margin-top: 5px; font-size: 12px; }

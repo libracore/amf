@@ -272,7 +272,7 @@
     "name": "production-tracking-planning",
     "route": "production-tracking-planning",
     "published": 1,
-    "modified": "2026-11-03 10:59:18.551643",
+    "modified": "2026-11-03 12:22:35.999720",
     "counts": {
       "Plug à usiner...": 9,
       "Valve Seat à usiner...": 15
@@ -299,17 +299,19 @@
     ]
   },
   "validation": {
-    "integration_tests_passed": 17,
+    "integration_tests_passed": 25,
     "integration_test_writes": "rolled back after every test",
     "firefox_checks": "passed using unpublished private loopback preview",
     "browser_test_writes": "all rolled back",
     "javascript_syntax": "passed",
-    "python_compilation": "passed"
+    "python_compilation": "passed",
+    "deletion_tests": "Passed on transaction-only fixtures; all 5467 production Work Orders and timestamps unchanged",
+    "deletion_browser_checks": "Passed: permission states, confirmation cancellation, rejection retaining edits, native fixture deletion and refresh preserving another draft"
   },
   "publication": {
     "status": "published",
     "authorized_by": "Explicit user instruction to publish the copy and commit the changes",
-    "verified_at_site_time": "2026-11-03 10:59:18.774879",
+    "verified_at_site_time": "2026-11-03 12:22:36.734657",
     "resolved_route": "production-tracking-planning",
     "original_page_unchanged": true,
     "source_reports_unchanged": true,
@@ -320,6 +322,23 @@
       "transport": "HTTP localhost:8000",
       "machining_tab_present": true,
       "uses_separate_backend": true
+    }
+  },
+  "deletion_feature": {
+    "endpoint": "amf.www.production_tracking_planning.delete_machining_work_order",
+    "method": "POST",
+    "document_scope": "Draft Work Orders matching the two machining reports",
+    "requires": "Read and delete permissions; current modified timestamp",
+    "native_link_checks": true,
+    "confirmation_deletes_actual_work_order": true,
+    "production_work_orders_deleted_during_tests": 0,
+    "live_http_verification": {
+      "published_page_http": 200,
+      "live_planning_api_http": 200,
+      "rows": 24,
+      "deletion_metadata_present": true,
+      "deployed_delete_endpoint": "registered; nonexistent Work Order rejected with 404",
+      "production_records_targeted": 0
     }
   }
 }

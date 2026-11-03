@@ -1,7 +1,8 @@
 """Integration checks for the independent planning copy; all writes roll back.
 
 Run with an initialized Frappe site (or bench run-tests --module ...).
-No fixtures, schema changes, or committed Work Order changes are required.
+Deletion fixtures stay within rolled-back transactions. No schema changes or
+committed Work Order changes are required.
 """
 import unittest
 from unittest.mock import patch
@@ -28,6 +29,37 @@ class TestProductionTrackingPlanning(unittest.TestCase):
             self.skipTest("No draft machining Work Order available")
         return api.save_machining_work_order(name or self.row["name"], changes,
                                             modified or self.row["_modified"])
+
+    def deletion_fixture(self):
+        """Isolated transaction-only order, without generated files or insert hooks."""
+        if not self.row:
+            self.skipTest("No draft machining Work Order available")
+        doc = frappe.copy_doc(frappe.get_doc("Work Order", self.row["name"]))
+        doc.name = "PLANNING-DELETE-TEST-" + frappe.generate_hash(length=10)
+        doc.naming_series = ""
+        doc.docstatus = 0
+        doc.status = "Draft"
+        doc.progress = "En Attente"
+        doc.priority = 1
+        doc.amended_from = None
+        for field in doc.meta.fields:
+            if field.fieldtype in ("Attach", "Attach Image"):
+                doc.set(field.fieldname, None)
+            elif field.fieldtype in ("Table", "Table MultiSelect"):
+                doc.set(field.fieldname, [])
+        doc.db_insert()
+        doc.reload()
+        return doc
+
+    def delete_fixture(self, doc, modified=None):
+        # V12's in_test RQ cleanup path commits internally. Run the same native
+        # cleanup directly so the fixture and every deletion remain rollback-only.
+        def cleanup(method, **kwargs):
+            kwargs.pop("is_async", None)
+            return frappe.get_attr(method)(**kwargs)
+        with patch.object(frappe, "enqueue", side_effect=cleanup), patch.object(
+                frappe.db, "commit", side_effect=AssertionError("Deletion test must not commit")):
+            return api.delete_machining_work_order(doc.name, modified or cstr(doc.modified))
 
     def test_exact_report_rows_and_columns(self):
         expected_columns = []
@@ -146,6 +178,81 @@ class TestProductionTrackingPlanning(unittest.TestCase):
         row = frappe._dict(self.row, docstatus=1, modified=self.row["_modified"])
         editable = api._serialize_row(row, self.data["columns"])["_editable_fields"]
         self.assertEqual(set(editable), {"priority", "progress"})
+        self.assertFalse(api._serialize_row(row, self.data["columns"])["_can_delete"])
+
+    def test_delete_draft_uses_native_deletion_and_removes_row(self):
+        doc = self.deletion_fixture()
+        self.assertIn(doc.name, {r["name"] for r in api.get_machining_planning()["rows"]})
+        result = self.delete_fixture(doc)
+        self.assertEqual(result, {"name": doc.name, "deleted": True})
+        self.assertFalse(frappe.db.exists("Work Order", doc.name))
+        self.assertNotIn(doc.name, {r["name"] for r in api.get_machining_planning()["rows"]})
+        self.assertTrue(frappe.db.exists("Deleted Document", {
+            "deleted_doctype": "Work Order", "deleted_name": doc.name}))
+
+    def test_delete_cascades_work_order_child_rows(self):
+        doc = self.deletion_fixture()
+        child = frappe.get_doc({"doctype": "Work Order Item", "parent": doc.name,
+            "parenttype": "Work Order", "parentfield": "required_items", "idx": 1,
+            "item_code": doc.production_item, "required_qty": 1})
+        child.db_insert()
+        self.delete_fixture(doc)
+        self.assertFalse(frappe.db.exists("Work Order Item", child.name))
+
+    def test_delete_linked_work_order_is_rejected(self):
+        doc = self.deletion_fixture()
+        reference = self.deletion_fixture()
+        reference.amended_from = doc.name
+        reference.db_update()
+        with self.assertRaises(frappe.LinkExistsError):
+            self.delete_fixture(doc)
+        self.assertTrue(frappe.db.exists("Work Order", doc.name))
+        self.assertTrue(frappe.db.exists("Work Order", reference.name))
+
+    def test_delete_stale_or_missing_version_is_rejected(self):
+        doc = self.deletion_fixture()
+        for modified in ("2000-01-01 00:00:00", ""):
+            with self.subTest(modified=modified), self.assertRaises(frappe.TimestampMismatchError):
+                api.delete_machining_work_order(doc.name, modified)
+        self.assertTrue(frappe.db.exists("Work Order", doc.name))
+
+    def test_delete_submitted_and_cancelled_work_orders_is_rejected(self):
+        doc = self.deletion_fixture()
+        for docstatus in (1, 2):
+            doc.docstatus = docstatus
+            doc.db_update()
+            with self.subTest(docstatus=docstatus), self.assertRaises(frappe.ValidationError):
+                self.delete_fixture(doc)
+            self.assertTrue(frappe.db.exists("Work Order", doc.name))
+
+    def test_delete_outside_report_is_rejected(self):
+        doc = self.deletion_fixture()
+        doc.progress = "QC"
+        doc.db_update()
+        with self.assertRaises(frappe.ValidationError):
+            self.delete_fixture(doc)
+        self.assertTrue(frappe.db.exists("Work Order", doc.name))
+
+    def test_delete_permission_is_enforced_in_api_and_row_metadata(self):
+        doc = self.deletion_fixture()
+        original_permission = frappe.has_permission
+        def has_permission(doctype, permission="read", *args, **kwargs):
+            if doctype == "Work Order" and permission == "delete":
+                return False
+            return original_permission(doctype, permission, *args, **kwargs)
+        with patch.object(frappe, "has_permission", side_effect=has_permission):
+            self.assertTrue(all(not r["_can_delete"] for r in api.get_machining_planning()["rows"]))
+            with self.assertRaises(frappe.PermissionError):
+                self.delete_fixture(doc)
+        self.assertTrue(frappe.db.exists("Work Order", doc.name))
+
+    def test_guest_cannot_delete(self):
+        doc = self.deletion_fixture()
+        frappe.set_user("Guest")
+        with self.assertRaises(frappe.PermissionError):
+            api.delete_machining_work_order(doc.name, cstr(doc.modified))
+        frappe.set_user("Administrator")
+        self.assertTrue(frappe.db.exists("Work Order", doc.name))
 
     def test_disabled_or_unauthorized_report_denied(self):
         report = frappe.get_doc("Report", api.REPORT_NAMES[0])

@@ -1,7 +1,8 @@
 """Independent backend for the duplicated Production Tracking / Planning page.
 
 The original production_tracking module and saved reports are never changed.
-Writes use Document.save so Work Order validation and existing hooks still run.
+Saves use Document.save and deletion uses frappe.delete_doc, preserving native
+Work Order validation, link checks and existing hooks.
 """
 
 from datetime import timedelta
@@ -107,8 +108,14 @@ def _serialize_row(row, columns):
                        and (cint(row.docstatus) == 0 or
                             (cint(row.docstatus) == 1 and c["allow_on_submit"]))]
     values = {c["fieldname"]: row.get(c["fieldname"]) if c["readable"] else None for c in columns}
+    can_delete = cint(row.docstatus) == 0 and bool(
+        frappe.has_permission("Work Order", "delete", doc=permission_doc))
+    delete_reason = "" if can_delete else (
+        _("Only draft Work Orders can be deleted from the planning.") if cint(row.docstatus) != 0
+        else _("You do not have permission to delete this Work Order."))
     values.update({"name": row.name, "_modified": cstr(row.modified),
-                   "_reports": row.get("_reports", []), "_editable_fields": editable_fields})
+                   "_reports": row.get("_reports", []), "_editable_fields": editable_fields,
+                   "_can_delete": can_delete, "_delete_reason": delete_reason})
     return values
 
 
@@ -207,6 +214,26 @@ def save_machining_work_order(name, changes, modified):
     doc.save()
     doc.reload()
     return {"name": doc.name, "modified": cstr(doc.modified)}
+
+
+@frappe.whitelist(methods=["POST"])
+def delete_machining_work_order(name, modified):
+    """Delete one draft report Work Order through Frappe's normal link checks."""
+    reports = _reports()
+    columns = _columns(reports)
+    frappe.db.sql("select name from `tabWork Order` where name=%s for update", (name,))
+    doc = frappe.get_doc("Work Order", name)
+    doc.check_permission("read")
+    doc.check_permission("delete")
+    if cint(doc.docstatus) != 0:
+        frappe.throw(_("Only draft Work Orders can be deleted from the planning."))
+    if not modified or get_datetime(modified) != get_datetime(doc.modified):
+        frappe.throw(_("This Work Order was changed by another user. Reload the planning before deleting."),
+                     frappe.TimestampMismatchError)
+    if not any(_report_rows(config, columns, name) for _, config in reports):
+        frappe.throw(_("This Work Order is no longer in the machining reports. Reload the planning."))
+    frappe.delete_doc("Work Order", name, ignore_missing=False)
+    return {"name": name, "deleted": True}
 
 
 # Duplicated overview methods; no calls into the master page's Python module.

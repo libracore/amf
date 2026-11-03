@@ -282,7 +282,7 @@ updateClock();
 (function () {
   "use strict";
   const state = {columns: [], rows: [], pending: new Map(), loaded: false,
-    loading: false, saving: null, search: "", report: ""};
+    loading: false, saving: null, deleting: null, search: "", report: ""};
   const api = "amf.www.production_tracking_planning.";
   const byId = id => document.getElementById(id);
   const numeric = new Set(["Int", "Float", "Currency", "Percent", "Check"]);
@@ -298,7 +298,7 @@ updateClock();
   }
 
   function setBusy() {
-    const busy = state.loading || !!state.saving;
+    const busy = state.loading || !!state.saving || !!state.deleting;
     byId("planning-reload").disabled = busy;
     byId("planning-table").querySelectorAll("input, select, button").forEach(el => {
       el.disabled = busy || el.dataset.inactive === "1";
@@ -396,6 +396,15 @@ updateClock();
         button.dataset.inactive = draft && (action === "discard" || !row._unavailable) ? "0" : "1";
         actions.appendChild(button);
       });
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.textContent = state.deleting === row.name ? "Suppression…" : "Supprimer";
+      deleteButton.dataset.action = "delete";
+      deleteButton.dataset.inactive = row._can_delete && !row._unavailable ? "0" : "1";
+      deleteButton.title = row._unavailable ? "Cet ordre ne figure plus dans les rapports. Actualisez le planning." :
+        row._delete_reason || "Supprimer cet ordre de fabrication brouillon";
+      deleteButton.setAttribute("aria-label", "Supprimer l’ordre de fabrication " + row.name);
+      actions.appendChild(deleteButton);
     });
     if (!visible) {
       const cell = body.insertRow().insertCell();
@@ -408,7 +417,7 @@ updateClock();
   }
 
   function loadPlanning(preservePending, message) {
-    if (state.loading || state.saving) return;
+    if (state.loading || state.saving || state.deleting) return;
     if (!preservePending && state.pending.size) {
       if (!window.confirm("Abandonner les modifications non enregistrées et actualiser le planning ?")) return;
       state.pending.clear();
@@ -461,7 +470,7 @@ updateClock();
     else state.pending.delete(row.name);
     input.classList.toggle("pt-changed", Object.prototype.hasOwnProperty.call(draft.changes, column.fieldname));
     tr.classList.toggle("pt-dirty", dirty);
-    tr.querySelectorAll("button").forEach(button => {
+    tr.querySelectorAll('button[data-action="save"], button[data-action="discard"]').forEach(button => {
       button.dataset.inactive = dirty ? "0" : "1";
       button.disabled = !dirty;
     });
@@ -471,7 +480,7 @@ updateClock();
 
   function saveRow(name) {
     const draft = state.pending.get(name);
-    if (!draft || state.saving || state.loading) return;
+    if (!draft || state.saving || state.deleting || state.loading) return;
     const tr = Array.from(byId("planning-table").tBodies[0].rows).find(tr => tr.dataset.name === name);
     if (!Array.from(tr.querySelectorAll("input, select")).every(input => input.reportValidity())) return;
     state.saving = name;
@@ -491,6 +500,41 @@ updateClock();
         state.saving = null;
         if (saved) {
           loadPlanning(true, name + " enregistré. Si ses valeurs ne correspondent plus aux filtres des rapports, il quitte le planning.");
+          loadWorkOrders();
+        } else setBusy();
+      }
+    });
+  }
+
+  function deleteRow(name) {
+    const row = state.rows.find(row => row.name === name);
+    if (!row || !row._can_delete || row._unavailable || state.saving || state.deleting || state.loading) return;
+    const draft = state.pending.get(name);
+    const message = "Supprimer l’ordre de fabrication brouillon " + name + " dans l’ERP ?\n\n" +
+      "Cette action supprime l’ordre de fabrication et sa ligne dans les rapports." +
+      (draft ? "\nLes modifications non enregistrées de cette ligne seront perdues." : "");
+    if (!window.confirm(message)) return;
+    state.deleting = name;
+    setBusy();
+    status("Suppression de " + name + "…");
+    let deleted = false;
+    trackingCall({
+      method: api + "delete_machining_work_order", type: "POST",
+      args: {name: name, modified: draft ? draft.modified : row._modified},
+      callback: function (r) {
+        if (!r.message || !r.message.deleted || r.exc) return;
+        deleted = true;
+        state.pending.delete(name);
+        state.rows = state.rows.filter(row => row.name !== name);
+        render();
+      },
+      error: function () {
+        status("Échec de la suppression de " + name + ". Vos modifications sont conservées. Vérifiez vos droits, les documents liés ou actualisez le planning en cas de conflit.", true);
+      },
+      always: function () {
+        state.deleting = null;
+        if (deleted) {
+          loadPlanning(true, name + " supprimé.");
           loadWorkOrders();
         } else setBusy();
       }
@@ -534,9 +578,10 @@ updateClock();
     byId("planning-table").addEventListener("change", updateDraft);
     byId("planning-table").addEventListener("click", event => {
       const button = event.target.closest("button[data-action]");
-      if (!button || state.loading || state.saving) return;
+      if (!button || button.disabled || state.loading || state.saving || state.deleting) return;
       const name = button.closest("tr").dataset.name;
       if (button.dataset.action === "save") saveRow(name);
+      else if (button.dataset.action === "delete") deleteRow(name);
       else {
         state.pending.delete(name);
         state.rows = state.rows.filter(row => row.name !== name || !row._unavailable);
@@ -546,7 +591,7 @@ updateClock();
     });
     if (window.location.hash === "#usinage") activateTab(tabs[1]);
     window.addEventListener("beforeunload", event => {
-      if (!state.pending.size && !noteDirty && !state.saving && !noteSaving) return;
+      if (!state.pending.size && !noteDirty && !state.saving && !state.deleting && !noteSaving) return;
       event.preventDefault();
       event.returnValue = "";
     });

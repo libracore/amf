@@ -12,7 +12,7 @@ Its route is `/production-tracking-planning`; `#usinage` opens the machining tab
 The existing HTML, JavaScript, CSS and Python methods were copied first. Changes are
 contained in these new files and the new Web Page record:
 
-- `amf/www/production_tracking_planning.py`: independent overview, planning, write and installer methods.
+- `amf/www/production_tracking_planning.py`: independent overview, planning, save/delete and installer methods.
 - `amf/templates/includes/production_tracking_planning/page.html`: copied overview plus the new tab.
 - `amf/templates/includes/production_tracking_planning/page.js`: copied overview logic plus editable planning.
 - `amf/templates/includes/production_tracking_planning/page.css`: scoped copied styling plus planning styles.
@@ -139,19 +139,45 @@ the saved row from the planning; that is correct report behavior and the UI expl
 Cancelled records cannot be edited. Submitted records honor `allow_on_submit` and native
 submit permissions. Read-only users see no editable cells.
 
+Each row also offers **Supprimer**. It deletes the underlying Work Order, rather than
+hiding it only in this tab. The confirmation identifies the draft order and explicitly
+states that its record will be deleted in the ERP. If that row has pending edits, the
+confirmation states they will be discarded. Cancelling the confirmation changes nothing.
+
+Deletion is enabled only for drafts on which the current user has native Work Order
+delete permission. Its independent, POST-only endpoint locks and reloads the record,
+checks read/delete permissions, draft status, the original `modified` version and current
+report membership, then calls `frappe.delete_doc` without force or permission bypasses.
+Frappe's normal links, child-row cleanup, deletion hooks and Deleted Document archive
+apply. Linked records can therefore block deletion. No cancellation of submitted orders
+or changes to role permissions are performed.
+
+On success the deleted row is removed, both planning and overview reload, and other
+rows retain their pending edits and conflict tokens. On failure the row and pending
+edits remain. The delete button stays independent of the Save/Cancel dirty state, and
+all row operations are disabled while a save or deletion is in progress.
+
 The note uses the native Production Notes permissions. A real non-administrator Stock
 User could read/edit the 24 planning rows but could not edit the note, consistent with
 that user's existing permissions; no new roles or permissions were granted.
 
 ## Verification and review
 
-17 integration tests passed against the initialized site, with rollback after each test:
+25 integration tests passed against the initialized site, with rollback after each test:
 exact row/column parity with both native reports; global date order and empty dates;
 fetching beyond 500 rows without truncation; saving planning values and dates; quantity
 recalculation; QC removal; version conflicts; protected/unreported fields; invalid numbers,
 dates, options and quantities; out-of-report writes; Guest and read permission denial;
 read-only cell metadata; submitted edit rules; report authorization/disabled state;
-duplicated overview responses; and shared-note save/conflict behavior.
+duplicated overview responses; and shared-note save/conflict behavior. Deletion coverage
+includes native draft deletion and archival, child-row cleanup, linked-record rejection,
+missing/stale versions, submitted/cancelled orders, out-of-report orders, delete permission
+enforcement in the API and row metadata, and Guest rejection.
+
+Deletion tests use isolated transaction-only Work Orders with no attached files or insert
+hooks. V12's test-mode RQ cleanup would commit internally, so the test runs the same native
+dynamic-link cleanup directly and guards against any commit. All 5,467 production Work
+Orders and their modification timestamps were unchanged after the full test run.
 
 Firefox used the actual copied Web Page template, installed website bundles and actual
 backend endpoints through a private, temporary loopback preview before publication.
@@ -159,6 +185,12 @@ Successful backend saves in this browser server were rolled back automatically. 
 covered complete rendering, the 192 editable cells, Save/Cancel, source/search filtering,
 save refresh, retained edits after failure, independent pending rows, original overview
 cards/shipments and mobile horizontal scrolling. See the evidence directory for screenshots.
+
+The deletion addition was browser-checked through a private source preview without
+changing the published page during testing. Tests covered enabled/disabled Delete states,
+dirty-row behavior, confirmation cancellation, rejected deletion preserving edits, and
+native deletion of a temporary fixture followed by count refresh while another row kept
+its unsaved edits. The fixture deletion rolled back; no production Work Order was deleted.
 
 Python compilation, JavaScript syntax and HTML identifier/panel structure were checked.
 The source Web Page still matches the pre-change document snapshot, including its
