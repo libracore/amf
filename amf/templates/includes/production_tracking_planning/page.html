@@ -1,0 +1,88 @@
+  <div class="wrapper pt-page">
+
+  <header class="pt-header">
+    <div><div class="pt-eyebrow">PRODUCTION TRACKING · PLANNING</div><div id="clock-display" class="clock-display">--:--:--</div></div>
+    <button id="refresh-btn" class="refresh-btn" type="button" title="Actualiser la page">⟳ Actualiser</button>
+  </header>
+  <div class="pt-tabs" role="tablist" aria-label="Suivi de production">
+    <button id="overview-tab" class="pt-tab active" type="button" role="tab" aria-selected="true" aria-controls="overview-panel">Suivi production</button>
+    <button id="machining-tab" class="pt-tab" type="button" role="tab" aria-selected="false" aria-controls="machining-panel" tabindex="-1">Planification usinage</button>
+  </div>
+  <section id="overview-panel" role="tabpanel" aria-labelledby="overview-tab">
+  <!-- SECTION SHIPMENTS -->
+  <div id="shipments-section" class="shipments-wrapper">
+    <div class="shipment-box">
+      <div class="shipment-header">
+        <h2 id="shipments-title">Commandes à expédier</h2>
+        <button id="toggle-client-btn" class="refresh-btn">👁</button>
+      </div>
+      <div id="shipments"></div>
+    </div>
+  </div>
+
+  <!-- SECTION WORK ORDERS -->
+  <div class="container">
+
+    <div class="row">
+
+      <div class="row-title">ASSEMBLAGE</div>
+
+      <div class="row-columns">
+        <div class="column">
+          <h3>OF EN COURS</h3>
+          <div id="ongoing-assemblage"></div>
+        </div>
+
+        <div class="column">
+          <h3>OF À VENIR</h3>
+          <div id="upcoming-assemblage"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="row">
+      <div class="row-title">USINAGE</div>
+
+      <div class="row-columns">
+        <div class="column">
+          <h3>OF EN COURS</h3>
+          <div id="ongoing-usinage"></div>
+        </div>
+
+        <div class="column">
+          <h3>OF À VENIR</h3>
+          <div id="upcoming-usinage"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div id="big-tooltip"></div>
+  </div>
+
+  <div class="info-box">
+    <h3>Note de suivi :</h3>
+    <textarea disabled id="global-note" placeholder="Écrire une note..." rows="3"></textarea>
+    <button id="save-note-btn" type="button" class="refresh-btn" disabled>Enregistrer la note</button>
+    <span id="note-status" role="status" aria-live="polite"></span>
+  </div>
+
+  </section>
+  <section id="machining-panel" role="tabpanel" aria-labelledby="machining-tab" hidden>
+    <div class="pt-planning-toolbar">
+      <div><h2>Planification complète de l’usinage</h2><p>Plugs et Valve Seats · Date prévue croissante · Dates non renseignées en dernier</p></div>
+      <button id="planning-reload" class="refresh-btn" type="button">Actualiser le planning</button>
+    </div>
+    <div class="pt-planning-filters">
+      <label>Rechercher <input id="planning-search" type="search" placeholder="OF, article, machine, matière…"></label>
+      <label>Rapport <select id="planning-report"><option value="">Tous les rapports</option></select></label>
+      <span id="planning-count" role="status"></span>
+    </div>
+    <p class="pt-edit-help">Modifiez les cellules, puis enregistrez chaque ligne. Les modifications sont enregistrées dans les ordres de fabrication. Les champs calculés, l’ID et le statut documentaire suivent les règles de l’ERP.</p>
+    <p id="planning-status" role="status" aria-live="polite"></p>
+    <div id="planning-table-wrap" class="pt-table-wrap" tabindex="0" role="region" aria-label="Planning usinage, défilement horizontal">
+      <table id="planning-table" class="pt-table"><thead></thead><tbody></tbody></table>
+    </div>
+  </section>
+  </div> <!-- end wrapper -->
