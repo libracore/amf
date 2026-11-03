@@ -14,11 +14,15 @@ from unittest.mock import Mock, patch
 import frappe
 from frappe import ValidationError, _dict
 from erpnext.stock.doctype.serial_no import serial_no as serial_module
+from erpnext.stock.doctype.stock_entry import stock_entry as stock_entry_module
 
 from amf.www import fftest_master_debug_4d as flow
 
 
 class Document(_dict):
+    def set(self, key, value):
+        self[key] = value
+
     def update(self, *args, **kwargs):
         dict.update(self, *args, **kwargs)
         return self
@@ -54,6 +58,7 @@ class MemoryDatabase:
         self.fail_item = None
         self.sequence = 0
         self.snapshot = None
+        self.native_unconsumed = False
 
     def commit(self):
         self.commits += 1
@@ -70,6 +75,10 @@ class MemoryDatabase:
         return bool(self.find(doctype, filters))
 
     def find(self, doctype, filters):
+        if doctype == "Work Order Item":
+            docs = [_dict(row, parent=order.name) for order in self.docs["Work Order"].values()
+                    for row in order.required_items]
+            return [doc for doc in docs if all(doc.get(key) == value for key, value in filters.items())]
         if isinstance(filters, str):
             doc = self.docs[doctype].get(filters)
             return [doc] if doc else []
@@ -89,6 +98,10 @@ class MemoryDatabase:
         return result if as_dict else tuple(result.values())
 
     def sql(self, query, params=(), as_dict=False):
+        if "SELECT DISTINCT woi.item_code" in query:
+            return [_dict(item_code=row.item_code)
+                    for row in self.docs["Work Order"][params[0]].required_items
+                    if self.docs["Item"][row.item_code].has_serial_no]
         if "FOR UPDATE" in query:
             doctype = "Serial No" if "tabSerial No" in query else "Work Order"
             self.locks.append((doctype, params[0]))
@@ -141,7 +154,11 @@ class MemoryDatabase:
 
             def insert():
                 doc.name = self.next_name("WO")
-                doc.required_items = self.docs["BOM"][doc.bom_no].items
+                bom = self.docs["BOM"][doc.bom_no]
+                doc.required_items = [_dict(
+                    component, required_qty=component.stock_qty / bom.quantity * doc.qty,
+                    consumed_qty=0, transferred_qty=0,
+                ) for component in bom.items]
                 self.docs[doctype][doc.name] = Document(doc)
 
             def save():
@@ -167,21 +184,36 @@ class Entry(Document):
     def get_items(self):
         bom = self.database.docs["BOM"][self.bom_no]
         self.items = []
-        for component in bom.items:
-            quantity = component.stock_qty / bom.quantity
-            self.items.append(Document(
-                item_code=component.item_code, qty=quantity, transfer_qty=quantity,
-                conversion_factor=1, s_warehouse=self.from_warehouse,
-                t_warehouse=self.to_warehouse if self.purpose != "Manufacture" else None,
-                serial_no=None, batch_no=None,
-                meta=SimpleNamespace(has_field=lambda name: True),
-            ))
+        if self.purpose == "Manufacture" and self.database.native_unconsumed:
+            # Execute the installed V12 method, including its cumulative-qty bug.
+            stock_entry_module.StockEntry.get_unconsumed_raw_materials(self)
+        else:
+            for component in bom.items:
+                quantity = component.stock_qty / bom.quantity * self.fg_completed_qty
+                self.items.append(Document(
+                    item_code=component.item_code, qty=quantity, transfer_qty=quantity,
+                    conversion_factor=1, s_warehouse=self.from_warehouse,
+                    t_warehouse=self.to_warehouse if self.purpose != "Manufacture" else None,
+                    serial_no=None, batch_no=None,
+                    meta=SimpleNamespace(has_field=lambda name: True),
+                ))
         if self.purpose == "Manufacture":
             item = self.database.docs["Work Order"][self.work_order].production_item
-            self.items.append(Document(item_code=item, qty=1, transfer_qty=1,
+            self.items.append(Document(item_code=item, qty=self.fg_completed_qty,
+                                       transfer_qty=self.fg_completed_qty,
                                        s_warehouse=None, t_warehouse=self.to_warehouse,
                                        serial_no=None, batch_no=None,
                                        meta=SimpleNamespace(has_field=lambda name: True)))
+
+    def add_to_stock_entry_detail(self, items):
+        for item, values in items.items():
+            self.items.append(Document(
+                item_code=item, qty=values["qty"], transfer_qty=values["qty"],
+                conversion_factor=1, s_warehouse=values["from_warehouse"],
+                t_warehouse=values["to_warehouse"] or None,
+                serial_no=None, batch_no=None,
+                meta=SimpleNamespace(has_field=lambda name: True),
+            ))
 
     def save(self):
         for component in self.items:
@@ -228,9 +260,15 @@ class Entry(Document):
         self.docstatus = 1
         work_order = database.docs["Work Order"][self.work_order]
         if self.purpose == "Manufacture":
-            work_order.produced_qty += 1
+            work_order.produced_qty += self.fg_completed_qty
         else:
-            work_order.material_transferred_for_manufacturing += 1
+            work_order.material_transferred_for_manufacturing += self.fg_completed_qty
+        for component in self.items:
+            if component.s_warehouse:
+                field = "consumed_qty" if self.purpose == "Manufacture" else "transferred_qty"
+                for requirement in work_order.required_items:
+                    if requirement.item_code == component.item_code:
+                        requirement[field] += component.transfer_qty
         database.entries.append(self)
         return self
 
@@ -255,6 +293,8 @@ class TestFFTest4DFlow(unittest.TestCase):
             name="LOG-TEST", add=lambda *args: None, flush=lambda: None)))
         self.stack.enter_context(patch.object(flow, "create_batch_name", lambda *args: self.database.next_name("BATCH")))
         self.stack.enter_context(patch.object(flow, "get_default_bom", self.default_bom))
+        self.stack.enter_context(patch.object(stock_entry_module, "get_item_defaults", lambda *args: _dict(
+            stock_uom="Nos", expense_account="Test expense", buying_cost_center="Test cost center")))
         for code, serial, batch in (("4D00AB", 0, 0), ("5D10AB", 1, 1), ("5D00AB", 1, 1), ("MAT", 0, 1)):
             self.database.docs["Item"][code] = _dict(
                 name=code, has_serial_no=serial, has_batch_no=batch,
@@ -276,7 +316,10 @@ class TestFFTest4DFlow(unittest.TestCase):
                 sales_order="SO-TEST", project=None,
                 parent_work_order="WO-4D00AB" if code == "5D10AB" else "WO-5D10AB" if code == "5D00AB" else "",
                 wip_step=1 if code.startswith("4D") else 0, skip_transfer=0,
-                use_multi_level_bom=0, required_items=components,
+                use_multi_level_bom=0, required_items=[_dict(
+                    component, required_qty=component.stock_qty / quantity * 4,
+                    consumed_qty=0, transferred_qty=0,
+                ) for component in components],
                 wip_warehouse="Custom WIP " + code, fg_warehouse=flow.MAIN_STOCK_WAREHOUSE,
             )
         self.database.docs["Batch"]["MAT-BATCH"] = _dict(name="MAT-BATCH", item="MAT", disabled=0)
@@ -324,9 +367,11 @@ class TestFFTest4DFlow(unittest.TestCase):
         body.has_batch_no = 0
         self.database.docs["Item"][body.name] = body
         self.database.docs["BOM"]["BOM-4D00AB"].items[0].item_code = body.name
+        self.database.docs["Work Order"]["WO-4D00AB"].required_items[0].item_code = body.name
         body_bom = self.database.docs["BOM"]["BOM-5D10AB"]
         body_bom.item = body.name
         body_bom.items[0].item_code = raw.name
+        self.database.docs["Work Order"]["WO-5D10AB"].required_items[0].item_code = raw.name
         body_bom.items[0].bom_no = None
         self.database.docs["Work Order"]["WO-5D10AB"].production_item = body.name
         del self.database.docs["BOM"]["BOM-5D00AB"]
@@ -520,6 +565,8 @@ class TestFFTest4DFlow(unittest.TestCase):
         self.database.docs["Item"]["520100"] = _dict(self.database.docs["Item"]["5D10AB"], name="520100")
         self.database.docs["BOM"][root.bom_no].items = [row("520100")]
         self.database.docs["BOM"][body.bom_no].items = [row("MAT")]
+        root.required_items = [_dict(row("520100"), required_qty=4, consumed_qty=0, transferred_qty=0)]
+        body.required_items = [_dict(row("MAT"), required_qty=4, consumed_qty=0, transferred_qty=0)]
         with patch.object(flow, "_work_order_uses_p202_body", return_value=False), patch.object(
             flow, "_find_serialized_work_orders", return_value=[{
                 "work_order_name": body.name, "production_item": body.production_item}]
@@ -626,6 +673,178 @@ class TestFFTest4DFlow(unittest.TestCase):
         self.assertEqual((serial.item_code, serial.warehouse), ("5D0000", flow.MAIN_STOCK_WAREHOUSE))
         self.assertEqual(self.database.stock[("5D0000", "EXISTING-BATCH", flow.MAIN_STOCK_WAREHOUSE)], 1)
         self.assertEqual(self.database.entries, [])
+
+    def use_42_flow(self):
+        """Four-unit 42 -> serialized 521000 -> non-serialized 520000 orders."""
+        self.database.docs["Item"] = {
+            code: _dict(name=code, has_serial_no=serial, has_batch_no=batch,
+                        is_stock_item=1, serial_no_series=None)
+            for code, serial, batch in (
+                ("420033", 0, 0), ("521000", 1, 0), ("520000", 0, 0), ("MAT", 0, 1))
+        }
+        self.database.docs["BOM"] = {}
+        self.database.docs["Work Order"] = {}
+        for code, name, parent, quantity, components in (
+            ("420033", "WO-42", "", 2, [row("521000", 2), row("MAT", 4)]),
+            ("521000", "WO-521000", "WO-42", 1, [row("520000")]),
+            ("520000", "WO-520000", "WO-521000", 2, [row("MAT", 6)]),
+        ):
+            bom = Document(name="BOM-" + code, item=code, company=flow.COMPANY,
+                           quantity=quantity, items=components, docstatus=1, is_active=1)
+            self.database.docs["BOM"][bom.name] = bom
+            self.database.docs["Work Order"][name] = Document(
+                name=name, production_item=code, bom_no=bom.name, company=flow.COMPANY,
+                docstatus=1, status="Not Started", qty=4, produced_qty=0,
+                material_transferred_for_manufacturing=0, sales_order="SO-TEST",
+                parent_work_order=parent, wip_step=int(code.startswith("42")),
+                skip_transfer=int(code.startswith("42")), use_multi_level_bom=0,
+                wip_warehouse=flow.WIP_WAREHOUSE, fg_warehouse=flow.MAIN_STOCK_WAREHOUSE,
+                required_items=[_dict(component, required_qty=component.stock_qty / quantity * 4,
+                                      consumed_qty=0, transferred_qty=0) for component in components],
+            )
+        self.database.stock = {
+            ("520000", None, flow.MAIN_STOCK_WAREHOUSE): 4,
+            ("MAT", "MAT-BATCH", flow.MAIN_STOCK_WAREHOUSE): 100,
+        }
+        self.database.native_unconsumed = True
+        self.database.begin_snapshot()
+
+    def test_four_unit_42_order_consumes_one_520000_and_produces_one_body_and_product_per_call(self):
+        self.use_42_flow()
+        for number in range(1, 5):
+            start = len(self.database.entries)
+            result = flow.make_stock_entry("WO-42", "BODY-{}".format(number))
+            self.assertNotIn("error", result)
+            entries = self.database.entries[start:]
+            manufactured = [entry for entry in entries if entry.purpose == "Manufacture"]
+            self.assertEqual([entry.work_order for entry in manufactured], ["WO-521000", "WO-42"])
+            self.assertTrue(all(entry.fg_completed_qty == 1 for entry in entries))
+            for entry in manufactured:
+                self.assertEqual(entry.items[-1].transfer_qty, 1)
+                self.assertEqual(entry.items[0].transfer_qty, 1)
+            # Other BOM materials retain their correct per-finished-unit amount.
+            self.assertEqual(manufactured[-1].items[1].transfer_qty, 2)
+            self.assertEqual(self.database.docs["Work Order"]["WO-42"].produced_qty, number)
+            self.assertEqual(self.database.docs["Work Order"]["WO-521000"].produced_qty, number)
+            self.assertEqual(self.database.stock[("520000", None, flow.MAIN_STOCK_WAREHOUSE)], 4 - number)
+            self.database.begin_snapshot()  # Commit this successful request in the in-memory ledger.
+        self.assertEqual(len(self.database.docs["Work Order"]), 3)
+        self.assertEqual(self.database.docs["Work Order"]["WO-42"].qty, 4)
+        self.assertEqual(self.database.docs["Work Order"]["WO-520000"].produced_qty, 0)
+        before = copy.deepcopy((self.database.stock, self.database.entries))
+        self.assertIn("cannot produce another unit", flow.make_stock_entry("WO-42", "BODY-5")["error"])
+        self.assertEqual(before, (self.database.stock, self.database.entries))
+
+    def test_521000_order_alone_manufactures_one_serialized_body_per_call(self):
+        self.use_42_flow()
+        for number in range(1, 5):
+            result = flow.make_stock_entry("WO-521000", "BODY-{}".format(number))
+            self.assertNotIn("error", result)
+            self.assertEqual(result.fg_completed_qty, 1)
+            self.assertEqual(result.items[0].transfer_qty, 1)
+            self.assertEqual(result.items[-1].transfer_qty, 1)
+            self.assertEqual(self.database.docs["Work Order"]["WO-521000"].produced_qty, number)
+            self.database.begin_snapshot()
+        self.assertEqual(self.database.docs["Work Order"]["WO-42"].produced_qty, 0)
+        self.assertEqual(self.database.stock[("520000", None, flow.MAIN_STOCK_WAREHOUSE)], 0)
+        self.assertIn("error", flow.make_stock_entry("WO-521000", "BODY-5"))
+
+    def test_520000_order_alone_manufactures_one_non_serialized_raw_body_per_call(self):
+        self.use_42_flow()
+        for number in range(1, 5):
+            result = flow.make_stock_entry("WO-520000", "RAW-{}".format(number))
+            self.assertNotIn("error", result)
+            self.assertEqual(result.fg_completed_qty, 1)
+            self.assertEqual(result.items[0].transfer_qty, 3)
+            self.assertEqual(result.items[-1].transfer_qty, 1)
+            self.assertFalse(result.items[-1].serial_no)
+            self.assertEqual(self.database.docs["Work Order"]["WO-520000"].produced_qty, number)
+            self.database.begin_snapshot()
+        self.assertEqual(self.database.stock[("520000", None, flow.MAIN_STOCK_WAREHOUSE)], 8)
+        self.assertEqual(self.database.docs["Serial No"], {})
+        self.assertIn("error", flow.make_stock_entry("WO-520000", "RAW-5"))
+
+    def test_42_consumed_serial_cannot_advance_the_order_twice(self):
+        self.use_42_flow()
+        self.assertNotIn("error", flow.make_stock_entry("WO-42", "BODY-1"))
+        self.database.begin_snapshot()
+        before = copy.deepcopy((self.database.stock, self.database.entries))
+        self.assertIn("error", flow.make_stock_entry("WO-42", "BODY-1"))
+        self.assertEqual(before, (self.database.stock, self.database.entries))
+        self.assertEqual(self.database.docs["Work Order"]["WO-42"].produced_qty, 1)
+
+    def test_42_four_units_already_transferred_to_wip_are_consumed_one_at_a_time(self):
+        self.use_42_flow()
+        self.database.docs["Work Order"]["WO-521000"].material_transferred_for_manufacturing = 4
+        self.database.stock[("520000", None, flow.MAIN_STOCK_WAREHOUSE)] = 0
+        self.database.stock[("520000", None, flow.WIP_WAREHOUSE)] = 4
+        self.database.begin_snapshot()
+        for number in range(1, 5):
+            start = len(self.database.entries)
+            self.assertNotIn("error", flow.make_stock_entry("WO-42", "BODY-{}".format(number)))
+            self.assertEqual([entry.purpose for entry in self.database.entries[start:]],
+                             ["Manufacture", "Manufacture"])
+            self.assertEqual(self.database.stock[("520000", None, flow.WIP_WAREHOUSE)], 4 - number)
+            self.database.begin_snapshot()
+
+    def test_42_failed_second_unit_preserves_the_first_completed_unit(self):
+        self.use_42_flow()
+        self.assertNotIn("error", flow.make_stock_entry("WO-42", "BODY-1"))
+        self.database.begin_snapshot()
+        before = copy.deepcopy((self.database.stock, self.database.entries))
+        self.database.fail_item = "420033"
+        self.assertIn("Simulated final-stage", flow.make_stock_entry("WO-42", "BODY-2")["error"])
+        self.assertEqual(before, (self.database.stock, self.database.entries))
+        self.assertEqual(self.database.docs["Work Order"]["WO-42"].produced_qty, 1)
+        self.assertEqual(self.database.docs["Work Order"]["WO-521000"].produced_qty, 1)
+        self.assertNotIn("BODY-2", self.database.docs["Serial No"])
+
+    def test_42_read_only_preview_explicitly_plans_one_unit_per_manufacture(self):
+        self.use_42_flow()
+        before = copy.deepcopy(self.database.docs)
+        report = flow.debug_stock_entry_flow("WO-42", "BODY-1", [{"batch_no": "MAT-BATCH"}])
+        self.assertTrue(report["ok"], report["errors"])
+        self.assertEqual(len(report["planned_documents"]), 2)
+        self.assertTrue(all(doc["fg_completed_qty"] == 1 for doc in report["planned_documents"]))
+        self.assertEqual(self.database.docs, before)
+        self.assertEqual(self.database.entries, [])
+
+    def test_four_unit_4d_chain_still_advances_each_stage_once_per_call(self):
+        self.database.native_unconsumed = True
+        for number in range(1, 5):
+            start = len(self.database.entries)
+            self.assertNotIn("error", self.execute("HAND-{}".format(number)))
+            entries = self.database.entries[start:]
+            manufactured = [entry for entry in entries if entry.purpose == "Manufacture"]
+            self.assertEqual(len(manufactured), 3)
+            self.assertTrue(all(entry.fg_completed_qty == 1 for entry in entries))
+            self.assertEqual([entry.items[0].transfer_qty for entry in manufactured], [2, 1, 1])
+            for order in self.database.docs["Work Order"].values():
+                self.assertEqual(order.produced_qty, number)
+            self.database.begin_snapshot()
+
+    def test_unit_material_limit_uses_stock_uom_and_shares_limit_across_rows(self):
+        self.use_42_flow()
+        order = self.database.docs["Work Order"]["WO-42"]
+        entry = Entry(self.database)
+        entry.items = [Document(item_code="MAT", qty=2, conversion_factor=0.5,
+                                s_warehouse=flow.MAIN_STOCK_WAREHOUSE),
+                       Document(item_code="MAT", qty=8, conversion_factor=0.5,
+                                s_warehouse=flow.MAIN_STOCK_WAREHOUSE),
+                       Document(item_code="MAT", qty=8, conversion_factor=0.5,
+                                s_warehouse=flow.MAIN_STOCK_WAREHOUSE),
+                       Document(item_code="420033", qty=1, transfer_qty=1, s_warehouse=None)]
+        flow._limit_materials_to_one_unit(entry, order)
+        self.assertEqual([item.transfer_qty for item in entry.items], [1, 1, 1])
+        self.assertEqual([item.qty for item in entry.items], [2, 2, 1])
+
+    def test_unit_limit_preserves_native_credit_for_previously_consumed_material(self):
+        self.use_42_flow()
+        order = self.database.docs["Work Order"]["WO-42"]
+        order.required_items[1].consumed_qty = 1.5  # Two MAT are required per output unit.
+        entry = flow._new_stock_entry(order, "Manufacture", flow.MAIN_STOCK_WAREHOUSE,
+                                      flow.MAIN_STOCK_WAREHOUSE)
+        self.assertEqual(entry.items[1].transfer_qty, 0.5)
 
 
 if __name__ == "__main__":

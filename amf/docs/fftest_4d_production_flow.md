@@ -29,11 +29,41 @@ amf.www.fftest_master_debug_4d.make_stock_entry(
 `batch_no_id` is optional and accepts a JSON array or a decoded list. Explicit
 batches are routed to the stages that consume their items. Omitted source batches
 are selected by ERPNext's normal save-time selection. Component quantities come
-from ERPNext; a quantity supplied inside a batch-selection object does not override
-the BOM.
+from ERPNext and are limited to one output unit's Work Order requirement; a
+quantity supplied inside a batch-selection object does not override the BOM.
 
 The production page/FFTest caller must use the new module path to activate this
 copy. No production call was made while implementing or testing it.
+
+## One unit per call, including 42 products
+
+A Work Order for four products keeps Quantity = 4. Run the endpoint four times,
+using the appropriate individual body serial each time. Each successful request
+advances the relevant Produced Quantities by one: 0 -> 1 -> 2 -> 3 -> 4. A fifth
+request is rejected. Each Stock Entry uses `fg_completed_qty = 1`.
+
+For the `42____ -> 521000 -> 520000` chain, the existing production route uses
+one non-serialized `520000` already in stock to manufacture one serialized
+`521000`, then consumes that serial to manufacture one `42____`. An available
+existing `521000` serial can instead go directly into the final assembly. It
+does not manufacture another `520000` automatically. A separate manufacturing
+call for a `520000` Work Order also produces only one unit; it assigns no serial
+to that non-serialized item. A call for a `521000` Work Order alone produces one
+serialized body.
+
+The installed ERPNext V12 `get_unconsumed_raw_materials` can return the complete
+Work Order requirement on later submissions when BOM backflushing and material
+consumption are enabled. Setting the finished quantity to one alone does not
+prevent excess input consumption. The endpoint therefore limits generated input
+rows to `required_qty / Work Order.qty` in stock UOM before assigning serials and
+batches. The limit is shared across duplicate input rows and respects conversion
+factors. Smaller quantities returned for previously consumed material are kept.
+Other BOM materials retain their per-output amounts, such as two screws per unit.
+
+This applies to manufacturing and material transfers in the copied endpoint,
+including the 4D chain. Failed calls roll back their unit; earlier successfully
+committed units remain complete. The legacy read-only preview now explicitly
+reports `fg_completed_qty = 1` for every planned Stock Entry.
 
 ## Production sequence
 
@@ -131,7 +161,12 @@ env/bin/python -m unittest \
 ```
 
 The new tests use an in-memory document/stock adapter and the installed ERPNext
-V12 serial validator. They cover purchased `5D0000` with no raw BOM/Work Order,
+V12 serial validator. Repeated-production tests also execute the installed V12
+`get_unconsumed_raw_materials` method to exercise its cumulative-quantity behavior.
+They cover four separate unit calls for `42____`, `521000`, `520000`, and the
+4D chain; completion limits; serial replay; already transferred WIP; stock-UOM
+conversion; previously consumed material credits; rollback preserving the first
+unit; and the read-only one-unit preview. They also cover purchased `5D0000` with no raw BOM/Work Order,
 missing received serials, rollback restoring the purchased serial, the full chain
 for other manufactured raw variants, serial carryover, normalized BOM
 quantities, existing-stage reuse, custom WIP, automatic and explicit batches,

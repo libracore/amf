@@ -746,6 +746,7 @@ def _new_stock_entry(
     stock_entry.project = work_order.project
     stock_entry.set_stock_entry_type()
     stock_entry.get_items()
+    _limit_materials_to_one_unit(stock_entry, work_order)
 
     if not stock_entry.items:
         raise ValidationError(
@@ -754,6 +755,38 @@ def _new_stock_entry(
             )
         )
     return stock_entry
+
+
+def _limit_materials_to_one_unit(stock_entry, work_order):
+    """Keep V12 backflushing within one finished unit's stock quantities.
+
+    With BOM backflushing and material consumption enabled, V12 can return the
+    full required_qty after an earlier Manufacture entry consumed material.
+    fg_completed_qty alone therefore does not guarantee one unit's inputs.
+    Work Order required_qty is in stock UOM; Stock Entry qty may use another UOM.
+    Preserve smaller amounts when ERPNext accounts for previously consumed stock.
+    """
+    limits = defaultdict(float)
+    for requirement in work_order.get("required_items") or []:
+        limits[requirement.item_code] += flt(requirement.required_qty) / flt(work_order.qty)
+
+    items = []
+    for row in stock_entry.items:
+        if row.s_warehouse:
+            item_code = row.get("original_item") or row.item_code
+            if item_code not in limits:
+                raise ValidationError(
+                    _("Item {0} is not required by Work Order {1}.").format(item_code, work_order.name)
+                )
+            conversion = flt(row.conversion_factor) or 1
+            stock_qty = min(flt(row.qty) * conversion, max(0, limits[item_code]))
+            limits[item_code] -= stock_qty
+            if stock_qty <= 0:
+                continue
+            row.qty = stock_qty / conversion
+            row.transfer_qty = stock_qty
+        items.append(row)
+    stock_entry.set("items", items)
 
 
 def _finished_good_row(stock_entry, work_order):
@@ -1887,6 +1920,7 @@ def _debug_legacy_stock_entry_flow(source_work_order_id, serial_no_id=None, batc
                     "doctype": "Stock Entry",
                     "purpose": "Material Transfer for Manufacture",
                     "work_order": planned_target,
+                    "fg_completed_qty": 1,
                     "serial_no": source_serial.name,
                     "batch_no": source_serial.batch_no,
                 }
@@ -1896,6 +1930,7 @@ def _debug_legacy_stock_entry_flow(source_work_order_id, serial_no_id=None, batc
                 "doctype": "Stock Entry",
                 "purpose": "Manufacture",
                 "work_order": planned_target,
+                "fg_completed_qty": 1,
                 "consume_item": P202_RAW_ITEM_CODE,
                 "consume_serial": source_serial.name,
                 "produce_item": P202_SERIALIZED_ITEM_CODE,
@@ -1908,6 +1943,7 @@ def _debug_legacy_stock_entry_flow(source_work_order_id, serial_no_id=None, batc
                 "doctype": "Stock Entry",
                 "purpose": "Manufacture",
                 "work_order": target["work_order_name"] if target else "new Work Order",
+                "fg_completed_qty": 1,
                 "produce_serial": serial_no_id,
             }
         )
@@ -1922,6 +1958,7 @@ def _debug_legacy_stock_entry_flow(source_work_order_id, serial_no_id=None, batc
                 "doctype": "Stock Entry",
                 "purpose": "Manufacture",
                 "work_order": source_work_order.name,
+                "fg_completed_qty": 1,
                 "consume_serial": serial_no_id,
                 "produce_item": source_work_order.production_item,
             }
