@@ -1,14 +1,14 @@
 # AMF ERP Release Notes
 
-Generated on: 2026-10-29
+Generated on: 2026-11-03
 
-Change history through: 2026-10-29
+Change history through: 2026-11-03
 
-Latest reviewed commit: `6728986`
+Latest reviewed commit: `e856f57`
 
 Live system: [AMF ERP Desk](https://amf.libracore.ch/desk#)
 
-Latest release: `v2026.10.3`
+Latest release: `v2026.11.1`
 
 Release status: Ready for validation
 
@@ -18,7 +18,7 @@ Release audience: AMF ERP users, department leads, management, operations, finan
 
 This document is the business-facing release notes and change history for the AMF ERP custom app.
 
-It summarizes the main ERP changes developed in the AMF custom app from the beginning of the recorded development history to 2026-10-29. The report is based on the `apps/amf` git history, which starts on 2022-09-19, and on the current AMF app structure, including custom DocTypes, reports, pages, hooks and documentation.
+It summarizes the main ERP changes developed in the AMF custom app from the beginning of the recorded development history to 2026-11-03. The report is based on the `apps/amf` git history, which starts on 2022-09-19, and on the current AMF app structure, including custom DocTypes, reports, pages, hooks and documentation.
 
 This is intentionally not a technical commit-by-commit changelog. It records committed changes in `apps/amf` as a release communication document for the main modifications, novelties and functional areas added over time. Standard Frappe and ERPNext framework changes are not listed unless they were reflected in AMF custom development.
 
@@ -49,7 +49,8 @@ Historical development milestones already recorded in the project, such as `v0.4
 
 | Release | Status | Period | Main Focus |
 | --- | --- | --- | --- |
-| `v2026.10.3` | Ready for validation, latest | 2026 Q4, Oct 26-29 | Reviewed Item Creation and lifecycle, RVM/LV/HV variants, staged FFTest, BOM cost analysis, private exports, inventory lifecycle and Acoustic Mixer setup. |
+| `v2026.11.1` | Ready for validation, latest | 2026 Q4, Nov 3 | Machining-planning page and draft deletion, matching magnet stock coverage, one-unit FFTest consumption and manual machining assignments to Martin. |
+| `v2026.10.3` | Superseded | 2026 Q4, Oct 26-29 | Reviewed Item Creation and lifecycle, RVM/LV/HV variants, staged FFTest, BOM cost analysis, private exports, inventory lifecycle and Acoustic Mixer setup. |
 | `v2026.10.2` | Superseded | 2026 Q4, Oct 13-26 | Monthly inventory checks, Purchase Receipt GL precision, customer-description cleanup, Sales Order letterhead, guarded stock corrections and 4D interface variants. |
 | `v2026.10.1` | Superseded | 2026 Q4, Oct 5-12 | Issue classification and history, FFTest P202 serial flow, Tool Maintenance subgroups, timer alerts, selected BOM repricing and MAT.1021 batch traceability. |
 | `v2026.09.2` | Superseded | 2026 Q3 | Standard print format deployment, AMF Issue Test to Issue traceability, and AMF Control Center Premium software offerings. |
@@ -67,74 +68,67 @@ Historical development milestones already recorded in the project, such as `v0.4
 | `v0.4.0` | Superseded | 2024 Q3 | Master CRM, Sales Actions, campaign lists, Gravity Forms, Brevo integration and CRM analytics. |
 | Foundation releases | Superseded | 2022-2024 | Core reporting, planning, labels, QR codes, inventory visibility, logistics, purchasing and CRM foundations. |
 
-## Latest Release: `v2026.10.3`
+## Latest Release: `v2026.11.1`
 
-Release date: 2026-10-29
+Release date: 2026-11-03
 
 Release status: Ready for validation
 
-Committed change window: 2026-10-26 to 2026-10-29
+Committed change window: 2026-11-03
 
-Reviewed commit range: `fcad8a3..6728986` (17 new commits after the previous report cutoff).
+Reviewed commit range: `f751c19..e856f57` (five functional commits since the previous report update; its application cutoff was `6728986`).
 
 AMF app version at reviewed commit: `0.7.12`
 
 Live system: [AMF ERP Desk](https://amf.libracore.ch/desk#)
 
+Machining planning route: [Production Tracking - Planning](https://amf.libracore.ch/production-tracking-planning#usinage)
+
 ### Summary
 
-This release makes Item Creation a reviewed engineering workflow. Users choose individual configurations, inspect the complete Item/BOM plan, record engineering review and submit the approved definition in one transaction. The workflow supports existing heads, Product-only requests, selectable seat pins and controlled Product code/reference overrides, with permanent identifier reservations and searchable execution history.
+This release adds a separate Production Tracking - Planning page with a machining tab built from the existing Plug and Valve Seat reports. It combines their rows in Expected Date order and lets authorized users edit planning fields or delete draft Work Orders. The page uses the same ERP production records, so a saved change affects the actual Work Order and other ERP views.
 
-Supported configurations now include the approved LV U syringes, explicit HV/HD choices, RVM Mini base/RS485/CAN and additional RVM body variants. New NM/TH Products use `421xxx` and new P201-O RS485 Products use `422xxx`; matching historical Products retain their existing codes. A separate FFTest module adds serial-aware staged production for `4D` products, including the received-stock path for purchased `5D0000`.
+Machining shortage calculations now include positive stock of the exact matching magnet sub-assembly: `10xxxx` is covered by `11xxxx`, and `20xxxx` by `21xxxx`. This can reduce proposed quantities or remove planner-owned drafts when demand is covered. Newly saved manual machining Work Orders also receive an assignment to Martin, using the standard ToDo and notification workflow.
 
-Costing teams gain BOM Cost Breakdown views, while private report inputs and exports move to permission-controlled database records. Monthly inventory checks gain manager cancellation/deletion and one-time installation setup. An Acoustic Mixer migration creates or validates two dedicated Products with CHF 2,500 BOM unit costs. These notes describe committed code and migrations; deployment and live workflow validation remain separate release steps.
+The copied FFTest endpoint now limits material consumption and transfers to one finished unit per call, including repeated production on multi-unit Work Orders. It respects stock-UOM conversions, duplicate input rows and material already consumed. These notes describe the committed changes; the validation checks below are recommendations for release review.
 
 ### Highlights
 
-- Added a complete Item/BOM preview, recorded engineering review and dependency checks before Item Creation submission. Changed inputs, dependencies or compatibility rules require a fresh review.
-- Added shared head/component suffix reservations, independent Product codes, collision-aware suggestions and reviewed Product Reference overrides. Existing heads can reuse their actual components or supply Product-only requests.
-- Expanded configuration selection with explicit LV/HV/HD guidance, approved U syringes, selectable seat pins, RVM Mini interfaces and RVM body variants; corrected the new NM/TH and RS485 prefixes.
-- Added protected execution result rows, Item/BOM reverse searches and reasoned request cancellation/amendment. Cancelling a request retains its generated Items, BOMs and identifier reservations.
-- Added an opt-in FFTest `4D` module with preview, serial/batch checks, stage reuse and rollback across stock stages, plus a local manual test helper.
-- Added BOM Cost Breakdown analysis covering planned/actual Work Order costs, averages, recursive BOM reconciliation and latest-purchase costing with optional historical process costs.
-- Added private database artifacts and authenticated exports, with invoice rates separated by currency and private DHL text attachments.
-- Added manager lifecycle controls for monthly inventory checks and one-time setup, plus a guarded Acoustic Mixer Product/BOM migration targeting CHF 2,500 unit costs.
+- Added a separate machining-planning page that combines the two saved machining reports, preserves all report rows and columns, and sorts by Expected Date with undated orders last.
+- Added authorized row editing with Save/Cancel, stale-record checks and normal Work Order validation; the copied overview also improves permissions, timer selection, shipment status and shared-note handling.
+- Added confirmed deletion of draft machining Work Orders through native permission, version and link checks, preserving other rows' staged edits.
+- Included exact matching magnet sub-assembly stock in reorder, Sales Order machining and legacy shortage calculations, retaining each path's warehouse scope and existing buffer rules.
+- Limited FFTest input consumption to one output unit's requirement per request for both the staged `4D` flow and the other routes in the copied module.
+- Added one assignment to Martin on the first save of an eligible manually created machining Work Order, with standard queued notification behavior and duplicate prevention.
 
 ### Change Notes
 
 | Area | Change | Brief Explanation |
 | --- | --- | --- |
-| Item Creation review | One complete plan approved before execution. | Users select exact configurations, raw-stock Items and consumption quantities, then inspect new/reused Items, BOM differences and affected parents. A System Manager records the plan and review notes; submission rechecks dependencies and creates/submits the approved BOMs in order. Changed inputs or dependencies invalidate approval while preserving review history. |
-| Numbering and existing heads | Reserved component families and flexible Product identities. | New heads/components share a permanently reserved suffix, with decimal then alphanumeric allocation that respects retired codes. Existing heads may reuse independently numbered components, and Create Products Only pins their current revisions. Product codes can be suggested or overridden within the correct prefix; a unique reviewed Product Reference can resolve a conflict without renaming its existing owner. |
-| Configuration selection | More explicit hardware choices and compatibility checks. | The chooser displays LV/HV/HD requirements, supports the approved U syringes on standard LV bodies and lets users select seat pins and exact raw stock. RVM choices include Mini base/RS485/CAN and supported enabled body variants. New NM/TH and RS485 Products use `421xxx` and `422xxx`, while historical matches and the `430xxx` namespace for body `531000` are preserved. |
-| Creation traceability | Searchable results, cancellation and amendments. | Protected result rows record each Item action and selected/replaced BOM revision, with reverse links from Item/BOM and a permission-filtered Item Creation Results report. System Managers can cancel a request with a reason, retaining generated records and reservations. One active amendment per predecessor can proceed through a fresh engineering review. |
-| Quotations and downstream tools | Configuration matching and alphanumeric codes aligned. | Quotation lookup checks the actual body/head/syringe composition of a submitted active BOM and shares the RVM reference/prefix rules. Batch setup, drawings, machining/yield reports and Work Order calculations recognize the extended alphanumeric identifiers. Arbitrary custom-reference Products remain directly selectable by Item Code where automatic discovery does not apply. |
-| FFTest `4D` production | Serial-aware staged flow in a separate module. | The flow reads the product's linked BOMs, reuses an available intermediate serial or manufactures the necessary stages, and returns the final-product Stock Entry. Purchased `5D0000` must already be received with an available serial; it is consumed into `5D1___` rather than manufactured. Preview, batch/warehouse checks and rollback protect the sequence; the production caller must explicitly select the new module to activate it. |
-| BOM costing | Multiple source-linked analysis views added. | BOM Cost Breakdown compares planned and actual Work Order costs, averages by reference and excluded observations, and expands recorded child BOM links with reconciliation differences. Latest Purchase views calculate current BOM trees from qualifying receipts, optionally adding historical process evidence. These report views analyze costs without applying a repricing proposal. |
-| Private data and exports | Database-backed artifacts and restricted downloads. | Reviewed BOM inputs and generated reports are stored as immutable, checksum-verified AMF Data Artifacts included in database backups. Downloads require System Manager and document read permission; invoice-rate exports also require invoice read access and keep currencies separate. DHL text exports become private Delivery Note attachments requiring write access to the note. |
-| Monthly inventory lifecycle | Manager cancellation/deletion and one-time setup. | Stock/System Managers can cancel a check, close its assignment and release references, or delete it while Frappe retains its Deleted Document record. Linked stock vouchers remain intact with their checklist backlink cleared and an audit comment. Installation now uses after-install setup or a versioned patch, preserving saved settings instead of rerunning feature setup on every migration. |
-| Acoustic Mixer | Dedicated Products and CHF 2,500 BOM cost targets. | A guarded migration creates or validates `45D040-AM` and `46F055-AM`, based on pinned source BOMs, plus dedicated non-stock allocation Items `GX.RD-1000`/`GX.RD-1001`. Refreshed material costs plus each allocation yield CHF 2,500 per unit; conflicting existing records stop migration. Later component-cost changes require allocation review to retain that target; no stock or Item Price transactions are created by the patch. |
+| Machining planning | Combined, date-sorted planning with direct row editing. | The new page reads `Plug à usiner...` and `Valve Seat à usiner...` using their actual saved filters, deduplicates Work Orders and places undated rows last. All 13 current columns are shown; eight business fields are editable on drafts where permissions allow, while fetched/calculated fields remain protected. Saves check the original modification time, refresh Item/BOM dependencies when needed and run normal Work Order validation. |
+| Production overview | A separate page with permission-aware reads and safer note updates. | The copy keeps the overview alongside planning, recognizes alphanumeric machining codes, selects the latest active/paused timer and counts only visible submitted Delivery Notes for shipment indicators. Shared-note saves check permissions and concurrent edits, and the layout supports smaller screens. It shares production records and the existing note with the original page. |
+| Draft Work Orders | Delete action added to machining planning. | A confirmed Delete removes the underlying draft Work Order from the ERP, subject to native delete permission, current report membership, modification-time checks and normal linked-document restrictions. Submitted/cancelled orders cannot be deleted through this action. Frappe retains its Deleted Document archive, and other planning rows keep their unsaved edits. |
+| Machining stock coverage | Matching magnet stock reduces component shortages. | A six-character uppercase-alphanumeric `10xxxx`/`20xxxx` Item gains one-for-one planning coverage from positive net `11xxxx`/`21xxxx` stock with the identical suffix. Reorder and Sales Order planning retain Main Stock/Assemblies scope; the legacy shortage check retains its broader non-OLD scope. This changes planning availability rather than physical stock or BOMs; existing buffer and draft-reconciliation rules still apply, and a site setting can disable the added coverage. |
+| FFTest quantities | One call consumes at most one finished unit's inputs. | The copied endpoint caps material rows at the Work Order requirement divided by its total quantity, sharing that cap across duplicate rows and honoring UOM conversion and prior consumption. A four-unit Work Order is completed through four separate unit calls, with completion limits enforced. The change covers manufacturing and transfers in the `4D` and existing `42`/body routes; a failed call rolls back its unit while earlier successful calls remain complete. |
+| Manual machining assignments | Martin receives a task when a new manual order is saved. | The first save of an eligible `10xxxx`/`20xxxx` Work Order through supported manual actions creates an Open ToDo for `martin.barraud@amf.ch` and requests the native assignment notification. Later edits/submission do not repeat it, and scheduled planners, imports, patches and generic integrations are excluded. Existing assignees are retained; Martin must remain an enabled System User for the qualifying save to succeed. |
 
 ### User Impact
 
-- Item Creation users must save, refresh the complete plan and obtain engineering review before submission. Earlier draft approvals need a fresh preview/review under the current rules; a preview or code suggestion alone does not execute creation.
-- Engineers can reuse an existing head through Create Products Only, select exact pins/raw stock and resolve Product code/reference conflicts within the reviewed plan. Existing recipes that differ require an explicit replacement proposal.
-- Users can inspect Item Creation History from an Item or BOM. Request cancellation withdraws the request but retains its generated masters and BOMs; further engineering changes use an amendment and fresh review.
-- FFTest operators need the caller configured for the new module before using the staged `4D` flow. Purchased `5D0000` requires a received serial; the manual helper uses the browser's ERP session to preview or launch the selected test page.
-- Stock Managers can cancel or delete monthly checks without reversing their stock corrections. The scheduler respects a deleted month's check; a replacement requires an explicit Generate Current Month action.
-- Costing and finance users can compare cost sources and request authorized artifact downloads. The Acoustic Mixer CHF 2,500 value is a BOM cost target, distinct from a selling price.
+- Planners can use the separate machining tab to update dates, priority, machine, quantities and other permitted fields. Rows can leave the table after changes such as progress moving to QC; this follows the source reports' filters.
+- Delete affects the real ERP draft Work Order. Users need native delete permission, and linked records can block the action; submitted-order lifecycle actions remain in the Work Order form.
+- Matching magnet stock can reduce production proposals and cause existing planner-owned drafts to be removed by normal reconciliation. It does not disassemble stock or replace the material identities required by a manufacturing BOM.
+- FFTest operators process multi-unit Work Orders one unit per call with the appropriate serial. The correction applies to the copied FFTest module, so the caller must use that module for this behavior.
+- Martin can find new manual machining assignments in the Work Order sidebar and ToDo list. Email uses the normal queue and self-assignment rules; existing Work Orders are not assigned retrospectively.
 
 ### Validation Notes
 
-This report update was checked against the committed range above. The following are recommended release checks, not new live tests performed while updating this document:
+This report update was checked against the five committed changes above. The following are recommended release checks, not new live tests performed while preparing the report:
 
-- Test a new head family and an existing-head Product-only request: review raw stock/UOMs, pin selection, exact child revisions and replacement differences, then confirm approval becomes stale when inputs or dependencies change.
-- Verify code collision/retirement handling, a reviewed reference override and the final RVM prefixes: `421` for NM/TH, `422` for P201-O RS485 and `4D0/4D1/4D2` for Mini. Confirm historical matching Products retain their identities and resolve correctly in Quotations.
-- Check Item Creation result searches, request cancellation and a single active amendment, ensuring generated masters, submitted BOMs and reservations remain traceable.
-- In an isolated stock test, preview the `4D` flow for a received `5D0000` serial and an existing intermediate serial; verify batches, Work Order scope and rollback after a later-stage failure. Confirm the intended caller/module is selected before any real posting.
-- Compare BOM Cost Breakdown totals with their BOM, receipt and Work Order sources. Test authorized and denied artifact/rate downloads, currency separation and private DHL attachment access.
-- Exercise monthly-check cancellation/deletion and a deliberate replacement, verifying assignments close and stock vouchers remain valid. Confirm repeated installation preserves existing settings and does not generate checks or notifications.
-- After applying the Acoustic Mixer patch, verify both default BOMs and allocation Items against the pinned sources and CHF 2,500 unit-cost target. Apply registered feature patches and the normal process/browser reloads before business validation.
+- Compare the machining tab with both source reports, including alphanumeric Items, undated rows and the complete column set. Test an authorized draft edit, estimated-time recalculation, a stale-save rejection and preservation of edits on other rows.
+- On an isolated draft, verify Delete confirmation, native link restrictions, denied/submitted-order behavior and the Deleted Document archive. Confirm the original page remains available and the new page's saves update the shared Work Orders.
+- Compare machining-planner dry runs with matching magnet coverage enabled and disabled. Review reduced shortages and proposed draft updates/deletions, retaining each path's warehouse scope and production buffer.
+- Test repeated FFTest calls on a multi-unit Work Order, checking one-unit material use, UOM conversion, duplicate rows, previously consumed material, completion limits and rollback after a failed later call.
+- Create eligible manual test orders through supported entry points and verify one assignment to Martin, no duplicate on later saves and no assignment from automatic creation. Intercept test email; separately confirm the site's recipient, mail queue and configuration switches before operational use.
 
 ## Executive Summary
 
@@ -142,7 +136,7 @@ Since the beginning of development, the AMF ERP has evolved from a custom report
 
 The main evolution areas are:
 
-- Production planning, Work Order automation and manufacturing follow-up.
+- Production planning, editable machining schedules, Work Order automation, manual-order assignments and manufacturing follow-up.
 - Tool maintenance planning, preventive status and intervention history across Tool subgroups.
 - Reviewed Item/BOM creation with configuration selection, identifier reservations, execution history and amendments, plus governed descriptions, purchased-part classification and custom-item review controls.
 - QR code, barcode, label and production sticker generation.
@@ -163,7 +157,17 @@ The main evolution areas are:
 
 ### 2026 - Advanced Planning, Finance, Compliance, Dashboards And AI Reporting
 
-#### `v2026.10.3` - 2026 Q4, Oct 26-29 - Latest
+#### `v2026.11.1` - 2026 Q4, Nov 3 - Latest
+
+- Added a separate Production Tracking - Planning page at `/production-tracking-planning#usinage`, combining the existing Plug and Valve Seat machining reports with complete row retrieval and Expected Date ordering. All 13 current columns are shown, with eight business fields editable on authorized drafts and system/calculated fields protected.
+- Row saves use native Work Order validation, permission checks and the original modification timestamp. The copied overview also improves timer selection, submitted-Delivery-Note shipment indicators, shared-note concurrency, alphanumeric machining classification and responsive layout while using the same production records.
+- Added a confirmed Delete action for draft Work Orders in the machining reports. Native permissions, link checks and Frappe's Deleted Document archive apply; submitted/cancelled orders are excluded and other rows retain their staged edits.
+- Machining planning now counts positive net stock of the exact `11xxxx`/`21xxxx` magnet counterpart as coverage of `10xxxx`/`20xxxx` demand. Reorder, Sales Order and legacy shortage paths retain their own warehouse/supply rules; reduced shortages flow through existing buffers and managed-draft cleanup without moving physical stock.
+- The copied FFTest endpoint limits each manufacture/transfer to one finished unit's material requirement, including repeated calls for `42` products, body Work Orders and the staged `4D` chain. The cap handles duplicate input rows, stock-UOM conversions and prior consumption, with unit-level rollback on failure.
+- New manual machining Work Orders receive one Open ToDo assignment to Martin on their first successful save through supported manual actions. Standard notification rules apply, existing assignees remain, and automatic planners/imports/integrations do not generate these alerts; the recipient account must remain enabled.
+- Committed regression coverage and audits document machining page editing/deletion, matching-stock calculations, repeated FFTest unit production and manual assignment behavior. The recorded rollback/read-only checks are distinct from live acceptance checks for this release.
+
+#### `v2026.10.3` - 2026 Q4, Oct 26-29
 
 - Item Creation releases `0.7.2` through `0.7.12` introduced complete reviewed plans, protected engineering decisions and submission that rebuilds the approved dependencies before creating Items and submitting BOMs. Raw-stock selection, consumption quantities, exact child revisions and replacement differences are visible before approval.
 - Head/component suffixes now use shared permanent reservations that respect occupied, disabled and retired identifiers, with decimal and alphanumeric allocation. Products may have independent codes while their references/BOMs identify the selected head; related batch, drawing, Work Order and manufacturing-report tools accept those alphanumeric codes.
@@ -522,20 +526,24 @@ The main evolution areas are:
 
 - Production Master Planner, planning pages and planning DocType enhancements.
 - Work Order creation, assignment, serial-number behavior and automation.
+- First-save ToDo assignment to Martin for eligible manually created machining Work Orders, with native notification and duplicate prevention.
 - P202-O BOM creation for the `4D` finished goods family.
 - 4B/4C BOM family coherence repairs and recursive default BOM versioning.
 - Production tracking with operator timers and Work Order QR access.
 - Four-hour operator-session alerts with ToDo follow-up and optional email.
 - FFTest P202 serial mapping, Work Order checks and a read-only stock-flow preview with a separately installed diagnostic page.
 - Opt-in staged FFTest production for serialized `4D` products, including received purchased-body serials, intermediate reuse and a local manual test helper.
+- One-unit material consumption/transfer limits across repeated calls in the copied FFTest module, including `42`/body routes and stock-UOM conversions.
 - Estimated manufacturing time and production cost/time tracking support.
 - Tool maintenance planning, due-date tracking and intervention history.
 - Machining reports and production stickers.
+- Separate Production Tracking - Planning page combining Plug/Valve Seat reports by Expected Date, with authorized row editing, concurrent-change checks and native draft deletion.
 
 ### Inventory, Stock And Procurement
 
 - Inventory turnover, stock summary, projected stock and stock/revenue reporting.
 - Safety stock, reorder level, stock forecasting and shortage visibility.
+- Exact `11xxxx`/`21xxxx` magnet sub-assembly stock coverage for `10xxxx`/`20xxxx` machining shortages, preserving existing planner warehouse and buffer rules.
 - Purchase Order checking, late purchase reporting and procurement dashboards.
 - Batch handling, raw material batches, ATR batches and batch disabling.
 - Receipt-specific batch creation for selected purchased stock items.
@@ -629,6 +637,7 @@ The main evolution areas are:
 ### User Experience And Technical Enablement
 
 - Custom pages, common JavaScript utilities and UI refinements added.
+- Permission-aware Production Tracking - Planning copy with responsive machining tables, protected row saves/deletion, current timer selection and shared-note version checks.
 - DHL Shipment form actions for draft building, product lookup, validation and AWB creation.
 - Loan Order customer print format and print-time address, contact and description preparation.
 - Sales Order 2026 branded print format and controlled French OMR PDF generation.
@@ -640,11 +649,11 @@ The main evolution areas are:
 
 ## Current Main Custom Objects
 
-The current AMF custom app includes custom objects for planning, Item Creation with Review/Variant/Result child records, AMF Data Artifacts, Monthly Inventory Settings and Checks, Weekly Operations Reports, Organizational Modification Requests and Actions, Tool Maintenance Plans, Tool Maintenance Logs, global quality inspection, Timer Production Alerts, timer production, DHL tracking, loan orders, issue management, AMF Issue Processes, Document AI imports, HS codes, customer feedback, CRM forms, Brevo campaigns, sales actions and satisfaction surveys. It also includes utility layers for Product and purchased-item descriptions, customer-description cleanup, custom-item governance, Issue classification and history, Loan Order settlement and printing, Sales Order/OMR print formats, DHL Shipment creation, reviewed creation plans, permanent code reservations, creation lifecycle/traceability, BOM family repair, recursive BOM updates, selected BOM repricing, Acoustic Mixer setup, `4D` interface variants, Delivery Note print formats, Purchase Receipt GL precision, batch setup and guarded stock-history correction.
+The current AMF custom app includes custom objects for planning, Item Creation with Review/Variant/Result child records, AMF Data Artifacts, Monthly Inventory Settings and Checks, Weekly Operations Reports, Organizational Modification Requests and Actions, Tool Maintenance Plans, Tool Maintenance Logs, global quality inspection, Timer Production Alerts, timer production, DHL tracking, loan orders, issue management, AMF Issue Processes, Document AI imports, HS codes, customer feedback, CRM forms, Brevo campaigns, sales actions and satisfaction surveys. It also includes utility layers for Product and purchased-item descriptions, customer-description cleanup, custom-item governance, Issue classification and history, Loan Order settlement and printing, Sales Order/OMR print formats, DHL Shipment creation, reviewed creation plans, permanent code reservations, creation lifecycle/traceability, BOM family repair, recursive BOM updates, selected BOM repricing, Acoustic Mixer setup, `4D` interface variants, Delivery Note print formats, Purchase Receipt GL precision, batch setup, one-unit FFTest consumption, matching magnet-stock planning coverage, manual machining assignments and guarded stock-history correction.
 
 The current report catalog includes operational reports for inventory turnover, stock and revenue, produced and delivered items, purchased versus manufactured items, delivered items, purchase order items, late purchases, purchase order cash forecasting, projected stock, sales dashboards, quotation dashboards, manufacturing yield, machined parts, item margins, no-price items, leave balances, AMF general ledger, BOM Cost Breakdown, Item Creation Results, Sales Order to Delivery Note lead time and weekly operations slide reporting.
 
-The current page catalog includes inventory planning, sales order stock projection, logistics tracking, global inventory dashboard, Tool Maintenance, component drawing register, bank reconciliation automation, an FFTest stock-flow diagnostic page installer, order confirmation parsing, PDF text extraction and file upload tools.
+The current page catalog includes inventory planning, the separate Production Tracking - Planning machining page, sales order stock projection, logistics tracking, global inventory dashboard, Tool Maintenance, component drawing register, bank reconciliation automation, an FFTest stock-flow diagnostic page installer, order confirmation parsing, PDF text extraction and file upload tools.
 
 ## Release Maintenance Workflow
 
@@ -677,47 +686,41 @@ This document should remain high level. Technical implementation details, indivi
 
 ### Email de la dernière version - prêt à valider
 
-Objet: AMF ERP - Version v2026.10.3 - Création d'articles, FFTest et analyse des coûts
+Objet: AMF ERP - Version v2026.11.1 - Planification usinage, stocks et suivi des OF
 
 Bonjour à toutes et à tous,
 
-Les notes de la version AMF ERP v2026.10.3, couvrant les changements commités depuis le dernier rapport jusqu'au 29 octobre 2026, sont prêtes pour validation. La version applicative correspondante est 0.7.12.
+Les notes de la version AMF ERP v2026.11.1 sont prêtes pour validation. Elles couvrent les cinq changements fonctionnels enregistrés dans Git depuis le rapport du 29 octobre, jusqu'au 3 novembre 2026. La version applicative reste 0.7.12.
 
 AMF ERP live
 https://amf.libracore.ch/desk#
 
-Cette version renforce la création d'articles et de BOM avec un plan complet, une revue d'ingénierie enregistrée et une traçabilité des résultats. Elle élargit les configurations disponibles, ajoute un flux FFTest dédié aux produits 4D et complète les outils d'analyse des coûts, de protection des exports et de gestion des contrôles d'inventaire. Le déploiement et les vérifications métier sont à confirmer avant diffusion de cette annonce.
+Cette version ajoute une page distincte de planification de l'usinage, tient compte du stock de sous-ensembles aimantés correspondants et attribue les nouveaux OF manuels concernés à Martin. Elle corrige aussi la consommation de matières par unité dans le module FFTest copié. Les vérifications métier sont à confirmer avant diffusion de cette annonce.
 
 Principaux changements:
 
-Création d'articles et revue d'ingénierie
-https://amf.libracore.ch/desk#List/Item%20Creation/List
-Les configurations sont sélectionnées individuellement, puis un plan présente les articles, matières, quantités, révisions de BOM et éventuels remplacements. Une revue d'ingénierie est enregistrée avant soumission; toute modification des données ou dépendances impose une nouvelle revue. Le mode Create Products Only permet de conserver une tête existante et de créer uniquement les produits choisis.
+Planification usinage
+https://amf.libracore.ch/production-tracking-planning#usinage
+La nouvelle page rassemble les rapports Plug et Valve Seat à usiner, triés par date attendue, avec les ordres sans date à la fin. Les utilisateurs autorisés peuvent modifier les champs métier des brouillons; les champs calculés restent protégés. Les enregistrements utilisent les validations habituelles des OF et détectent les modifications concurrentes.
 
-Configurations et numérotation
-Le choix couvre les configurations LV/HV/HD, les seringues U autorisées sur les corps LV standard, les pins de siège et les variantes RVM, dont Mini base/RS485/CAN. Les nouveaux produits NM/TH utilisent `421xxx` et les nouveaux P201-O RS485 `422xxx`; les produits existants correspondants conservent leurs codes. Des suggestions et dérogations contrôlées de code/référence permettent de traiter les conflits dans le plan revu.
+Suppression des OF brouillons
+Une action Supprimer permet de supprimer l'OF brouillon réel dans l'ERP après confirmation et contrôle des droits et des liens. Elle ne masque pas simplement une ligne du planning. Les OF soumis ou annulés sont exclus, et les modifications non enregistrées des autres lignes sont conservées.
 
-Historique et cycle de vie
-https://amf.libracore.ch/desk#query-report/Item%20Creation%20Results
-Les résultats relient chaque article et révision de BOM à sa demande de création, avec accès depuis les fiches Item et BOM. L'annulation motivée d'une demande conserve les articles, BOM et réservations de codes; un amendement passe par une nouvelle revue d'ingénierie.
+Couverture par le stock aimanté
+Le calcul des besoins d'usinage inclut le stock positif du sous-ensemble aimanté portant exactement le même suffixe: `10xxxx` avec `11xxxx`, et `20xxxx` avec `21xxxx`. Cette couverture peut réduire les quantités proposées ou supprimer des brouillons gérés par le planificateur lorsque le besoin est couvert. Elle ne modifie pas le stock physique ni les matières prévues dans les BOM.
 
-Flux FFTest 4D
-Un module séparé prévoit les étapes nécessaires à partir des BOM, réutilise un numéro de série intermédiaire disponible et vérifie les lots et entrepôts. Le composant acheté `5D0000` doit déjà être réceptionné avec son numéro de série: il n'est pas fabriqué par ce flux. Une prévisualisation et un outil local de test manuel sont disponibles; le point d'appel doit être configuré explicitement pour activer ce module.
+Consommation FFTest par unité
+Le module FFTest copié limite les matières consommées ou transférées à la quantité nécessaire pour une unité produite, y compris lors d'appels successifs sur un OF de plusieurs unités. Les conversions d'unités, lignes matières répétées et consommations antérieures sont prises en compte. Un OF de quatre unités se traite par quatre appels unitaires; un appel en échec annule ses propres opérations.
 
-Analyse des coûts et exports privés
-https://amf.libracore.ch/desk#query-report/BOM%20Cost%20Breakdown
-Le rapport compare les coûts prévus/réels, les moyennes, les BOM imbriquées et les derniers prix de réception, avec une option de coûts de processus historiques. Les données de rapport privées sont stockées dans la base avec téléchargement autorisé; les exports de prix séparent les devises et les fichiers texte DHL deviennent des pièces jointes privées.
-
-Contrôles d'inventaire et Acoustic Mixer
-Les responsables stock peuvent annuler ou supprimer un contrôle mensuel tout en conservant ses corrections de stock. L'initialisation de cette fonction s'exécute une fois à l'installation ou par patch versionné. Une migration dédiée crée ou vérifie `45D040-AM` et `46F055-AM` avec leurs allocations non stockées et un coût BOM unitaire de CHF 2'500, distinct d'un prix de vente.
+Attribution des nouveaux OF manuels
+Au premier enregistrement d'un nouvel OF manuel éligible `10xxxx` ou `20xxxx`, Martin reçoit une tâche ToDo pour revoir et planifier l'usinage. La notification suit les règles et la file d'email standard; les enregistrements ultérieurs ne créent pas de doublon. Les planificateurs automatiques et imports sont exclus, et les OF existants ne sont pas réattribués.
 
 Ce que cela signifie pour vous:
 
-- Les préparateurs et responsables ingénierie doivent vérifier le plan complet et renouveler les approbations des demandes encore en brouillon sous les nouvelles règles.
-- Les équipes commerciales peuvent vérifier la résolution des configurations dans les Quotations, notamment les variantes RVM et les nouveaux préfixes NM/TH et RS485.
-- Les utilisateurs FFTest sont invités à valider la prévisualisation et un cas de stock isolé après configuration du nouveau module.
-- Les responsables stock peuvent tester le cycle d'annulation/suppression d'un contrôle et la conservation de ses documents de correction.
-- Les équipes coûts et finance peuvent comparer les nouvelles vues à leurs sources et vérifier les accès aux exports; les allocations Acoustic Mixer restent à revoir si les coûts composants évoluent.
+- Les responsables planification peuvent vérifier les dates, quantités, priorités et machines depuis le nouvel onglet; les modifications portent sur les OF partagés avec le reste de l'ERP.
+- Avant un lancement du planificateur en écriture, les responsables stock et production peuvent contrôler les besoins et suppressions de brouillons proposés avec la couverture aimantée.
+- Les utilisateurs FFTest doivent utiliser le module copié concerné et vérifier un exemple de production répétée avec le numéro de série approprié à chaque unité.
+- Martin et les créateurs d'OF peuvent vérifier la tâche dans l'OF et la liste ToDo; la réception de l'email dépend des règles d'auto-attribution et du service de messagerie.
 - Merci de signaler tout comportement inattendu via le canal de support interne habituel.
 
 Bonne journée,
