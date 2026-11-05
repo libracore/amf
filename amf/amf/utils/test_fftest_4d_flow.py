@@ -846,6 +846,120 @@ class TestFFTest4DFlow(unittest.TestCase):
                                       flow.MAIN_STOCK_WAREHOUSE)
         self.assertEqual(entry.items[1].transfer_qty, 0.5)
 
+    def use_s103623_flow(self, existing_serial=False):
+        """Use the audited item serial settings on the four-unit legacy fixture."""
+        self.use_42_flow()
+        for old, new, series in (
+            ("420033", "S103623", "DB.######"),
+            ("521000", "541000", "P221-O.########"),
+        ):
+            item = self.database.docs["Item"].pop(old)
+            item.update({"name": new, "has_serial_no": 1, "serial_no_series": series})
+            self.database.docs["Item"][new] = item
+            for bom in self.database.docs["BOM"].values():
+                if bom.item == old:
+                    bom.item = new
+                for component in bom.items:
+                    if component.item_code == old:
+                        component.item_code = new
+            for order in self.database.docs["Work Order"].values():
+                if order.production_item == old:
+                    order.production_item = new
+                for requirement in order.required_items:
+                    if requirement.item_code == old:
+                        requirement.item_code = new
+        if existing_serial:
+            self.database.docs["Serial No"]["DB002207"] = Document(
+                name="DB002207", serial_no="DB002207", item_code="541000",
+                warehouse=flow.MAIN_STOCK_WAREHOUSE, company=flow.COMPANY,
+            )
+            self.database.stock[("541000", None, flow.MAIN_STOCK_WAREHOUSE)] = 1
+        self.database.begin_snapshot()
+
+    def test_s103623_new_body_serial_is_carried_to_the_actual_finished_serial_field(self):
+        self.use_s103623_flow()
+        result = flow.make_stock_entry("WO-42", "DB002207")
+        self.assertNotIn("error", result)
+        manufactured = [entry for entry in self.database.entries if entry.purpose == "Manufacture"]
+        self.assertEqual([entry.work_order for entry in manufactured], ["WO-521000", "WO-42"])
+        body, finished = manufactured[0].items[-1], manufactured[-1].items[-1]
+        self.assertEqual((body.item_code, body.serial_no), ("541000", "DB002207"))
+        self.assertEqual(manufactured[-1].items[0].serial_no, "DB002207")
+        self.assertEqual((finished.item_code, finished.serial_no, finished.product_serial_no),
+                         ("S103623", "DB002207", "DB002207"))
+        self.assertEqual(set(self.database.docs["Serial No"]), {"DB002207"})
+        serial = self.database.docs["Serial No"]["DB002207"]
+        self.assertEqual((serial.item_code, serial.warehouse), ("S103623", flow.MAIN_STOCK_WAREHOUSE))
+        # Run the native auto-generation decision with the real DB.###### setting.
+        with patch.object(serial_module, "get_auto_serial_nos", side_effect=AssertionError(
+            "The finished serial must not be replaced by the naming counter"
+        )), patch.object(serial_module, "auto_make_serial_nos"):
+            serial_module.update_serial_nos(
+                _dict(is_cancelled="No", actual_qty=1, serial_no=finished.serial_no),
+                self.database.docs["Item"]["S103623"],
+            )
+
+    def test_s103623_existing_body_serial_is_carried_without_manufacturing_another_body(self):
+        self.use_s103623_flow(existing_serial=True)
+        result = flow.make_stock_entry("WO-42", "DB002207")
+        self.assertNotIn("error", result)
+        self.assertEqual(len(self.database.entries), 1)
+        self.assertEqual(result.items[-1].serial_no, "DB002207")
+        self.assertEqual(result.items[-1].product_serial_no, "DB002207")
+        self.assertEqual(self.database.docs["Serial No"]["DB002207"].item_code, "S103623")
+        self.assertEqual(self.database.docs["Work Order"]["WO-521000"].produced_qty, 0)
+
+    def test_s103623_four_calls_preserve_each_bodys_serial_digits(self):
+        self.use_s103623_flow()
+        serials = ["DB002204", "DB002205", "DB002206", "DB002207"]
+        for number, value in enumerate(serials, 1):
+            self.assertNotIn("error", flow.make_stock_entry("WO-42", value))
+            finished = self.database.entries[-1].items[-1]
+            self.assertEqual((finished.serial_no, finished.product_serial_no), (value, value))
+            self.assertEqual(self.database.docs["Work Order"]["WO-42"].produced_qty, number)
+            self.database.begin_snapshot()
+        self.assertEqual(set(self.database.docs["Serial No"]), set(serials))
+        self.assertTrue(all(serial.item_code == "S103623"
+                            for serial in self.database.docs["Serial No"].values()))
+
+    def test_s103623_finished_serial_cannot_be_reused_for_another_unit(self):
+        self.use_s103623_flow()
+        self.assertNotIn("error", flow.make_stock_entry("WO-42", "DB002207"))
+        self.database.begin_snapshot()
+        before = copy.deepcopy((self.database.stock, self.database.entries))
+        self.assertIn("already exists", flow.make_stock_entry("WO-42", "DB002207")["error"])
+        self.assertEqual(before, (self.database.stock, self.database.entries))
+        self.assertEqual(self.database.docs["Work Order"]["WO-42"].produced_qty, 1)
+
+    def test_s103623_failed_final_submit_preserves_the_existing_body_serial(self):
+        self.use_s103623_flow(existing_serial=True)
+        self.database.fail_item = "S103623"
+        self.assertIn("Simulated final-stage", flow.make_stock_entry("WO-42", "DB002207")["error"])
+        serial = self.database.docs["Serial No"]["DB002207"]
+        self.assertEqual((serial.item_code, serial.warehouse), ("541000", flow.MAIN_STOCK_WAREHOUSE))
+        self.assertEqual(self.database.docs["Work Order"]["WO-42"].produced_qty, 0)
+        self.assertEqual(self.database.entries, [])
+
+    def test_s103623_carryover_requires_exactly_one_serialized_body(self):
+        self.use_s103623_flow(existing_serial=True)
+        root = self.database.docs["Work Order"]["WO-42"]
+        root.required_items[0].required_qty = 8  # Two serialized bodies per output unit.
+        self.database.begin_snapshot()
+        self.assertIn("Exactly one source unit", flow.make_stock_entry("WO-42", "DB002207")["error"])
+        self.assertEqual(self.database.entries, [])
+        self.assertEqual(self.database.docs["Serial No"]["DB002207"].item_code, "541000")
+
+    def test_s103623_read_only_preview_reports_the_same_actual_and_traceability_serial(self):
+        self.use_s103623_flow(existing_serial=True)
+        before = copy.deepcopy(self.database.docs)
+        report = flow.debug_stock_entry_flow("WO-42", "DB002207", [{"batch_no": "MAT-BATCH"}])
+        self.assertTrue(report["ok"], report["errors"])
+        finished = report["planned_documents"][-1]
+        self.assertEqual((finished["consume_serial"], finished["produce_serial"], finished["product_serial_no"]),
+                         ("DB002207", "DB002207", "DB002207"))
+        self.assertEqual(self.database.docs, before)
+        self.assertEqual(self.database.entries, [])
+
 
 if __name__ == "__main__":
     unittest.main()
