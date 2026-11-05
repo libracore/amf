@@ -9,6 +9,8 @@ clear visual hierarchy, compact status labels and a responsive layout. Its route
 The later density adjustment enlarges the desktop clock to 42 px (28 px on mobile),
 places summary values beside their labels to reduce the four-panel row height, and
 tightens the production card padding, spacing and lane headers without truncating labels.
+The overview eyebrow, title and description sit beside the two navigation tabs on wide
+screens, stack below them on tablet/mobile, and hide when the machining tab is active.
 
 ## Deploying to the live site
 

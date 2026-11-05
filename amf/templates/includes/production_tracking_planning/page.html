@@ -8,11 +8,11 @@
       <button id="overview-tab" class="pt-tab active" type="button" role="tab" aria-selected="true" aria-controls="overview-panel"><span data-icon="dashboard"></span>Vue d’ensemble<span id="overview-tab-count" class="pt-tab-count">—</span></button>
       <button id="machining-tab" class="pt-tab" type="button" role="tab" aria-selected="false" aria-controls="machining-panel" tabindex="-1"><span data-icon="calendar"></span>Planning usinage<span id="machining-tab-count" class="pt-tab-count">—</span></button>
     </div>
-    <span id="sync-status" class="pt-sync" role="status"><i></i>Chargement des données…</span>
+    <div id="overview-intro" class="pt-navigation-intro"><div class="pt-eyebrow">VUE D’ENSEMBLE</div><h1>L’atelier, en un coup d’œil.</h1><p>Les ordres en cours, les prochaines fabrications et les expéditions de la semaine.</p></div>
+    <div class="pt-navigation-status"><span id="sync-status" class="pt-sync" role="status"><i></i>Chargement des données…</span><span id="overview-live-label" class="pt-live-label"><i></i>Suivi de production</span></div>
   </div>
 
   <section id="overview-panel" class="pt-panel" role="tabpanel" aria-labelledby="overview-tab">
-    <div class="pt-panel-heading"><div><div class="pt-eyebrow">VUE D’ENSEMBLE</div><h1>L’atelier, en un coup d’œil.</h1><p>Les ordres en cours, les prochaines fabrications et les expéditions de la semaine.</p></div><span class="pt-live-label"><i></i>Suivi de production</span></div>
     <div class="pt-kpis" aria-label="Indicateurs de production">
       <article class="pt-kpi pt-kpi-teal"><span class="pt-kpi-icon" data-icon="activity"></span><div><span class="pt-kpi-label">OF en cours</span><strong id="kpi-ongoing">—</strong><span id="kpi-ongoing-detail" class="pt-kpi-detail">Assemblage et usinage</span></div></article>
       <article class="pt-kpi pt-kpi-blue"><span class="pt-kpi-icon" data-icon="layers"></span><div><span class="pt-kpi-label">OF à venir</span><strong id="kpi-upcoming">—</strong><span class="pt-kpi-detail">Prochaines fabrications</span></div></article>

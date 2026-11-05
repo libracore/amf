@@ -612,6 +612,8 @@ frappe.ready(function () {
     if (frappe.session.user === "Guest") return;
     const tabs = [byId("overview-tab"), byId("machining-tab")];
     function activateTab(tab) {
+      byId('overview-intro').hidden = tab !== tabs[0];
+      byId('overview-live-label').hidden = tab !== tabs[0];
       tabs.forEach(button => {
         const active = button === tab;
         button.classList.toggle("active", active);
