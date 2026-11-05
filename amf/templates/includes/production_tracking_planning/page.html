@@ -1,89 +1,53 @@
-  <div class="wrapper pt-page">
-
+<div class="pt-page">
   <header class="pt-header">
-    <div><div class="pt-eyebrow">PRODUCTION TRACKING · PLANNING</div><div id="clock-display" class="clock-display">--:--:--</div></div>
-    <button id="refresh-btn" class="refresh-btn" type="button" title="Actualiser la page">⟳ Actualiser</button>
+    <a class="pt-brand" href="#" aria-label="Pilotage de production"><span class="pt-brand-mark" data-icon="factory"></span><span><span class="pt-eyebrow">AMF · ATELIER</span><strong>Pilotage de production</strong></span></a>
+    <div class="pt-header-tools"><div class="pt-clock"><span id="date-display"></span><strong id="clock-display">--:--</strong></div><button id="refresh-btn" class="pt-button pt-button-light" type="button"><span data-icon="refresh"></span><span>Actualiser</span></button></div>
   </header>
-  <div class="pt-tabs" role="tablist" aria-label="Suivi de production">
-    <button id="overview-tab" class="pt-tab active" type="button" role="tab" aria-selected="true" aria-controls="overview-panel">Suivi production</button>
-    <button id="machining-tab" class="pt-tab" type="button" role="tab" aria-selected="false" aria-controls="machining-panel" tabindex="-1">Planification usinage</button>
-  </div>
-  <section id="overview-panel" role="tabpanel" aria-labelledby="overview-tab">
-  <!-- SECTION SHIPMENTS -->
-  <div id="shipments-section" class="shipments-wrapper">
-    <div class="shipment-box">
-      <div class="shipment-header">
-        <h2 id="shipments-title">Commandes à expédier</h2>
-        <button id="toggle-client-btn" class="refresh-btn">👁</button>
-      </div>
-      <div id="shipments"></div>
+  <div class="pt-navigation">
+    <div class="pt-tabs" role="tablist" aria-label="Vues de production">
+      <button id="overview-tab" class="pt-tab active" type="button" role="tab" aria-selected="true" aria-controls="overview-panel"><span data-icon="dashboard"></span>Vue d’ensemble<span id="overview-tab-count" class="pt-tab-count">—</span></button>
+      <button id="machining-tab" class="pt-tab" type="button" role="tab" aria-selected="false" aria-controls="machining-panel" tabindex="-1"><span data-icon="calendar"></span>Planning usinage<span id="machining-tab-count" class="pt-tab-count">—</span></button>
     </div>
+    <span id="sync-status" class="pt-sync" role="status"><i></i>Chargement des données…</span>
   </div>
 
-  <!-- SECTION WORK ORDERS -->
-  <div class="container">
-
-    <div class="row">
-
-      <div class="row-title">ASSEMBLAGE</div>
-
-      <div class="row-columns">
-        <div class="column">
-          <h3>OF EN COURS</h3>
-          <div id="ongoing-assemblage"></div>
-        </div>
-
-        <div class="column">
-          <h3>OF À VENIR</h3>
-          <div id="upcoming-assemblage"></div>
-        </div>
-      </div>
-
+  <section id="overview-panel" class="pt-panel" role="tabpanel" aria-labelledby="overview-tab">
+    <div class="pt-panel-heading"><div><div class="pt-eyebrow">VUE D’ENSEMBLE</div><h1>L’atelier, en un coup d’œil.</h1><p>Les ordres en cours, les prochaines fabrications et les expéditions de la semaine.</p></div><span class="pt-live-label"><i></i>Suivi de production</span></div>
+    <div class="pt-kpis" aria-label="Indicateurs de production">
+      <article class="pt-kpi pt-kpi-teal"><span class="pt-kpi-icon" data-icon="activity"></span><div><span class="pt-kpi-label">OF en cours</span><strong id="kpi-ongoing">—</strong><span id="kpi-ongoing-detail" class="pt-kpi-detail">Assemblage et usinage</span></div></article>
+      <article class="pt-kpi pt-kpi-blue"><span class="pt-kpi-icon" data-icon="layers"></span><div><span class="pt-kpi-label">OF à venir</span><strong id="kpi-upcoming">—</strong><span class="pt-kpi-detail">Prochaines fabrications</span></div></article>
+      <article class="pt-kpi pt-kpi-amber"><span class="pt-kpi-icon" data-icon="truck"></span><div><span class="pt-kpi-label">À expédier cette semaine</span><strong id="kpi-shipments">—</strong><span id="kpi-shipments-detail" class="pt-kpi-detail">Commandes de la semaine</span></div></article>
+      <article class="pt-kpi pt-kpi-red"><span class="pt-kpi-icon" data-icon="alert"></span><div><span class="pt-kpi-label">Expéditions en retard</span><strong id="kpi-shipment-late">—</strong><span class="pt-kpi-detail">Date passée, bon validé absent</span></div></article>
     </div>
-
-    <div class="row">
-      <div class="row-title">USINAGE</div>
-
-      <div class="row-columns">
-        <div class="column">
-          <h3>OF EN COURS</h3>
-          <div id="ongoing-usinage"></div>
-        </div>
-
-        <div class="column">
-          <h3>OF À VENIR</h3>
-          <div id="upcoming-usinage"></div>
-        </div>
-      </div>
-
+    <div class="pt-section-bar"><h2>Le travail à l’atelier</h2><div class="pt-legend"><span><i class="pt-dot pt-dot-teal"></i>En cours</span><span><i class="pt-dot pt-dot-blue"></i>À venir</span><span><i class="pt-dot pt-dot-red"></i>Date dépassée</span></div></div>
+    <div class="pt-boards">
+      <article class="pt-board pt-board-assembly"><header class="pt-board-header"><div class="pt-section-title"><span class="pt-section-icon" data-icon="layers"></span><div><h2>Assemblage</h2><span>Production &amp; montage</span></div></div><span id="assembly-total" class="pt-count-pill">— OF</span></header><div class="pt-board-lanes"><section class="pt-lane"><h3><i class="pt-dot pt-dot-teal"></i>En cours<span id="ongoing-assemblage-count" class="pt-lane-count">—</span></h3><div id="ongoing-assemblage" class="pt-order-list"><div class="pt-skeleton"></div></div></section><section class="pt-lane"><h3><i class="pt-dot pt-dot-blue"></i>À venir<span id="upcoming-assemblage-count" class="pt-lane-count">—</span></h3><div id="upcoming-assemblage" class="pt-order-list"><div class="pt-skeleton"></div></div></section></div></article>
+      <article class="pt-board pt-board-machining"><header class="pt-board-header"><div class="pt-section-title"><span class="pt-section-icon" data-icon="settings"></span><div><h2>Usinage</h2><span>Plugs &amp; Valve Seats</span></div></div><button class="pt-text-button" type="button" data-open-planning>Voir le planning<span data-icon="arrow"></span></button></header><div class="pt-board-lanes"><section class="pt-lane"><h3><i class="pt-dot pt-dot-teal"></i>En cours<span id="ongoing-usinage-count" class="pt-lane-count">—</span></h3><div id="ongoing-usinage" class="pt-order-list"><div class="pt-skeleton"></div></div></section><section class="pt-lane"><h3><i class="pt-dot pt-dot-blue"></i>À venir<span id="upcoming-usinage-count" class="pt-lane-count">—</span></h3><div id="upcoming-usinage" class="pt-order-list"><div class="pt-skeleton"></div></div></section></div></article>
     </div>
-
-    <div id="big-tooltip"></div>
-  </div>
-
-  <div class="info-box">
-    <h3>Note de suivi :</h3>
-    <textarea disabled id="global-note" placeholder="Écrire une note..." rows="3"></textarea>
-    <button id="save-note-btn" type="button" class="refresh-btn" disabled>Enregistrer la note</button>
-    <span id="note-status" role="status" aria-live="polite"></span>
-  </div>
-
-  </section>
-  <section id="machining-panel" role="tabpanel" aria-labelledby="machining-tab" hidden>
-    <div class="pt-planning-toolbar">
-      <div><h2>Planification complète de l’usinage</h2><p>Plugs et Valve Seats · Date prévue croissante · Dates non renseignées en dernier</p></div>
-      <button id="planning-reload" class="refresh-btn" type="button">Actualiser le planning</button>
-    </div>
-    <div class="pt-planning-filters">
-      <label>Rechercher <input id="planning-search" type="search" placeholder="OF, article, machine, matière…"></label>
-      <label>Rapport <select id="planning-report"><option value="">Tous les rapports</option></select></label>
-      <span id="planning-count" role="status"></span>
-    </div>
-    <p class="pt-edit-help">Modifiez les cellules, puis enregistrez chaque ligne. Les modifications sont enregistrées dans les ordres de fabrication. Les champs calculés, l’ID et le statut documentaire suivent les règles de l’ERP.</p>
-    <p class="pt-edit-help">« Supprimer » supprime l’ordre de fabrication brouillon dans l’ERP après confirmation, selon vos droits et les documents liés.</p>
-    <p id="planning-status" role="status" aria-live="polite"></p>
-    <div id="planning-table-wrap" class="pt-table-wrap" tabindex="0" role="region" aria-label="Planning usinage, défilement horizontal">
-      <table id="planning-table" class="pt-table"><thead></thead><tbody></tbody></table>
+    <div class="pt-overview-bottom">
+      <article id="shipments-section" class="pt-surface pt-shipping"><header class="pt-surface-header"><div class="pt-section-title"><span class="pt-section-icon" data-icon="truck"></span><div><h2>Expéditions de la semaine</h2><span id="shipments-title">Chargement…</span></div></div><button id="toggle-client-btn" class="pt-icon-button" type="button" aria-label="Masquer les noms des clients" aria-pressed="false" title="Masquer les clients"><span data-icon="eye"></span></button></header><div class="pt-shipping-legend"><span class="pt-badge pt-badge-green">Bon validé</span><span class="pt-badge pt-badge-amber">À expédier</span><span class="pt-badge pt-badge-red">En retard</span></div><div id="shipments" class="pt-shipments"><div class="pt-skeleton"></div></div></article>
+      <article class="pt-surface pt-notes"><header class="pt-surface-header"><div class="pt-section-title"><span class="pt-section-icon" data-icon="note"></span><div><h2>Note d’atelier</h2><span>Les informations à partager</span></div></div></header><label class="pt-sr-only" for="global-note">Note de suivi de production</label><textarea disabled id="global-note" placeholder="Consignes, points de vigilance, informations pour l’équipe…" rows="5"></textarea><div class="pt-note-footer"><span id="note-status" role="status" aria-live="polite"></span><button id="save-note-btn" type="button" class="pt-button pt-button-primary" disabled><span data-icon="save"></span>Enregistrer</button></div></article>
     </div>
   </section>
-  </div> <!-- end wrapper -->
+
+  <section id="machining-panel" class="pt-panel" role="tabpanel" aria-labelledby="machining-tab" hidden>
+    <div class="pt-panel-heading"><div><div class="pt-eyebrow">PLUGS &amp; VALVE SEATS</div><h1>Le planning d’usinage.</h1><p>Les priorités, les machines et les dates prévues. Modifiez les ordres directement dans le tableau.</p></div><button id="planning-reload" class="pt-button pt-button-light" type="button"><span data-icon="refresh"></span>Actualiser le planning</button></div>
+    <div class="pt-kpis" aria-label="Indicateurs du planning usinage">
+      <article class="pt-kpi pt-kpi-teal"><span class="pt-kpi-icon" data-icon="layers"></span><div><span class="pt-kpi-label">Ordres au planning</span><strong id="planning-kpi-total">—</strong><span id="planning-kpi-parts" class="pt-kpi-detail">Tous les rapports</span></div></article>
+      <article class="pt-kpi pt-kpi-red"><span class="pt-kpi-icon" data-icon="calendar"></span><div><span class="pt-kpi-label">Dates dépassées</span><strong id="planning-kpi-overdue">—</strong><span class="pt-kpi-detail">À traiter en priorité</span></div></article>
+      <article class="pt-kpi pt-kpi-amber"><span class="pt-kpi-icon" data-icon="settings"></span><div><span class="pt-kpi-label">Sans machine</span><strong id="planning-kpi-unassigned">—</strong><span class="pt-kpi-detail">Affectation à compléter</span></div></article>
+      <article class="pt-kpi pt-kpi-blue"><span class="pt-kpi-icon" data-icon="clock"></span><div><span class="pt-kpi-label">Charge estimée</span><strong id="planning-kpi-load">—</strong><span id="planning-kpi-load-detail" class="pt-kpi-detail">Jours de fabrication estimés</span></div></article>
+    </div>
+    <div class="pt-planning-tools"><div id="planning-quick-filters" class="pt-filter-chips" role="group" aria-label="Filtres rapides du planning"><button type="button" class="active" data-filter="all" aria-pressed="true">Tous<span data-filter-count="all">—</span></button><button type="button" data-filter="overdue" aria-pressed="false">En retard<span data-filter-count="overdue">—</span></button><button type="button" data-filter="today" aria-pressed="false">Aujourd’hui<span data-filter-count="today">—</span></button><button type="button" data-filter="unassigned" aria-pressed="false">Sans machine<span data-filter-count="unassigned">—</span></button><button type="button" data-filter="changed" aria-pressed="false">Modifiés<span data-filter-count="changed">0</span></button></div><button id="planning-load-toggle" class="pt-text-button" type="button" aria-expanded="false" aria-controls="planning-load-panel"><span data-icon="chart"></span>Répartition par machine</button></div>
+    <section id="planning-load-panel" class="pt-surface pt-load-panel" aria-label="Répartition des ordres par machine" hidden><div class="pt-section-bar"><div><h2>Répartition par machine</h2><p>Nombre d’OF et charge estimée enregistrée. Cliquez sur une machine pour filtrer le tableau.</p></div></div><div id="planning-workloads" class="pt-workloads"></div></section>
+    <div class="pt-surface pt-planning-surface">
+      <div class="pt-table-toolbar"><label class="pt-search"><span data-icon="search"></span><span class="pt-sr-only">Rechercher dans le planning</span><input id="planning-search" type="search" placeholder="Rechercher un OF, un article, une matière…" autocomplete="off"></label><div class="pt-select-filters"><label><span>Pièces</span><select id="planning-report"><option value="">Toutes les pièces</option></select></label><label><span>Machine</span><select id="planning-machine"><option value="">Toutes les machines</option></select></label><button id="planning-clear-filters" class="pt-icon-button" type="button" title="Effacer les filtres" aria-label="Effacer les filtres"><span data-icon="reset"></span></button></div></div>
+      <div class="pt-table-caption"><span id="planning-count" role="status">Chargement du planning…</span><span class="pt-caption-order"><span data-icon="sort"></span>Date prévue croissante · Dates vides en dernier</span></div>
+      <div id="planning-status" class="pt-feedback" role="status" aria-live="polite"></div>
+      <div id="planning-table-wrap" class="pt-table-wrap" tabindex="0" role="region" aria-label="Planning usinage complet, défilement horizontal"><table id="planning-table" class="pt-table"><caption class="pt-sr-only">Tous les ordres et toutes les colonnes des rapports Plug et Valve Seat à usiner</caption><thead></thead><tbody></tbody></table></div>
+      <div class="pt-table-footer"><span><span data-icon="edit"></span>Cliquez dans une cellule pour modifier, puis enregistrez la ligne.</span><span><span data-icon="lock"></span>Les champs calculés suivent les règles de l’ERP.</span></div>
+    </div>
+    <div id="planning-pending-bar" class="pt-pending-bar" role="status" hidden><span data-icon="edit"></span><span id="planning-pending-text"></span><button id="planning-show-changed" type="button">Voir les lignes modifiées<span data-icon="arrow"></span></button></div>
+  </section>
+  <footer class="pt-page-footer"><span>AMF · Pilotage de production</span><span>Les modifications sont enregistrées dans les ordres de fabrication.</span></footer>
+</div>

@@ -1,0 +1,69 @@
+{
+  "date": "2026-11-05",
+  "site": "site1.local",
+  "published_copy": {
+    "name": "production-tracking-planning",
+    "route": "production-tracking-planning",
+    "published": 1,
+    "modified": "2026-11-05 11:04:08.161884",
+    "existing_list_order_preserved": 2
+  },
+  "source_page": {
+    "name": "production-tracking",
+    "unchanged": true,
+    "sha256": "bbcc85e6cb9bebd138df0bd00629199a27ac920ca428b840e047d7164e2310b2"
+  },
+  "source_reports_unchanged": true,
+  "original_backend_and_hooks_unchanged": true,
+  "verification_site_time": "2026-11-05 11:04:08.392240",
+  "live_counts": {
+    "ongoing": 8,
+    "upcoming": 11,
+    "weekly_shipments": 6,
+    "planning_rows": 9,
+    "report_columns": 13,
+    "report_counts": {
+      "Plug à usiner...": 2,
+      "Valve Seat à usiner...": 7
+    }
+  },
+  "validation": {
+    "regression_tests_passed": 25,
+    "production_work_orders_verified_unchanged": 5568,
+    "browser": {
+      "passed": [
+        "Overview: accurate live KPIs, all production cards, complete labels, shipment statuses, no page overflow",
+        "Customer visibility control",
+        "Planning: all report rows and 13 columns, contextual dates, inline editors, delete controls",
+        "Quick filters: overdue, today, unassigned, clear filters and empty states",
+        "Machine distribution bars and click-to-filter",
+        "Search, report filtering and reset",
+        "Unsaved-change bar, changed-only filter and per-row Cancel",
+        "Native save and refresh from icon controls; database changes rolled back",
+        "Delete confirmation cancel, blocked deletion, native fixture deletion and preservation of another pending row",
+        "450px mobile layouts, contained table scrolling and keyboard tab navigation"
+      ],
+      "production_work_orders_deleted": 0,
+      "test_writes": "rolled back",
+      "viewport_desktop": "1600 × 1100",
+      "viewport_mobile": "450 × 960"
+    },
+    "final_visual_pass": "Passed with real data only, no preview fixture in screenshots",
+    "python_compilation": "passed",
+    "javascript_syntax": "passed",
+    "html_structure": "unique identifiers and two accessible tab panels passed",
+    "published_route": {
+      "status": 200,
+      "method": "native Frappe WSGI request",
+      "both_redesigned_panels": true,
+      "editing_and_deletion_present": true
+    },
+    "fractional_quantity_display": "passed"
+  },
+  "source_files": {
+    "www/production_tracking_planning.py": "c09ce5ee0f9ba920d14c3a0616acc6f606e61dd3f9f055ab15e6ccfd97da5853",
+    "templates/includes/production_tracking_planning/page.html": "4f8095b7bd3584529a746a757311ce47af01ff109a4e8d9cd8367ebc0b2fc48c",
+    "templates/includes/production_tracking_planning/page.css": "1d089f2ba3e910fe4c5dc874df2c402e8eae1bb33290b64e193001ffaf31c599",
+    "templates/includes/production_tracking_planning/page.js": "50d9c39c9263a7475a50d02072102457265737a0c2d03f552ae95bd6e2afe8ab"
+  }
+}

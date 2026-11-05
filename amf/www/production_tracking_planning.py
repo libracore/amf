@@ -135,7 +135,7 @@ def get_machining_planning():
             rows[row.name]["_reports"].append(name)
     ordered = sorted(rows.values(), key=lambda row: (not bool(row.get(EXPECTED_DATE)),
                      cstr(row.get(EXPECTED_DATE)), row.name))
-    return {"columns": columns, "rows": [_serialize_row(row, columns) for row in ordered],
+    return {"today": nowdate(), "columns": columns, "rows": [_serialize_row(row, columns) for row in ordered],
             "reports": list(REPORT_NAMES), "counts": counts, "total": len(ordered)}
 
 
@@ -240,7 +240,8 @@ def delete_machining_work_order(name, modified):
 @frappe.whitelist()
 def get_work_orders():
     _require_access()
-    common = ["name", "production_item", "item_name", "progress"]
+    common = ["name", "production_item", "item_name", "progress", "qty", "priority",
+              "machine", EXPECTED_DATE, "expected_delivery_date"]
     ongoing = frappe.get_list("Work Order", filters={"status": "In Process", "production_item": ["not like", "5_100_"]}, fields=common, limit_page_length=0)
     upcoming = frappe.get_list("Work Order", filters={"docstatus": 1, "status": "Not Started", "production_item": ["not like", "5_100_"]}, fields=common, limit_page_length=0)
     for wo in ongoing + upcoming:
@@ -253,7 +254,7 @@ def get_work_orders():
         if wo.operation_type == "Usinage":
             wo.timer_info = {"status": None, "operators": ""}
             (ongoing if wo.progress in ("Fabrication", "QC") else upcoming).append(wo)
-    return {"ongoing": ongoing, "upcoming": upcoming}
+    return {"ongoing": ongoing, "upcoming": upcoming, "today": nowdate()}
 
 
 def find_operation_type(work_order):
