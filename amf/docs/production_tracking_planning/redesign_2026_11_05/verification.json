@@ -5,7 +5,7 @@
     "name": "production-tracking-planning",
     "route": "production-tracking-planning",
     "published": 1,
-    "modified": "2026-11-05 11:04:08.161884",
+    "modified": "2026-11-05 11:12:33.653666",
     "existing_list_order_preserved": 2
   },
   "source_page": {
@@ -15,7 +15,7 @@
   },
   "source_reports_unchanged": true,
   "original_backend_and_hooks_unchanged": true,
-  "verification_site_time": "2026-11-05 11:04:08.392240",
+  "verification_site_time": "2026-11-05 11:13:21.172790",
   "live_counts": {
     "ongoing": 8,
     "upcoming": 11,
@@ -63,7 +63,28 @@
   "source_files": {
     "www/production_tracking_planning.py": "c09ce5ee0f9ba920d14c3a0616acc6f606e61dd3f9f055ab15e6ccfd97da5853",
     "templates/includes/production_tracking_planning/page.html": "4f8095b7bd3584529a746a757311ce47af01ff109a4e8d9cd8367ebc0b2fc48c",
-    "templates/includes/production_tracking_planning/page.css": "1d089f2ba3e910fe4c5dc874df2c402e8eae1bb33290b64e193001ffaf31c599",
+    "templates/includes/production_tracking_planning/page.css": "b6ff12344bb71a0f1d86338d6748f9acca16f2fbe49d042239b200dab1bef464",
     "templates/includes/production_tracking_planning/page.js": "50d9c39c9263a7475a50d02072102457265737a0c2d03f552ae95bd6e2afe8ab"
+  },
+  "density_adjustment": {
+    "desktop_clock_px": 42,
+    "mobile_clock_px": 28,
+    "measured_layout": {
+      "before": {
+        "board": 602.5999755859375,
+        "card": 136.85000610351562,
+        "clock": 17,
+        "kpi": 120.40000915527344
+      },
+      "after": {
+        "board": 517.5999755859375,
+        "card": 113.5500030517578,
+        "clock": 42,
+        "kpi": 59
+      }
+    },
+    "desktop_and_mobile_visual_check": "passed; mobile clock visible; no page overflow",
+    "installer_command_verified": "bench --site site1.local execute amf.www.production_tracking_planning.install_page --kwargs '{\"publish\": 1}'",
+    "merge_alone_installs_page": false
   }
 }

@@ -206,7 +206,7 @@ The installer refreshes only the duplicate from the new source files. It is inte
 not an HTTP-whitelisted method. To recreate or refresh the published copy:
 
 ```sh
-bench --site site1.local execute amf.www.production_tracking_planning.install_page --kwargs '{"publish": true}'
+bench --site site1.local execute amf.www.production_tracking_planning.install_page --kwargs '{"publish": 1}'
 ```
 
 Omitting `publish`, or passing `false`, saves the copy as an unpublished draft.

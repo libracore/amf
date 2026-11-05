@@ -6,6 +6,25 @@ The published copy now uses a shared production cockpit with consistent navigati
 clear visual hierarchy, compact status labels and a responsive layout. Its route remains
 `/production-tracking-planning`; `#usinage` opens the planning tab directly.
 
+The later density adjustment enlarges the desktop clock to 42 px (28 px on mobile),
+places summary values beside their labels to reduce the four-panel row height, and
+tightens the production card padding, spacing and lane headers without truncating labels.
+
+## Deploying to the live site
+
+A Git merge alone does not create or refresh this database-stored Web Page. There is
+currently no fixture, patch or migration hook that runs its installer. After deploying
+the code, run the following from the live bench, replacing `LIVE_SITE` with its site name:
+
+```sh
+bench --site LIVE_SITE execute amf.www.production_tracking_planning.install_page --kwargs '{"publish": 1}'
+```
+
+This creates the separate page if absent, or refreshes its HTML, CSS and JavaScript if
+already present, then publishes it. Manual creation through the Web Page form is not
+required. Run it after future updates to these page templates as well. The original
+`production-tracking` page is not modified.
+
 ## Production overview
 
 - Four live summaries: ongoing orders, upcoming orders, remaining weekly shipments and overdue shipments.
