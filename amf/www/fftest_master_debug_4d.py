@@ -1154,6 +1154,12 @@ def start_work_order_final(
                         serial_details.item_code
                     )
                 )
+            if abs(flt(row.transfer_qty or row.qty) - 1) > 1e-9:
+                raise ValidationError(
+                    _("Exactly one source unit must consume Serial No {0}.").format(
+                        serial_details.name
+                    )
+                )
             _set_source_serial(row, serial_details, MAIN_STOCK_WAREHOUSE)
             serial_row = row
 
@@ -1197,8 +1203,12 @@ def start_work_order_final(
     finished_row = _finished_good_row(stock_entry, work_order)
     finished_row.manual_target_warehouse_selection = 1
     finished_row.t_warehouse = MAIN_STOCK_WAREHOUSE
+    if cint(frappe.db.get_value("Item", finished_row.item_code, "has_serial_no")):
+        # V12 permits the consumed serial on the output of the same Manufacture
+        # entry. Set the standard field so its naming series cannot replace it.
+        finished_row.serial_no = serial_details.name
     if finished_row.meta.has_field("product_serial_no"):
-        finished_row.product_serial_no = serial_no_id
+        finished_row.product_serial_no = serial_details.name
     _configure_output_rows(stock_entry, work_order, run_log=run_log)
 
     _log(
@@ -1961,6 +1971,10 @@ def _debug_legacy_stock_entry_flow(source_work_order_id, serial_no_id=None, batc
                 "fg_completed_qty": 1,
                 "consume_serial": serial_no_id,
                 "produce_item": source_work_order.production_item,
+                "produce_serial": serial_no_id if cint(frappe.db.get_value(
+                    "Item", source_work_order.production_item, "has_serial_no"
+                )) else None,
+                "product_serial_no": serial_no_id,
             }
         )
 

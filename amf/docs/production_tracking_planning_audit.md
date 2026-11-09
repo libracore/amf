@@ -206,7 +206,7 @@ The installer refreshes only the duplicate from the new source files. It is inte
 not an HTTP-whitelisted method. To recreate or refresh the published copy:
 
 ```sh
-bench --site site1.local execute amf.www.production_tracking_planning.install_page --kwargs '{"publish": true}'
+bench --site site1.local execute amf.www.production_tracking_planning.install_page --kwargs '{"publish": 1}'
 ```
 
 Omitting `publish`, or passing `false`, saves the copy as an unpublished draft.
@@ -214,3 +214,12 @@ Omitting `publish`, or passing `false`, saves the copy as an unpublished draft.
 The copy is also available as a Web Page document in Desk under
 `#Form/Web%20Page/production-tracking-planning`. There is no navigation change to the
 original page.
+
+## Visual redesign, 2026-11-05
+
+Both tabs were subsequently redesigned on the independent published copy. The new
+cockpit adds live summary cards, readable production lanes, explicit date/status cues,
+a machine distribution panel, combined filters and compact row controls. All report
+columns, editing/deletion protections and original-page isolation remain intact. See
+[the redesign notes and screenshots](production_tracking_planning_redesign.md) for the
+current layout and its verification.

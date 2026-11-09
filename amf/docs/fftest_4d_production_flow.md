@@ -65,6 +65,20 @@ including the 4D chain. Failed calls roll back their unit; earlier successfully
 committed units remain complete. The legacy read-only preview now explicitly
 reports `fg_completed_qty = 1` for every planned Stock Entry.
 
+## Serialized final products such as S103623
+
+The legacy final-assembly path also carries the body serial onto a serialized
+finished item. For `541000 -> S103623`, consuming body serial `DB002207` sets
+both the finished row's standard `serial_no` and custom `product_serial_no` to
+`DB002207`. The source row must consume exactly one stock unit with that serial.
+ERPNext V12's native Manufacture carryover moves the existing Serial No record
+to `S103623`; it does not allocate another value from the finished item's
+`DB.######` naming counter. The read-only preview reports the same output serial.
+
+For a non-serialized finished item, the standard serial field remains empty and
+the body serial is recorded in `product_serial_no`. This correction applies to
+future manufacturing calls; it does not repair previously submitted entries.
+
 ## Production sequence
 
 Only Work Orders whose production item starts with `4D` use the new sequence.
@@ -172,3 +186,8 @@ for other manufactured raw variants, serial carryover, normalized BOM
 quantities, existing-stage reuse, custom WIP, automatic and explicit batches,
 Work Order creation/scope, preview behavior, unchanged non-4D routing, and rollback
 after a final-stage failure. They do not initialize a site or post live stock.
+
+Serialized legacy-final tests use `S103623` and `541000` with their configured
+naming series. They verify exact serial carryover for new and existing bodies,
+repeated production, suppression of native auto-generation, serial reuse
+rejection, rollback, source quantity validation, and the read-only preview.

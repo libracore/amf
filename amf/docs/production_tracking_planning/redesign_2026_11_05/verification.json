@@ -1,0 +1,101 @@
+{
+  "date": "2026-11-05",
+  "site": "site1.local",
+  "published_copy": {
+    "name": "production-tracking-planning",
+    "route": "production-tracking-planning",
+    "published": 1,
+    "modified": "2026-11-05 11:25:42.787597",
+    "existing_list_order_preserved": 2
+  },
+  "source_page": {
+    "name": "production-tracking",
+    "unchanged": true,
+    "sha256": "bbcc85e6cb9bebd138df0bd00629199a27ac920ca428b840e047d7164e2310b2"
+  },
+  "source_reports_unchanged": true,
+  "original_backend_and_hooks_unchanged": true,
+  "verification_site_time": "2026-11-05 11:25:47.190925",
+  "live_counts": {
+    "ongoing": 8,
+    "upcoming": 11,
+    "weekly_shipments": 6,
+    "planning_rows": 9,
+    "report_columns": 13,
+    "report_counts": {
+      "Plug à usiner...": 2,
+      "Valve Seat à usiner...": 7
+    }
+  },
+  "validation": {
+    "regression_tests_passed": 25,
+    "production_work_orders_verified_unchanged": 5568,
+    "browser": {
+      "passed": [
+        "Overview: accurate live KPIs, all production cards, complete labels, shipment statuses, no page overflow",
+        "Customer visibility control",
+        "Planning: all report rows and 13 columns, contextual dates, inline editors, delete controls",
+        "Quick filters: overdue, today, unassigned, clear filters and empty states",
+        "Machine distribution bars and click-to-filter",
+        "Search, report filtering and reset",
+        "Unsaved-change bar, changed-only filter and per-row Cancel",
+        "Native save and refresh from icon controls; database changes rolled back",
+        "Delete confirmation cancel, blocked deletion, native fixture deletion and preservation of another pending row",
+        "450px mobile layouts, contained table scrolling and keyboard tab navigation"
+      ],
+      "production_work_orders_deleted": 0,
+      "test_writes": "rolled back",
+      "viewport_desktop": "1600 × 1100",
+      "viewport_mobile": "450 × 960"
+    },
+    "final_visual_pass": "Passed with real data only, no preview fixture in screenshots",
+    "python_compilation": "passed",
+    "javascript_syntax": "passed",
+    "html_structure": "unique identifiers and two accessible tab panels passed",
+    "published_route": {
+      "status": 200,
+      "method": "native Frappe WSGI request",
+      "both_redesigned_panels": true,
+      "editing_and_deletion_present": true
+    },
+    "fractional_quantity_display": "passed"
+  },
+  "source_files": {
+    "www/production_tracking_planning.py": "c09ce5ee0f9ba920d14c3a0616acc6f606e61dd3f9f055ab15e6ccfd97da5853",
+    "templates/includes/production_tracking_planning/page.html": "f8152ccb754de80893917e696200791d73e3871d4b73bbffe5ed6bf29dfa80c8",
+    "templates/includes/production_tracking_planning/page.css": "f87c91de7a70dc6aaf187e0ec1521c4b2d673ef8b3a3f51d9c1b15aa363dbd48",
+    "templates/includes/production_tracking_planning/page.js": "a8c14661ae45c0b208ba746177831b51cf92fc63341007e3431ae4aa9abbd4f1"
+  },
+  "density_adjustment": {
+    "desktop_clock_px": 42,
+    "mobile_clock_px": 28,
+    "measured_layout": {
+      "before": {
+        "board": 602.5999755859375,
+        "card": 136.85000610351562,
+        "clock": 17,
+        "kpi": 120.40000915527344
+      },
+      "after": {
+        "board": 517.5999755859375,
+        "card": 113.5500030517578,
+        "clock": 42,
+        "kpi": 59
+      }
+    },
+    "desktop_and_mobile_visual_check": "passed; mobile clock visible; no page overflow",
+    "installer_command_verified": "bench --site site1.local execute amf.www.production_tracking_planning.install_page --kwargs '{\"publish\": 1}'",
+    "merge_alone_installs_page": false
+  },
+  "overview_intro_placement": {
+    "desktop": "beside the two tabs",
+    "tablet_mobile": "stacked below tabs",
+    "inactive_tab": "hidden while machining tab is active",
+    "keyboard_switching": "passed",
+    "viewports_checked": [
+      1600,
+      1024,
+      450
+    ]
+  }
+}
