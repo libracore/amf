@@ -1,0 +1,197 @@
+{
+  "date": "2026-11-16",
+  "site": "site1.local",
+  "publication": {
+    "name": "production-tracking-planning",
+    "route": "production-tracking-planning",
+    "published": 1,
+    "modified": "2026-11-16 10:08:15.142267",
+    "source_assets_match": true,
+    "original_page_unchanged": true,
+    "original_backend_unchanged": true,
+    "reports_unchanged": true,
+    "http_status": 200,
+    "http_check": "native Frappe WSGI request serves updated desktop CSS"
+  },
+  "browser": {
+    "data_source": "read-only Frappe snapshot; frontend API writes blocked",
+    "viewports": {
+      "1151": {
+        "cardHeight": 154.60000610351562,
+        "clock": 42,
+        "detail": 12,
+        "heading": 18,
+        "introBesideTabs": true,
+        "kpiHeight": 93.60000610351562,
+        "label": 14,
+        "orderMeta": 13,
+        "orderName": 16,
+        "pageWidth": 1139,
+        "viewport": 1151,
+        "planning": {
+          "date": 13,
+          "editor": 14,
+          "header": 12,
+          "pageWidth": 1139,
+          "tableScrolls": true,
+          "viewport": 1151
+        }
+      },
+      "1280": {
+        "cardHeight": 129.10000610351562,
+        "clock": 42,
+        "detail": 12,
+        "heading": 18,
+        "introBesideTabs": true,
+        "kpiHeight": 93.59999084472656,
+        "label": 14,
+        "orderMeta": 13,
+        "orderName": 16,
+        "pageWidth": 1268,
+        "viewport": 1280,
+        "planning": {
+          "date": 13,
+          "editor": 14,
+          "header": 12,
+          "pageWidth": 1268,
+          "tableScrolls": true,
+          "viewport": 1280
+        }
+      },
+      "1600": {
+        "cardHeight": 131.09999084472656,
+        "clock": 42,
+        "detail": 12,
+        "heading": 18,
+        "introBesideTabs": true,
+        "kpiHeight": 61.20001220703125,
+        "label": 14,
+        "orderMeta": 13,
+        "orderName": 16,
+        "pageWidth": 1588,
+        "viewport": 1600,
+        "planning": {
+          "date": 13,
+          "editor": 14,
+          "header": 12,
+          "pageWidth": 1588,
+          "tableScrolls": true,
+          "viewport": 1600
+        }
+      },
+      "1920": {
+        "cardHeight": 131.09999084472656,
+        "clock": 42,
+        "detail": 12,
+        "heading": 18,
+        "introBesideTabs": true,
+        "kpiHeight": 61.20001220703125,
+        "label": 14,
+        "orderMeta": 13,
+        "orderName": 16,
+        "pageWidth": 1908,
+        "viewport": 1920,
+        "planning": {
+          "date": 13,
+          "editor": 14,
+          "header": 12,
+          "pageWidth": 1908,
+          "tableScrolls": true,
+          "viewport": 1920
+        }
+      },
+      "2560": {
+        "cardHeight": 131.09999084472656,
+        "clock": 42,
+        "detail": 12,
+        "heading": 18,
+        "introBesideTabs": true,
+        "kpiHeight": 61.20001220703125,
+        "label": 14,
+        "orderMeta": 13,
+        "orderName": 16,
+        "pageWidth": 2548,
+        "viewport": 2560,
+        "planning": {
+          "date": 13,
+          "editor": 14,
+          "header": 12,
+          "pageWidth": 2548,
+          "tableScrolls": true,
+          "viewport": 2560
+        }
+      },
+      "1024": {
+        "cardHeight": 110.1999969482422,
+        "clock": 42,
+        "detail": 10,
+        "heading": 14,
+        "introBesideTabs": false,
+        "kpiHeight": 87,
+        "label": 11,
+        "orderMeta": 10,
+        "orderName": 12,
+        "pageWidth": 1012,
+        "viewport": 1024,
+        "planning": {
+          "date": 10,
+          "editor": 11,
+          "header": 9,
+          "pageWidth": 1012,
+          "tableScrolls": true,
+          "viewport": 1024
+        }
+      },
+      "450": {
+        "cardHeight": 127.34999084472656,
+        "clock": 28,
+        "detail": 9,
+        "heading": 14,
+        "introBesideTabs": false,
+        "kpiHeight": 50.600006103515625,
+        "label": 10,
+        "orderMeta": 9,
+        "orderName": 11,
+        "pageWidth": 438,
+        "viewport": 450,
+        "planning": {
+          "date": 10,
+          "editor": 11,
+          "header": 9,
+          "pageWidth": 438,
+          "tableScrolls": true,
+          "viewport": 450
+        }
+      }
+    },
+    "before": {
+      "cardHeight": 113.5500030517578,
+      "clock": 42,
+      "detail": 10,
+      "heading": 14,
+      "introBesideTabs": true,
+      "kpiHeight": 59,
+      "label": 11,
+      "orderMeta": 10,
+      "orderName": 13,
+      "pageWidth": 1588,
+      "viewport": 1600,
+      "planning": {
+        "date": 10,
+        "editor": 11,
+        "header": 9,
+        "pageWidth": 1588,
+        "tableScrolls": true,
+        "viewport": 1600
+      }
+    },
+    "passed": true
+  },
+  "css_syntax": "passed",
+  "backend_tests": "not rerun for this CSS-only change; prior 25-test run documented in redesign notes",
+  "source_files": {
+    "templates/includes/production_tracking_planning/page.html": "f8152ccb754de80893917e696200791d73e3871d4b73bbffe5ed6bf29dfa80c8",
+    "templates/includes/production_tracking_planning/page.css": "02779ab15e32a3898f0128b6bfb36bee44de7b0f7fc2331c9578c34f93739ec3",
+    "templates/includes/production_tracking_planning/page.js": "a8c14661ae45c0b208ba746177831b51cf92fc63341007e3431ae4aa9abbd4f1"
+  }
+}

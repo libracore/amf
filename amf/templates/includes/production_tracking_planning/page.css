@@ -233,3 +233,49 @@ body.pt-planning-page { background: #f3f5f8; }
   .pt-page .pt-navigation-status { align-items: flex-start; margin-top: 11px; }
   .pt-page .pt-navigation-status .pt-sync { margin-top: 0; }
 }
+/* Larger workshop displays need readable text without scaling panel spacing. */
+@media (min-width: 1151px) {
+  .pt-page { font-size: 16px; }
+  .pt-page .pt-brand strong { font-size: 22px; }
+  .pt-page .pt-section-bar h2, .pt-page .pt-section-title h2 { font-size: 18px; }
+  .pt-page .pt-tab, .pt-page .pt-order-name, .pt-page .pt-notes textarea { font-size: 16px; }
+  .pt-page .pt-button, .pt-page .pt-text-button,
+  .pt-page .pt-navigation-intro p, .pt-page .pt-panel-heading p,
+  .pt-page .pt-kpi-label, .pt-page .pt-workload-heading,
+  .pt-page .pt-filter-chips button, .pt-page .pt-search input,
+  .pt-page .pt-select-filters select, .pt-page .pt-shipment,
+  .pt-page .pt-feedback, .pt-page .pt-pending-bar,
+  .pt-page .pt-table, .pt-page .pt-table input, .pt-page .pt-table select { font-size: 14px; }
+  .pt-page .pt-clock, .pt-page .pt-sync, .pt-page .pt-live-label,
+  .pt-page .pt-tab-count, .pt-page .pt-count-pill,
+  .pt-page .pt-order-id, .pt-page .pt-order-meta, .pt-page .pt-order-bottom,
+  .pt-page .pt-order-stage, .pt-page .pt-workload small,
+  .pt-page .pt-shipment-id, .pt-page .pt-shipment-date,
+  .pt-page .pt-select-filters label, .pt-page #note-status,
+  .pt-page .pt-table-caption, .pt-page .pt-table-footer,
+  .pt-page .pt-pending-bar button,
+  .pt-page .pt-table .pt-id-cell a, .pt-page .pt-table .pt-readonly,
+  .pt-page .pt-table input[type=date], .pt-page .pt-table select[data-field=progress],
+  .pt-page .pt-drawing-link { font-size: 13px; }
+  .pt-page .pt-eyebrow, .pt-page .pt-kpi-detail,
+  .pt-page .pt-section-bar p, .pt-page .pt-section-title span:not(.pt-section-icon),
+  .pt-page .pt-legend, .pt-page .pt-lane h3, .pt-page .pt-lane-count,
+  .pt-page .pt-badge, .pt-page .pt-source-badge, .pt-page .pt-date-hint,
+  .pt-page .pt-row-saved, .pt-page .pt-table th,
+  .pt-page .pt-filter-chips button > span, .pt-page .pt-page-footer { font-size: 12px; }
+  .pt-page .pt-empty { font-size: 14px; }
+  .pt-page .pt-kpi-label, .pt-page .pt-kpi-detail { line-height: 1.3; }
+  .pt-page .pt-kpi strong { font-size: 32px; }
+  .pt-page .pt-order-top { flex-wrap: wrap; }
+  .pt-page .pt-operator-avatar { font-size: 10px; width: 23px; height: 23px; }
+  .pt-page .pt-shipment { grid-template-columns: 124px minmax(0, 1fr) 82px 100px; }
+  .pt-page .pt-search { height: 40px; }
+  .pt-page .pt-select-filters select { height: 38px; max-width: 220px; }
+  .pt-page .pt-table input[data-field=qty] { min-width: 100px; }
+  .pt-page .pt-table input[type=date] { min-width: 148px; }
+  .pt-page .pt-table select[data-field=progress] { min-width: 132px; }
+  .pt-page .pt-table .pt-source,
+  .pt-page .pt-table th:first-child { width: 104px; min-width: 104px; max-width: 104px; }
+  .pt-page .pt-table .pt-id-cell,
+  .pt-page .pt-table th:nth-child(2) { left: 104px; width: 132px; min-width: 132px; }
+}
