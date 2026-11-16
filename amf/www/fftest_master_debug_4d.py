@@ -2020,12 +2020,13 @@ def create_new_wo(
     bom_no=None,
     use_multi_level_bom=None,
 ):
-    """Create and submit a one-item Work Order for a serialized component."""
+    """Create a Work Order; component demand is linked through its parent."""
     bom_no = bom_no or get_default_bom(item_code)
     bom = _get_valid_bom(bom_no)
     if bom.item != item_code:
         raise ValidationError(_("BOM {0} does not produce Item {1}.").format(bom_no, item_code))
 
+    parent = _get_work_order(parent_work_order) if parent_work_order else None
     work_order = frappe.new_doc("Work Order")
     work_order.production_item = item_code
     work_order.bom_no = bom_no
@@ -2033,7 +2034,19 @@ def create_new_wo(
         work_order.use_multi_level_bom = cint(use_multi_level_bom)
     work_order.qty = flt(qty)
     work_order.company = company or COMPANY
-    work_order.sales_order = sales_order or ""
+    # V12 sales_order means demand for this production_item. A component is
+    # manufactured for its parent, not as another item sold on the parent's SO.
+    work_order.sales_order = "" if parent else sales_order or ""
+    if parent:
+        work_order.project = parent.get("project")
+        if sales_order:
+            _log(
+                run_log,
+                "Component {0} follows Sales Order {1} through parent Work Order {2}; "
+                "no direct Sales Order demand is assigned to the component.".format(
+                    item_code, sales_order, parent.name
+                ),
+            )
     work_order.fg_warehouse = MAIN_STOCK_WAREHOUSE
     if work_order.meta.has_field("parent_work_order"):
         work_order.parent_work_order = parent_work_order

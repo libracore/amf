@@ -13,6 +13,7 @@ from unittest.mock import Mock, patch
 
 import frappe
 from frappe import ValidationError, _dict
+from erpnext.manufacturing.doctype.work_order import work_order as work_order_module
 from erpnext.stock.doctype.serial_no import serial_no as serial_module
 from erpnext.stock.doctype.stock_entry import stock_entry as stock_entry_module
 
@@ -49,7 +50,10 @@ def row(item, qty=1, bom_no=None):
 
 class MemoryDatabase:
     def __init__(self):
-        self.docs = {doctype: {} for doctype in ("Item", "BOM", "Work Order", "Serial No", "Batch", "Stock Entry")}
+        self.docs = {doctype: {} for doctype in (
+            "Item", "BOM", "Work Order", "Serial No", "Batch", "Stock Entry",
+            "Sales Order", "Sales Order Item", "Packed Item",
+        )}
         self.stock = {}
         self.locks = []
         self.commits = 0
@@ -59,6 +63,7 @@ class MemoryDatabase:
         self.sequence = 0
         self.snapshot = None
         self.native_unconsumed = False
+        self.native_sales_orders = False
 
     def commit(self):
         self.commits += 1
@@ -98,6 +103,24 @@ class MemoryDatabase:
         return result if as_dict else tuple(result.values())
 
     def sql(self, query, params=(), as_dict=False):
+        if "`tabSales Order`" in query:
+            order, item = params[:2]
+            matches = self.find("Sales Order Item", {"parent": order, "item_code": item})
+            header = self.docs["Sales Order"].get(order)
+            return [_dict(name=order, delivery_date="2026-12-01", project=header.project)] if (
+                header and header.docstatus == 1 and matches
+            ) else []
+        if "sum(stock_qty) from `tabSales Order Item`" in query:
+            return [[sum(row.stock_qty for row in self.find(
+                "Sales Order Item", {"parent": params[0], "item_code": params[1]}
+            ))]]
+        if "sum(qty) from `tabPacked Item`" in query:
+            return [[0]]
+        if "sum(qty) from `tabWork Order`" in query:
+            item, order, excluded_name = params
+            return [[sum(doc.qty for doc in self.docs["Work Order"].values()
+                         if doc.production_item == item and doc.sales_order == order
+                         and doc.docstatus < 2 and doc.name != excluded_name)]]
         if "SELECT DISTINCT woi.item_code" in query:
             return [_dict(item_code=row.item_code)
                     for row in self.docs["Work Order"][params[0]].required_items
@@ -113,6 +136,11 @@ class MemoryDatabase:
             item, batch, warehouse = params
             return [[self.stock.get((item, batch, warehouse), 0)]]
         raise AssertionError(query)
+
+    def get_single_value(self, doctype, fieldname):
+        if (doctype, fieldname) == ("Manufacturing Settings", "overproduction_percentage_for_sales_order"):
+            return 0
+        raise AssertionError((doctype, fieldname))
 
     def get_all(self, doctype, filters=None, fields=None, **kwargs):
         if doctype == "BOM Item":
@@ -143,7 +171,7 @@ class MemoryDatabase:
             doc.insert = insert
             return doc
         if doctype == "Work Order":
-            doc = Document(doctype=doctype, status="Not Started", produced_qty=0,
+            doc = Document(doctype=doctype, docstatus=0, status="Not Started", produced_qty=0,
                            material_transferred_for_manufacturing=0, wip_step=0,
                            skip_transfer=0, project=None, parent_work_order="", sales_order="",
                            use_multi_level_bom=1,
@@ -151,9 +179,16 @@ class MemoryDatabase:
             doc.meta = SimpleNamespace(has_field=lambda name: True)
             doc.set_default_warehouse = lambda: None
             doc.set_work_order_operations = lambda: None
+            doc.check_sales_order_on_hold_or_close = lambda: work_order_module.WorkOrder.check_sales_order_on_hold_or_close(doc)
+            doc.validate_work_order_against_so = lambda: work_order_module.WorkOrder.validate_work_order_against_so(doc)
+
+            def validate_sales_order():
+                if self.native_sales_orders:
+                    work_order_module.WorkOrder.validate_sales_order(doc)
 
             def insert():
                 doc.name = self.next_name("WO")
+                validate_sales_order()
                 bom = self.docs["BOM"][doc.bom_no]
                 doc.required_items = [_dict(
                     component, required_qty=component.stock_qty / bom.quantity * doc.qty,
@@ -162,6 +197,7 @@ class MemoryDatabase:
                 self.docs[doctype][doc.name] = Document(doc)
 
             def save():
+                validate_sales_order()
                 self.docs[doctype][doc.name] = Document(doc)
 
             def submit():
@@ -289,6 +325,7 @@ class TestFFTest4DFlow(unittest.TestCase):
             self.stack.enter_context(patch.object(frappe, name, value, create=True))
         self.stack.enter_context(patch.object(flow, "_", lambda message: message))
         self.stack.enter_context(patch.object(serial_module, "_", lambda message: message))
+        self.stack.enter_context(patch.object(work_order_module, "_", lambda message: message))
         self.stack.enter_context(patch.object(flow, "_ExecutionLog", lambda *args: SimpleNamespace(
             name="LOG-TEST", add=lambda *args: None, flush=lambda: None)))
         self.stack.enter_context(patch.object(flow, "create_batch_name", lambda *args: self.database.next_name("BATCH")))
@@ -959,6 +996,120 @@ class TestFFTest4DFlow(unittest.TestCase):
                          ("DB002207", "DB002207", "DB002207"))
         self.assertEqual(self.database.docs, before)
         self.assertEqual(self.database.entries, [])
+
+    def enable_native_sales_order_validation(self, ordered_items):
+        """Run V12's actual Sales Order validator during fake WO insert/save."""
+        self.database.native_sales_orders = True
+        self.database.docs["Sales Order"]["SO-TEST"] = _dict(
+            name="SO-TEST", docstatus=1, status="To Deliver and Bill", project=None,
+        )
+        self.database.docs["Sales Order Item"] = {
+            code: _dict(parent="SO-TEST", item_code=code, qty=qty, stock_qty=qty)
+            for code, qty in ordered_items.items()
+        }
+        self.database.begin_snapshot()
+
+    def test_native_sales_order_validator_reproduces_the_component_item_error(self):
+        self.enable_native_sales_order_validation({"4D00AB": 4})
+        with self.assertRaisesRegex(ValidationError, "Sales Order SO-TEST is not valid"):
+            flow.create_new_wo(item_code="5D10AB", sales_order="SO-TEST")
+        self.assertEqual(len(self.database.docs["Work Order"]), 3)
+        self.assertEqual(self.database.entries, [])
+
+    def test_legacy_component_order_keeps_sales_demand_on_the_parent(self):
+        self.use_42_flow()
+        self.enable_native_sales_order_validation({"420033": 4})
+        root = self.database.docs["Work Order"]["WO-42"]
+        root.project = "PROJECT-TEST"
+        del self.database.docs["Work Order"]["WO-521000"]
+        self.database.begin_snapshot()
+        result = flow.make_stock_entry(root.name, "BODY-1")
+        self.assertNotIn("error", result)
+        body = next(order for order in self.database.docs["Work Order"].values()
+                    if order.production_item == "521000")
+        self.assertEqual((body.sales_order, body.parent_work_order, body.project),
+                         ("", root.name, "PROJECT-TEST"))
+        self.assertEqual(self.database.docs["Work Order"][root.name].sales_order, "SO-TEST")
+
+    def test_4d_component_orders_preserve_parent_sales_order_and_project(self):
+        self.enable_native_sales_order_validation({"4D00AB": 4})
+        self.database.docs["Work Order"]["WO-4D00AB"].project = "PROJECT-TEST"
+        del self.database.docs["Work Order"]["WO-5D10AB"]
+        del self.database.docs["Work Order"]["WO-5D00AB"]
+        self.database.begin_snapshot()
+        self.assertNotIn("error", self.execute())
+        orders = list(self.database.docs["Work Order"].values())
+        body = next(order for order in orders if order.production_item == "5D10AB")
+        raw = next(order for order in orders if order.production_item == "5D00AB")
+        self.assertEqual(body.parent_work_order, "WO-4D00AB")
+        self.assertEqual(raw.parent_work_order, body.name)
+        self.assertEqual((body.sales_order, raw.sales_order), ("", ""))
+        self.assertEqual((body.project, raw.project), ("PROJECT-TEST", "PROJECT-TEST"))
+        self.assertEqual(self.database.docs["Work Order"]["WO-4D00AB"].sales_order, "SO-TEST")
+
+    def test_purchased_4d_raw_item_needs_only_a_parent_linked_body_order(self):
+        self.use_purchased_5d0000()
+        self.enable_native_sales_order_validation({"4D00AB": 4})
+        del self.database.docs["Work Order"]["WO-5D10AB"]
+        self.database.begin_snapshot()
+        self.assertNotIn("error", self.execute())
+        body = next(order for order in self.database.docs["Work Order"].values()
+                    if order.production_item == "5D1000")
+        self.assertEqual((body.sales_order, body.parent_work_order), ("", "WO-4D00AB"))
+        self.assertEqual(len(self.database.docs["Work Order"]), 2)
+
+    def test_p202_fallback_order_does_not_copy_final_item_sales_order(self):
+        self.use_purchased_5d0000()
+        self.enable_native_sales_order_validation({"4D00AB": 4})
+        with patch.object(flow, "get_default_bom", return_value="BOM-5D10AB"):
+            target = flow._select_p202_work_order_for_main_stock([], "WO-4D00AB")
+        order = self.database.docs["Work Order"][target["work_order_name"]]
+        self.assertEqual((order.production_item, order.sales_order, order.parent_work_order),
+                         ("5D1000", "", "WO-4D00AB"))
+        self.assertEqual(self.database.docs["Work Order"]["WO-4D00AB"].sales_order, "SO-TEST")
+
+    def test_later_units_can_create_new_component_orders_after_the_first_order_is_completed(self):
+        self.use_42_flow()
+        self.enable_native_sales_order_validation({"420033": 4})
+        body = self.database.docs["Work Order"]["WO-521000"]
+        body.sales_order = ""
+        body.qty = 1
+        body.required_items[0].required_qty = 1
+        self.database.begin_snapshot()
+        for number in range(1, 5):
+            self.assertNotIn("error", flow.make_stock_entry("WO-42", "BODY-{}".format(number)))
+            self.assertEqual(self.database.docs["Work Order"]["WO-42"].produced_qty, number)
+            self.assertEqual(self.database.docs["Work Order"]["WO-42"].sales_order, "SO-TEST")
+            self.database.begin_snapshot()
+        bodies = [order for order in self.database.docs["Work Order"].values()
+                  if order.production_item == "521000"]
+        self.assertEqual(len(bodies), 4)
+        self.assertTrue(all(order.sales_order == "" and order.parent_work_order == "WO-42"
+                            for order in bodies))
+
+    def test_standalone_order_retains_a_valid_direct_sales_order(self):
+        self.enable_native_sales_order_validation({"5D10AB": 4})
+        del self.database.docs["Work Order"]["WO-5D10AB"]
+        order = flow.create_new_wo(item_code="5D10AB", sales_order="SO-TEST")
+        self.assertEqual((order.sales_order, order.docstatus), ("SO-TEST", 1))
+        self.assertFalse(order.parent_work_order)
+
+    def test_standalone_order_still_rejects_closed_on_hold_draft_or_cancelled_sales_orders(self):
+        self.enable_native_sales_order_validation({"5D10AB": 4})
+        for status, docstatus, expected in (
+            ("Closed", 1, "is Closed"), ("On Hold", 1, "is On Hold"),
+            ("Draft", 0, "is not valid"), ("Cancelled", 2, "is not valid"),
+        ):
+            with self.subTest(status=status):
+                header = self.database.docs["Sales Order"]["SO-TEST"]
+                header.update({"status": status, "docstatus": docstatus})
+                with self.assertRaisesRegex(ValidationError, expected):
+                    flow.create_new_wo(item_code="5D10AB", sales_order="SO-TEST")
+
+    def test_standalone_order_still_enforces_the_sales_order_quantity(self):
+        self.enable_native_sales_order_validation({"5D10AB": 4})
+        with self.assertRaisesRegex(work_order_module.OverProductionError, "Cannot produce more Item"):
+            flow.create_new_wo(item_code="5D10AB", sales_order="SO-TEST")
 
 
 if __name__ == "__main__":
