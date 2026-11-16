@@ -18,7 +18,7 @@ SALES_ORDER_OTIF_CUSTOM_FIELDS = {
 			"fieldname": ADMINISTRATOR_SECTION_FIELD,
 			"fieldtype": "Section Break",
 			"label": "Administrator",
-			"insert_after": "contact_phone",
+			"insert_after": "edi_file",
 			"no_copy": 1,
 			"print_hide": 1,
 		},
@@ -39,8 +39,9 @@ SALES_ORDER_OTIF_CUSTOM_FIELDS = {
 
 
 def sync_sales_order_otif_custom_fields():
-	"""Install Sales Order controls used by OTIF KPI reporting."""
-	create_custom_fields(SALES_ORDER_OTIF_CUSTOM_FIELDS, update=True)
+	"""Create missing OTIF controls without overwriting the exported layout."""
+	# amf/custom/sales_order.json owns existing field definitions and positions.
+	create_custom_fields(SALES_ORDER_OTIF_CUSTOM_FIELDS, update=False)
 
 
 def get_skip_otif_kpi_condition(table_alias="so"):

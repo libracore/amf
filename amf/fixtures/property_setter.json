@@ -1,0 +1,12 @@
+[
+ {
+  "doc_type": "Work Order",
+  "doctype": "Property Setter",
+  "doctype_or_field": "DocField",
+  "field_name": "sales_order_item",
+  "name": "Work Order-sales_order_item-allow_on_submit",
+  "property": "allow_on_submit",
+  "property_type": "Check",
+  "value": "1"
+ }
+]
