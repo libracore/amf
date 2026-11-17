@@ -12,6 +12,12 @@ tightens the production card padding, spacing and lane headers without truncatin
 The overview eyebrow, title and description sit beside the two navigation tabs on wide
 screens, stack below them on tablet/mobile, and hide when the machining tab is active.
 
+The 2026-11-16 readability update increases text on screens from 1,151 px wide in both
+tabs: order names and notes use 16 px, section headings 18 px, planning editors 14 px,
+and supporting labels 12–13 px. Summary text keeps compact line spacing; the table's
+pinned columns and quantity/date/progress editors widen to fit the larger type. The 42 px clock
+and the existing tablet/mobile typography are preserved.
+
 ## Deploying to the live site
 
 A Git merge alone does not create or refresh this database-stored Web Page. There is
@@ -85,3 +91,11 @@ Screenshots and deployment verification are in
 - [Machine distribution](production_tracking_planning/redesign_2026_11_05/planning_machines.png)
 - [Production overview — mobile](production_tracking_planning/redesign_2026_11_05/overview_mobile.png)
 - [Machining planning — mobile](production_tracking_planning/redesign_2026_11_05/planning_mobile.png)
+
+The later typography checks and refreshed screenshots are recorded in
+[`production_tracking_planning/readability_2026_11_16/`](production_tracking_planning/readability_2026_11_16/).
+They use a read-only snapshot from the native Frappe methods with frontend API writes
+blocked. Firefox checks cover both tabs at 1,151, 1,280, 1,600, 1,920, 2,560, 1,024 and
+450 px, including font sizes, compact summaries, navigation placement, pinned columns
+and contained table scrolling. These layout checks do not repeat the earlier backend
+integration tests.

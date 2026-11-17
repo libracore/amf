@@ -12,6 +12,15 @@ app_color = "#2b47d9"
 app_email = "info@libracore.com"
 app_license = "AGPL"
 
+# Keep this standard-field override separate from full Work Order exports,
+# which would also replace unrelated Work Order property setters in Frappe v12.
+fixtures = [
+    {
+        "dt": "Property Setter",
+        "filters": [["name", "=", "Work Order-sales_order_item-allow_on_submit"]],
+    },
+]
+
 # Include in <head>
 # ------------------
 

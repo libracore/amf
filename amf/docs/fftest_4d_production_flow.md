@@ -35,6 +35,36 @@ quantity supplied inside a batch-selection object does not override the BOM.
 The production page/FFTest caller must use the new module path to activate this
 copy. No production call was made while implementing or testing it.
 
+## Sales Orders on generated component Work Orders
+
+Keep the customer's Sales Order on the final-product Work Order. An automatically
+created component Work Order uses `parent_work_order` to follow that production
+demand, leaves its own standard `sales_order` empty, and inherits its parent's
+project. Nested component orders retain the same connection through their parent
+chain. This rule is centralized in `create_new_wo` for the legacy, P202 and 4D
+creation paths. Existing Work Orders are not edited by this correction.
+
+In ERPNext V12, `sales_order` on a Work Order means that its **production item**
+is sold on that order, directly or through supported packing/bundle rows. It is
+not a general customer-reference field for every item in the product's BOM.
+Previously, FFTest copied the final product's Sales Order onto a new component
+order. The native `WorkOrder.validate_sales_order` then rejected the component
+because it was absent from the Sales Order, raising `Sales Order ... is not valid`
+(`Commande Client ... invalide` in French) during `work_order.insert()`.
+
+For example, logs from 2026-11-09 show `OF-04785` / `SO-01521` failing while
+creating `511000`: the Sales Order contains `410040`, not `511000`. The same
+failure was reproduced on unsaved Work Orders using the installed native
+validator for `SO-01522` / `551000` and `SO-01505` / `541000`. No stock was posted
+for these reproductions.
+
+The error appeared only when a component Work Order had to be created; an
+available existing component order avoided that insertion. Removing the final
+Work Order's Sales Order also avoided it because the copied value was then empty.
+The corrected creation path preserves the customer's reference on the final
+order. Standalone Work Orders without a manufacturing parent still retain their
+explicit Sales Order and run the normal item, status and quantity validations.
+
 ## One unit per call, including 42 products
 
 A Work Order for four products keeps Quantity = 4. Run the endpoint four times,
@@ -191,3 +221,10 @@ Serialized legacy-final tests use `S103623` and `541000` with their configured
 naming series. They verify exact serial carryover for new and existing bodies,
 repeated production, suppression of native auto-generation, serial reuse
 rejection, rollback, source quantity validation, and the read-only preview.
+
+Sales Order tests execute V12's native Work Order Sales Order validator during
+in-memory insert/save. They reproduce the invalid component-item link and cover
+legacy, P202, purchased-raw and three-stage 4D component creation, parent/project
+retention, and creating another component order after the first unit completes.
+Standalone orders retain native rejection of wrong items, closed/on-hold or
+unsubmitted/cancelled Sales Orders, and production beyond the ordered quantity.

@@ -46,8 +46,7 @@ def after_insert_handler(doc, method=None):
     # Save the barcode path in a custom field 'barcode' in the document
     doc.db_set('barcode', attached_file.file_url)
 
-    # Commit the transaction to ensure the changes are saved
-    frappe.db.commit()
+    # The request or migration commits the batch and its stock links together.
 
 # Example usage or test function
 def test_generate_barcode():

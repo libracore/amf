@@ -65,7 +65,9 @@ CUSTOM_ITEM_FIELDS = {
 
 def sync_custom_item_configuration():
 	"""Install the field and propagate existing custom Valve Heads to Products."""
-	create_custom_fields(CUSTOM_ITEM_FIELDS, update=True)
+	for doctype, fields in CUSTOM_ITEM_FIELDS.items():
+		# Sales Order definitions and positions belong to its customization export.
+		create_custom_fields({doctype: fields}, update=(doctype != "Sales Order"))
 	frappe.clear_cache(doctype="Item")
 	return sync_all_custom_products()
 
