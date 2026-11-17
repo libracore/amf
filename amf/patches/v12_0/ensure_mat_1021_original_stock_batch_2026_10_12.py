@@ -27,6 +27,11 @@ def execute():
     if frappe.local.site != "site1.local":
         return
 
+    ensure_original_stock_batch()
+
+
+def ensure_original_stock_batch():
+    """Validate and batch the matching stock entries independently of the site name."""
     if not frappe.db.get_value("Item", ITEM_CODE, "has_batch_no"):
         frappe.throw("MAT.1021 must be batch tracked before assigning its original stock.")
 

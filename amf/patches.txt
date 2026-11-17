@@ -41,3 +41,4 @@ amf.patches.v12_0.update_item_creation_rvm_mini
 amf.patches.v12_0.update_item_creation_rvm_variants
 amf.patches.v12_0.update_item_creation_rvm_numbering
 amf.patches.v12_0.repair_mat_1021_batch_chain_2026_11_17
+amf.patches.v12_0.apply_mat_1021_production_batch_setup_2026_11_17

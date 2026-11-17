@@ -13,6 +13,11 @@ def execute():
     if frappe.local.site != "site1.local":
         return
 
+    ensure_receipt_batch()
+
+
+def ensure_receipt_batch():
+    """Validate and batch the matching receipt on a development or production site."""
     item = frappe.db.get_value(
         "Item", ITEM_CODE, ["is_stock_item", "disabled", "has_batch_no"], as_dict=True
     )

@@ -62,7 +62,11 @@ def execute():
     Only batch metadata changes; quantities, valuation, and GL remain unchanged.
     The caller owns the transaction.
     """
-    if frappe.local.site != "site1.local":
+    # Production and development may have different site names. Scope this data
+    # repair by the receipt's item row; the helpers validate every affected row.
+    if not frappe.db.exists(
+        "Purchase Receipt Item", {"parent": purchased.RECEIPT_NAME, "item_code": original.ITEM_CODE}
+    ):
         return
 
     detail, ledger = _validate_consumption()
@@ -72,8 +76,8 @@ def execute():
     )
 
     # Restore the two source batches even when their older migrations are logged.
-    purchased.execute()
-    original.execute()
+    purchased.ensure_receipt_batch()
+    original.ensure_original_stock_batch()
     batch_no = frappe.db.get_value("Stock Entry Detail", original.SOURCE_DETAIL, "batch_no")
     # The original receipt has no recorded manufacturing date. Batch defaults
     # must not substitute the repair date for the material's actual age.
