@@ -55,7 +55,10 @@
   "post_feedback",
   "follow_up",
   "dept_inform",
-  "comments"
+  "comments",
+  "feedback_request",
+  "source_doctype",
+  "source_name"
  ],
  "fields": [
   {
@@ -67,7 +70,7 @@
    "fieldname": "type_interaction",
    "fieldtype": "Select",
    "label": "Type Interaction",
-   "options": "\nCall\nEmail\nVisit\nCongress / Trade Show\nOther"
+   "options": "\nCall\nEmail\nVisit\nCongress / Trade Show\nOther\nSO\nIssue"
   },
   {
    "depends_on": "eval:doc.type_interaction=='Other'",
@@ -117,13 +120,15 @@
   {
    "fieldname": "amf_overall",
    "fieldtype": "Rating",
-   "label": "How satisfied was the customer with AMF overall?"
+   "label": "How satisfied was the customer with AMF overall?",
+   "reqd": 1
   },
   {
    "fieldname": "recommend",
    "fieldtype": "Select",
    "label": "How likely is the customer to recommend AMF to a colleague or professional in their industry?",
-   "options": "\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10"
+   "options": "\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10",
+   "reqd": 1
   },
   {
    "fieldname": "pre_sale",
@@ -294,7 +299,7 @@
   {
    "fieldname": "comments",
    "fieldtype": "Text Editor",
-   "label": "Additional Comments or Observations"
+   "label": "D-3. Are there any evolving needs or expectations you have for future interactions with AMF?"
   },
   {
    "fieldname": "section_break_4",
@@ -327,6 +332,31 @@
    "fieldtype": "Data",
    "label": "Title",
    "read_only": 1
+  },
+  {
+   "fieldname": "feedback_request",
+   "fieldtype": "Link",
+   "options": "Satisfaction Feedback Request",
+   "label": "Feedback Request",
+   "read_only": 1,
+   "no_copy": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "source_doctype",
+   "fieldtype": "Link",
+   "options": "DocType",
+   "label": "Source Type",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "source_name",
+   "fieldtype": "Dynamic Link",
+   "options": "source_doctype",
+   "label": "Source",
+   "read_only": 1,
+   "no_copy": 1
   }
  ],
  "is_submittable": 1,

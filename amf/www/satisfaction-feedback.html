@@ -1,0 +1,187 @@
+{% extends "templates/web.html" %}
+<!-- no-cache -->
+<!-- no-sitemap -->
+{% block head_include %}
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="stylesheet" href="/assets/amf/css/satisfaction_feedback.css?v=20261120">
+{% endblock %}
+{% block navbar %}{% endblock %}
+{% block footer %}{% endblock %}
+{% block banner %}{% endblock %}
+{% block breadcrumbs %}{% endblock %}
+{% block page_container %}<div class="amf-feedback-page">{{ self.page_content() }}</div>{% endblock %}
+{% block page_content %}
+<main class="amf-feedback">
+  <header class="amf-feedback-brand" aria-label="AMF — Advanced Microfluidics">
+    <img class="amf-feedback-logo" src="/assets/amf/images/branding/amf-logo-tagline.svg" width="150" height="95" alt="AMF — Advanced Microfluidics">
+    <p class="amf-feedback-brand-note">Your AMF experience</p>
+  </header>
+  <div class="amf-feedback-layout">
+    <aside class="amf-feedback-intro" aria-labelledby="feedback-title">
+      <p class="amf-feedback-eyebrow">Customer experience</p>
+      <h1 id="feedback-title">Your feedback<br>moves us<br> <span>forward.</span></h1>
+      <p class="amf-feedback-intro-copy">Tell us about your experience with AMF. Your perspective helps us improve, one drop at a time.</p>
+      <p class="amf-feedback-time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>About 1 minute</p>
+      <svg class="amf-feedback-flow" viewBox="0 0 420 160" fill="none" aria-hidden="true">
+        <path d="M-20 125H15Q30 125 30 110V36Q30 20 46 20Q62 20 62 36V110Q62 126 78 126Q94 126 94 110V36Q94 20 110 20Q126 20 126 36V110Q126 126 142 126Q158 126 158 110V36Q158 20 174 20Q190 20 190 36V110Q190 126 206 126Q222 126 222 110V36Q222 20 238 20Q254 20 254 36V110Q254 126 270 126Q286 126 286 110V36Q286 20 302 20Q318 20 318 36V110Q318 126 334 126Q350 126 350 110V36Q350 20 366 20Q382 20 382 36V110Q382 126 398 126H440" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+      </svg>
+      <p class="amf-feedback-signature">Your input. A better experience for everyone.</p>
+    </aside>
+    <section class="amf-feedback-body" aria-label="Your feedback">
+      {% if invalid_link %}
+      <div class="amf-feedback-state">
+        <div class="amf-feedback-state-icon" aria-hidden="true">↗</div>
+        <h2>This link is unavailable</h2>
+        <p>This feedback link is invalid or no longer available. Please open the original link in your AMF email.</p>
+        <p class="amf-feedback-state-note">If the problem continues, please contact the AMF team.</p>
+      </div>
+      {% else %}
+      <div id="feedback-thanks" class="amf-feedback-state" role="status" tabindex="-1" {% if not responded %}hidden{% endif %}>
+        <div class="amf-feedback-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg></div>
+        <h2>Thank you for your feedback!</h2>
+        <p>We truly appreciate your input and look forward to continually improving our services.</p>
+        <p class="amf-feedback-state-note">Your response has been saved. You can now close this page.</p>
+      </div>
+      {% if not responded %}
+      <form id="amf-feedback-form" method="post" action="/api/method/amf.master_crm.feedback.submit_feedback">
+        <input type="hidden" name="token" value="{{ token | e }}">
+        <div class="amf-feedback-form-heading"><h2>A few words. A real difference.</h2><span class="amf-feedback-required">* Required</span></div>
+        <fieldset aria-describedby="satisfaction-question satisfaction-selection">
+          <legend><span class="amf-feedback-step">A-1</span>Overall satisfaction *</legend>
+          <p id="satisfaction-question" class="amf-feedback-question">How satisfied was the customer with AMF overall?</p>
+          <div class="amf-stars">
+            {% for value in range(1, 6) %}
+            <label class="amf-rating-choice{% if rating and value <= rating %} is-selected{% endif %}" for="satisfaction-{{ value }}">
+              <input id="satisfaction-{{ value }}" type="radio" name="satisfaction" value="{{ value }}" required aria-label="{{ value }} out of 5 stars" {% if rating == value %}checked{% endif %}>
+              <span class="amf-star-face" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 2.5 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3.1-5.8 3.1 1.1-6.5-4.7-4.6 6.5-.9Z"/></svg><small>{{ value }}</small></span>
+            </label>
+            {% endfor %}
+          </div>
+          <p class="amf-feedback-scale-labels"><span>Very dissatisfied</span><span>Very satisfied</span></p>
+          <p id="satisfaction-selection" class="amf-feedback-selection" aria-live="polite">{% if rating %}{{ rating }} / 5 selected{% else %}Choose your star rating{% endif %}</p>
+        </fieldset>
+        <fieldset aria-describedby="recommendation-question recommendation-selection">
+          <legend><span class="amf-feedback-step">A-2</span>Would you recommend AMF? *</legend>
+          <p id="recommendation-question" class="amf-feedback-question">How likely is the customer to recommend AMF to a colleague or professional in their industry?</p>
+          <div class="amf-recommendations">
+            {% for value in range(11) %}
+            <label class="amf-rating-choice" for="recommendation-{{ value }}">
+              <input id="recommendation-{{ value }}" type="radio" name="recommendation" value="{{ value }}" required aria-label="{{ value }} out of 10{% if value == 0 %}, not at all likely{% elif value == 10 %}, very likely{% endif %}">
+              <span class="amf-score-face" aria-hidden="true">{{ value }}</span>
+            </label>
+            {% endfor %}
+          </div>
+          <p class="amf-feedback-scale-labels"><span>0 — Not at all likely</span><span>10 — Very likely</span></p>
+          <p id="recommendation-selection" class="amf-feedback-selection" aria-live="polite">Choose a score from 0 to 10</p>
+        </fieldset>
+        <fieldset class="amf-comment-field">
+          <legend><label for="comment"><span class="amf-feedback-step">D-3</span>Looking ahead<span class="amf-feedback-optional">Optional</span></label></legend>
+          <p id="comment-question" class="amf-feedback-question">Are there any evolving needs or expectations you have for future interactions with AMF?</p>
+          <textarea id="comment" name="comment" maxlength="10000" rows="3" aria-describedby="comment-question" placeholder="What could we do better for you?"></textarea>
+        </fieldset>
+        <p id="feedback-error" class="amf-feedback-error" role="alert" tabindex="-1" hidden></p>
+        <div class="amf-feedback-actions">
+          <p>Your feedback goes directly to the AMF team.</p>
+          <button class="amf-feedback-submit" type="submit"><span id="feedback-submit-label">Submit feedback</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></button>
+        </div>
+      </form>
+      <noscript>Please enable JavaScript to submit your feedback.</noscript>
+      {% endif %}
+      {% endif %}
+    </section>
+  </div>
+  <footer class="amf-feedback-footer"><span>Advanced Microfluidics</span><span>Thank you for helping us improve.</span></footer>
+</main>
+{% endblock %}
+{% block script %}
+<script>
+(function () {
+  'use strict';
+  var form = document.getElementById('amf-feedback-form');
+  if (!form) return;
+  var button = form.querySelector('button[type="submit"]');
+  var buttonLabel = document.getElementById('feedback-submit-label');
+  var error = document.getElementById('feedback-error');
+  var idleLabel = buttonLabel.textContent;
+  var pending = false;
+  var satisfactionLabels = ['Very dissatisfied', 'Dissatisfied', 'Neutral', 'Satisfied', 'Very satisfied'];
+
+  function updateRatings() {
+    var selected = form.querySelector('input[name="satisfaction"]:checked');
+    var rating = selected ? Number(selected.value) : 0;
+    form.querySelectorAll('input[name="satisfaction"]').forEach(function (radio) {
+      radio.parentElement.classList.toggle('is-selected', Number(radio.value) <= rating);
+    });
+    document.getElementById('satisfaction-selection').textContent = rating ? rating + ' / 5 — ' + satisfactionLabels[rating - 1] : 'Choose your star rating';
+    var recommendation = form.querySelector('input[name="recommendation"]:checked');
+    document.getElementById('recommendation-selection').textContent = recommendation ? recommendation.value + ' / 10 selected' : 'Choose a score from 0 to 10';
+  }
+
+  // Read the email's star value explicitly as well as the server-rendered checked
+  // state. Keep subsequent edits independent of the original URL.
+  var initialRating = new URLSearchParams(window.location.search).get('rating');
+  if (/^[1-5]$/.test(initialRating || '')) {
+    form.querySelector('input[name="satisfaction"][value="' + initialRating + '"]').checked = true;
+  }
+  updateRatings();
+  form.addEventListener('change', updateRatings);
+  window.addEventListener('pageshow', updateRatings);
+  form.addEventListener('reset', function () { window.setTimeout(updateRatings, 0); });
+
+  function submissionError(response, result) {
+    if (result.exc_type === 'CSRFTokenError') return 'Your session has expired. Refresh this page and try again.';
+    if (response.status === 403) return 'This feedback link is no longer available. Please reopen the original link in your AMF email.';
+    if (response.status === 404) return 'The feedback service is currently unavailable. Please try again later or contact the AMF team.';
+    if (response.status === 429) return 'Too many attempts. Please wait a moment and try again.';
+    if (result.exc_type === 'ValidationError') {
+      // Display only known public validation messages, never a server traceback.
+      var messages = [];
+      try { messages = JSON.parse(result._server_messages || '[]'); } catch (ignored) {}
+      for (var i = 0; i < messages.length; i++) {
+        var message;
+        try { message = JSON.parse(messages[i]).message; } catch (ignored) { continue; }
+        if (/^Please (select a valid (satisfaction|recommendation) rating\.|enter a text comment\.|limit your comment to 10,000 characters\.)$/.test(message || '')) return message;
+      }
+    }
+    return 'We could not save your feedback. Your answers are still here. Please try again.';
+  }
+
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    if (pending || !form.reportValidity()) return;
+    pending = true;
+    button.disabled = true;
+    buttonLabel.textContent = 'Sending…';
+    form.setAttribute('aria-busy', 'true');
+    error.hidden = true;
+    var payload = new URLSearchParams(new FormData(form));
+    // The native browser fetch path must ask V12 for JSON error responses.
+    var headers = {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'};
+    if (window.frappe && window.frappe.csrf_token && window.frappe.csrf_token !== 'None') {
+      headers['X-Frappe-CSRF-Token'] = window.frappe.csrf_token;
+    }
+    fetch(form.action, {method: 'POST', credentials: 'same-origin', headers: headers, body: payload})
+      .then(function (response) {
+        return response.json().catch(function () { return {}; }).then(function (result) {
+          if (!response.ok || result.exc || result.exc_type) throw new Error(submissionError(response, result));
+          if (!result.message || typeof result.message.message !== 'string') throw new Error(submissionError(response, result));
+          form.hidden = true;
+          var thanks = document.getElementById('feedback-thanks');
+          thanks.hidden = false;
+          thanks.focus();
+        });
+      }).catch(function (reason) {
+        error.textContent = reason instanceof TypeError ? 'We could not connect. Check your connection and try again. Your answers are still here.' : reason.message;
+        error.hidden = false;
+        error.focus();
+      }).then(function () {
+        pending = false;
+        button.disabled = false;
+        buttonLabel.textContent = idleLabel;
+        form.removeAttribute('aria-busy');
+      });
+  });
+}());
+</script>
+{% endblock %}

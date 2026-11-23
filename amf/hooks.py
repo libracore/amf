@@ -32,6 +32,7 @@ app_include_js = [
     "/assets/amf/js/amf_common.js",
     "/assets/amf/js/common.js",
     "/assets/amf/js/dashboard_chart_colors.js",
+    "/assets/amf/js/contact_country_default.js",
 ]
 
 web_include_css = [
@@ -124,7 +125,10 @@ doc_events = {
         "validate": "amf.master_crm.customer_marketing.apply_customer_marketing_values",
     },
     "Customer Satisfaction Survey": {
-        "after_insert": [
+        "on_submit": [
+            "amf.master_crm.doctype.customer_satisfaction_survey.customer_satisfaction_survey.update_contact_csat_nps",
+        ],
+        "on_cancel": [
             "amf.master_crm.doctype.customer_satisfaction_survey.customer_satisfaction_survey.update_contact_csat_nps",
         ],
     },
@@ -169,6 +173,7 @@ doc_events = {
         "on_update": "amf.amf.utils.tool_maintenance.sync_tool_group_after_save",
     },
     "Issue": {
+        "on_update": "amf.master_crm.feedback.on_issue_update",
         "validate": [
             "amf.amf.utils.issue_classification.apply_issue_routing",
             "amf.amf.utils.amf_issue_test_management.sync_linked_issue_party",
@@ -226,11 +231,6 @@ doc_events = {
     },
     "Project": {
         "before_insert": "amf.amf.utils.project_id.assign_project_id",
-    },
-    "Referral Satisfaction Survey": {
-        "after_insert": [
-            "amf.master_crm.doctype.referral_satisfaction_survey.referral_satisfaction_survey.update_contact_csat_nps",
-        ],
     },
     "Serial No": {
         "after_insert": [
@@ -333,6 +333,8 @@ scheduler_events = {
 # ------------------------------
 override_whitelisted_methods = {
     "frappe.desk.form.save.savedocs": "amf.amf.utils.delivery_note_save.savedocs",
+    "frappe.core.doctype.communication.email.make": "amf.master_crm.feedback.make_communication",
+    "frappe.email.doctype.email_template.email_template.get_email_template": "amf.master_crm.feedback.get_email_template",
 }
 
 # override_whitelisted_methods.update({
@@ -354,6 +356,7 @@ after_install = [
 # Migration Hook
 # --------------
 after_migrate = [
+    "amf.master_crm.feedback_setup.sync_feedback_setup",
     "amf.amf.utils.leave_event.setup_leave_event_integration",
     "amf.master_crm.migration.translate_customer_to_organization",
     "amf.master_crm.customer_marketing.sync_customer_marketing_custom_fields",

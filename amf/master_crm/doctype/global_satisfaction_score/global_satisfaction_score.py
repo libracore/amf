@@ -18,7 +18,7 @@ def calculate_global_scores():
     Scheduled weekly:
       - Compute average customer_satisfaction_survey (CSAT)
         and referral_satisfaction_survey (NPS) across all Contacts
-      - Create a NEW Global Satisfaction Score record with those averages
+      - Store those averages in today's Global Satisfaction Score snapshot
     """
     # 1) Fetch all contacts' scores
     contacts = frappe.get_all(
@@ -54,16 +54,14 @@ def calculate_global_scores():
     avg_csat = ((sum(csat_values) / len(csat_values)) / 20) if csat_values else 0.0
     avg_nps  = round((sum(nps_values)  / len(nps_values)), 1)  if nps_values  else 0.0
 
-    # 3) Create a new Global Satisfaction Score doc
-    #    (assumes your Doctype is **not** single; each run makes one record)
-    gs = frappe.get_doc({
-        "doctype": "Global Satisfaction Score",
+    # Preserve AMF's existing formulas. The naming rule has one record per day;
+    # rerunning the scheduled calculation must not fail with a duplicate name.
+    scores = {
         "global_csat_score": avg_csat,
         "global_nps_score": avg_nps,
-        # Optional: if you added a Date field, e.g. calculation_date
-        # "calculation_date": nowdate()
-    })
-    gs.insert(ignore_permissions=True)
-
-    # 4) Persist in the database
-    frappe.db.commit()
+    }
+    if frappe.db.exists("Global Satisfaction Score", nowdate()):
+        frappe.db.set_value("Global Satisfaction Score", nowdate(), scores)
+    else:
+        frappe.get_doc(dict(doctype="Global Satisfaction Score", **scores)).insert(ignore_permissions=True)
+    # The scheduler/request owns the transaction; do not commit callers' work.

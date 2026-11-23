@@ -1,0 +1,22 @@
+{
+ "doctype": "DocType",
+ "name": "Satisfaction Feedback Request",
+ "module": "Master CRM",
+ "engine": "InnoDB",
+ "field_order": ["source_doctype", "source_name", "customer", "contact_person", "recipient", "status", "communication", "survey", "token"],
+ "fields": [
+  {"fieldname": "source_doctype", "label": "Source Type", "fieldtype": "Link", "options": "DocType", "reqd": 1, "read_only": 1},
+  {"fieldname": "source_name", "label": "Source", "fieldtype": "Dynamic Link", "options": "source_doctype", "reqd": 1, "read_only": 1},
+  {"fieldname": "customer", "label": "Organization", "fieldtype": "Link", "options": "Customer", "read_only": 1},
+  {"fieldname": "contact_person", "label": "Contact", "fieldtype": "Link", "options": "Contact", "read_only": 1},
+  {"fieldname": "recipient", "label": "Recipient", "fieldtype": "Data", "options": "Email", "reqd": 1, "read_only": 1},
+  {"fieldname": "status", "label": "Status", "fieldtype": "Select", "options": "Prepared\nQueued\nResponded", "default": "Prepared", "read_only": 1, "in_list_view": 1},
+  {"fieldname": "communication", "label": "Confirmation Email", "fieldtype": "Link", "options": "Communication", "read_only": 1},
+  {"fieldname": "survey", "label": "Response", "fieldtype": "Link", "options": "Customer Satisfaction Survey", "read_only": 1, "unique": 1},
+  {"fieldname": "token", "label": "Access Token", "fieldtype": "Data", "hidden": 1, "read_only": 1, "reqd": 1, "unique": 1}
+ ],
+ "permissions": [{"role": "System Manager", "read": 1}],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
