@@ -15,10 +15,11 @@ ITEM = "Item"
 DIMENSIONS = ("customer", "customer_name", "territory", "status")
 LINE_FIELDS = ("item_code", "item_name", "item_group", "qty", "uom", "stock_qty", "stock_uom",
                "conversion_factor", "base_net_amount")
-ORDER_FIELDS = DIMENSIONS + ("transaction_date", "amended_from", "sales_order_type", "base_net_total")
+ORDER_FIELDS = DIMENSIONS + ("transaction_date", "amended_from", "sales_order_type", "base_net_total", "currency")
 ORDER_LINE_FIELDS = LINE_FIELDS + ("delivery_date", "delivered_qty", "returned_qty", "delivered_by_supplier",
-                                  "amount_to_bill_now", "total_independent_price", "variable_price")
-INVOICE_FIELDS = DIMENSIONS + ("posting_date", "conversion_rate", "currency", "is_return", "return_against",
+                                  "amount", "billed_amt", "amount_to_bill_now", "total_independent_price",
+                                  "variable_price")
+INVOICE_FIELDS = DIMENSIONS + ("posting_date", "creation", "conversion_rate", "currency", "is_return", "return_against",
                                 "update_stock", "update_billed_amount_in_sales_order", "base_net_total",
                                 "base_grand_total", "base_rounding_adjustment", "total_ht_company_currency")
 INVOICE_LINE_FIELDS = LINE_FIELDS + ("so_detail", "sales_order", "dn_detail", "delivery_note")
@@ -36,7 +37,7 @@ DECIMAL_FIELDS = {
     "qty", "stock_qty", "conversion_factor", "base_net_amount", "base_net_total", "delivered_qty",
     "returned_qty", "conversion_rate", "base_grand_total", "base_rounding_adjustment",
     "total_ht_company_currency", "base_tax_amount", "base_tax_amount_after_discount_amount",
-    "debit", "credit", "quantity", "target_amount", "amount_to_bill_now",
+    "debit", "credit", "quantity", "target_amount", "amount", "billed_amt", "amount_to_bill_now",
 }
 
 SOURCES = {

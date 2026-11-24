@@ -1,7 +1,7 @@
 """Regression tests for the approved sales definitions, independent of a live ERP."""
 
 import unittest
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from amf.amf.page.sales_analytics.sales_analytics import export_cell, fetch_records
@@ -233,6 +233,58 @@ class TestSalesAnalytics(unittest.TestCase):
         service = self.analytics()
         self.assertEqual(service.records("delivered_unbilled")[0]["delivered_unbilled"], 1000)
         self.assertEqual(sum(row["delivered"] for row in service.records("delivered")), 3000)
+
+    def test_warranty_and_return_to_supplier_are_operational_movements(self):
+        for name, purpose in (("WARRANTY", "Replacement under warranty"), ("VENDOR-RETURN", "Returned Goods")):
+            self.facts.shipment_data[0].append(shipment(name, object=purpose, status="To Bill"))
+            self.facts.shipment_data[1].append(item(name + "-ROW", name, base_net_amount=3241.89))
+        service = self.analytics()
+        self.assertEqual({row["document"] for row in service.records("movements")}, {"WARRANTY", "VENDOR-RETURN"})
+        self.assertEqual({row["document"] for row in service.records("delivered")}, {"DN"})
+        self.assertTrue(all(row["document"] == "DN" for row in service.records("delivered_unbilled")))
+
+    def test_commercial_return_uses_original_shipment_classification(self):
+        self.facts.shipment_data[0].append(shipment("DN-RET", is_return=1, return_against="DN", object="Return to seller"))
+        self.facts.shipment_data[1].append(item("RET-ROW", "DN-RET", qty=-1, stock_qty=-1, base_net_amount=-1000))
+        service = self.analytics()
+        self.assertEqual({row["document"] for row in service.records("delivered")}, {"DN", "DN-RET"})
+
+    def test_credit_and_reinvoice_on_same_shipment_count_order_quantity_once(self):
+        headers, lines, _ = self.facts.invoice_data
+        headers[0]["creation"] = datetime(2026, 10, 12, 9)
+        headers.extend([
+            invoice("CREDIT", is_return=1, return_against="INV", creation=datetime(2026, 10, 12, 10)),
+            invoice("REINVOICE", creation=datetime(2026, 10, 12, 11)),
+        ])
+        lines.append(dict(lines[0], name="CREDIT-ROW", parent="CREDIT", qty=-2, stock_qty=-2, base_net_amount=-4500))
+        lines.append(dict(lines[0], name="REINVOICE-ROW", parent="REINVOICE", base_net_amount=4000))
+        order, = self.analytics().records("unbilled")
+        self.assertEqual(order["billed_qty"], 2)
+        self.assertEqual(order["billed_actual"], 4000)
+        self.assertEqual(order["unbilled"], 8000)
+
+    def test_credit_without_reopening_or_reinvoice_keeps_order_quantity_billed(self):
+        headers, lines, _ = self.facts.invoice_data
+        headers.append(invoice("CREDIT", is_return=1, return_against="INV", posting_date=date(2026, 10, 13)))
+        lines.append(dict(lines[0], name="CREDIT-ROW", parent="CREDIT", qty=-2, stock_qty=-2, base_net_amount=-4500))
+        order, = self.analytics().records("unbilled")
+        self.assertEqual(order["billed_qty"], 2)
+        self.assertEqual(order["billed_actual"], 0)
+
+    def test_erp_amount_balance_on_fully_invoiced_quantity_is_visible(self):
+        self.facts.order["currency"] = "EUR"
+        self.facts.orders_data[1][0].update(qty=2, amount=5000, billed_amt=4500)
+        service = self.analytics()
+        self.assertEqual(service.records("unbilled"), [])
+        exception, = [entry for entry in service.records("exceptions") if entry.get("erp_order_balance")]
+        self.assertEqual(exception["erp_order_balance"], 500)
+        self.assertEqual(exception["original_currency"], "EUR")
+
+    def test_zero_quantity_zero_amount_is_a_known_zero(self):
+        self.facts.orders_data[1][0].update(qty=0, base_net_amount=0, delivered_qty=0)
+        headers, lines, charges = self.facts.invoice_data
+        self.facts.invoice_data = (headers, [lines[1]], charges)
+        self.assertEqual(self.analytics().records("unbilled"), [])
 
     def test_direct_references_do_not_assume_a_shipment_allocation(self):
         self.facts.invoice_data[1][0].update(dn_detail=None, delivery_note=None)

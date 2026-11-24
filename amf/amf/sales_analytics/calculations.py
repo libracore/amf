@@ -8,8 +8,10 @@ from .definitions import (
 )
 
 NONCOMMERCIAL_PURPOSES = {
-    "Commercial Sample", "Return after Repair", "Loan (temporary export)", "Material for manufacture",
+    "Commercial Sample", "Gift", "Loan", "Loan (temporary export)", "Material for manufacture",
+    "Material for manufacture (no sale)", "Replacement under warranty", "Return after Repair",
 }
+RETURN_MOVEMENT_PURPOSES = {"Return to seller", "Returned Goods"}
 COMMERCIAL_SETTLEMENTS = {"Full Product Sale", "Spare Parts Sale"}
 
 
@@ -57,6 +59,7 @@ def invoice_facts(headers, lines, charges):
             original_invoice=row.get("return_against"), is_return=bool(row["is_return"]),
             currency=row["currency"], fx_rate=number(row["conversion_rate"]),
             legacy_ht=number(row.get("total_ht_company_currency")),
+            posted_rounding=number(row.get("base_rounding_adjustment")),
         )
         for charge in by_invoice[row["name"]]:
             code = (charge["account_head"] or "").split(" ", 1)[0]
@@ -130,6 +133,8 @@ def delivery_is_commercial(header, order):
         return header.get("loan_order_settlement_type") in COMMERCIAL_SETTLEMENTS
     if header.get("object") in NONCOMMERCIAL_PURPOSES:
         return False
+    if not header["is_return"] and header.get("object") in RETURN_MOVEMENT_PURPOSES:
+        return False
     if header.get("issue"):
         return bool(order and order.get("sales_order_type") in COMMERCIAL_ORDER_TYPES)
     return not order or order.get("sales_order_type") in COMMERCIAL_ORDER_TYPES
@@ -145,10 +150,12 @@ def delivery_facts(headers, lines, orders, invoice_headers, invoice_lines):
         if not header:
             continue
         order = by_order.get(row.get("against_sales_order"))
+        original = by_id.get(header.get("return_against")) if header["is_return"] else None
         detail = line_fact(header_fact(header, "Delivery Note", "posting_date"), row)
         detail.update(
             delivered=detail["item_net"], is_return=bool(header["is_return"]),
-            commercial=delivery_is_commercial(header, order), original_delivery=header.get("return_against"),
+            commercial=delivery_is_commercial(original or header, order), original_delivery=header.get("return_against"),
+            shipment_purpose=header.get("object"),
             territory=order.get("territory") if order else None,
         )
         result.append(detail)
@@ -174,6 +181,28 @@ def consistent_link(source, target, header):
     return bool(target and source["item_code"] == target["item_code"] and (not header or target["parent"] == header))
 
 
+def reinvoiced_quantity(events):
+    """Identify quantities re-invoiced on the same shipment after an exact linked credit."""
+    posted = defaultdict(lambda: ZERO)
+    pending = ZERO
+    repeated = ZERO
+    for invoice, qty in sorted(events, key=lambda event: (
+        event[0]["posting_date"], str(event[0].get("creation") or ""), event[0]["name"],
+    )):
+        if invoice["is_return"]:
+            original = invoice.get("return_against")
+            reversed_qty = min(max(ZERO, -qty), posted[original])
+            posted[original] -= reversed_qty
+            if not invoice["update_billed_amount_in_sales_order"]:
+                pending += reversed_qty
+        elif qty > 0:
+            posted[invoice["name"]] += qty
+            overlap = min(qty, pending)
+            pending -= overlap
+            repeated += overlap
+    return repeated
+
+
 def match_billing(orders, deliveries, invoices, bill_items):
     order_lines = {line["name"]: line for line in orders}
     delivery_lines = {line["name"]: line for line in deliveries}
@@ -186,6 +215,7 @@ def match_billing(orders, deliveries, invoices, bill_items):
     exceptions = []
     blocked_orders = set()
     blocked_deliveries = set()
+    shipment_billing = defaultdict(list)
     for row in bill_items:
         header = invoice_headers[row["parent"]]
         order = order_lines.get(row.get("so_detail"))
@@ -217,8 +247,10 @@ def match_billing(orders, deliveries, invoices, bill_items):
                 exceptions.append(issue("Sales Invoice", header["name"], "Shipment billing has an amount or unit that requires review.", row["item_code"]))
         if order:
             order_actual[order["name"]] += number(row["base_net_amount"])
+            qty = convertible_quantity(row, order)
+            if delivery and via_delivery and qty:
+                shipment_billing[(order["name"], delivery["name"])].append((header, qty))
             if not header["is_return"] or header["update_billed_amount_in_sales_order"]:
-                qty = convertible_quantity(row, order)
                 if qty is not None and (qty or not number(row["base_net_amount"])):
                     order_qty[order["name"]] += qty
                 else:
@@ -229,10 +261,12 @@ def match_billing(orders, deliveries, invoices, bill_items):
             # A header-only invoice could apply to any of its matching order lines.
             blocked_orders.update(line["name"] for line in orders_by_parent[row.get("sales_order")]
                                   if line["item_code"] == row["item_code"])
+    for (order_name, _), events in shipment_billing.items():
+        order_qty[order_name] -= reinvoiced_quantity(events)
     return order_qty, order_actual, delivery_qty, blocked_orders, blocked_deliveries, exceptions
 
 
-def open_commitments(headers, lines, packed, stock, linked_delivery_ids, billing, as_of):
+def open_commitments(headers, lines, packed, stock, linked_delivery_ids, billing, as_of, billing_available=True):
     by_order = {row["name"]: row for row in headers}
     bundle_lines = {row["parent_detail_docname"] for row in packed}
     order_qty, order_actual, _, blocked_orders, _, _ = billing
@@ -273,13 +307,20 @@ def open_commitments(headers, lines, packed, stock, linked_delivery_ids, billing
         if fact["shipping_qty"] and not fact["shipping_date"]:
             exceptions.append(issue("Sales Order", header["name"], "A shipping commitment has no ERP shipping date.", line["item_code"]))
         amount_driven = bool(number(line.get("amount_to_bill_now")) or line.get("total_independent_price") or line.get("variable_price"))
-        if amount_driven:
+        missing_qty = not fact["qty"] and bool(fact["item_net"])
+        if billing_available and (amount_driven or missing_qty):
             exceptions.append(issue("Sales Order", header["name"], "Amount-driven billing requires review.", line["item_code"]))
         if fact["delivered_qty"] - fact["qty"] > QUANTITY_TOLERANCE or fact["billed_qty"] - fact["qty"] > QUANTITY_TOLERANCE:
             exceptions.append(issue("Sales Order", header["name"], "Delivered or billed quantity exceeds the order quantity.", line["item_code"]))
-        fact["unbilled_qty"] = None if line["name"] in blocked_orders or not fact["qty"] or amount_driven else billable
-        fact["unbilled"] = None if fact["unbilled_qty"] is None else fact["unbilled_qty"] * fact["unit_price"]
+        fact["unbilled_qty"] = None if line["name"] in blocked_orders or missing_qty or amount_driven else billable
+        fact["unbilled"] = None if fact["unbilled_qty"] is None else fact["unbilled_qty"] * (fact["unit_price"] or ZERO)
         fact["billing_variance"] = fact["billed_actual"] - fact["billed_qty"] * (fact["unit_price"] or ZERO)
+        amount_balance = number(line.get("amount")) - number(line.get("billed_amt"))
+        if billing_available and fact["qty"] > 0 and fact["unbilled_qty"] == 0 and amount_balance > number(".01"):
+            exceptions.append(dict(
+                issue("Sales Order", header["name"], "ERP shows an amount balance although the full order quantity was invoiced.", line["item_code"]),
+                erp_order_balance=amount_balance, original_currency=header.get("currency"),
+            ))
         if fact["shipping_qty"] or fact["unbilled"] or fact["unbilled_qty"] or fact["unbilled"] is None:
             result.append(fact)
     return result, exceptions

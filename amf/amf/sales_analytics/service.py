@@ -17,16 +17,17 @@ COLUMN_LABELS = {
     "document": "Document", "source": "Source", "date": "Date", "customer_name": "Customer",
     "item_code": "Item", "item_name": "Item name", "line": "Source row", "item_group": "Item group", "status": "Status",
     "order_type": "Order type", "original_order": "Original order",
-    "original_invoice": "Credit against", "original_delivery": "Return against",
+    "original_invoice": "Credit against", "original_delivery": "Return against", "shipment_purpose": "Shipment purpose",
     "qty": "Qty", "uom": "UOM", "ordered_qty": "Ordered", "delivered_qty": "Fulfilled",
     "returned_qty": "Returned", "billed_qty": "Billed", "shipping_qty": "To ship",
     "unbilled_qty": "To invoice", "shipping_date": "ERP shipping date",
     "shipping_month": "Reporting shipping month", "overdue": "Overdue", "billed_actual": "Actual invoiced CHF",
     "billing_variance": "Billing variance CHF", "unit_price": "Original unit net CHF",
-    "revisions": "Revisions", "reason": "Exception",
-    "currency": "Original currency", "fx_rate": "Posting FX rate", "gross": "Gross CHF",
+    "revisions": "Revisions", "reason": "Exception", "erp_order_balance": "ERP order balance",
+    "currency": "Original currency", "original_currency": "Order currency", "fx_rate": "Posting FX rate", "gross": "Gross CHF",
     "legacy_ht": "AMF Total HT CHF", "other_charges": "Other adjustments CHF",
-    "gross_difference": "Gross difference CHF", "income_gl": "Invoice income GL CHF",
+    "gross_difference": "Gross difference CHF", "posted_rounding": "Posted rounding CHF",
+    "income_gl": "Invoice income GL CHF",
     "gl_difference": "Difference to income GL CHF", "gl_accounts": "Non-income GL accounts",
     "billing_date": "Expected invoice date", "billing_plan": "Approved billing record", "direct_delivery": "Direct delivery",
 }
@@ -38,15 +39,15 @@ DETAILS = {
     "order_items": ("date", "document", "line", "original_order", "customer_name", "item_code", "qty", "uom", "order_type", "order_intake"),
     "order_changes": ("date", "document", "original_order", "customer_name", "order_type", "status", "revisions", "order_intake"),
     "delivered": ("date", "source", "document", "customer_name", "item_code", "qty", "uom", "delivered", "original_delivery"),
-    "movements": ("date", "source", "document", "customer_name", "item_code", "qty", "uom", "delivered", "original_delivery"),
+    "movements": ("date", "source", "document", "customer_name", "shipment_purpose", "item_code", "qty", "uom", "delivered", "original_delivery"),
     "undelivered": ("document", "customer_name", "item_code", "status", "ordered_qty", "delivered_qty", "returned_qty", "shipping_qty", "uom", "unit_price", "shipping_date", "shipping_month", "overdue", "undelivered"),
     "unbilled": ("document", "customer_name", "item_code", "status", "ordered_qty", "delivered_qty", "billed_qty", "unbilled_qty", "uom", "unit_price", "billed_actual", "billing_variance", "unbilled"),
     "delivered_unbilled": ("date", "document", "line", "customer_name", "item_code", "qty", "unbilled_qty", "uom", "delivered_unbilled", "direct_delivery"),
     "dated_billing": ("billing_date", "document", "customer_name", "item_code", "dated_billing", "billing_plan"),
     "unscheduled_billing": ("document", "customer_name", "item_code", "unscheduled_billing"),
-    "exceptions": ("source", "document", "item_code", "reason"),
+    "exceptions": ("source", "document", "item_code", "reason", "erp_order_balance", "original_currency"),
     "reconciliation": ("date", "document", "customer_name", "item_net", "shipping", "card_charges",
-                       "revenue", "vat", "other_charges", "gross", "gross_difference",
+                       "revenue", "vat", "other_charges", "gross", "gross_difference", "posted_rounding",
                        "legacy_ht", "income_gl", "gl_difference", "gl_accounts"),
 }
 
@@ -58,7 +59,8 @@ DETAILS["overdue"] = DETAILS["undelivered"]
 DETAILS["held_shipping"] = DETAILS["undelivered"]
 
 MONEY_FIELDS = set(METRICS) - {"overdue"} | {
-    "billed_actual", "billing_variance", "unit_price", "legacy_ht", "other_charges", "gross_difference", "income_gl", "gl_difference",
+    "billed_actual", "billing_variance", "unit_price", "legacy_ht", "other_charges", "gross_difference",
+    "posted_rounding", "income_gl", "gl_difference",
 }
 QUANTITY_FIELDS = {"qty", "ordered_qty", "delivered_qty", "returned_qty", "billed_qty", "shipping_qty", "unbilled_qty"}
 
@@ -142,7 +144,8 @@ class SalesAnalytics:
         active_ids = {row["name"] for row in self.active_orders}
         stock = self.sources.stock_items({row["item_code"] for row in self.order_lines if row["parent"] in active_ids})
         linked = {row["so_detail"] for row in self.delivery_lines if row["so_detail"]}
-        if self._billing_access():
+        billing_available = self._billing_access()
+        if billing_available:
             billing = match_billing(self.order_lines, self.delivery_lines, self.invoice_headers, self.invoice_lines)
             self.exceptions.extend(billing[-1])
             self.delivered_awaiting, exceptions = delivered_unbilled(
@@ -153,7 +156,7 @@ class SalesAnalytics:
         else:
             billing = (defaultdict(lambda: ZERO), defaultdict(lambda: ZERO), {}, set(), set(), [])
         self.commitments, exceptions = open_commitments(
-            self.active_orders, self.order_lines, self.packed, stock, linked, billing, self.filters.as_of,
+            self.active_orders, self.order_lines, self.packed, stock, linked, billing, self.filters.as_of, billing_available,
         )
         self.exceptions.extend(exceptions)
         self.loaded.add("commitments")
@@ -543,7 +546,7 @@ def detail_columns(metric):
     for key in DETAILS[metric]:
         definition = METRICS.get(key)
         label = COLUMN_LABELS.get(key) or (definition[0] + " (CHF)" if definition else key)
-        kind = "currency" if key in MONEY_FIELDS else "number" if key in QUANTITY_FIELDS or key == "fx_rate" else "text"
+        kind = "currency" if key in MONEY_FIELDS else "number" if key in QUANTITY_FIELDS or key in ("fx_rate", "erp_order_balance") else "text"
         columns.append({"key": key, "label": label, "kind": kind})
     return columns
 
