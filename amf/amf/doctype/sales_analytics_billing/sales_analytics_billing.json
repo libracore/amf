@@ -1,0 +1,107 @@
+{
+ "doctype": "DocType",
+ "name": "Sales Analytics Billing",
+ "module": "AMF",
+ "autoname": "SAB-.#####",
+ "is_submittable": 1,
+ "track_changes": 1,
+ "field_order": [
+  "company",
+  "sales_order",
+  "line_number",
+  "order_item",
+  "item_code",
+  "billing_date",
+  "quantity",
+  "approved_by",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "label": "Company",
+   "fieldtype": "Link",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sales_order",
+   "label": "Sales order",
+   "fieldtype": "Link",
+   "options": "Sales Order",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "line_number",
+   "label": "Order item row number",
+   "fieldtype": "Int",
+   "reqd": 1
+  },
+  {
+   "fieldname": "order_item",
+   "label": "Order item row key",
+   "fieldtype": "Data",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "item_code",
+   "label": "Item",
+   "fieldtype": "Link",
+   "options": "Item",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "billing_date",
+   "label": "Expected invoice date",
+   "fieldtype": "Date",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "quantity",
+   "label": "Quantity to bill",
+   "fieldtype": "Float",
+   "reqd": 1
+  },
+  {
+   "fieldname": "approved_by",
+   "label": "Approved by",
+   "fieldtype": "Link",
+   "options": "User",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "label": "Amended from",
+   "fieldtype": "Link",
+   "options": "Sales Analytics Billing",
+   "read_only": 1,
+   "no_copy": 1,
+   "print_hide": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "Accounts Manager",
+   "read": 1,
+   "export": 1,
+   "write": 1,
+   "create": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1
+  },
+  {
+   "role": "Sales Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

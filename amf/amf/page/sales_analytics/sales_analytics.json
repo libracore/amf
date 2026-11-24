@@ -1,0 +1,11 @@
+{
+ "doctype": "Page",
+ "docstatus": 0,
+ "module": "AMF",
+ "name": "sales-analytics",
+ "page_name": "sales-analytics",
+ "roles": [],
+ "standard": "Yes",
+ "system_page": 0,
+ "title": "Sales Analytics"
+}
