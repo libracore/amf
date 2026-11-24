@@ -77,7 +77,7 @@
 .sa-detail-header { justify-content: space-between; }
 .sa-detail-header h3 { margin: 0; }
 .sa-filter { color: var(--sa-muted); }
-.sa-sort { color: inherit; font-weight: 600; }
+.sa-sort { color: inherit; font-weight: 600; text-align: inherit; }
 .sa-chart { min-height: 245px; }
 .sa-scroll { overflow: auto; }
 .sa-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -88,7 +88,7 @@
 	text-align: left;
 }
 .sa-table th { background: #f5f8f8; }
-.sa-table td.sa-number { text-align: right; font-variant-numeric: tabular-nums; }
+.sa-table .sa-number { text-align: right; font-variant-numeric: tabular-nums; }
 .sa-pages { justify-content: flex-end; margin-top: 12px; }
 .sa-inline-field { display: grid; gap: 4px; margin: 0; font-weight: 500; }
 .sa-search-results { margin: 8px 0 0; list-style: none; padding: 0; }

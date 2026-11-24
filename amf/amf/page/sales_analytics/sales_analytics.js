@@ -33,6 +33,10 @@
 		return value === null || value === undefined ? "—" : number.format(value);
 	}
 
+	function numericHeading(content) {
+		return {content: content, numeric: true};
+	}
+
 	function listQty(units) {
 		return Object.keys(units).map(function (unit) {
 			return qty(units[unit]) + " " + unit;
@@ -234,7 +238,9 @@
 	SalesAnalytics.prototype.periodTable = function (panel, labels, categories) {
 		var self = this;
 		if (!categories.length) return;
-		var table = this.table(panel, [__("Period")].concat(categories.map(function (row) { return row.name; })));
+		var table = this.table(panel, [__("Period")].concat(categories.map(function (row) {
+			return numericHeading(row.name);
+		})));
 		labels.forEach(function (label, index) {
 			var row = el("tr").appendTo(table);
 			el("td", "", label).appendTo(row);
@@ -302,7 +308,10 @@
 		this.chart(panel, rows.map(function (row) { return row.period; }), [{
 			name: __("Undelivered commitments"), values: rows.map(function (row) { return row.value; })
 		}], "bar");
-		var table = this.table(panel, [__("Reporting period"), __("Orders"), __("Quantity"), __("Commitments"), __("Overdue in bucket")]);
+		var table = this.table(panel, [
+			__("Reporting period"), numericHeading(__("Orders")), __("Quantity"),
+			numericHeading(__("Commitments")), numericHeading(__("Overdue in bucket"))
+		]);
 		rows.forEach(function (row) {
 			var tr = el("tr").appendTo(table);
 			button(row.period, function () { self.showDetails("undelivered", { period: row.period }); }, "sa-link").appendTo(el("td").appendTo(tr));
@@ -328,7 +337,7 @@
 		if (!Object.keys(outlook.monthly).length) {
 			if (this.data.billing_available) el("p", "sa-note", __("No approved future invoice dates in this scope.")).appendTo(panel);
 		} else {
-			var table = this.table(panel, [__("Expected invoice month"), __("Confirmed billing")]);
+			var table = this.table(panel, [__("Expected invoice month"), numericHeading(__("Confirmed billing"))]);
 			Object.keys(outlook.monthly).forEach(function (month) {
 				var row = el("tr").appendTo(table);
 				el("td", "", month).appendTo(row);
@@ -338,7 +347,10 @@
 			});
 		}
 		if (outlook.targets.length) {
-			var target = this.table(panel, [__("Target period"), __("Metric"), __("Target"), __("Actual"), __("Gap"), __("Attainment"), __("Variance"), __("Remaining"), __("Outlook"), __("Outlook gap")]);
+			var target = this.table(panel, [__("Target period"), __("Metric")].concat([
+				__("Target"), __("Actual"), __("Gap"), __("Attainment"), __("Variance"),
+				__("Remaining"), __("Outlook"), __("Outlook gap")
+			].map(numericHeading)));
 			outlook.targets.forEach(function (entry) {
 				var row = el("tr").appendTo(target);
 				el("td", "", entry.from_date + " – " + entry.to_date).appendTo(row);
@@ -400,7 +412,9 @@
 			el("span", "", __("Average realized price") + " · " + money(item.average_price)).appendTo(info);
 			el("span", "", __("Sales invoices") + " · " + qty(item.invoices)).appendTo(info);
 			if (item.periods.length) {
-				var history = this.table(panel, [__("Period"), __("Net quantity"), __("Net sales"), __("Invoices")]);
+				var history = this.table(panel, [
+					__("Period"), __("Net quantity"), numericHeading(__("Net sales")), numericHeading(__("Invoices"))
+				]);
 				item.periods.forEach(function (entry) {
 					var row = el("tr").appendTo(history);
 					button(entry.period, function () { self.showDetails("item_net", {period: entry.period}); },
@@ -425,8 +439,8 @@
 		var self = this;
 		if (!rows.length) return;
 		var comparative = rows.some(function (entry) { return entry.previous !== null; });
-		var headers = [__("Name"), __("CHF excl. VAT"), __("Share"), __("Documents")];
-		if (comparative) headers = headers.concat([__("Prior CHF"), __("YoY")]);
+		var headers = [__("Name")].concat([__("CHF excl. VAT"), __("Share"), __("Documents")].map(numericHeading));
+		if (comparative) headers = headers.concat([__("Prior CHF"), __("YoY")].map(numericHeading));
 		var table = this.table(this.panel(title), headers);
 		rows.forEach(function (entry) {
 			var row = el("tr").appendTo(table);
@@ -450,7 +464,7 @@
 		var panel = this.panel(__("Top items by quantity"));
 		Object.keys(groups).forEach(function (unit) {
 			el("h4", "sa-note", unit).appendTo(panel);
-			var table = self.table(panel, [__("Item"), __("Net quantity"), __("Net sales")]);
+			var table = self.table(panel, [__("Item"), numericHeading(__("Net quantity")), numericHeading(__("Net sales"))]);
 			groups[unit].forEach(function (entry) {
 				var row = el("tr").appendTo(table);
 				button(entry.label, function () { self.showDetails("item_net", {group: "item_code", value: entry.key}); },
@@ -481,9 +495,11 @@
 		var table = el("table", "sa-table").appendTo(scroller);
 		var head = el("tr").appendTo(el("thead").appendTo(table));
 		headers.forEach(function (heading) {
-			var th = el("th").attr("scope", "col").appendTo(head);
-			if (typeof heading === "string") th.text(heading);
-			else th.append(heading);
+			var numeric = heading.numeric === true;
+			var content = numeric ? heading.content : heading;
+			var th = el("th", numeric ? "sa-number" : "").attr("scope", "col").appendTo(head);
+			if (typeof content === "string") th.text(content);
+			else th.append(content);
 		});
 		return el("tbody").appendTo(table);
 	};
@@ -556,12 +572,13 @@
 		}
 		var table = this.table(body, data.columns.map(function (column) {
 			var arrow = selected.sort === column.key ? (selected.direction === "asc" ? " ↑" : " ↓") : "";
-			return button(__(column.label) + arrow, function () {
+			var heading = button(__(column.label) + arrow, function () {
 				selected.direction = selected.sort === column.key && selected.direction === "desc" ? "asc" : "desc";
 				selected.sort = column.key;
 				selected.start = 0;
 				self.readDetails(false);
 			}, "sa-sort");
+			return column.kind === "text" ? heading : numericHeading(heading);
 		}));
 		data.rows.forEach(function (record) {
 			var row = el("tr").appendTo(table);
