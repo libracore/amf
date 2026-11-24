@@ -1,9 +1,14 @@
+#page-sales-analytics > .page-head > .container,
+#page-sales-analytics > .page-body {
+	width: 100%;
+	max-width: none;
+}
+
 .sa {
 	--sa-accent: #12635a;
 	--sa-line: #dbe4e4;
 	--sa-muted: #52636b;
-	max-width: 1420px;
-	margin: 0 auto 42px;
+	margin: 0 0 42px;
 	padding: 14px 16px;
 	color: #172b32;
 }
