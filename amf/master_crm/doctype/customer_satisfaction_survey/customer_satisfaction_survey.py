@@ -8,40 +8,36 @@ from frappe.model.document import Document
 
 
 class CustomerSatisfactionSurvey(Document):
-	pass
+    def validate(self):
+        if self.customer:
+            self.organization_name = frappe.db.get_value("Customer", self.customer, "customer_name")
+        if self.contact_person:
+            self.contact_name = frappe.db.get_value("Contact", self.contact_person, "full_name")
+        if self.contact_name and self.organization_name:
+            self.title = "{0} for {1}".format(self.contact_name, self.organization_name)
 
 
 def update_contact_csat_nps(doc, method):
-    """
-    This function is meant to be called right after a new Customer Satisfaction Survey 
-    record has been inserted. It updates the 'csat' and 'nps' fields in the linked 
-    Contact Doctype, if available.
-    """
-    # Ensure that we have a valid contact person link
-    if doc.contact_person:
-        # Update csat and nps fields directly using set_value (bypasses full Doc validations for speed)
-        # Convert doc.amf_overall and doc.recommend to floats if they might come in as strings
-        amf_overall = float(doc.amf_overall) if doc.amf_overall else 0.0
-        recommend = float(doc.recommend) if doc.recommend else 0.0
+    """Reflect the latest submitted response, including after a cancellation.
 
-        # Example calculations
-        csat_value = amf_overall * 100 / 5  # e.g., if amf_overall is from 1 to 5
-        nps_value = recommend * 10         # e.g., if recommend is from 0 to 10
-
-        # frappe.db.set_value("Contact", doc.contact_person, "csat", csat_value)
-        # frappe.db.set_value("Contact", doc.contact_person, "nps", int(nps_value))
-        frappe.db.set_value("Contact", doc.contact_person,
-                            "customer_satisfaction_survey", csat_value)
-        frappe.db.set_value("Contact", doc.contact_person,
-                            "referral_satisfaction_survey", int(nps_value))
-        # Optionally, if you need triggers or validations from the Contact doctype to run,
-        # you could load and save:
-        #
-        # contact = frappe.get_doc("Contact", doc.contact_person)
-        # contact.csat = doc.csat
-        # contact.nps = doc.nps
-        # contact.save(ignore_permissions=True)
-    return None
+    Preserve the existing 0–100 conversions: recommendation * 10 is the
+    historical AMF score and is intentionally not standard NPS.
+    """
+    if not doc.contact_person:
+        return
+    rows = frappe.get_all(
+        "Customer Satisfaction Survey",
+        filters={"contact_person": doc.contact_person, "docstatus": 1},
+        fields=["amf_overall", "recommend"],
+        order_by="date_interaction desc, creation desc, name desc", limit_page_length=1,
+    )
+    latest = rows[0] if rows else {}
+    overall = latest.get("amf_overall")
+    recommend = latest.get("recommend")
+    frappe.db.set_value("Contact", doc.contact_person, {
+        "customer_satisfaction_survey": float(overall) * 20 if overall else None,
+        "referral_satisfaction_survey": int(recommend) * 10 if recommend not in (None, "") else None,
+    }, update_modified=False)
 
 # my_app/my_app/utils/migrate_amf.py
 
@@ -55,6 +51,7 @@ def migrate_amf_overall_to_contact():
       - Convert to a 0–100 scale
       - Write it into the linked Contact's 'amf_overall' field
     """
+    frappe.only_for("System Manager")
     surveys = frappe.get_all(
         "Customer Satisfaction Survey",
         filters=[

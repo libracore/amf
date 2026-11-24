@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AMF feedback — local demonstration</title>
+__AMF_FORM_HEAD__
+<style>
+body{margin:0;background:#f2f4f7;color:#20242c;font:16px/1.5 Arial,sans-serif}
+.preview-shell{max-width:1000px;margin:auto;padding:24px}
+.preview-toolbar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:20px}
+.preview-toolbar a{color:#244ccb}
+.preview-note{padding:12px 16px;background:#e8efff;border-radius:6px;margin-bottom:24px}
+.preview-email{background:#fff;padding:24px;border:1px solid #d6dce6;border-radius:8px;margin:20px 0}
+.preview-email h2{font-size:20px;margin:0 0 20px}
+#preview-record{background:#fff;padding:24px;border:1px solid #d6dce6;border-radius:8px}
+#preview-record table{border-collapse:collapse;width:100%;table-layout:fixed}
+#preview-record td,#preview-record th{text-align:left;padding:8px;border-bottom:1px solid #e2e5eb;overflow-wrap:anywhere}
+.preview-stars-selected{color:#916000}.preview-stars-unselected{color:#a8adb7}
+[hidden]{display:none!important}
+@media(max-width:500px){.preview-shell{padding:12px}.preview-email{padding:16px}}
+</style>
+</head>
+<body>
+<div class="preview-shell">
+  <h1>AMF feedback demonstration</h1>
+  <p class="preview-note">Invented example data. No email is sent and no ERP record is created. The form and email bodies below are rendered from the current app templates.</p>
+  <nav class="preview-toolbar" aria-label="Preview navigation">
+    <label>Trigger <select id="preview-source"><option value="SO">Sales Order</option><option value="Issue">Issue closed</option></select></label>
+    <label>Submission <select id="preview-response"><option value="success">Success</option><option value="network">Connection failure</option><option value="session">Session expired</option><option value="server">Service error</option><option value="link">Invalid link</option></select></label>
+    <a href="#preview-email">Email</a><a href="#feedback-form">Feedback form</a><a href="#preview-record">ERP field mapping</a>
+  </nav>
+  <section id="preview-email" class="preview-email">
+    <h2 id="preview-subject">Confirmation for order PO-DEMO-001 | Advanced Microfluidics</h2>
+    <div id="preview-so">__AMF_SO_EMAIL__</div>
+    <div id="preview-issue" hidden>__AMF_ISSUE_EMAIL__</div>
+  </section>
+  <section id="feedback-form">__AMF_FORM__</section>
+  <section id="preview-record" aria-live="polite">
+    <h2>ERP field mapping — demonstration</h2>
+    <p id="preview-unsaved">No response submitted.</p>
+    <table id="preview-record-table" hidden><thead><tr><th>Field</th><th>Example value</th></tr></thead><tbody></tbody></table>
+  </section>
+</div>
+<script>
+(function(){
+  var form=document.getElementById('amf-feedback-form');
+  var thanks=document.getElementById('feedback-thanks');
+  var source=document.getElementById('preview-source');
+  var saved={SO:null,Issue:null};
+  function updateRatings(){
+    form.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+  function record(){
+    var response=saved[source.value];
+    var table=document.getElementById('preview-record-table');
+    document.getElementById('preview-unsaved').hidden=!!response;
+    table.hidden=!response;
+    table.querySelector('tbody').textContent='';
+    if(!response)return;
+    Object.entries(response).forEach(function(pair){
+      var row=document.createElement('tr');
+      pair.forEach(function(value){var cell=document.createElement('td');cell.textContent=value;row.appendChild(cell)});
+      table.querySelector('tbody').appendChild(row);
+    });
+  }
+  source.addEventListener('change',function(){
+    var isOrder=source.value==='SO';
+    document.getElementById('preview-so').hidden=!isOrder;
+    document.getElementById('preview-issue').hidden=isOrder;
+    document.getElementById('preview-subject').textContent=isOrder?'Confirmation for order PO-DEMO-001 | Advanced Microfluidics':'[AMF] Your issue has been resolved – Please rate your experience';
+    form.reset();form.hidden=!!saved[source.value];thanks.hidden=!saved[source.value];
+    document.getElementById('feedback-error').hidden=true;updateRatings();record();
+  });
+  document.querySelectorAll('[data-preview-rating]').forEach(function(anchor){
+    anchor.addEventListener('click',function(){
+      if(!saved[source.value]){
+        form.querySelector('input[name="satisfaction"][value="'+anchor.dataset.previewRating+'"]').checked=true;
+        updateRatings();
+      }
+    });
+  });
+  // Exercise the production form script; only the transport is simulated.
+  // This preview must never call an ERP endpoint or persist a real response.
+  window.fetch=function(url,options){
+    var mode=document.getElementById('preview-response').value;
+    if(mode==='network')return Promise.reject(new TypeError('Preview connection failure'));
+    if(mode!=='success')return Promise.resolve({ok:false,status:mode==='server'?500:403,json:function(){return Promise.resolve({exc_type:mode==='session'?'CSRFTokenError':mode==='link'?'PermissionError':'Exception'})}});
+    if(!saved[source.value]){
+      var data=options.body;
+      saved[source.value]={
+        docstatus:'1 — Submitted',date_interaction:new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Zurich'}),
+        type_interaction:source.value,customer:'Example Laboratory',contact_person:'Alex Example',
+        amf_overall:data.get('satisfaction'),recommend:data.get('recommendation'),comments:data.get('comment')||'(blank)',
+        source_doctype:source.value==='SO'?'Sales Order':'Issue',source_name:source.value==='SO'?'SO-DEMO-001':'ISS-DEMO-001',
+        feedback_request:'One private request for this source'
+      };
+    }
+    record();
+    return Promise.resolve({ok:true,status:200,json:function(){return Promise.resolve({message:{message:'Feedback saved'}})}});
+  };
+}());
+</script>
+__AMF_FORM_SCRIPT__
+</body>
+</html>

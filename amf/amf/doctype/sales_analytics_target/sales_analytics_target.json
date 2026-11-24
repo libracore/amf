@@ -1,0 +1,92 @@
+{
+ "doctype": "DocType",
+ "name": "Sales Analytics Target",
+ "module": "AMF",
+ "autoname": "SAT-.#####",
+ "is_submittable": 1,
+ "track_changes": 1,
+ "field_order": [
+  "company",
+  "metric",
+  "from_date",
+  "to_date",
+  "target_amount",
+  "approved_by",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "label": "Company",
+   "fieldtype": "Link",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "metric",
+   "label": "Measure",
+   "fieldtype": "Select",
+   "options": "revenue\norder_intake",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "from_date",
+   "label": "Period starts",
+   "fieldtype": "Date",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "to_date",
+   "label": "Period ends",
+   "fieldtype": "Date",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "target_amount",
+   "label": "Target amount (CHF)",
+   "fieldtype": "Currency",
+   "options": "Company:company:default_currency",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "approved_by",
+   "label": "Approved by",
+   "fieldtype": "Link",
+   "options": "User",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "label": "Amended from",
+   "fieldtype": "Link",
+   "options": "Sales Analytics Target",
+   "read_only": 1,
+   "no_copy": 1,
+   "print_hide": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "Accounts Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1
+  },
+  {
+   "role": "Sales Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

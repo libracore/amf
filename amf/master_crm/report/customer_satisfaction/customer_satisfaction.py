@@ -32,7 +32,7 @@ def execute(filters=None):
     """
     result = frappe.db.sql(sql, {"from_date": from_date, "to_date": to_date}, as_dict=True)
 
-    avg_value = flt(result[0].global_average*20 or 0, 2)
+    avg_value = flt((result[0].global_average or 0) * 20, 2)
 
     # define columns
     columns = [

@@ -1,0 +1,70 @@
+{% extends "templates/web.html" %}
+<!-- no-cache -->
+<!-- no-sitemap -->
+{% block navbar %}{% endblock %}
+{% block footer %}{% endblock %}
+{% block banner %}{% endblock %}
+{% block breadcrumbs %}{% endblock %}
+{% block head_include %}
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="stylesheet" href="/assets/amf/css/satisfaction_feedback.css?v=20261120">
+<style>
+ .vm-feedback { max-width: 1040px; padding: 30px 22px; margin: auto; font: 16px/1.6 "AMF Supreme",Arial,sans-serif; color: #1c1d20; }
+ .vm-feedback header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 20px 0 32px; }
+ .vm-feedback header img { width: 140px; height: auto; }
+ .vm-feedback .vm-badge { background: #d2ff28; color: #1c1d20; padding: 7px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+ .vm-feedback h1 { font-size: 36px; line-height: 1.15; margin: 0 0 16px; letter-spacing: -.04em; }
+ .vm-feedback .vm-intro { max-width: 740px; margin: 0 0 28px; color: #606572; }
+ .vm-feedback .vm-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
+ .vm-feedback .vm-card { padding: 26px; border: 1px solid #dce1ed; border-radius: 7px; min-width: 0; }
+ .vm-feedback h2 { color: #2b47d9; font-size: 24px; margin: 0 0 12px; }
+ .vm-feedback .vm-context { font-size: 13px; color: #606572; overflow-wrap: anywhere; }
+ .vm-feedback a { color: #2b47d9; }
+ .vm-feedback .vm-help { margin: 28px 0 0; padding: 22px 0; border-top: 1px solid #dce1ed; color: #606572; font-size: 14px; }
+ .vm-feedback details { margin-top: 20px; }
+ .vm-feedback summary { color: #2b47d9; cursor: pointer; }
+ .vm-feedback .vm-email { padding-top: 20px; font-size: 14px; overflow-wrap: anywhere; }
+ .vm-feedback code { overflow-wrap: anywhere; white-space: normal; }
+ @media(max-width:700px) { .vm-feedback .vm-grid { grid-template-columns:1fr; } .vm-feedback h1 { font-size:30px; } }
+</style>
+{% endblock %}
+{% block page_container %}{{ self.page_content() }}{% endblock %}
+{% block page_content %}
+<main class="vm-feedback">
+  <header>
+    <img src="/assets/amf/images/branding/amf-logo-tagline.svg" alt="AMF — Advanced Microfluidics" width="140" height="89">
+    <span class="vm-badge">VM TEST · localhost:8000</span>
+  </header>
+  <h1>Test the feedback experience.</h1>
+  <p class="vm-intro">Click a star below to open the real feedback form with that rating selected.
+    Submitting saves a real Customer Satisfaction Survey in this VM, using the dedicated test Organization and Contact.
+    Outgoing email delivery is muted on this VM.</p>
+  <div class="vm-grid">
+    {% for preview in previews %}
+    <section class="vm-card">
+      <h2>{% if preview.kind == 'SO' %}Sales Order feedback{% else %}Issue feedback{% endif %}</h2>
+      <p class="vm-context">Source: {{ preview.source_name | e }}<br>Organization: AMF VM Satisfaction Test (LOCAL ONLY)<br>Contact: VM Feedback Tester</p>
+      {% if preview.survey %}
+      <p><strong>Response saved.</strong> Reopening a star shows the thank-you message.</p>
+      <p><a href="/desk#Form/Customer%20Satisfaction%20Survey/{{ preview.survey | e }}">View {{ preview.survey | e }} in ERP</a></p>
+      {% else %}
+      <p><strong>Ready to test.</strong> No response has been submitted.</p>
+      {% endif %}
+      {{ preview.stars }}
+      <details>
+        <summary>Preview the email</summary>
+        <div class="vm-email"><p><strong>{{ preview.subject | e }}</strong></p>{{ preview.message }}</div>
+      </details>
+    </section>
+    {% endfor %}
+  </div>
+  <div class="vm-help">
+    <p>For a first test, click star <strong>2</strong>, choose recommendation <strong>0</strong>, add an optional comment, and submit.
+      Refresh this page to find the saved survey. ERP record links require a Desk login; the feedback form does not.</p>
+    <p>Each source accepts one response. To prepare another pair of fresh test requests, run:<br>
+      <code>env/bin/python apps/amf/tools/setup_satisfaction_feedback_vm.py --site site1.local --new-round</code></p>
+    <p><a href="/desk#List/Customer%20Satisfaction%20Survey/List">Open Customer Satisfaction Surveys in ERP</a></p>
+  </div>
+</main>
+{% endblock %}
