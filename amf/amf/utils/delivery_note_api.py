@@ -763,21 +763,20 @@ def get_HS_code(item_code, shipping_address_name):
     else:
         return None
 
-    country = frappe.db.get_value("Address", shipping_address_name,"country")
-    hs_country = get_country_code(country) or ""
-    if not hs_country:
+    country = frappe.db.get_value("Address", shipping_address_name, "country")
+    country_code = get_country_code(country)
+    if not country_code:
         return None
-    if hs_country in EU_ISO_CODES:
-        hs_country = "EU"
-    hs_country = hs_country.lower()
-    
-    hs_code = frappe.db.get_value(
+
+    tariff_field = "eu" if country_code in EU_ISO_CODES else country_code.lower()
+    # The table only has columns for configured destinations.
+    tariff_row = frappe.db.get_value(
         "HS Code Table",
         {"item_type": hs_type},
-        hs_country
+        "*",
+        as_dict=True,
     )
-    print("hs_code:", hs_code)
-    return hs_code
+    return tariff_row.get(tariff_field) if tariff_row else None
 
 
     

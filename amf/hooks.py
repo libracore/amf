@@ -53,7 +53,7 @@ doctype_js = {
     ],
     "Item": ["public/js/item.js", "public/js/item_creation_history.js"],
     "BOM": "public/js/item_creation_history.js",
-    "Issue": "public/js/doctype/issue_classification.js",
+    "Issue": ["public/js/doctype/issue_classification.js", "public/js/doctype/issue_closure_email.js"],
     "AMF Issue Test": "public/js/doctype/issue_classification.js",
     "Issue Type": "public/js/doctype/issue_type.js",
     "Quality Inspection": "public/js/quality_inspection.js",
@@ -79,6 +79,7 @@ doctype_list_js = {
     "BOM": "public/js/list/bom_list.js",
     "Contact": "public/js/list/contact_list.js",
     "Item": "public/js/list/item_list.js",
+    "Issue": "public/js/list/issue_closure_email.js",
     "Work Order": "public/js/list/work_order_list.js",
 }
 
@@ -173,7 +174,7 @@ doc_events = {
         "on_update": "amf.amf.utils.tool_maintenance.sync_tool_group_after_save",
     },
     "Issue": {
-        "on_update": "amf.master_crm.feedback.on_issue_update",
+        "onload": "amf.master_crm.issue_closure.set_closure_email_offer",
         "validate": [
             "amf.amf.utils.issue_classification.apply_issue_routing",
             "amf.amf.utils.amf_issue_test_management.sync_linked_issue_party",
@@ -349,6 +350,8 @@ override_doctype_dashboards = {
 # Initial setup runs once on app installation. Existing sites are initialized
 # by the versioned monthly inventory patch, not by every migration.
 after_install = [
+    "amf.master_crm.issue_closure.install_closure_email_template",
+    "amf.master_crm.email_templates.install_email_templates",
     "amf.amf.utils.project_id.after_install",
     "amf.amf.utils.monthly_inventory.setup_monthly_inventory",
 ]

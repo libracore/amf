@@ -1,10 +1,13 @@
 <p>Dear {{ recipient_name | e }},</p>
-<p>We’re reaching out to let you know that your issue {{ issue | e }} has been resolved.
-We appreciate your patience while we worked to address your concern.</p>
-<p>We’d love to hear how we did! Please rate your overall experience with our support:</p>
+{% if is_supplier %}
+<p>We’ve closed issue <strong>{{ issue | e }}</strong>. Thank you for your help in resolving it.</p>
+<p>If you have questions about the closure or need to share an update, please reply and reference {{ issue | e }}.</p>
+{% else %}
+<p>Your issue <strong>{{ issue | e }}</strong> has been resolved. Thank you for your patience while we worked on it.</p>
+<p>If you still need help with this issue, please reply to this email so our support team can follow up.</p>
+{% if stars %}
+<p>How did we do? Please rate your experience with AMF Support.</p>
 {{ stars }}
-<p>Just click the star that best reflects your satisfaction. Your feedback helps us
-improve our services and ensure a great experience for all our customers.</p>
-<p>If you have any additional questions or concerns, feel free to let us know.
-Thank you again for choosing AMF!</p>
+{% endif %}
+{% endif %}
 <p>Warm regards,<br>The AMF Team</p>

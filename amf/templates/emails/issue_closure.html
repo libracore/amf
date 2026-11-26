@@ -1,0 +1,18 @@
+<p>Dear {{ recipient_name | e }},</p>
+<p><br></p>
+{% if is_supplier %}
+<p>We’ve closed issue <strong>{{ issue | e }}</strong>. Thank you for your help in resolving it.</p>
+<p><br></p>
+<p>If you have a question or a further update, please reply to this email and include the issue reference.</p>
+{% else %}
+<p>We’ve resolved your support request <strong>{{ issue | e }}</strong>. Thank you for your patience while we worked on it.</p>
+<p><br></p>
+{% if stars %}
+<p>How was your experience with AMF Support?</p>
+{{ stars }}
+<p><br></p>
+{% endif %}
+<p>If you still need help with this issue, please reply to this email so our support team can follow up.</p>
+{% endif %}
+<p><br></p>
+<p>Warm regards,<br>AMF Support</p>

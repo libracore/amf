@@ -1,14 +1,14 @@
 # AMF ERP Release Notes
 
-Generated on: 2026-11-03
+Generated on: 2026-11-26
 
-Change history through: 2026-11-03
+Change history through: 2026-11-26
 
-Latest reviewed commit: `e856f57`
+Latest reviewed commit: `145a35c`
 
 Live system: [AMF ERP Desk](https://amf.libracore.ch/desk#)
 
-Latest release: `v2026.11.1`
+Latest release: `v2026.11.2`
 
 Release status: Ready for validation
 
@@ -18,7 +18,7 @@ Release audience: AMF ERP users, department leads, management, operations, finan
 
 This document is the business-facing release notes and change history for the AMF ERP custom app.
 
-It summarizes the main ERP changes developed in the AMF custom app from the beginning of the recorded development history to 2026-11-03. The report is based on the `apps/amf` git history, which starts on 2022-09-19, and on the current AMF app structure, including custom DocTypes, reports, pages, hooks and documentation.
+It summarizes the main ERP changes developed in the AMF custom app from the beginning of the recorded development history to 2026-11-26. The report is based on the `apps/amf` git history, which starts on 2022-09-19, and on the current AMF app structure, including custom DocTypes, reports, pages, hooks and documentation.
 
 This is intentionally not a technical commit-by-commit changelog. It records committed changes in `apps/amf` as a release communication document for the main modifications, novelties and functional areas added over time. Standard Frappe and ERPNext framework changes are not listed unless they were reflected in AMF custom development.
 
@@ -49,7 +49,8 @@ Historical development milestones already recorded in the project, such as `v0.4
 
 | Release | Status | Period | Main Focus |
 | --- | --- | --- | --- |
-| `v2026.11.1` | Ready for validation, latest | 2026 Q4, Nov 3 | Machining-planning page and draft deletion, matching magnet stock coverage, one-unit FFTest consumption and manual machining assignments to Martin. |
+| `v2026.11.2` | Ready for validation, latest | 2026 Q4, Nov 5-26 | Sales Analytics, customer feedback and manual closure emails, production cockpit, FFTest corrections, migration layouts, MAT.1021 batch repair and NKN tube caps. |
+| `v2026.11.1` | Superseded | 2026 Q4, Nov 3 | Machining-planning page and draft deletion, matching magnet stock coverage, one-unit FFTest consumption and manual machining assignments to Martin. |
 | `v2026.10.3` | Superseded | 2026 Q4, Oct 26-29 | Reviewed Item Creation and lifecycle, RVM/LV/HV variants, staged FFTest, BOM cost analysis, private exports, inventory lifecycle and Acoustic Mixer setup. |
 | `v2026.10.2` | Superseded | 2026 Q4, Oct 13-26 | Monthly inventory checks, Purchase Receipt GL precision, customer-description cleanup, Sales Order letterhead, guarded stock corrections and 4D interface variants. |
 | `v2026.10.1` | Superseded | 2026 Q4, Oct 5-12 | Issue classification and history, FFTest P202 serial flow, Tool Maintenance subgroups, timer alerts, selected BOM repricing and MAT.1021 batch traceability. |
@@ -68,67 +69,75 @@ Historical development milestones already recorded in the project, such as `v0.4
 | `v0.4.0` | Superseded | 2024 Q3 | Master CRM, Sales Actions, campaign lists, Gravity Forms, Brevo integration and CRM analytics. |
 | Foundation releases | Superseded | 2022-2024 | Core reporting, planning, labels, QR codes, inventory visibility, logistics, purchasing and CRM foundations. |
 
-## Latest Release: `v2026.11.1`
+## Latest Release: `v2026.11.2`
 
-Release date: 2026-11-03
+Release date: 2026-11-26
 
 Release status: Ready for validation
 
-Committed change window: 2026-11-03
+Committed change window: 2026-11-05 to 2026-11-26
 
-Reviewed commit range: `f751c19..e856f57` (five functional commits since the previous report update; its application cutoff was `6728986`).
+Reviewed commit range: `b51ff48..145a35c` (18 commits since the previous report update; its application cutoff was `e856f57`).
 
 AMF app version at reviewed commit: `0.7.12`
 
 Live system: [AMF ERP Desk](https://amf.libracore.ch/desk#)
 
-Machining planning route: [Production Tracking - Planning](https://amf.libracore.ch/production-tracking-planning#usinage)
-
 ### Summary
 
-This release adds a separate Production Tracking - Planning page with a machining tab built from the existing Plug and Valve Seat reports. It combines their rows in Expected Date order and lets authorized users edit planning fields or delete draft Work Orders. The page uses the same ERP production records, so a saved change affects the actual Work Order and other ERP views.
+This release adds AMF Sales Analytics for CHF reporting of revenue, order intake, shipments and outstanding commercial commitments. Users can inspect source documents, customer/product breakdowns and reconciliation details, with optional approved billing dates and targets. The dashboard distinguishes posted actuals from commitments and outlook, and applies the user's source-document and export permissions.
 
-Machining shortage calculations now include positive stock of the exact matching magnet sub-assembly: `10xxxx` is covered by `11xxxx`, and `20xxxx` by `21xxxx`. This can reduce proposed quantities or remove planner-owned drafts when demand is covered. Newly saved manual machining Work Orders also receive an assignment to Martin, using the standard ToDo and notification workflow.
+Customer feedback is integrated into manually sent Sales Order confirmations and Issue closure emails. A token-protected public form collects satisfaction, recommendation and optional future-needs comments; responses feed the existing submitted-survey workflow. Issue closure now offers an editable customer or supplier email that requires an explicit Send action, and separate editable AMF templates are installed for both communication types.
 
-The copied FFTest endpoint now limits material consumption and transfers to one finished unit per call, including repeated production on multi-unit Work Orders. It respects stock-UOM conversions, duplicate input rows and material already consumed. These notes describe the committed changes; the validation checks below are recommendations for release review.
+Production Tracking receives a clearer cockpit and machining filters, while FFTest preserves body serials on serialized finished products and keeps customer Sales Orders on the final manufacturing order. Additional committed migrations preserve form layouts, restore the MAT.1021 batch chain and create four NKN tube-cap Items/BOMs. Delivery Note tariff lookup also tolerates destinations without a configured tariff column.
 
 ### Highlights
 
-- Added a separate machining-planning page that combines the two saved machining reports, preserves all report rows and columns, and sorts by Expected Date with undated orders last.
-- Added authorized row editing with Save/Cancel, stale-record checks and normal Work Order validation; the copied overview also improves permissions, timer selection, shipment status and shared-note handling.
-- Added confirmed deletion of draft machining Work Orders through native permission, version and link checks, preserving other rows' staged edits.
-- Included exact matching magnet sub-assembly stock in reorder, Sales Order machining and legacy shortage calculations, retaining each path's warehouse scope and existing buffer rules.
-- Limited FFTest input consumption to one output unit's requirement per request for both the staged `4D` flow and the other routes in the copied module.
-- Added one assignment to Martin on the first save of an eligible manually created machining Work Order, with standard queued notification behavior and duplicate prevention.
+- Added AMF Sales Analytics with period comparisons, customer/product views, shipping commitments, billing balances, source details and permission-controlled Excel/CSV exports.
+- Added approved billing-date and revenue/order-intake target records, with reconciliation for noncommercial shipments, returns and quantities credited then re-invoiced.
+- Added customer feedback links and a public three-question response form, with one response per request and activation only after email queueing.
+- Changed Issue closure to a manual composer workflow and installed editable `AMF Sales Order Confirmation` and `AMF Issue Closure` templates.
+- Refined satisfaction-score updates, repeatable global snapshots and new Contact Country defaults while retaining AMF's existing scoring formulas.
+- Redesigned the separate production cockpit and machining table with summaries, quick filters, machine distribution, pending-edit navigation and larger desktop text.
+- Corrected FFTest serialized-final carryover and component Work Order Sales Order inheritance; improved form-layout migration and guarded MAT.1021 batch repair.
+- Added missing-destination tariff handling and an NKN tube-cap migration with validated PEEK recipes and private drawing import.
 
 ### Change Notes
 
 | Area | Change | Brief Explanation |
 | --- | --- | --- |
-| Machining planning | Combined, date-sorted planning with direct row editing. | The new page reads `Plug à usiner...` and `Valve Seat à usiner...` using their actual saved filters, deduplicates Work Orders and places undated rows last. All 13 current columns are shown; eight business fields are editable on drafts where permissions allow, while fetched/calculated fields remain protected. Saves check the original modification time, refresh Item/BOM dependencies when needed and run normal Work Order validation. |
-| Production overview | A separate page with permission-aware reads and safer note updates. | The copy keeps the overview alongside planning, recognizes alphanumeric machining codes, selects the latest active/paused timer and counts only visible submitted Delivery Notes for shipment indicators. Shared-note saves check permissions and concurrent edits, and the layout supports smaller screens. It shares production records and the existing note with the original page. |
-| Draft Work Orders | Delete action added to machining planning. | A confirmed Delete removes the underlying draft Work Order from the ERP, subject to native delete permission, current report membership, modification-time checks and normal linked-document restrictions. Submitted/cancelled orders cannot be deleted through this action. Frappe retains its Deleted Document archive, and other planning rows keep their unsaved edits. |
-| Machining stock coverage | Matching magnet stock reduces component shortages. | A six-character uppercase-alphanumeric `10xxxx`/`20xxxx` Item gains one-for-one planning coverage from positive net `11xxxx`/`21xxxx` stock with the identical suffix. Reorder and Sales Order planning retain Main Stock/Assemblies scope; the legacy shortage check retains its broader non-OLD scope. This changes planning availability rather than physical stock or BOMs; existing buffer and draft-reconciliation rules still apply, and a site setting can disable the added coverage. |
-| FFTest quantities | One call consumes at most one finished unit's inputs. | The copied endpoint caps material rows at the Work Order requirement divided by its total quantity, sharing that cap across duplicate rows and honoring UOM conversion and prior consumption. A four-unit Work Order is completed through four separate unit calls, with completion limits enforced. The change covers manufacturing and transfers in the `4D` and existing `42`/body routes; a failed call rolls back its unit while earlier successful calls remain complete. |
-| Manual machining assignments | Martin receives a task when a new manual order is saved. | The first save of an eligible `10xxxx`/`20xxxx` Work Order through supported manual actions creates an Open ToDo for `martin.barraud@amf.ch` and requests the native assignment notification. Later edits/submission do not repeat it, and scheduled planners, imports, patches and generic integrations are excluded. Existing assignees are retained; Martin must remain an enabled System User for the qualifying save to succeed. |
+| Sales Analytics | Source-linked commercial reporting in CHF. | The new Desk page reports submitted revenue, order intake, deliveries and open commitments for Advanced Microfluidics SA, with history from 2022. It provides period comparisons, customer/Item/group breakdowns, invoice reconciliation and Excel/CSV detail downloads. Document, company, field and export permissions apply; some cross-document balances require complete eligible source access. |
+| Billing and shipment analysis | Approved outlook and more precise reconciliation. | Optional submitted billing records assign an expected invoice date to a specific Sales Order row and quantity; targets cover a complete month, quarter or year without automatic annual phasing. Noncommercial movements are separated from commercial deliveries, returns follow their source classification, and exact linked credit/re-invoice sequences avoid double-counting billed quantities. Overdue shipping rolls into the current schedule month while retaining its original ERP date and overdue flag. |
+| Public customer feedback | Token links collect one submitted survey response. | Supported Sales Order confirmations and customer Issue emails can include five rating links that open the same public form with the selected star prefilled. Satisfaction 1–5 and recommendation 0–10 are required; a future-needs comment is optional. Viewing a link creates no survey, and repeated submission returns the thank-you message without creating another response; prepared links activate only when the email is queued. |
+| Closure emails and templates | Users review and send external messages explicitly. | Closing an Issue offers a customer/supplier draft in the standard composer; the user must click Send, and the legacy automatic Issue Closed notification is disabled by setup. New editable AMF confirmation/closure templates are installed without replacing existing edited templates, and customer drafts can carry feedback links while supplier drafts omit them. Bulk closure offers an Issue to review rather than sending a batch of emails. |
+| Satisfaction scores and Contacts | Submitted responses drive scores; defaults are more predictable. | Contact scores refresh from the latest submitted survey on submission/cancellation, and referral records no longer fabricate numeric ratings. Global snapshots can be recalculated on the same day and empty report ranges return zero; existing AMF CSAT/recommendation formulas are retained. New Contacts start with Country blank in full form and Quick Entry while explicit supplied values are preserved. |
+| Production cockpit | Clearer overview and interactive machining filters. | The separate planning page adds summary cards, assembly/machining lanes, complete order labels, date states, quick filters and a machine-distribution panel. Pending edits are highlighted with navigation to changed rows; responsive pinned columns and larger desktop text improve readability. Recorded estimated days describe existing work rather than machine capacity, and the database Web Page must be refreshed through its installer after template deployment. |
+| FFTest manufacturing | Body serial and customer demand links preserved correctly. | Serialized final assembly carries the consumed body's serial into the finished Item using native Manufacture behavior instead of allocating another serial. Generated component Work Orders link to their manufacturing parent and inherit its project, leaving their own Sales Order empty; the final order retains the customer Sales Order. This fixes native rejection of component Items absent from the Sales Order and applies to future calls rather than repairing historical entries. |
+| Form migrations | Sales Order layouts and a targeted Work Order override retained. | AMF customization exports own Sales Order and child-table field positions; setup hooks add missing fields without overwriting existing definitions. The duplicate Sales Team export is removed, and the Work Order Sales Order Item field's update-after-submit property is supplied as a narrow fixture. Other Work Order field layout properties remain governed by their configured metadata. |
+| MAT.1021 batches | Receipt-to-subcontract chain restored with data checks. | A new migration selects the named source documents independently of the site's filesystem name, restores receipt batch `8UREHM DAL` and original-stock batch `KRDLAT AMF`, and links the latter through transfer and subcontract consumption. It checks document identities, quantities, conflicting batches and warehouse totals. Only batch tracking/references change; quantities, valuation and GL are not adjusted, and the Batch barcode hook now leaves commits to its caller. |
+| Delivery Note customs | Missing tariff destinations no longer cause a column-query error. | HS-code lookup reads the configured tariff row and returns its EU/destination value when present. An unknown country or absent tariff column returns no code, allowing the caller to handle missing customs data rather than failing on an SQL column name. |
+| NKN tube caps | Four manufactured components and default BOMs added by migration. | The patch creates or validates `700070`–`700073` for NKN.2024/2031/2039/2040, with 0.04 m of the specified PEEK bar per piece. Drawing PDFs can be staged privately and are checksum-checked before attachment; missing drawings are reported for later import. NKN.2024's filename/title-block revision mismatch keeps its PDF out of the active drawing register pending confirmation; no Work Orders or stock postings are created by this patch. |
 
 ### User Impact
 
-- Planners can use the separate machining tab to update dates, priority, machine, quantities and other permitted fields. Rows can leave the table after changes such as progress moving to QC; this follows the source reports' filters.
-- Delete affects the real ERP draft Work Order. Users need native delete permission, and linked records can block the action; submitted-order lifecycle actions remain in the Work Order form.
-- Matching magnet stock can reduce production proposals and cause existing planner-owned drafts to be removed by normal reconciliation. It does not disassemble stock or replace the material identities required by a manufacturing BOM.
-- FFTest operators process multi-unit Work Orders one unit per call with the appropriate serial. The correction applies to the copied FFTest module, so the caller must use that module for this behavior.
-- Martin can find new manual machining assignments in the Work Order sidebar and ToDo list. Email uses the normal queue and self-assignment rules; existing Work Orders are not assigned retrospectively.
+- Sales and finance users can inspect actuals, commitments and source reconciliations in Sales Analytics. Approved billing dates and targets need their own submitted records; the dashboard does not invent an invoice schedule from shipping dates.
+- Staff select the AMF templates and review recipients, text and attachments before sending. Closing an Issue alone sends no closure email; customer feedback links require the public host to run the matching route and schema.
+- A supported confirmation/feedback send reuses its existing Communication on repetition. Failed delivery should be handled with the normal Email Queue retry/resend controls.
+- Planners gain filters and clearer production visibility while retaining the same Work Orders and row-save/delete rules. Deployment must refresh the separate database-stored Web Page as well as the source code.
+- FFTest users keep the customer Sales Order on the final Work Order and use the body serial for serialized final output. Existing submitted Work Orders and Stock Entries are not backfilled by these fixes.
+- Stock and engineering teams should verify MAT.1021 batch references after migration and review NKN material consumption and drawing revisions before manufacturing release.
 
 ### Validation Notes
 
-This report update was checked against the five committed changes above. The following are recommended release checks, not new live tests performed while preparing the report:
+This report was checked against the 18 committed changes above. The following are recommended release checks; no live transactions, emails or migrations were run while updating the report:
 
-- Compare the machining tab with both source reports, including alphanumeric Items, undated rows and the complete column set. Test an authorized draft edit, estimated-time recalculation, a stale-save rejection and preservation of edits on other rows.
-- On an isolated draft, verify Delete confirmation, native link restrictions, denied/submitted-order behavior and the Deleted Document archive. Confirm the original page remains available and the new page's saves update the shared Work Orders.
-- Compare machining-planner dry runs with matching magnet coverage enabled and disabled. Review reduced shortages and proposed draft updates/deletions, retaining each path's warehouse scope and production buffer.
-- Test repeated FFTest calls on a multi-unit Work Order, checking one-unit material use, UOM conversion, duplicate rows, previously consumed material, completion limits and rollback after a failed later call.
-- Create eligible manual test orders through supported entry points and verify one assignment to Martin, no duplicate on later saves and no assignment from automatic creation. Intercept test email; separately confirm the site's recipient, mail queue and configuration switches before operational use.
+- Register Sales Analytics and its optional billing/target DocTypes in staging. Reconcile invoice net/charges/VAT/gross, linked credits and re-invoicing, commercial/noncommercial returns, dated billing and permission-restricted details/exports.
+- Prepare and send test confirmation/closure messages with mail delivery intercepted. Confirm that closing an Issue alone queues nothing, supplier drafts omit feedback, attachments are retained and repeated supported sends create no duplicate request/message.
+- Open a queued feedback link, change the preselected rating, submit both ratings including recommendation zero, and resubmit it. Verify one survey, Contact score refresh/cancellation behavior, repeatable global snapshots and explicit Contact Country preservation.
+- Refresh the planning Web Page using its installer and validate both tabs, combined filters, machine summaries, pending edits, pinned columns and desktop/mobile readability. Follow the [production-page deployment notes](production_tracking_planning_redesign.md).
+- Test FFTest serialized final assembly and newly generated component orders with parent/project links, while retaining native Sales Order validation for standalone Work Orders.
+- After the guarded MAT.1021 migration, reconcile both source batches through `PREC-03061-1` and warehouse totals without stock/GL changes. Check Sales Order layouts after migration and Delivery Note HS lookup for both configured and absent destinations.
+- For NKN Items, verify the four identities, active default BOMs and 0.04 m PEEK recipes. Stage the approved PDFs privately for import, resolve NKN.2024's revision discrepancy and check the resulting drawing register.
 
 ## Executive Summary
 
@@ -144,9 +153,9 @@ The main evolution areas are:
 - Purchasing and procurement follow-up.
 - Delivery Note, shipping, DHL tracking, DHL shipment creation and logistics tools.
 - CRM, contact management, sales actions, campaign lists and external form/email integrations.
-- Quality inspection, process-owned Issue classification and party history, organizational change control, customer feedback and satisfaction surveys.
+- Quality inspection, process-owned Issue classification and party history, organizational change control, token-linked customer feedback and submitted-survey satisfaction scores.
 - Finance and compliance support such as VAT, HS codes, customs values, landed cost, Purchase Receipt GL precision, custom ledgers and PostFinance reconciliation.
-- Operational dashboards, KPI reporting and AI-assisted reporting.
+- Operational dashboards, source-linked Sales Analytics for revenue/order intake/commitments, KPI reporting and AI-assisted reporting.
 - Weekly operations slide reporting with controlled production, delivery, QC and shipping scope.
 - Customer-facing Sales Order, Loan Order, Delivery Note and commercial-invoice document formats.
 - Source-linked BOM cost analysis, reviewed material repricing, receipt batch tracing and FFTest serial/stock-flow controls.
@@ -157,7 +166,23 @@ The main evolution areas are:
 
 ### 2026 - Advanced Planning, Finance, Compliance, Dashboards And AI Reporting
 
-#### `v2026.11.1` - 2026 Q4, Nov 3 - Latest
+#### `v2026.11.2` - 2026 Q4, Nov 5-26 - Latest
+
+- Added AMF Sales Analytics for CHF actuals, order intake, commercial deliveries and open commitments from submitted ERP records, with history from 2022. Period/customer/product views, source details, invoice reconciliation and Excel/CSV exports apply document/field/export permissions.
+- Added optional Sales Analytics Billing and Target records for approved order-row billing dates and full-period revenue/order-intake targets. Shipping schedules retain original ERP dates, identify overdue/held work and move past-due shipping into the current schedule month.
+- Refined analytics shipment classification for samples, loans, gifts, warranty/manufacturing movements and returns, and corrected exact linked credit/re-invoice quantity counting. Full-width layout and aligned table headers improve interpretation of the displayed values.
+- Added token-protected customer feedback from supported order confirmations and customer Issue emails. The public form collects satisfaction, recommendation and optional future needs, creating one submitted survey only on explicit response and accepting repeated submissions without duplicates.
+- Final Issue closure behavior requires manual sending: form/list closure offers an editable customer/supplier composer, and setup disables the former automatic Issue Closed notification. Dedicated editable AMF confirmation/closure templates are installed, with feedback only for eligible customers and existing edited templates preserved.
+- Contact scores now follow the latest submitted survey on submission/cancellation; referral creation no longer supplies invented scores. Existing formulas remain, global daily snapshots are repeatable, empty report ranges return zero and new Contact Country defaults are suppressed without clearing explicit values.
+- Redesigned the separate production cockpit and machining tab with summaries, lanes, quick filters, machine distribution, pending-edit navigation and responsive pinned columns. Later refinements compact panels, position the heading with navigation, enlarge the clock and improve desktop text readability; deployment must refresh the database Web Page.
+- FFTest now carries a consumed body's serial to a serialized finished Item and reports the same serial in preview. Component Work Orders use parent/project links instead of inheriting a Sales Order that does not sell the component; the final Work Order retains the customer order.
+- Sales Order/child-table customization exports and create-only setup hooks preserve migrated layouts, replacing the duplicate Sales Team export. A targeted Work Order fixture preserves the Sales Order Item field's update-after-submit property.
+- New guarded MAT.1021 migrations restore the two source batches through subcontract consumption, select the source data independently of site name and verify warehouse totals without quantity/value/GL adjustments. Batch barcode creation no longer commits its caller's transaction.
+- Delivery Note HS-code lookup now tolerates a missing destination tariff column and returns no code when the corresponding data is unavailable.
+- Added a migration for four NKN tube caps `700070`–`700073` with specified PEEK raw materials and 0.04 m consumption per piece. Private PDF import validates checksums, reports missing drawings and leaves NKN.2024's revision-conflicting PDF out of the active drawing register.
+- Committed tests, audits, VM/browser tools and screenshots document the new analytics, feedback, production-layout and FFTest behavior. They are evidence from those changes, not live tests or deployment performed by this report update.
+
+#### `v2026.11.1` - 2026 Q4, Nov 3
 
 - Added a separate Production Tracking - Planning page at `/production-tracking-planning#usinage`, combining the existing Plug and Valve Seat machining reports with complete row retrieval and Expected Date ordering. All 13 current columns are shown, with eight business fields editable on authorized drafts and system/calculated fields protected.
 - Row saves use native Work Order validation, permission checks and the original modification timestamp. The copied overview also improves timer selection, submitted-Delivery-Note shipment indicators, shared-note concurrency, alphanumeric machining classification and responsive layout while using the same production records.
@@ -534,10 +559,12 @@ The main evolution areas are:
 - FFTest P202 serial mapping, Work Order checks and a read-only stock-flow preview with a separately installed diagnostic page.
 - Opt-in staged FFTest production for serialized `4D` products, including received purchased-body serials, intermediate reuse and a local manual test helper.
 - One-unit material consumption/transfer limits across repeated calls in the copied FFTest module, including `42`/body routes and stock-UOM conversions.
+- FFTest body-to-finished serial carryover and parent/project links for component Work Orders, with the customer Sales Order retained on final production.
 - Estimated manufacturing time and production cost/time tracking support.
 - Tool maintenance planning, due-date tracking and intervention history.
 - Machining reports and production stickers.
 - Separate Production Tracking - Planning page combining Plug/Valve Seat reports by Expected Date, with authorized row editing, concurrent-change checks and native draft deletion.
+- Production cockpit summaries, assembly/machining lanes, quick filters, machine distribution and clearer desktop/mobile presentation.
 
 ### Inventory, Stock And Procurement
 
@@ -551,7 +578,7 @@ The main evolution areas are:
 - Monthly random inventory checks with ten references, warehouse-level counts, explicit confirmation, linked stock corrections and final ledger verification.
 - Manager cancellation/deletion of inventory checks with preserved correction vouchers, assignment closure and one-time installation setup.
 - Guarded correction tooling for the duplicate RVM.3300 receipt and its downstream batch/ledger history.
-- Separate MAT.1021 batch references for the purchase receipt and original stock/subcontractor flow.
+- Separate MAT.1021 batch references for the purchase receipt and original stock/subcontractor flow, with guarded repair through subcontract consumption independent of site name.
 - Guarded stock-history corrections for item `110137` and Work Order `OF-02883`.
 
 ### Item, BOM And Product Master
@@ -569,6 +596,7 @@ The main evolution areas are:
 - Custom Valve Head propagation and R&D review controls for custom Products in selling documents.
 - Item valuation from BOM costs.
 - Acoustic Mixer Product/BOM migration using dedicated non-stock allocations to reach a CHF 2,500 unit-cost target.
+- NKN tube-cap component/BOM migration with specified PEEK consumption, private drawing checksums and revision-aware drawing registration.
 - Reviewed material repricing for 61 selected default BOM roots and qualifying made-child BOMs.
 - Drawing match and component drawing register support.
 - Item maintenance fields and automatic maintenance summaries for Tool and all its subgroups.
@@ -576,7 +604,7 @@ The main evolution areas are:
 
 ### Logistics And Delivery
 
-- Delivery Note API and Delivery Note customizations.
+- Delivery Note API and Delivery Note customizations, including tariff lookup that tolerates unconfigured destination columns.
 - Serial-number transfer to Delivery Notes.
 - DHL export, tracking and MyDHL Express shipment creation.
 - Private DHL text attachments with Delivery Note write-permission checks.
@@ -597,6 +625,9 @@ The main evolution areas are:
 - Gravity Forms integration for external form entry handling.
 - Brevo integration, campaign lists, campaign synchronization and contact statistics.
 - Customer, referral and satisfaction survey features.
+- Token-linked order/Issue feedback with required satisfaction/recommendation answers and duplicate-safe public submission.
+- Editable AMF Sales Order Confirmation and Issue Closure email templates using the standard manual composer.
+- Blank Country defaults on new Contacts without clearing explicitly supplied values.
 
 ### Quality And Issue Management
 
@@ -604,7 +635,8 @@ The main evolution areas are:
 - Automatic Quality Inspection generation for batches and Work Orders.
 - Drawing-based inspection support.
 - Preventive Tool maintenance plans and maintenance intervention history.
-- Customer Feedback and satisfaction scoring.
+- Customer Feedback and satisfaction scoring from submitted responses, repeatable daily global snapshots and no invented referral scores.
+- Manual customer/supplier Issue closure email drafts, with automatic closure notifications disabled and optional customer feedback links.
 - Governed Issue processes, canonical Issue Types, accountable-owner routing and subject-based classification suggestions.
 - User-created Issue Types through `Other`, plus customer/supplier Issue history and traceable AMF Issue Test to legacy Issue links.
 - Issue outcomes separated from classifications, with inactive legacy types retained for historical records.
@@ -630,6 +662,8 @@ The main evolution areas are:
 - BOM Cost Breakdown for planned/actual, average, recursive and latest-purchase/process analysis, with source references and explicit reconciliation differences.
 - Permission-filtered Item Creation Results reporting and immutable private AMF Data Artifact storage for report inputs and outputs.
 - SCM, quotation, global inventory, operations KPI and planning dashboards introduced or improved.
+- AMF Sales Analytics with CHF revenue/order intake, commercial shipments, commitments, reconciliation, source details and permission-controlled exports.
+- Approved billing-date and full-period target records, with separate actual/commitment/outlook measures and credit/re-invoice reconciliation.
 - Weekly Operations Report slides with Production-order scope, non-`GX` delivery/QC filters and manual email distribution.
 - AI-assisted operations reporting added with controlled evidence-backed insights.
 - Document AI import structures added for document parsing and extraction workflows.
@@ -644,16 +678,18 @@ The main evolution areas are:
 - Sales Order and OMR Print Format records managed through standard Frappe fixtures, with retained stylesheet sources, a single default Letter Head on Sales Order confirmations and improved page margins.
 - Barcode, DataMatrix, QR code and label infrastructure expanded.
 - Alphanumeric component/Product code support across batch setup, drawing selection, Work Order tooling and manufacturing reports.
+- Migration-safe Sales Order layouts and child-table exports, plus a targeted Work Order Sales Order Item field override.
+- Token-protected public satisfaction form and opt-in localhost feedback preview/testing tools.
 - Web pages and generated documents for planning, item information, logistics, print formats and document tooling added.
 - Hooks, migrations, settings DocTypes and background utilities added to automate operational behavior, including Tool maintenance lifecycle updates, BOM repair workflows, DHL Shipment setup and weekly report settings.
 
 ## Current Main Custom Objects
 
-The current AMF custom app includes custom objects for planning, Item Creation with Review/Variant/Result child records, AMF Data Artifacts, Monthly Inventory Settings and Checks, Weekly Operations Reports, Organizational Modification Requests and Actions, Tool Maintenance Plans, Tool Maintenance Logs, global quality inspection, Timer Production Alerts, timer production, DHL tracking, loan orders, issue management, AMF Issue Processes, Document AI imports, HS codes, customer feedback, CRM forms, Brevo campaigns, sales actions and satisfaction surveys. It also includes utility layers for Product and purchased-item descriptions, customer-description cleanup, custom-item governance, Issue classification and history, Loan Order settlement and printing, Sales Order/OMR print formats, DHL Shipment creation, reviewed creation plans, permanent code reservations, creation lifecycle/traceability, BOM family repair, recursive BOM updates, selected BOM repricing, Acoustic Mixer setup, `4D` interface variants, Delivery Note print formats, Purchase Receipt GL precision, batch setup, one-unit FFTest consumption, matching magnet-stock planning coverage, manual machining assignments and guarded stock-history correction.
+The current AMF custom app includes custom objects for planning, Item Creation with Review/Variant/Result child records, AMF Data Artifacts, Sales Analytics Billing and Target records, Satisfaction Feedback Requests, Monthly Inventory Settings and Checks, Weekly Operations Reports, Organizational Modification Requests and Actions, Tool Maintenance Plans, Tool Maintenance Logs, global quality inspection, Timer Production Alerts, timer production, DHL tracking, loan orders, issue management, AMF Issue Processes, Document AI imports, HS codes, customer feedback, CRM forms, Brevo campaigns, sales actions and satisfaction surveys. It also includes utility layers for Product and purchased-item descriptions, customer-description cleanup, custom-item governance, Issue classification and history, Loan Order settlement and printing, Sales Order/OMR print formats, DHL Shipment creation, reviewed creation plans, permanent code reservations, creation lifecycle/traceability, BOM family repair, recursive BOM updates, selected BOM repricing, Acoustic Mixer setup, `4D` interface variants, Delivery Note print formats, Purchase Receipt GL precision, batch setup, one-unit FFTest consumption, matching magnet-stock planning coverage, manual machining assignments, manual closure-email preparation, NKN tube-cap setup and guarded stock-history correction.
 
 The current report catalog includes operational reports for inventory turnover, stock and revenue, produced and delivered items, purchased versus manufactured items, delivered items, purchase order items, late purchases, purchase order cash forecasting, projected stock, sales dashboards, quotation dashboards, manufacturing yield, machined parts, item margins, no-price items, leave balances, AMF general ledger, BOM Cost Breakdown, Item Creation Results, Sales Order to Delivery Note lead time and weekly operations slide reporting.
 
-The current page catalog includes inventory planning, the separate Production Tracking - Planning machining page, sales order stock projection, logistics tracking, global inventory dashboard, Tool Maintenance, component drawing register, bank reconciliation automation, an FFTest stock-flow diagnostic page installer, order confirmation parsing, PDF text extraction and file upload tools.
+The current page catalog includes AMF Sales Analytics, the public satisfaction feedback form, opt-in localhost feedback previews, inventory planning, the separate Production Tracking - Planning machining page, sales order stock projection, logistics tracking, global inventory dashboard, Tool Maintenance, component drawing register, bank reconciliation automation, an FFTest stock-flow diagnostic page installer, order confirmation parsing, PDF text extraction and file upload tools.
 
 ## Release Maintenance Workflow
 
@@ -686,41 +722,48 @@ This document should remain high level. Technical implementation details, indivi
 
 ### Email de la dernière version - prêt à valider
 
-Objet: AMF ERP - Version v2026.11.1 - Planification usinage, stocks et suivi des OF
+Objet: AMF ERP - Version v2026.11.2 - Analyse des ventes, retours clients et production
 
 Bonjour à toutes et à tous,
 
-Les notes de la version AMF ERP v2026.11.1 sont prêtes pour validation. Elles couvrent les cinq changements fonctionnels enregistrés dans Git depuis le rapport du 29 octobre, jusqu'au 3 novembre 2026. La version applicative reste 0.7.12.
+Les notes de la version AMF ERP v2026.11.2 sont prêtes pour validation. Elles couvrent les 18 commits enregistrés depuis le rapport du 3 novembre, jusqu'au 26 novembre 2026. La version applicative reste 0.7.12.
 
 AMF ERP live
 https://amf.libracore.ch/desk#
 
-Cette version ajoute une page distincte de planification de l'usinage, tient compte du stock de sous-ensembles aimantés correspondants et attribue les nouveaux OF manuels concernés à Martin. Elle corrige aussi la consommation de matières par unité dans le module FFTest copié. Les vérifications métier sont à confirmer avant diffusion de cette annonce.
+Cette version ajoute une analyse des ventes reliée aux documents ERP, un retour de satisfaction client par lien sécurisé et des emails de clôture d'Issue préparés puis envoyés manuellement. Elle améliore également le cockpit de production, le flux FFTest et plusieurs migrations de données et de formulaires. Le déploiement et les vérifications métier sont à confirmer avant diffusion de cette annonce.
 
 Principaux changements:
 
-Planification usinage
-https://amf.libracore.ch/production-tracking-planning#usinage
-La nouvelle page rassemble les rapports Plug et Valve Seat à usiner, triés par date attendue, avec les ordres sans date à la fin. Les utilisateurs autorisés peuvent modifier les champs métier des brouillons; les champs calculés restent protégés. Les enregistrements utilisent les validations habituelles des OF et détectent les modifications concurrentes.
+AMF Sales Analytics
+https://amf.libracore.ch/desk#sales-analytics
+La nouvelle page présente les ventes facturées, prises de commandes, livraisons et engagements ouverts en CHF, avec analyses par période, client et article. Les détails et exports permettent de retrouver les documents sources et de rapprocher les montants. Des enregistrements approuvés peuvent ajouter des dates de facturation et des objectifs; les réalisations, engagements et perspectives restent distincts et soumis aux droits d'accès.
 
-Suppression des OF brouillons
-Une action Supprimer permet de supprimer l'OF brouillon réel dans l'ERP après confirmation et contrôle des droits et des liens. Elle ne masque pas simplement une ligne du planning. Les OF soumis ou annulés sont exclus, et les modifications non enregistrées des autres lignes sont conservées.
+Satisfaction client
+Les confirmations de commande et emails clients éligibles peuvent contenir cinq liens de notation ouvrant le même formulaire public. Le client confirme une satisfaction de 1 à 5, une recommandation de 0 à 10 et, s'il le souhaite, ses besoins futurs. Le lien devient actif après mise en file de l'email; une réponse explicite crée une seule enquête. Les scores utilisent les réponses soumises et les formules AMF existantes.
 
-Couverture par le stock aimanté
-Le calcul des besoins d'usinage inclut le stock positif du sous-ensemble aimanté portant exactement le même suffixe: `10xxxx` avec `11xxxx`, et `20xxxx` avec `21xxxx`. Cette couverture peut réduire les quantités proposées ou supprimer des brouillons gérés par le planificateur lorsque le besoin est couvert. Elle ne modifie pas le stock physique ni les matières prévues dans les BOM.
+Emails de confirmation et de clôture
+Les modèles modifiables AMF Sales Order Confirmation et AMF Issue Closure sont disponibles dans le compositeur habituel. Fermer une Issue propose de préparer un email au client ou fournisseur, puis l'utilisateur doit cliquer sur Envoyer; la notification automatique de clôture est désactivée par la configuration de la fonction. Les messages fournisseurs ne contiennent pas de demande de satisfaction. Les destinataires, le texte et les pièces jointes restent à vérifier avant envoi.
 
-Consommation FFTest par unité
-Le module FFTest copié limite les matières consommées ou transférées à la quantité nécessaire pour une unité produite, y compris lors d'appels successifs sur un OF de plusieurs unités. Les conversions d'unités, lignes matières répétées et consommations antérieures sont prises en compte. Un OF de quatre unités se traite par quatre appels unitaires; un appel en échec annule ses propres opérations.
+Cockpit de production
+https://amf.libracore.ch/production-tracking-planning
+L'aperçu affiche des résumés et des files assemblage/usinage plus lisibles. Le planning ajoute des filtres rapides, une répartition par machine et un accès aux lignes modifiées, avec colonnes épinglées et textes agrandis sur ordinateur. Les jours estimés reflètent le travail enregistré, sans constituer une mesure de capacité machine; la page stockée en base doit être rafraîchie après déploiement des nouveaux modèles.
 
-Attribution des nouveaux OF manuels
-Au premier enregistrement d'un nouvel OF manuel éligible `10xxxx` ou `20xxxx`, Martin reçoit une tâche ToDo pour revoir et planifier l'usinage. La notification suit les règles et la file d'email standard; les enregistrements ultérieurs ne créent pas de doublon. Les planificateurs automatiques et imports sont exclus, et les OF existants ne sont pas réattribués.
+FFTest et formulaires
+Le numéro de série du corps consommé est conservé sur le produit fini sérialisé. Les OF de composants utilisent leur lien vers l'OF parent et son projet, tandis que la commande client reste sur l'OF final, ce qui évite un rejet lorsqu'un composant n'est pas vendu directement. Les exports de personnalisation préservent aussi la disposition des formulaires après migration; le pays des nouveaux Contacts reste vide sauf valeur explicitement fournie.
+
+Traçabilité matière et douanes
+Une migration contrôlée rétablit les lots MAT.1021 depuis les réceptions et le stock initial jusqu'à la consommation chez le sous-traitant, sans ajuster les quantités, valorisations ni écritures comptables. La recherche du code douanier sur Delivery Note tolère désormais une destination sans colonne tarifaire configurée et retourne alors une valeur vide à traiter.
+
+Bouchons NKN
+Une migration crée ou vérifie les quatre articles `700070` à `700073` et leurs BOM, avec une consommation de 0,04 m de barre PEEK par pièce. Les PDF peuvent être importés comme pièces jointes privées après contrôle d'intégrité. La révision du dessin NKN.2024 reste à confirmer avant activation dans le registre; cette migration ne crée ni OF ni mouvement de stock.
 
 Ce que cela signifie pour vous:
 
-- Les responsables planification peuvent vérifier les dates, quantités, priorités et machines depuis le nouvel onglet; les modifications portent sur les OF partagés avec le reste de l'ERP.
-- Avant un lancement du planificateur en écriture, les responsables stock et production peuvent contrôler les besoins et suppressions de brouillons proposés avec la couverture aimantée.
-- Les utilisateurs FFTest doivent utiliser le module copié concerné et vérifier un exemple de production répétée avec le numéro de série approprié à chaque unité.
-- Martin et les créateurs d'OF peuvent vérifier la tâche dans l'OF et la liste ToDo; la réception de l'email dépend des règles d'auto-attribution et du service de messagerie.
+- Les équipes commerciales et finance peuvent rapprocher les vues Sales Analytics de leurs factures, commandes et livraisons, puis vérifier les droits sur les détails et exports.
+- Les utilisateurs doivent préparer et envoyer volontairement les confirmations et clôtures; fermer une Issue seul ne déclenche pas son email. Les liens de satisfaction nécessitent le déploiement du formulaire sur le serveur public.
+- Les responsables production peuvent vérifier le cockpit et les nouveaux cas FFTest après mise à jour de la page et des processus applicatifs.
+- Les équipes stock et ingénierie sont invitées à contrôler la chaîne de lots MAT.1021, les recettes NKN et les révisions de dessins après migration.
 - Merci de signaler tout comportement inattendu via le canal de support interne habituel.
 
 Bonne journée,
