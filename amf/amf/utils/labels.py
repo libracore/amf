@@ -25,6 +25,8 @@ def download_label(label_reference, content):
 @frappe.whitelist()
 def download_label_for_doc(doctype, docname, print_format, label_reference):
     """ Return PDF label based on an existing print format and label_printer size """
+    if not frappe.has_permission(doctype, "read"):
+        return
     doc = frappe.get_doc(doctype, docname)
     pf = frappe.get_doc("Print Format", print_format)
 
@@ -36,6 +38,8 @@ def download_label_for_doc(doctype, docname, print_format, label_reference):
 @frappe.whitelist()
 def download_label_for_web(item_code, print_format, label_reference):
     """ Return PDF label based on an existing print format and label_printer size """
+    if not frappe.has_permission("Item", "read"):
+        return
     print("*** download_label_for_web in utils ***")
     # Generate QR Code and convert it to base64
     img = generate_qr_code(item_code)
@@ -48,6 +52,8 @@ def download_label_for_web(item_code, print_format, label_reference):
 
 @frappe.whitelist()
 def attach_label(delivery_note, label_reference, content):
+    if not frappe.has_permission("Delivery Note", "read"):
+        return
     label = frappe.get_doc("Label Printer", label_reference)
     file_content = create_pdf(label, content)
 
@@ -93,6 +99,8 @@ import requests
 @frappe.whitelist()
 def fetch_all_serial_nos(item_code=None):
     # Define filters to fetch serial numbers only for the given item_code
+    if not frappe.has_permission("Item", "read"):
+        return
     filters = {}
     if item_code:
         filters['item_code'] = item_code
@@ -104,6 +112,8 @@ def fetch_all_serial_nos(item_code=None):
 
 @frappe.whitelist()
 def print_label_for_all_serials():
+    if not frappe.has_permission("Item", "read"):
+        return
     item_code = 'P221-O'
     
     # Fetch all serial numbers for the given item code

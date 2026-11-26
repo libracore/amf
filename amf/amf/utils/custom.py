@@ -130,6 +130,10 @@ def qr_code_to_document(doc, method=None):
 
 @frappe.whitelist()
 def generate_qr_for_submitted(doctype=None):
+    if doctype not frappe.has_permission(doctype, "write"):
+        return
+    elif not frappe.has_permission("Work Order", "write"):
+        return
     if doctype:
         doc_types = [doctype]
     else:
@@ -137,6 +141,7 @@ def generate_qr_for_submitted(doctype=None):
     print("doctype:", doc_types)
 
     for doc_type in doc_types:
+
         # Fetch all submitted documents of the current DocType
         documents = frappe.get_list(doc_type, filters={'docstatus': 1}, fields=['name'])
         
@@ -153,8 +158,7 @@ def generate_qr_for_submitted(doctype=None):
                 frappe.log_error(f"Failed to generate QR for {doc_type} {doc['name']}: {e}", "QR Code Generation Error")
 
 @frappe.whitelist()
-def set_all_standard_fields(doctype, standard_field, new_custom_field):
-    test_mode = None
+def set_all_standard_fields(doctype, standard_field, new_custom_field, test_mode=False):
     """
     Update the 'standard_field' of all documents of a given 'doc_type' 
     with the value provided in 'new_custom_field_value'.
@@ -167,6 +171,10 @@ def set_all_standard_fields(doctype, standard_field, new_custom_field):
     if not doctype or not standard_field:
         return 'DocType and standard field names are required.'
     
+    # ensure permission to doctype (this function is whitelisted)
+    if not frappe.has_permission (doctype, "write"):
+        return "No doctype permission for {0}".format(doctype)
+
     try:
         # Fetch all documents of the specified DocType
         documents = frappe.get_all(doctype, fields=['name'])

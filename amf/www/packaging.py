@@ -70,6 +70,8 @@ def on_update(doc, method):
 @frappe.whitelist()
 def update_weight(delivery_note, weight, length, height, width, operator, image_data=None):
     # print("Weight in Python: {weight}".format(weight=weight))  # Print the weight
+    if not frappe.has_permission("Delivery Note", "write"):
+        return
     delivery = frappe.get_doc("Delivery Note", delivery_note)
     delivery.update({
         "weight": weight,

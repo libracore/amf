@@ -112,6 +112,8 @@ def create_stock_reconciliation(item_code, item_name, warehouses):
 
 @frappe.whitelist()
 def zero_out_stock_for_items(name):
+    if not frappe.has_permission("Stock Reconciliation", "write"):
+        return
     source_stock_reconciliation = frappe.get_doc("Stock Reconciliation", name)
     #print(source_stock_reconciliation)
     # Create a new Stock Reconciliation document
@@ -144,13 +146,15 @@ def zero_out_stock_for_items(name):
 
 @frappe.whitelist()
 def disable_batches_with_null_stock():
+    if not frappe.has_permission("Batch", "write"):
+        return "Permission error"
     query = """
-    SELECT b.name
-    FROM `tabBatch` AS b
-    JOIN `tabBin` AS bin ON b.item = bin.item_code
-    WHERE (bin.actual_qty IS NULL OR bin.actual_qty = 0)
-    AND bin.warehouse NOT RLIKE 'OLD'
-    GROUP BY b.name
+        SELECT b.name
+        FROM `tabBatch` AS b
+        JOIN `tabBin` AS bin ON b.item = bin.item_code
+        WHERE (bin.actual_qty IS NULL OR bin.actual_qty = 0)
+        AND bin.warehouse NOT RLIKE 'OLD'
+        GROUP BY b.name
     """
 
     # Fetch batches to disable
