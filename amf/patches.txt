@@ -47,3 +47,4 @@ amf.patches.v12_0.disable_automatic_issue_closure_email
 amf.patches.v12_0.install_issue_closure_email_template
 amf.patches.v12_0.install_amf_email_templates
 amf.patches.v12_0.update_amf_email_spacing
+amf.patches.v12_0.create_nkn_tube_caps_2026_11_26
