@@ -5,7 +5,7 @@ import base64
 import importlib
 import mimetypes
 import re
-from html import unescape
+from html import escape, unescape
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -47,13 +47,14 @@ def main():
     frappe.connect()
     try:
         feedback = importlib.import_module("amf.master_crm.feedback")
+        from amf.master_crm.email_templates import SALES_ORDER_TEMPLATE
+        from amf.master_crm.issue_closure import render_closure_email
+
         request = frappe._dict(token="preview-only-not-a-valid-erp-token")
         order = frappe._dict(name="SO-DEMO-001", customer_name="Example Laboratory", po_no="PO-DEMO-001")
-        original = frappe.get_doc("Email Template", "Sales Order")
+        original = frappe.get_doc("Email Template", SALES_ORDER_TEMPLATE)
         so = feedback._add_feedback(frappe.render_template(original.response, order), request)
-        issue = frappe.render_template("amf/templates/emails/issue_feedback.html", {
-            "recipient_name": "Alex Example", "issue": "ISS-DEMO-001", "stars": feedback.stars_html(request),
-        })
+        issue = render_closure_email({"name": "ISS-DEMO-001"}, "Alex Example", feedback.stars_html(request))
         source = (bench / "apps/amf/amf/www/satisfaction-feedback.html").read_text()
         def block(name):
             match = re.search(r'{% block ' + re.escape(name) + r' %}(.*?){% endblock %}', source, re.S)
@@ -64,7 +65,9 @@ def main():
         for key, value in {
             "__AMF_FORM_HEAD__": block("head_include"), "__AMF_FORM__": block("page_content"),
             "__AMF_FORM_SCRIPT__": block("script"),
-            "__AMF_SO_EMAIL__": local_links(so), "__AMF_ISSUE_EMAIL__": local_links(issue),
+            "__AMF_SO_EMAIL__": local_links(so), "__AMF_ISSUE_EMAIL__": local_links(issue["message"]),
+            "__AMF_SO_SUBJECT__": escape(frappe.render_template(original.subject, order), quote=True),
+            "__AMF_ISSUE_SUBJECT__": escape(issue["subject"], quote=True),
         }.items():
             shell = shell.replace(key, value)
         (destination / "index.html").write_text(standalone_assets(shell))

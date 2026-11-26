@@ -31,9 +31,9 @@ body{margin:0;background:#f2f4f7;color:#20242c;font:16px/1.5 Arial,sans-serif}
     <a href="#preview-email">Email</a><a href="#feedback-form">Feedback form</a><a href="#preview-record">ERP field mapping</a>
   </nav>
   <section id="preview-email" class="preview-email">
-    <h2 id="preview-subject">Confirmation for order PO-DEMO-001 | Advanced Microfluidics</h2>
-    <div id="preview-so">__AMF_SO_EMAIL__</div>
-    <div id="preview-issue" hidden>__AMF_ISSUE_EMAIL__</div>
+    <h2 id="preview-subject">__AMF_SO_SUBJECT__</h2>
+    <div id="preview-so" data-subject="__AMF_SO_SUBJECT__">__AMF_SO_EMAIL__</div>
+    <div id="preview-issue" data-subject="__AMF_ISSUE_SUBJECT__" hidden>__AMF_ISSUE_EMAIL__</div>
   </section>
   <section id="feedback-form">__AMF_FORM__</section>
   <section id="preview-record" aria-live="polite">
@@ -68,7 +68,7 @@ body{margin:0;background:#f2f4f7;color:#20242c;font:16px/1.5 Arial,sans-serif}
     var isOrder=source.value==='SO';
     document.getElementById('preview-so').hidden=!isOrder;
     document.getElementById('preview-issue').hidden=isOrder;
-    document.getElementById('preview-subject').textContent=isOrder?'Confirmation for order PO-DEMO-001 | Advanced Microfluidics':'[AMF] Your issue has been resolved – Please rate your experience';
+    document.getElementById('preview-subject').textContent=document.getElementById(isOrder?'preview-so':'preview-issue').dataset.subject;
     form.reset();form.hidden=!!saved[source.value];thanks.hidden=!saved[source.value];
     document.getElementById('feedback-error').hidden=true;updateRatings();record();
   });

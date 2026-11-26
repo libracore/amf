@@ -1,0 +1,9 @@
+<p>Dear {% if customer_name %}team at {{ customer_name | e }}{% else %}customer{% endif %},</p>
+<p><br></p>
+<p>Thank you for sending us your purchase order{% if po_no %} <strong>{{ po_no | e }}</strong>{% endif %}. Please find your order confirmation <strong>{{ name | e }}</strong> attached.</p>
+<p><br></p>
+<p>The expected shipping date is shown next to each item. We’ll send you the tracking details as soon as your order ships.</p>
+<p><br></p>
+<p>If you have any questions about your order, please reply to this email. We’ll be happy to help.</p>
+<p><br></p>
+<p>Warm regards,<br>Madeleine<br>Sales Administration<br>Advanced Microfluidics</p>

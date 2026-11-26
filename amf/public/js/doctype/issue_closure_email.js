@@ -18,6 +18,10 @@
             // V12 enables the print attachment and guesses a recipient by default.
             composer.dialog.set_value('attach_document_print', 0);
             if (!draft.recipient) composer.dialog.set_value('recipients', '');
+            // The draft already contains the rendered template. Keep the template
+            // selected in the composer without appending a second copy of its body.
+            composer.reply_added = draft.email_template;
+            composer.dialog.set_value('email_template', draft.email_template);
         });
     }
 

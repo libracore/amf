@@ -13,7 +13,10 @@ import frappe
 from frappe import _
 from frappe.utils import cint, escape_html, get_formatted_email, get_url, nowdate
 
+from amf.master_crm.email_templates import SALES_ORDER_TEMPLATE
+
 REQUEST_DOCTYPE = "Satisfaction Feedback Request"
+SALES_ORDER_TEMPLATES = (SALES_ORDER_TEMPLATE, "Sales Order")
 THANK_YOU = ("Thank you for your feedback! We truly appreciate your input and look "
              "forward to continually improving our services.")
 MARKER = "<!-- amf-satisfaction-feedback -->"
@@ -107,7 +110,8 @@ def _add_feedback(content, request):
              'your expectations. We’d be grateful if you could take a moment to rate your '
              'experience so far with AMF:</p>' + stars_html(request))
     # Preserve the administrator's confirmation wording and signature.
-    match = re.search(r"<(?:p|div)[^>]*>We remain at your disposal", content, flags=re.I)
+    match = re.search(r"<(?:p|div)[^>]*>(?:We remain at your disposal|If you have any questions about your order)",
+                      content, flags=re.I)
     return content[:match.start()] + block + content[match.start():] if match else content + block
 
 
@@ -115,13 +119,33 @@ def _has_feedback_links(content, request):
     return bool(content and "/satisfaction-feedback?" in content and "token=" + request.token in content)
 
 
+def can_send_issue_feedback(request):
+    if request.status == "Prepared":
+        return True
+    if request.status != "Queued" or request.communication or request.survey:
+        return False
+
+    # The VM activates its demo link before composing an email.
+    from amf.master_crm.feedback_vm import VM_EMAIL, vm_request_allowed
+
+    configuration = frappe.conf.get("satisfaction_feedback_vm") or {}
+    return (request.name == (configuration.get("requests") or {}).get("Issue")
+            and request.recipient == VM_EMAIL and vm_request_allowed())
+
+
 @frappe.whitelist(methods=["POST"])
 def get_email_template(template_name, doc):
-    """Show the actual stars in the existing order confirmation composer."""
+    """Render feedback links when a supported template is selected in Desk."""
     from frappe.email.doctype.email_template.email_template import get_email_template as original
+    from amf.master_crm.issue_closure import ISSUE_CLOSURE_TEMPLATES, get_closure_email
+
     data = json.loads(doc) if isinstance(doc, str) else doc
+    if template_name in ISSUE_CLOSURE_TEMPLATES:
+        if data.get("doctype") != "Issue" or not data.get("name") or data.get("__islocal"):
+            frappe.throw(_("Use the Issue Closure email template from a saved Issue."))
+        return get_closure_email(data["name"], template_name)
     result = original(template_name, data)
-    if template_name != "Sales Order" or data.get("doctype") != "Sales Order":
+    if template_name not in SALES_ORDER_TEMPLATES or data.get("doctype") != "Sales Order":
         return result
     name = data.get("name")
     if not name or not frappe.db.exists("Sales Order", name):
@@ -146,6 +170,7 @@ def make_communication(**kwargs):
     All other email operations continue through the stock implementation.
     """
     from frappe.core.doctype.communication.email import make
+    from amf.master_crm.issue_closure import ISSUE_CLOSURE_TEMPLATES, issue_party
 
     args = frappe.get_newargs(make, kwargs)
     if not (cint(args.get("send_email")) and args.get("sent_or_received", "Sent") == "Sent"
@@ -153,18 +178,20 @@ def make_communication(**kwargs):
         return make(**args)
     doctype = args.get("doctype")
     name = args.get("name")
-    order_confirmation = doctype == "Sales Order" and args.get("email_template") == "Sales Order"
+    order_confirmation = doctype == "Sales Order" and args.get("email_template") in SALES_ORDER_TEMPLATES
+    issue_closure = doctype == "Issue" and args.get("email_template") in ISSUE_CLOSURE_TEMPLATES
     issue_feedback = doctype == "Issue" and "/satisfaction-feedback?" in (args.get("content") or "")
-    if not name or not (order_confirmation or issue_feedback):
+    if not name or not (order_confirmation or issue_closure or issue_feedback):
         return make(**args)
     if not frappe.has_permission(doctype, "email", name):
         raise frappe.PermissionError
     _lock_source(doctype, name)
     doc = frappe.get_doc(doctype, name)
+    if issue_closure and doc.status != "Closed":
+        frappe.throw(_("Close and save the Issue before sending a closure email."))
+
     to_addresses = _addresses(args.get("recipients"))
     if issue_feedback:
-        from amf.master_crm.issue_closure import issue_party
-
         request_id = request_name(doctype, name)
         if not frappe.db.exists(REQUEST_DOCTYPE, request_id):
             return make(**args)
@@ -173,13 +200,13 @@ def make_communication(**kwargs):
             return make(**args)
         if request.communication:
             return {"name": request.communication, "emails_not_sent_to": None}
-        if (doc.status != "Closed" or request.status != "Prepared" or not to_addresses
+        if (doc.status != "Closed" or not can_send_issue_feedback(request) or not to_addresses
                 or issue_party(doc) != ("Customer", request.customer)):
             frappe.throw(_("Open a new closure email draft for this Issue before sending."))
         request.db_set("recipient", to_addresses[0])
         return _queue_feedback_communication(doc, request, args, args["content"])
 
-    if doc.docstatus != 1 or not to_addresses:
+    if not order_confirmation or doc.docstatus != 1 or not to_addresses:
         return make(**args)
     context = source_context(doc, fallback_recipient=to_addresses[0])
     if not context:

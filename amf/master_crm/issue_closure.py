@@ -7,6 +7,37 @@ from frappe.contacts.doctype.contact.contact import get_default_contact
 from frappe.utils import validate_email_address
 
 from amf.master_crm import feedback
+from amf.master_crm.email_templates import ISSUE_CLOSURE_TEMPLATE
+
+LEGACY_ISSUE_CLOSURE_TEMPLATE = "Issue Closure"
+ISSUE_CLOSURE_TEMPLATES = (ISSUE_CLOSURE_TEMPLATE, LEGACY_ISSUE_CLOSURE_TEMPLATE)
+DEFAULT_SUBJECT = (
+    "[AMF] Issue {{ issue }} {% if is_supplier %}closed{% else %}resolved{% endif %}"
+    "{% if stars %} – Please rate your experience{% endif %}"
+)
+
+
+def install_closure_email_template():
+    """Install the original closure template for legacy users and references."""
+    if frappe.db.exists("Email Template", LEGACY_ISSUE_CLOSURE_TEMPLATE):
+        return
+    with open(frappe.get_app_path("amf", "templates", "emails", "issue_feedback.html"), encoding="utf-8") as body:
+        frappe.get_doc({
+            "doctype": "Email Template",
+            "name": LEGACY_ISSUE_CLOSURE_TEMPLATE,
+            "owner": frappe.session.user,
+            "subject": DEFAULT_SUBJECT,
+            "response": body.read(),
+        }).insert(ignore_permissions=True)
+
+
+def render_closure_email(issue, recipient_name, stars=None, is_supplier=False,
+                         template_name=ISSUE_CLOSURE_TEMPLATE):
+    from frappe.email.doctype.email_template.email_template import get_email_template
+
+    context = dict(issue, issue=issue["name"], recipient_name=recipient_name,
+                   stars=stars, is_supplier=is_supplier)
+    return get_email_template(template_name, context)
 
 
 def issue_party(doc):
@@ -42,18 +73,19 @@ def _default_party_contact(party_type, party):
 
 
 @frappe.whitelist(methods=["POST"])
-def get_closure_email(name):
+def get_closure_email(name, template_name=ISSUE_CLOSURE_TEMPLATE):
+    if template_name not in ISSUE_CLOSURE_TEMPLATES:
+        frappe.throw(_("Select an Issue closure email template."))
     doc = frappe.get_doc("Issue", name)
     doc.check_permission("email")
     feedback._lock_source("Issue", name)
     doc.reload()
     party_type, party = issue_party(doc)
-    if doc.status != "Closed" or not party:
-        frappe.throw(_("Close the Issue and select a customer or supplier before composing a closure email."))
 
+    recipient = None
     recipient_name = None
     stars = None
-    if party_type == "Customer":
+    if party_type == "Customer" and party:
         context = feedback.source_context(doc)
         if context and not (context.get("contact_person") or doc.get("contact_email")):
             # ERPNext defaults Raised By to the current employee on Desk Issues.
@@ -66,11 +98,11 @@ def get_closure_email(name):
         recipient = context["recipient"] if context else None
         if context and context.get("contact_person"):
             recipient_name = frappe.db.get_value("Contact", context["contact_person"], "full_name")
-        if context:
+        if context and doc.status == "Closed":
             request = feedback._get_or_create_request(doc, context)
-            if request.status == "Prepared":
+            if feedback.can_send_issue_feedback(request):
                 stars = feedback.stars_html(request)
-    else:
+    elif party_type == "Supplier" and party:
         recipient = next((email for email in feedback._addresses(doc.get("raised_by_supplier_email"))
                           if validate_email_address(email)), None)
         if not recipient:
@@ -78,18 +110,12 @@ def get_closure_email(name):
             recipient = validate_email_address(contact.get("email_id")) or None
             recipient_name = contact.get("full_name")
 
-    recipient_name = recipient_name or frappe.db.get_value(party_type, party, party_type.lower() + "_name")
-    return {
-        "recipient": recipient,
-        "subject": (_("[AMF] Your issue has been resolved – Please rate your experience") if stars
-                    else _("[AMF] Issue {0} has been closed").format(doc.name)),
-        "message": frappe.render_template("amf/templates/emails/issue_feedback.html", {
-            "recipient_name": recipient_name or party,
-            "issue": doc.name,
-            "stars": stars,
-            "is_supplier": party_type == "Supplier",
-        }),
-    }
+    if party and not recipient_name:
+        recipient_name = frappe.db.get_value(party_type, party, party_type.lower() + "_name")
+    draft = render_closure_email(doc.as_dict(), recipient_name or party or _("team"), stars,
+                                 party_type == "Supplier", template_name)
+    draft.update(recipient=recipient, email_template=template_name)
+    return draft
 
 
 @frappe.whitelist(methods=["POST"])

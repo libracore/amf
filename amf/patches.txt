@@ -44,3 +44,6 @@ amf.patches.v12_0.repair_mat_1021_batch_chain_2026_11_17
 amf.patches.v12_0.apply_mat_1021_production_batch_setup_2026_11_17
 amf.patches.v12_0.install_satisfaction_feedback_2026_11_19
 amf.patches.v12_0.disable_automatic_issue_closure_email
+amf.patches.v12_0.install_issue_closure_email_template
+amf.patches.v12_0.install_amf_email_templates
+amf.patches.v12_0.update_amf_email_spacing

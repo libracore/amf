@@ -14,7 +14,7 @@ from urllib.parse import parse_qs, urlparse
 
 import frappe
 
-from amf.master_crm import feedback, issue_closure
+from amf.master_crm import email_templates, feedback, issue_closure
 
 
 class FeedbackControls(HTMLParser):
@@ -41,6 +41,23 @@ class TestFeedbackValidation(unittest.TestCase):
                 for host in ("amf.libracore.ch", "localhost.example.com", "192.168.1.20:8000"):
                     frappe.local.request.host = host
                     self.assertFalse(vm_request_allowed())
+
+    def test_issue_draft_ratings_accept_only_the_unsent_local_demo_request(self):
+        from amf.master_crm.feedback_vm import VM_EMAIL
+
+        request = frappe._dict(name="issue-test-request", status="Queued", recipient=VM_EMAIL)
+        configuration = {"requests": {"Issue": request.name}}
+        with patch.dict(frappe.conf, {"satisfaction_feedback_vm_enabled": 1, "satisfaction_feedback_vm": configuration}), \
+                patch.object(frappe.local, "request", frappe._dict(host="localhost:8000"), create=True):
+            self.assertTrue(feedback.can_send_issue_feedback(request))
+            request.communication = "already-queued"
+            self.assertFalse(feedback.can_send_issue_feedback(request))
+            request.communication = None
+            request.survey = "already-answered"
+            self.assertFalse(feedback.can_send_issue_feedback(request))
+            request.survey = None
+            frappe.local.request.host = "amf.libracore.ch"
+            self.assertFalse(feedback.can_send_issue_feedback(request))
 
     def test_rating_boundaries_include_recommendation_zero(self):
         self.assertEqual(feedback._rating("0", 0, 10, "recommendation"), 0)
@@ -209,7 +226,7 @@ class TestFeedbackDatabase(unittest.TestCase):
 
     def test_confirmation_queues_once_and_preserves_content_and_attachments(self):
         args = {
-            "doctype": "Sales Order", "name": self.source.name, "email_template": "Sales Order",
+            "doctype": "Sales Order", "name": self.source.name, "email_template": email_templates.SALES_ORDER_TEMPLATE,
             "send_email": 1, "recipients": self.context["recipient"],
             "content": "<p>Order confirmation</p><p>We remain at your disposal.</p><p>Madeleine</p>",
             "subject": "Feedback integration test (rolled back)",
@@ -231,14 +248,15 @@ class TestFeedbackDatabase(unittest.TestCase):
         self.assertEqual(prints[0]["name"], self.source.name)
         self.assertEqual(prints[0]["print_format"], "Standard")
         self.assertEqual(prints[0]["print_letterhead"], 1)
-        again = feedback.make_communication(**args)
+        again = feedback.make_communication(**dict(args, email_template="Sales Order"))
         self.assertEqual(result, again)
         self.assertEqual(frappe.db.count("Email Queue", {"communication": comm.name}), 1)
 
     def test_composer_preview_has_links_but_does_not_send(self):
         before = frappe.db.count("Email Queue")
-        result = feedback.get_email_template("Sales Order", self.source.as_dict())
-        self.assertEqual(len(re.findall('/satisfaction-feedback\\?', result["message"])), 5)
+        for template in feedback.SALES_ORDER_TEMPLATES:
+            result = feedback.get_email_template(template, self.source.as_dict())
+            self.assertEqual(len(re.findall('/satisfaction-feedback\\?', result["message"])), 5)
         self.assertEqual(frappe.db.count("Email Queue"), before)
         request = frappe.get_doc(feedback.REQUEST_DOCTYPE, feedback.request_name("Sales Order", self.source.name))
         self.assertEqual(request.status, "Prepared")
@@ -264,13 +282,20 @@ class TestFeedbackDatabase(unittest.TestCase):
         self.assertNotIn("closure_email_party", loaded.get_onload())
 
         draft = issue_closure.get_closure_email(issue.name)
+        selected_template = feedback.get_email_template(issue_closure.ISSUE_CLOSURE_TEMPLATE, issue.as_dict())
+        self.assertEqual(selected_template, draft)
+        legacy = feedback.get_email_template(issue_closure.LEGACY_ISSUE_CLOSURE_TEMPLATE, issue.as_dict())
+        self.assertEqual(legacy["email_template"], issue_closure.LEGACY_ISSUE_CLOSURE_TEMPLATE)
+        self.assertIn(issue.name, draft["subject"])
         request = frappe.get_doc(feedback.REQUEST_DOCTYPE, request_id)
         self.assertEqual(request.status, "Prepared")
         self.assertEqual(draft["message"].count("/satisfaction-feedback?"), 5)
         self.assertEqual(frappe.db.count("Email Queue", queue_filters), before)
         args = {"doctype": "Issue", "name": issue.name, "send_email": 1, "recipients": draft["recipient"],
-                "subject": draft["subject"], "content": draft["message"]}
+                "subject": draft["subject"], "content": draft["message"], "email_template": draft["email_template"]}
         result = feedback.make_communication(**args)
+        self.assertEqual(frappe.db.get_value("Communication", result["name"], "email_template"),
+                         issue_closure.ISSUE_CLOSURE_TEMPLATE)
         self.assertEqual(feedback.make_communication(**args), result)
         self.assertEqual(frappe.db.count("Email Queue", queue_filters), before + 1)
         request.reload()
@@ -279,6 +304,48 @@ class TestFeedbackDatabase(unittest.TestCase):
         request.reload()
         self.assertEqual(frappe.db.get_value("Customer Satisfaction Survey", request.survey, "type_interaction"), "Issue")
         self.assertNotIn("/satisfaction-feedback?", issue_closure.get_closure_email(issue.name)["message"])
+
+    def test_selecting_issue_template_before_closing_loads_draft_without_sending(self):
+        issue = self._find_source("Issue")
+        frappe.db.set_value("Issue", issue.name, "status", "Open")
+        issue.reload()
+        template = issue_closure.ISSUE_CLOSURE_TEMPLATE
+        queue_filters = {"reference_doctype": "Issue", "reference_name": issue.name}
+        before = frappe.db.count("Email Queue", queue_filters)
+
+        draft = feedback.get_email_template(template, issue.as_dict())
+        self.assertIn(issue.name, draft["subject"])
+        self.assertIn(issue.name, draft["message"])
+        self.assertIsNotNone(draft["recipient"])
+        self.assertNotIn("/satisfaction-feedback?", draft["message"])
+        self.assertFalse(frappe.db.exists(feedback.REQUEST_DOCTYPE, feedback.request_name("Issue", issue.name)))
+
+        with self.assertRaisesRegex(frappe.ValidationError, "Close and save the Issue before sending"):
+            feedback.make_communication(doctype="Issue", name=issue.name, email_template=template,
+                                        send_email=1, recipients=draft["recipient"], content=draft["message"])
+        self.assertEqual(frappe.db.count("Email Queue", queue_filters), before)
+
+    def test_selecting_issue_template_without_linked_party_loads_generic_draft(self):
+        issue = self._find_source("Issue")
+        frappe.db.set_value("Issue", issue.name, {
+            "status": "Closed", "input_selection": "Customer Issue", "customer_issue": None, "customer": None,
+        })
+        issue.reload()
+        template = issue_closure.ISSUE_CLOSURE_TEMPLATE
+        draft = feedback.get_email_template(template, issue.as_dict())
+        self.assertIn(issue.name, draft["subject"])
+        self.assertIn("Dear team,", draft["message"])
+        self.assertIsNone(draft["recipient"])
+        self.assertNotIn("/satisfaction-feedback?", draft["message"])
+        self.assertFalse(frappe.db.exists(feedback.REQUEST_DOCTYPE, feedback.request_name("Issue", issue.name)))
+
+        def stock_make(**args):
+            return args
+
+        with patch("frappe.core.doctype.communication.email.make", new=stock_make):
+            arguments = feedback.make_communication(doctype="Issue", name=issue.name, email_template=template,
+                                                    send_email=1, recipients="issue@example.invalid", content=draft["message"])
+        self.assertEqual(arguments["recipients"], "issue@example.invalid")
 
     def test_supplier_draft_uses_linked_issue_email_without_survey(self):
         issue = self._find_source("Issue")
@@ -292,10 +359,26 @@ class TestFeedbackDatabase(unittest.TestCase):
         before = frappe.db.count("Email Queue", {"reference_doctype": "Issue", "reference_name": issue.name})
         draft = issue_closure.get_closure_email(issue.name)
         self.assertEqual(draft["recipient"], "supplier-test@example.invalid")
+        self.assertIn("closed", draft["subject"])
         self.assertIn(issue.name, draft["message"])
         self.assertNotIn("/satisfaction-feedback?", draft["message"])
         self.assertFalse(frappe.db.exists(feedback.REQUEST_DOCTYPE, feedback.request_name("Issue", issue.name)))
         self.assertEqual(frappe.db.count("Email Queue", {"reference_doctype": "Issue", "reference_name": issue.name}), before)
+
+    def test_template_install_preserves_site_edits_and_draft_uses_them(self):
+        issue = self._find_source("Issue")
+        frappe.db.set_value("Issue", issue.name, "status", "Closed")
+        frappe.db.set_value("Email Template", issue_closure.ISSUE_CLOSURE_TEMPLATE, {
+            "subject": "Closure update for {{ issue }}",
+            "response": "<p>Thanks for your patience, {{ recipient_name | e }}.</p>{{ stars or '' }}",
+        })
+        original = frappe.db.get_value("Email Template", "Sales Order", ["subject", "response"])
+        email_templates.install_email_templates()
+        self.assertEqual(frappe.db.get_value("Email Template", "Sales Order", ["subject", "response"]), original)
+        draft = issue_closure.get_closure_email(issue.name)
+        self.assertEqual(draft["subject"], "Closure update for " + issue.name)
+        self.assertIn("Thanks for your patience", draft["message"])
+        self.assertEqual(draft["message"].count("/satisfaction-feedback?"), 5)
 
     def test_bulk_close_returns_offer_only_for_new_transition(self):
         issue = self._find_source("Issue")

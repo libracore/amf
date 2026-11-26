@@ -173,15 +173,14 @@ one was a draft and seven were cancelled.
 
 ## Exactly what changed
 
-### 1. Existing Sales Order confirmation email
+### 1. Sales Order confirmation email
 
-The existing Email Template is named **Sales Order**. It is still sent from the
-normal document email composer. The new path applies to a **submitted** Sales
-Order when that exact template is selected.
+From a submitted Sales Order, open the standard email composer and select **AMF Sales Order Confirmation**.
+Review the message and leave **Attach Document Print** selected to include the confirmation PDF.
 
-- Rendering the template adds five separate feedback links to its current body.
-- Existing confirmation wording, shipping text, signature and attachments are
-  retained. The live Email Template record itself was not replaced.
+- The confirmation template is an editable copy of **Sales Order** with revised
+  wording for the purchase order, confirmation and shipping details.
+- Rendering it adds five separate feedback links for eligible orders.
 - A private request can be created during composition, with status **Prepared**.
   This sends no email and creates no Customer Satisfaction Survey.
 - Sending creates the Communication, feedback request state and Email Queue entry
@@ -207,6 +206,16 @@ Supplier. Choose **No** to leave the Issue closed, or **Yes** to review an edita
 draft in the standard email composer. The email is queued when you click **Send**.
 Use **Closure email** on a closed Issue to prepare the draft later. For bulk closure,
 Desk offers a choice of closed Issue to review.
+
+Edit the subject and body in Desk under **Email Template → AMF Issue Closure**.
+The composer selects this template for closure drafts. The migration creates it
+if missing and preserves edits on the site. The template receives the saved
+Issue's fields, `issue` (the Issue ID), `recipient_name`, `is_supplier`, and
+`stars` (the rendered customer feedback links, when available).
+
+You can also select the template from a saved Issue before closing it. Close and
+save the Issue before sending the closure email. Reload the template from a closed
+customer Issue to include its feedback stars.
 
 Customer drafts use the related Contact and may include a fresh set of five
 feedback links. Supplier drafts use the Issue's supplier email or the Supplier's
@@ -356,7 +365,7 @@ Changing only a URL's host cannot make a token from one database work in another
 ### A. Sales Order and form
 
 1. Create and submit a test SO linked to that Customer and Contact.
-2. Open its email composer and select **Sales Order**.
+2. Open its email composer and select **AMF Sales Order Confirmation**.
 3. Confirm five linked stars, existing signature and selected confirmation PDF.
    Preparing the email should create at most one **Prepared** request and no Survey.
 4. Send the confirmation to your own test mailbox. Confirm one Email Queue entry
@@ -420,7 +429,7 @@ Request** (System Manager), **Communication**, **Email Queue**, **Contact**, and
 | `amf/master_crm/report/customer_satisfaction/customer_satisfaction.py` | Empty AVG handling |
 | `amf/hooks.py` | Register adapters, Issue/survey hooks, Country asset and after-migrate setup |
 | `amf/public/js/contact_country_default.js` | Contact-only browser default resolver |
-| `amf/templates/emails/issue_feedback.html` | Customer closure message |
+| `amf/templates/emails/issue_feedback.html` | Default body for the editable Issue Closure email template |
 | `amf/www/satisfaction-feedback.html` / `amf/www/satisfaction_feedback.py` | Public form and correctly discovered V12 page controller |
 | `amf/patches/v12_0/install_satisfaction_feedback_2026_11_19.py` / `amf/patches.txt` | Versioned deployment migration |
 | `amf/master_crm/test_feedback.py` | Twenty-five functional, route and API checks |

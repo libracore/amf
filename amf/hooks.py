@@ -350,6 +350,8 @@ override_doctype_dashboards = {
 # Initial setup runs once on app installation. Existing sites are initialized
 # by the versioned monthly inventory patch, not by every migration.
 after_install = [
+    "amf.master_crm.issue_closure.install_closure_email_template",
+    "amf.master_crm.email_templates.install_email_templates",
     "amf.amf.utils.project_id.after_install",
     "amf.amf.utils.monthly_inventory.setup_monthly_inventory",
 ]

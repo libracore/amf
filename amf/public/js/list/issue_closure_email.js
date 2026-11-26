@@ -1,4 +1,5 @@
-(() => {
+// Frappe appends this script to ERPNext's Issue list script.
+;(() => {
     const settings = frappe.listview_settings.Issue;
     const originalOnload = settings.onload;
     settings.onload = function(listview) {
