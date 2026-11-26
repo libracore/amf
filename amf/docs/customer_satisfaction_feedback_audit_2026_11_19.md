@@ -24,7 +24,7 @@ results and deployment steps. The findings below record the original audit.
 | Global Satisfaction Score | 75 snapshots. Weekly job averages populated Contact score fields. Date-based names collide on a second run on the same day. | Keep calculations; update today's snapshot on rerun. Let the calling job manage commits. |
 | Customer Satisfaction report | Multiplying an empty SQL AVG (`None`) raised an exception. | Empty date ranges return zero. |
 | SO email | No automatic SO submission notification exists. Staff send the `Sales Order` Email Template from the normal composer, with the confirmation attachment. | Extend that existing template-render/send path. Do not add a second email on SO submission. Preserve current wording, shipping information, signature and attachment choices. |
-| Issue email | `Issue Closed` is an enabled status-change notification addressed to `owner`, `process_owner`, and `amf_person`. It is an operational notification, rather than the requested customer survey email. | Preserve it. Add one customer closure message when an existing customer Issue transitions to Closed. |
+| Issue email | `Issue Closed` sent a staff notification on closure. The original feedback hook also queued a customer email on closure. | Disable both automatic closure emails. Offer an editable customer or supplier email from Desk after closure. |
 | Contact Country | The live Country field has no explicit default. Frappe V12 inherits the global/user Country default. An existing client script cleared Country on full-form load, which missed Quick Entry and cleared explicitly supplied values. | Suppress default resolution only for Contact.country before new forms are created; preserve explicit values and other DocTypes' Country defaults. Remove the old load-time workaround. |
 
 ## Scoring decision
@@ -61,18 +61,17 @@ These choices remain available for a later scoring change.
 
 ### Issue
 
-1. An existing Issue transitions from another status to Closed.
-2. Customer Issues receive the requested closure email, including the Issue
-   reference and five separate star links. The signature is “The AMF Team”.
-3. Canonical `customer_issue` and `contact_new` fields take precedence over
-   legacy Customer/Contact fields. `raised_by_email` is a Contact link in this
-   installation, rather than an email string. Contact email is resolved from it
-   when necessary. Supplier, internal and unclassified Issues are excluded.
-4. No customer email is sent without a Customer and valid recipient address.
-   Editing an already closed Issue or inserting a closed historical Issue does
-   not send mail. Reopening and closing the same Issue does not send another
-   feedback request. Existing internal operational notifications retain their
-   own behavior.
+1. An existing Issue transitions to Closed. Desk offers to prepare an email
+   when the Issue has a related Customer or Supplier. **No** keeps the Issue
+   closed. **Yes** opens the standard email composer for review and editing.
+2. For customers, the draft uses the related Contact and includes the Issue
+   reference and five rating links if a feedback request can still be sent.
+   Supplier drafts use the Issue's supplier email or its linked Contact.
+3. The composer requires the user to click **Send**. Customer feedback links
+   become active when the email is queued. A feedback request can be sent once.
+4. The migration disables the existing **Issue Closed** staff notification.
+   For bulk closure, Desk offers a choice of Issue to review. Users can also
+   open **Closure email** from a closed Issue later.
 
 ### Public response
 

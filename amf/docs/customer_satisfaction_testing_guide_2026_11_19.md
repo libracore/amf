@@ -200,28 +200,18 @@ infers it from an email when exactly one matching Contact belongs to that Custom
 If no unambiguous match exists, the Contact link stays blank. The user can send
 to a purchasing alias without changing the order's Contact attribution.
 
-### 2. Customer Issue closure email
+### 2. Issue closure email
 
-An existing Issue changing from another status to **Closed** queues a customer
-message with subject:
+Saving an existing Issue as **Closed** offers to email the related Customer or
+Supplier. Choose **No** to leave the Issue closed, or **Yes** to review an editable
+draft in the standard email composer. The email is queued when you click **Send**.
+Use **Closure email** on a closed Issue to prepare the draft later. For bulk closure,
+Desk offers a choice of closed Issue to review.
 
-> [AMF] Your issue has been resolved – Please rate your experience
-
-It includes the Issue reference, the requested support feedback wording and the
-five links. The closing signature is **The AMF Team**.
-
-- `customer_issue` takes precedence over legacy `customer`.
-- `contact_new` takes precedence over `raised_by_email`, then legacy `contact`.
-  In this installation, `raised_by_email` is a **Contact link**.
-- Contact email is preferred; available Issue email fields are fallbacks.
-- Explicit Supplier, Internal and unclassified (`-`) Issues are excluded.
-  Legacy Issues without a selection can qualify when customer context exists.
-- A Customer and valid recipient address are required. Missing recipient data
-  means the customer message is skipped.
-- Editing an already closed Issue, creating an Issue already closed, or reopening
-  and closing a previously requested Issue does not send another request.
-- The existing **Issue Closed** operational notification to AMF staff remains
-  configured. The new customer message is separate from that notification.
+Customer drafts use the related Contact and may include a fresh set of five
+feedback links. Supplier drafts use the Issue's supplier email or the Supplier's
+default linked Contact. If no address can be resolved, the composer starts with an
+empty recipient field. The migration disables the old **Issue Closed** notification.
 
 ### 3. Public form and saved survey
 
@@ -387,13 +377,16 @@ Changing only a URL's host cannot make a token from one database work in another
 
 1. Create a fresh Issue with **Input Selection = Customer Issue**, the test
    Organization and Contact, and status Open.
-2. Change status to **Closed** and save. Confirm one customer closure email with
-   the specified subject and five links. Existing staff notifications may also run.
-3. Open a star, submit both ratings, and check one Survey with interaction type
-   `Issue` and a source link to that Issue.
-4. Save the closed Issue again, then reopen and close it. No second customer
-   feedback email should be created for that Issue.
-5. Close an Internal or Supplier test Issue. No customer feedback request is expected.
+2. Set status to **Closed**, save, and choose **No**. Check that the status is Closed
+   and no closure email was added to Email Queue.
+3. Click **Closure email**. Verify the related recipient and five links. Review the
+   draft and click **Send** to queue it.
+4. Open a star, submit both ratings, and check that the Survey links to that Issue.
+5. Reopen and close the Issue. An optional closure email is available, and the
+   existing feedback request remains the only one for that Issue.
+6. Close a Supplier Issue and choose **Yes**. Verify the supplier is the recipient
+   and the message explains the closure. Close an Internal Issue to confirm the
+   external email prompt is skipped.
 
 ### C. Country, scoring and report
 
