@@ -130,7 +130,7 @@ def qr_code_to_document(doc, method=None):
 
 @frappe.whitelist()
 def generate_qr_for_submitted(doctype=None):
-    if doctype not frappe.has_permission(doctype, "write"):
+    if doctype and not frappe.has_permission(doctype, "write"):
         return
     elif not frappe.has_permission("Work Order", "write"):
         return
